@@ -1,0 +1,11 @@
+- remove std::experimental::optional and replace with exception
+  (file_format_error).
+
+- bounds: corret syntax are:
+  - [variable] [operator] [value]
+  - [value] [operator] variable [operator] [value].
+
+- check line/column.
+
+- replace map<tuple<...>, string> in problem with a vector<string>. If no
+  constraint names are specified, CPLEX assigns the names c1, c2, c3, etc.

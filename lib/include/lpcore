@@ -1,0 +1,412 @@
+/* Copyright (C) 2016 INRA
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a
+ * copy of this software and associated documentation files (the
+ * "Software"), to deal in the Software without restriction, including
+ * without limitation the rights to use, copy, modify, merge, publish,
+ * distribute, sublicense, and/or sell copies of the Software, and to
+ * permit persons to whom the Software is furnished to do so, subject to
+ * the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included
+ * in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+ * OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+ * LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+ * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+ * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
+
+#ifndef ORG_VLEPROJECT_LP_LPCORE
+#define ORG_VLEPROJECT_LP_LPCORE
+
+#include <algorithm>
+#include <limits>
+#include <tuple>
+#include <stdexcept>
+#include <string>
+#include <vector>
+
+#if defined _WIN32 || defined __CYGWIN__
+#define LP_HELPER_DLL_IMPORT __declspec(dllimport)
+#define LP_HELPER_DLL_EXPORT __declspec(dllexport)
+#define LP_HELPER_DLL_LOCAL
+#else
+#if __GNUC__ >= 4
+#define LP_HELPER_DLL_IMPORT __attribute__ ((visibility ("default")))
+#define LP_HELPER_DLL_EXPORT __attribute__ ((visibility ("default")))
+#define LP_HELPER_DLL_LOCAL  __attribute__ ((visibility ("hidden")))
+#else
+#define LP_HELPER_DLL_IMPORT
+#define LP_HELPER_DLL_EXPORT
+#define LP_HELPER_DLL_LOCAL
+#endif
+#endif
+
+#ifdef LP_DLL
+#ifdef libmitm_EXPORTS
+#define LP_API LP_HELPER_DLL_EXPORT
+#else
+#define LP_API LP_HELPER_DLL_IMPORT
+#endif
+#define LP_LOCAL LP_HELPER_DLL_LOCAL
+#define LP_MODULE LP_HELPER_DLL_EXPORT
+#else
+#define LP_API
+#define LP_LOCAL
+#define LP_MODULE LP_HELPER_DLL_EXPORT
+#endif
+
+namespace lp {
+
+using index = long int;
+
+struct LP_API precondition_error : std::logic_error {
+    precondition_error(const char *msg)
+        : std::logic_error(msg)
+    {}
+
+    virtual ~precondition_error() noexcept {}
+};
+
+struct LP_API postcondition_error : std::logic_error {
+    postcondition_error(const char *msg)
+        : std::logic_error(msg)
+    {}
+
+    virtual ~postcondition_error() noexcept {}
+};
+
+struct LP_API numeric_cast_error : public std::exception {
+    virtual const char *what() const noexcept
+    {
+        return "numeric cast error: loss of range in numeric_cast";
+    }
+};
+
+template<typename Target, typename Source>
+inline bool is_numeric_castable(Source arg)
+{
+    static_assert(std::is_integral<Source>::value, "Integer required.");
+    static_assert(std::is_integral<Target>::value, "Integer required.");
+
+    using arg_traits = std::numeric_limits<Source>;
+    using result_traits = std::numeric_limits<Target>;
+
+    if (result_traits::digits == arg_traits::digits
+            and result_traits::is_signed == arg_traits::is_signed)
+        return true;
+
+    if (result_traits::digits > arg_traits::digits)
+        return result_traits::is_signed or arg >= 0;
+
+    if (arg_traits::is_signed
+            and arg < static_cast<Source>(result_traits::min()))
+        return false;
+
+    return arg <= static_cast<Source>(result_traits::max());
+}
+
+template<typename Target, typename Source>
+inline Target numeric_cast(Source s)
+{
+    if (not is_numeric_castable<Target>(s))
+        throw lp::numeric_cast_error();
+
+    return static_cast<Target>(s);
+}
+
+struct LP_API file_access_error : std::runtime_error {
+    file_access_error(std::string file, int error)
+        : std::runtime_error("file_access_error")
+        , m_file(file)
+        , m_error(error)
+    {}
+
+    file_access_error(const file_access_error& f) = default;
+    file_access_error& operator=(const file_access_error& f) = default;
+    file_access_error(file_access_error&& f) = default;
+    file_access_error& operator=( file_access_error&& f) = default;
+
+    virtual ~file_access_error() noexcept {}
+
+    std::string file() const { return m_file; }
+    int error() const { return m_error; }
+
+private:
+    std::string m_file;
+    int m_error;
+};
+
+struct LP_API file_format_error : std::runtime_error {
+    enum class tag { end_of_file, unknown, already_defined, incomplete,
+            bad_name, bad_operator, bad_integer,
+            bad_objective_function_type,
+            bad_bound,
+            bad_function_element,
+            bad_constraint };
+
+    file_format_error(std::string element, tag failure, int line, int column)
+        : std::runtime_error("file_format_error")
+        , m_element(std::move(element))
+        , m_line(line)
+        , m_column(column)
+        , m_failure(failure)
+    {}
+
+    file_format_error(tag failure, int line, int column)
+        : std::runtime_error("file_format_error")
+        , m_line(line)
+        , m_column(column)
+        , m_failure(failure)
+    {}
+
+    file_format_error(const file_format_error& f) = default;
+    file_format_error& operator=(const file_format_error& f) = default;
+    file_format_error(file_format_error&& f) = default;
+    file_format_error& operator=( file_format_error&& f) = default;
+
+    virtual ~file_format_error() noexcept {}
+
+    std::string element() const { return m_element; }
+    int line() const { return m_line; }
+    int column() const { return m_column; }
+    tag failure() const { return m_failure; }
+
+private:
+    std::string m_element;
+    int m_line;
+    int m_column;
+    tag m_failure;
+};
+
+struct LP_API problem_definition_error : std::runtime_error {
+    enum class tag { empty_variables, empty_objective_function,
+                     variable_not_used, bad_bound };
+
+    problem_definition_error(std::string element, tag failure)
+        : std::runtime_error("problem_definition_error")
+        , m_element(element)
+        , m_failure(failure)
+    {}
+
+    problem_definition_error(const problem_definition_error& f) = default;
+    problem_definition_error& operator=(const problem_definition_error& f) = default;
+    problem_definition_error(problem_definition_error&& f) = default;
+    problem_definition_error& operator=( problem_definition_error&& f) = default;
+
+    virtual ~problem_definition_error() noexcept {}
+
+    std::string element() const { return m_element; }
+    tag failure() const { return m_failure; }
+
+private:
+    std::string m_element;
+    tag m_failure;
+};
+
+struct LP_API solver_error : std::runtime_error {
+    enum class tag { no_solver_available, not_enough_memory };
+
+    solver_error(tag failure)
+        : std::runtime_error("solver_error")
+        , m_failure(failure)
+    {}
+
+    solver_error(const solver_error& f) = default;
+    solver_error& operator=(const solver_error& f) = default;
+    solver_error(solver_error&& f) = default;
+    solver_error& operator=( solver_error&& f) = default;
+
+    virtual ~solver_error() noexcept {}
+
+    tag failure() const { return m_failure; }
+
+private:
+    tag m_failure;
+};
+
+struct LP_API  parameter {
+    parameter()
+        : l(0)
+        , type(tag::integer)
+    {}
+
+    parameter(const std::string& name_, long value_)
+        : l(value_)
+        , name(name_)
+        , type(tag::integer)
+    {}
+
+    parameter(const std::string& name_, double value_)
+        : d(value_)
+        , name(name_)
+        , type(tag::real)
+    {}
+
+    parameter(const std::string& name_, const std::string& value_)
+        : s(value_)
+        , name(name_)
+        , type(tag::string)
+    {}
+
+    parameter(const parameter& w)
+        : type(w.type)
+    {
+        switch (w.type) {
+        case tag::integer:
+            l = w.l;
+            break;
+        case tag::real:
+            d = w.d;
+            break;
+        case tag::string:
+            new (&s) std::string(w.s);
+            break;
+        }
+    }
+
+    parameter& operator=(const parameter& w)
+    {
+        if (type == tag::string and w.type == tag::string) {
+            s = w.s;
+            return *this;
+        }
+
+        if (type == tag::string) {
+            using std::string;
+            s.~string();
+        }
+
+        switch (w.type) {
+        case tag::integer:
+            l = w.l;
+            break;
+        case tag::real:
+            d = w.d;
+            break;
+        case tag::string:
+            new (&s) std::string(w.s);
+            break;
+        }
+
+        type = w.type;
+        return *this;
+    }
+
+    ~parameter() noexcept
+    {
+        if (type == tag::string) {
+            using std::string;
+            s.~string();
+        }
+    }
+
+    union {
+        long l;
+        double d;
+        std::string s;
+    };
+
+    std::string name;
+    enum class tag { integer, real, string } type;
+};
+
+enum class variable_type { real, binary, general };
+
+enum class objective_function_type { undefined, maximize, minimize };
+
+enum class operator_type { undefined, equal, greater, greater_equal,
+                           less, less_equal };
+
+struct LP_API variable_value
+{
+    int min = {0};
+    int max = std::numeric_limits<int>::max();
+    variable_type type = variable_type::real;
+};
+
+struct LP_API variables
+{
+    std::vector<std::string> names;
+    std::vector<variable_value> values;
+};
+
+struct LP_API function_element
+{
+    function_element(int factor_, index variable_index_) noexcept
+        : factor(factor_)
+        , variable_index(variable_index_)
+    {}
+
+    int factor = {0};
+    index variable_index {-1};
+};
+
+struct LP_API constraint
+{
+    std::vector<function_element> elements;
+    int value;
+};
+
+struct LP_API problem
+{
+    std::vector<function_element> objective_function;
+
+    std::vector<constraint> equal_constraints;
+    std::vector<constraint> greater_constraints;
+    std::vector<constraint> greater_equal_constraints;
+    std::vector<constraint> less_constraints;
+    std::vector<constraint> less_equal_constraints;
+
+    std::vector<std::tuple<std::string, index,
+                           operator_type>> names_constraints;
+
+    variables vars;
+
+    objective_function_type type = {objective_function_type::maximize};
+};
+
+struct LP_API result
+{
+    std::vector<std::string> variable_name;
+    std::vector<int> variable_value;
+    index loop;
+    bool optimal;
+};
+
+/**
+ * Read a \e lp file from the \e file.
+ *
+ * \exception lp::file_format_error, lp::file_access_error,
+ *  std::system_error.
+ */
+LP_API problem make_problem(const std::string& filename);
+
+/**
+ * Read a \e lp file from the \e is stream.
+ *
+ * \exception lp::file_format_error, lp::file_access_error,
+ *  std::system_error.
+ */
+LP_API problem make_problem(std::istream& is);
+
+/**
+ * Write \e lp problem into a stream.
+ *
+ */
+LP_API std::ostream& operator<<(std::ostream& os, const problem& p);
+
+/**
+ * Solve the \c lp::problem using the \c std::vector<parameter>.
+ *
+ * \exception lp::solver_error
+ */
+LP_API result solve(const problem& pb, const std::vector<parameter>& params);
+
+}
+
+#endif
