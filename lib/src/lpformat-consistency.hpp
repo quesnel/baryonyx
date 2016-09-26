@@ -34,7 +34,7 @@ are_variables_used(const problem& pb)
 {
     std::vector<bool> vars(pb.vars.names.size(), false);
 
-    for (const auto& elem : pb.objective_function)
+    for (const auto& elem : pb.objective.elements)
         vars[elem.variable_index] = true;
 
     for (const auto& cst : pb.equal_constraints)

@@ -77,7 +77,7 @@ class default_algorithm
         pi(k) += (std::get<double>(r[b(k)]) + std::get<double>(r[b(k) - 1])
                 / 2.0);
 
-        double d = delta 
+        double d = delta
             + ((kappa / (1.0 - kappa))
                     * (std::get<double>(r[b(k)])
                        - std::get<double>(r[b(k) - 1])));
@@ -120,7 +120,7 @@ public:
         Ensures(m > 0, "equal_constraints number must be > 0");
         Ensures(n > 0, "variable number must be > 0");
 
-        for (const auto& elem : pb.objective_function)
+        for (const auto& elem : pb.objective.elements)
             x(elem.variable_index) = c(elem.variable_index) <= 0;
 
         for (index i = 0; i != m; ++i)
@@ -171,7 +171,8 @@ public:
 class general_problem
 {
     index m, n;
-    const problem& pb;
+    problem pb;                         // a copy to change the problem
+                                        // (remove lower bound < 0)
     Eigen::MatrixXi A;
     Eigen::MatrixXi bk;
     Eigen::VectorXi b;
@@ -259,7 +260,10 @@ class general_problem
         }
 
 
-        
+
+
+
+
         std::sort(r.begin(), r.end(),
                 [](const auto& lhs, const auto& rhs)
                 {
@@ -269,7 +273,7 @@ class general_problem
         pi(k) += (std::get<double>(r[b(k)]) + std::get<double>(r[b(k) - 1])
                 / 2.0);
 
-        double d = delta 
+        double d = delta
             + ((kappa / (1.0 - kappa))
                     * (std::get<double>(r[b(k)])
                        - std::get<double>(r[b(k) - 1])));
@@ -293,7 +297,7 @@ public:
             + numeric_cast<index>(pb.greater_equal_constraints.size())
             + numeric_cast<index>(pb.less_equal_constraints.size()))
         , n(numeric_cast<index>(pb.vars.values.size()))
-        , pb(pb_)
+        , pb(adapt_problem(pb_))
         , A(make_inequality_a<int>(m, n, pb))
         , b(make_inequality_b<int>(m, n, pb))
         , c(make_c<float>(n, pb))
@@ -313,12 +317,12 @@ public:
         Ensures(m > 0, "constraints number must be > 0");
         Ensures(n > 0, "variable number must be > 0");
 
-        for (const auto& elem : pb.objective_function)
+        for (const auto& elem : pb.objective.elements)
             x(elem.variable_index) = c(elem.variable_index) <= 0;
 
         /* build the C_k and I_k vectors to store -1/1 and -1
          * coefficient. */
-        make_c_i();        
+        make_c_i();
 
         std::vector<index> R;
         while (loop != limit) {

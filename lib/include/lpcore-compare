@@ -57,6 +57,14 @@ bool operator==(const constraint& lhs, const constraint& rhs) noexcept
 }
 
 inline
+bool operator==(const objective_function& lhs,
+                const objective_function& rhs) noexcept
+{
+    return lhs.elements == rhs.elements
+        and lhs.constant == rhs.constant;
+}
+
+inline
 bool operator==(const problem& lhs, const problem& rhs) noexcept
 {
     return lhs.type == rhs.type
@@ -68,7 +76,7 @@ bool operator==(const problem& lhs, const problem& rhs) noexcept
            and lhs.names_constraints == rhs.names_constraints
            and lhs.vars.names == rhs.vars.names
            and lhs.vars.values == rhs.vars.values
-           and lhs.objective_function == rhs.objective_function;
+           and lhs.objective == rhs.objective;
 }
 
 inline

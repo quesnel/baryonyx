@@ -71,7 +71,7 @@ make_c(index n, const problem& p)
 
     vector c(vector::Zero(n));
 
-    for (const auto& elem : p.objective_function)
+    for (const auto& elem : p.objective.elements)
         c(elem.variable_index) = elem.factor;
 
     return c;
@@ -145,6 +145,34 @@ make_inequality_b(index m, index n, const problem& p)
     Ensures(i == n, "make_inequality_b != n");
 
     return b;
+}
+
+/**
+ * Remove lower bound < 0 without changing the problem's structure other
+ * than modifying the right-hand side and adding a constant to the
+ * objective function.
+ *
+ * \param pb Initial problem definition.
+ *
+ * \return New problem without lower bound variable less than 0.
+ */
+inline
+problem adapt_problem(const problem& pb)
+{
+    problem ret {pb};
+    int constant {0};
+
+    for (std::size_t i {0}, e{ret.vars.values.size()}; i != e; ++i) {
+        if (ret.vars.values[i].min < 0) {
+            constant += ret.vars.values[i].min;
+            ret.vars.values[i].max -= ret.vars.values[i].min;
+            ret.vars.values[i].min = 0;
+        }
+    }
+
+    ret.objective.constant = constant;
+
+    return ret;
 }
 
 result mitm(const problem& pb, const std::vector<parameter>& params);

@@ -101,7 +101,7 @@ struct parser_stack
 
         return stack[0][0];
     }
-    
+
     std::string top()
     {
         if (stack.empty())
@@ -135,7 +135,7 @@ struct parser_stack
     is_topic()
     {
         auto str = top();
-        
+
         if (iequals(str, "binary"))
             return true;
 
@@ -539,15 +539,19 @@ read_objective_function_type(parser_stack& stack)
                             stack.line(), stack.column());
 }
 
-std::vector<function_element>
+objective_function
 read_objective_function(parser_stack& stack, problem& p)
 {
-    std::vector<function_element> ret;
+    objective_function ret;
 
     while (not stack.is_topic()) {
         auto elem = read_function_element(stack);
 
-        ret.emplace_back(std::get<1>(elem), get_variable(p, std::get<0>(elem)));
+        if (std::get<0>(elem).empty())      // we read a constant
+            ret.constant += std::get<1>(elem);
+        else
+            ret.elements.emplace_back(std::get<1>(elem),
+                                      get_variable(p, std::get<0>(elem)));
     }
 
     return ret;
@@ -729,7 +733,7 @@ problem read_problem(std::istream& is)
     std::string toek;
 
     p.type = read_objective_function_type(stack);
-    p.objective_function = read_objective_function(stack, p);
+    p.objective = read_objective_function(stack, p);
 
     if (stack.is_subject_to())
         read_constraints(stack, p);
@@ -774,7 +778,12 @@ struct problem_writer
         else
             os << "minimize\n";
 
-        write_function_element(p.objective_function);
+        write_function_element(p.objective.elements);
+        if (p.objective.constant < 0)
+            os << p.objective.constant;
+        else if (p.objective.constant > 0)
+            os << '+' << p.objective.constant;
+
         os << '\n';
 
         os << "subject to\n";

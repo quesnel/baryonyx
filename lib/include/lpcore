@@ -352,10 +352,15 @@ struct LP_API constraint
     int value;
 };
 
+struct LP_API objective_function
+{
+    std::vector<function_element> elements;
+    int constant = {0};
+};
+
 struct LP_API problem
 {
-    std::vector<function_element> objective_function;
-
+    objective_function objective;
     std::vector<constraint> equal_constraints;
     std::vector<constraint> greater_constraints;
     std::vector<constraint> greater_equal_constraints;
