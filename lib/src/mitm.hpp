@@ -137,7 +137,7 @@ make_inequality_b(index m, index n, const problem& p)
     }
 
     for (const auto& elem : p.greater_equal_constraints) {
-        b(0, i) = std::numeric_limits<int>::min();
+        b(0, i) = 0; // std::numeric_limits<int>::min();
         b(1, i) = elem.value;
         ++i;
     }

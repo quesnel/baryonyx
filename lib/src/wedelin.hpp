@@ -39,6 +39,7 @@ class default_algorithm
     Eigen::VectorXi b;
     Eigen::VectorXf c;
     Eigen::VectorXi x;
+    Eigen::VectorXi u;
     Eigen::MatrixXf P;
     Eigen::VectorXf pi;
     std::vector<std::vector<index>> I;
@@ -123,6 +124,9 @@ public:
         for (const auto& elem : pb.objective.elements)
             x(elem.variable_index) = c(elem.variable_index) <= 0;
 
+        for (index i = 0; i != n; ++i)
+            u(i) = pb.vars.values[i].max;
+
         for (index i = 0; i != m; ++i)
             for (const auto& elem : pb.equal_constraints[i].elements)
                 I[i].emplace_back(elem.variable_index);
@@ -174,10 +178,10 @@ class general_problem
     problem pb;                         // a copy to change the problem
                                         // (remove lower bound < 0)
     Eigen::MatrixXi A;
-    Eigen::MatrixXi bk;
     Eigen::VectorXi b;
     Eigen::VectorXf c;
     Eigen::VectorXi x;
+    Eigen::VectorXi u;
     Eigen::MatrixXf P;
     Eigen::VectorXf pi;
     std::vector<std::vector<index>> I; // Variable with non-zero coefficient
@@ -202,6 +206,7 @@ class general_problem
                 if (elem.factor)
                     I[i].push_back(j);
             }
+
             ++i;
         }
 
@@ -213,6 +218,7 @@ class general_problem
                 if (elem.factor)
                     I[i].push_back(j);
             }
+
             ++i;
         }
 
@@ -224,6 +230,7 @@ class general_problem
                 if (elem.factor)
                     I[i].push_back(j);
             }
+
             ++i;
         }
 
@@ -252,23 +259,25 @@ class general_problem
             std::get<index>(r[i]) = i;
         }
 
-        /* negate reduced costs and coefficients of -1 coefficient. */
+        // negate reduced costs and coefficients of -1 coefficient.
         for (auto i : C[k]) {
             std::get<double>(r[i]) = - std::get<double>(r[i]);
             A(k, i) = - A(k, i);
             P(k, i) = - P(k, i);
         }
 
+        int a_ki_ui {0};
+        for (auto i : C[k])
+            a_ki_ui += A(k, i) * u(i);
 
-
-
-
+        b(k, 0) += a_ki_ui;
+        b(k, 1) += a_ki_ui;
 
         std::sort(r.begin(), r.end(),
-                [](const auto& lhs, const auto& rhs)
-                {
-                    return std::get<0>(lhs) < std::get<0>(rhs);
-                });
+                  [](const auto& lhs, const auto& rhs)
+                  {
+                      return std::get<0>(lhs) < std::get<0>(rhs);
+                  });
 
         pi(k) += (std::get<double>(r[b(k)]) + std::get<double>(r[b(k) - 1])
                 / 2.0);
@@ -288,6 +297,18 @@ class general_problem
             x(std::get<index>(r[j])) = 0;
             P(k, std::get<index>(r[j])) -= d;
         }
+
+        // undo adjustment of row lower and upper bound
+        b(k, 0) += a_ki_ui;
+        b(k, 1) += a_ki_ui;
+
+        // clean up: correct negated costs and adjust value of negated
+        // variables.
+        for (auto i : C[k]) {
+            A(k, i) = - A(k, i);
+            P(k, i) = - P(k, i);
+            x(i) = u(i) - x(i);
+        }
     }
 
 public:
@@ -302,6 +323,7 @@ public:
         , b(make_inequality_b<int>(m, n, pb))
         , c(make_c<float>(n, pb))
         , x(Eigen::VectorXi::Zero(n))
+        , u(Eigen::VectorXi::Zero(n))
         , P(Eigen::MatrixXf::Zero(m, n))
         , pi(Eigen::VectorXf::Zero(m))
         , I(m)
@@ -320,8 +342,7 @@ public:
         for (const auto& elem : pb.objective.elements)
             x(elem.variable_index) = c(elem.variable_index) <= 0;
 
-        /* build the C_k and I_k vectors to store -1/1 and -1
-         * coefficient. */
+        // build the C_k, I_k vectors store -1/1 and -1 coefficient.
         make_c_i();
 
         std::vector<index> R;
