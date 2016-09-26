@@ -100,8 +100,25 @@ void test_examples_3()
 
 void test_examples_4()
 {
-    // auto pb = lp::make_problem(EXAMPLES_DIR "/verger.lp");
+    auto pb = lp::make_problem(EXAMPLES_DIR "/general.lp");
 
+    assert(pb.type == lp::objective_function_type::minimize);
+    assert(pb.vars.names.size() == 819);
+    assert(pb.vars.values.size() == 819);
+
+    lp::index nb {0};
+    for (auto& elem : pb.vars.values)
+        if (elem.type == lp::variable_type::binary)
+            ++nb;
+
+    assert(nb == 90);
+}
+
+void test_examples_5()
+{
+    // Too many 
+    // auto pb = lp::make_problem(EXAMPLES_DIR "/verger.lp");
+    //
     // assert(pb.vars.names.size() == 16);
     // assert(pb.vars.values.size() == 16);
 }
@@ -112,6 +129,7 @@ int main(int /* argc */, char */* argv */[])
     test_examples_2();
     test_examples_3();
     test_examples_4();
+    test_examples_5();
 
     return 0;
 }

@@ -179,10 +179,55 @@ class general_problem
     Eigen::VectorXi x;
     Eigen::MatrixXf P;
     Eigen::VectorXf pi;
-    std::vector<std::vector<index>> I;
+    std::vector<std::vector<index>> I; // Variable with non-zero coefficient
+    std::vector<std::vector<index>> C; // Variable with negative coefficient
     double kappa, delta, theta;
     index loop;
     bool optimal;
+
+    void make_c_i()
+    {
+        I.clear();
+        C.clear();
+        I.resize(m);
+        C.resize(m);
+
+        lp::index i {0};
+        for (const auto& cst : pb.equal_constraints) {
+            for (const auto& elem : cst.elements) {
+                auto j = elem.variable_index;
+                if (elem.factor < 0)
+                    C[i].push_back(j);
+                if (elem.factor)
+                    I[i].push_back(j);
+            }
+            ++i;
+        }
+
+        for (const auto& cst : pb.greater_equal_constraints) {
+            for (const auto& elem : cst.elements) {
+                auto j = elem.variable_index;
+                if (elem.factor < 0)
+                    C[i].push_back(j);
+                if (elem.factor)
+                    I[i].push_back(j);
+            }
+            ++i;
+        }
+
+        for (const auto& cst : pb.less_equal_constraints) {
+            for (const auto& elem : cst.elements) {
+                auto j = elem.variable_index;
+                if (elem.factor < 0)
+                    C[i].push_back(j);
+                if (elem.factor)
+                    I[i].push_back(j);
+            }
+            ++i;
+        }
+
+        Ensures(i == n, "make_c_i i != n");
+    }
 
     void update_row(int k)
     {
@@ -206,6 +251,15 @@ class general_problem
             std::get<index>(r[i]) = i;
         }
 
+        /* negate reduced costs and coefficients of -1 coefficient. */
+        for (auto i : C[k]) {
+            std::get<double>(r[i]) = - std::get<double>(r[i]);
+            A(k, i) = - A(k, i);
+            P(k, i) = - P(k, i);
+        }
+
+
+        
         std::sort(r.begin(), r.end(),
                 [](const auto& lhs, const auto& rhs)
                 {
@@ -236,14 +290,12 @@ public:
     general_problem(double kappa_, double delta_, double theta_,
             long limit, const problem& pb_)
         : m(numeric_cast<index>(pb.equal_constraints.size())
-            + numeric_cast<index>(pb.greater_constraints.size())
             + numeric_cast<index>(pb.greater_equal_constraints.size())
-            + numeric_cast<index>(pb.less_constraints.size())
             + numeric_cast<index>(pb.less_equal_constraints.size()))
         , n(numeric_cast<index>(pb.vars.values.size()))
         , pb(pb_)
         , A(make_inequality_a<int>(m, n, pb))
-        , b(make_inequality_b<int>(m, pb))
+        , b(make_inequality_b<int>(m, n, pb))
         , c(make_c<float>(n, pb))
         , x(Eigen::VectorXi::Zero(n))
         , P(Eigen::MatrixXf::Zero(m, n))
@@ -264,9 +316,9 @@ public:
         for (const auto& elem : pb.objective_function)
             x(elem.variable_index) = c(elem.variable_index) <= 0;
 
-        for (index i = 0; i != m; ++i)
-            for (const auto& elem : pb.equal_constraints[i].elements)
-                I[i].emplace_back(elem.variable_index);
+        /* build the C_k and I_k vectors to store -1/1 and -1
+         * coefficient. */
+        make_c_i();        
 
         std::vector<index> R;
         while (loop != limit) {

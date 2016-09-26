@@ -26,6 +26,7 @@
 #include <lpcore>
 #include <Eigen/Core>
 #include <type_traits>
+#include "utils.hpp"
 
 namespace lp {
 
@@ -93,23 +94,7 @@ make_inequality_a(index m, index n, const problem& pb)
         ++i;
     }
 
-    for (const auto& cst : pb.greater_constraints) {
-        for (const auto& elem : cst.elements) {
-            auto j = elem.variable_index;
-            A(i, j) = elem.factor;
-        }
-        ++i;
-    }
-
     for (const auto& cst : pb.greater_equal_constraints) {
-        for (const auto& elem : cst.elements) {
-            auto j = elem.variable_index;
-            A(i, j) = elem.factor;
-        }
-        ++i;
-    }
-
-    for (const auto& cst : pb.less_constraints) {
         for (const auto& elem : cst.elements) {
             auto j = elem.variable_index;
             A(i, j) = elem.factor;
@@ -125,12 +110,14 @@ make_inequality_a(index m, index n, const problem& pb)
         ++i;
     }
 
+    Ensures(i == n, "make_inequality i != n");
+
     return A;
 }
 
 template<typename T>
 Eigen::Matrix<T, 2, Eigen::Dynamic>
-make_inequality_b(index m, const problem& p)
+make_inequality_b(index m, index n, const problem& p)
 {
     using matrix = Eigen::Matrix<T, 2, Eigen::Dynamic>;
 
@@ -143,21 +130,9 @@ make_inequality_b(index m, const problem& p)
         ++i;
     }
 
-    for (const auto& elem : p.greater_constraints) {
-        b(0, i) = elem.value + 1;
-        b(1, i) = std::numeric_limits<int>::max();
-        ++i;
-    }
-
     for (const auto& elem : p.greater_equal_constraints) {
         b(0, i) = elem.value;
         b(1, i) = std::numeric_limits<int>::max();
-        ++i;
-    }
-
-    for (const auto& elem : p.less_constraints) {
-        b(0, i) = std::numeric_limits<int>::min();
-        b(1, i) = elem.value - 1;
         ++i;
     }
 
@@ -166,6 +141,8 @@ make_inequality_b(index m, const problem& p)
         b(1, i) = elem.value;
         ++i;
     }
+
+    Ensures(i == n, "make_inequality_b != n");
 
     return b;
 }
