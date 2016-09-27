@@ -103,15 +103,15 @@ void test_examples_4()
     auto pb = lp::make_problem(EXAMPLES_DIR "/general.lp");
 
     assert(pb.type == lp::objective_function_type::minimize);
-    assert(pb.vars.names.size() == 819);
-    assert(pb.vars.values.size() == 819);
+    assert(pb.vars.names.size() == 3);
+    assert(pb.vars.values.size() == 3);
 
     lp::index nb {0};
     for (auto& elem : pb.vars.values)
-        if (elem.type == lp::variable_type::binary)
+        if (elem.type == lp::variable_type::general)
             ++nb;
 
-    assert(nb == 90);
+    assert(nb == 3);
 }
 
 void test_examples_5()

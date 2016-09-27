@@ -279,6 +279,9 @@ class general_problem
                       return std::get<0>(lhs) < std::get<0>(rhs);
                   });
 
+
+
+
         pi(k) += (std::get<double>(r[b(k)]) + std::get<double>(r[b(k) - 1])
                 / 2.0);
 
@@ -297,6 +300,9 @@ class general_problem
             x(std::get<index>(r[j])) = 0;
             P(k, std::get<index>(r[j])) -= d;
         }
+
+
+
 
         // undo adjustment of row lower and upper bound
         b(k, 0) += a_ki_ui;
