@@ -22,6 +22,7 @@
 
 #include "mitm.hpp"
 #include "wedelin.hpp"
+#include "generalized-wedelin.hpp"
 #include "utils.hpp"
 #include <Eigen/Core>
 #include <iterator>
@@ -109,10 +110,8 @@ result mitm(const problem& pb, const std::vector<parameter>& params)
         and pb.less_equal_constraints.empty()) {
 
         if (is_boolean_coefficient(pb.equal_constraints)
-            and is_boolean_variable(pb.vars.values)) {
-            wedelin::default_algorithm solver(kappa, delta, theta, limit, pb);
-            return solver.results();
-        }
+            and is_boolean_variable(pb.vars.values))
+            return simple_wedelin(kappa, delta, theta, limit, pb);
     }
 
     if (is_101_coefficient(pb.equal_constraints)

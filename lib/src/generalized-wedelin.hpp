@@ -20,8 +20,8 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef ORG_VLEPROJECT_LP_WEDELIN_HPP
-#define ORG_VLEPROJECT_LP_WEDELIN_HPP
+#ifndef ORG_VLEPROJECT_LP_GENERALIZED_WEDELIN_HPP
+#define ORG_VLEPROJECT_LP_GENERALIZED_WEDELIN_HPP
 
 #include "mitm.hpp"
 #include "utils.hpp"
@@ -29,42 +29,13 @@
 #include <iterator>
 
 namespace lp {
-namespace details {
+namespace wedelin {
 
-struct maximize_tag {};
-struct minimize_tag {};
-
-template<typename T>
-struct solver_tag {
-    using type = T;
-};
-
-template<typename iteratorT>
-void sort(iteratorT begin, iteratorT end, minimize_tag)
+class general_problem
 {
-    std::sort(begin, end,
-              [](const auto& lhs, const auto& rhs)
-              {
-                  return std::get<0>(lhs) < std::get<0>(rhs);
-              });
-}
-
-template<typename iteratorT>
-void sort(iteratorT begin, iteratorT end, maximize_tag)
-{
-    std::sort(begin, end,
-              [](const auto& lhs, const auto& rhs)
-              {
-                  return std::get<0>(rhs) < std::get<0>(lhs);
-              });
-}
-
-template<typename modeT>
-class default_algorithm
-{
-    using tag = modeT;
     index m, n;
-    const problem& pb;
+    problem pb;                         // a copy to change the problem
+                                        // (remove lower bound < 0)
     Eigen::MatrixXi A;
     Eigen::VectorXi b;
     Eigen::VectorXf c;
@@ -72,10 +43,58 @@ class default_algorithm
     Eigen::VectorXi u;
     Eigen::MatrixXf P;
     Eigen::VectorXf pi;
-    std::vector<std::vector<index>> I;
+    std::vector<std::vector<index>> I; // Variable with non-zero coefficient
+    std::vector<std::vector<index>> C; // Variable with negative coefficient
     double kappa, delta, theta;
     index loop;
     bool optimal;
+
+    void make_c_i()
+    {
+        I.clear();
+        C.clear();
+        I.resize(m);
+        C.resize(m);
+
+        lp::index i {0};
+        for (const auto& cst : pb.equal_constraints) {
+            for (const auto& elem : cst.elements) {
+                auto j = elem.variable_index;
+                if (elem.factor < 0)
+                    C[i].push_back(j);
+                if (elem.factor)
+                    I[i].push_back(j);
+            }
+
+            ++i;
+        }
+
+        for (const auto& cst : pb.greater_equal_constraints) {
+            for (const auto& elem : cst.elements) {
+                auto j = elem.variable_index;
+                if (elem.factor < 0)
+                    C[i].push_back(j);
+                if (elem.factor)
+                    I[i].push_back(j);
+            }
+
+            ++i;
+        }
+
+        for (const auto& cst : pb.less_equal_constraints) {
+            for (const auto& elem : cst.elements) {
+                auto j = elem.variable_index;
+                if (elem.factor < 0)
+                    C[i].push_back(j);
+                if (elem.factor)
+                    I[i].push_back(j);
+            }
+
+            ++i;
+        }
+
+        Ensures(i == n, "make_c_i i != n");
+    }
 
     void update_row(int k)
     {
@@ -99,7 +118,28 @@ class default_algorithm
             std::get<index>(r[i]) = i;
         }
 
-        details::sort(r.begin(), r.end(), tag());
+        // negate reduced costs and coefficients of -1 coefficient.
+        for (auto i : C[k]) {
+            std::get<double>(r[i]) = - std::get<double>(r[i]);
+            A(k, i) = - A(k, i);
+            P(k, i) = - P(k, i);
+        }
+
+        int a_ki_ui {0};
+        for (auto i : C[k])
+            a_ki_ui += A(k, i) * u(i);
+
+        b(k, 0) += a_ki_ui;
+        b(k, 1) += a_ki_ui;
+
+        std::sort(r.begin(), r.end(),
+                  [](const auto& lhs, const auto& rhs)
+                  {
+                      return std::get<0>(lhs) < std::get<0>(rhs);
+                  });
+
+
+
 
         pi(k) += (std::get<double>(r[b(k)]) + std::get<double>(r[b(k) - 1])
                 / 2.0);
@@ -119,20 +159,36 @@ class default_algorithm
             x(std::get<index>(r[j])) = 0;
             P(k, std::get<index>(r[j])) -= d;
         }
+
+
+
+
+        // undo adjustment of row lower and upper bound
+        b(k, 0) += a_ki_ui;
+        b(k, 1) += a_ki_ui;
+
+        // clean up: correct negated costs and adjust value of negated
+        // variables.
+        for (auto i : C[k]) {
+            A(k, i) = - A(k, i);
+            P(k, i) = - P(k, i);
+            x(i) = u(i) - x(i);
+        }
     }
 
 public:
-    default_algorithm(double kappa_, double delta_, double theta_,
-                      long limit, const problem& pb_)
-        : m(std::distance(pb.equal_constraints.begin(),
-                          pb.equal_constraints.end()))
-        , n(std::distance(pb.vars.values.begin(),
-                          pb.vars.values.end()))
-        , pb(pb_)
-        , A(make_a<int>(m, n, pb))
-        , b(make_b<int>(m, pb))
+    general_problem(double kappa_, double delta_, double theta_,
+            long limit, const problem& pb_)
+        : m(numeric_cast<index>(pb.equal_constraints.size())
+            + numeric_cast<index>(pb.greater_equal_constraints.size())
+            + numeric_cast<index>(pb.less_equal_constraints.size()))
+        , n(numeric_cast<index>(pb.vars.values.size()))
+        , pb(adapt_problem(pb_))
+        , A(make_inequality_a<int>(m, n, pb))
+        , b(make_inequality_b<int>(m, n, pb))
         , c(make_c<float>(n, pb))
         , x(Eigen::VectorXi::Zero(n))
+        , u(Eigen::VectorXi::Zero(n))
         , P(Eigen::MatrixXf::Zero(m, n))
         , pi(Eigen::VectorXf::Zero(m))
         , I(m)
@@ -145,18 +201,14 @@ public:
         Ensures(kappa >= 0 and kappa < 1, "kappa [0, 1[");
         Ensures(delta >= 0, "delta [0, +oo[");
         Ensures(theta >= 0 and theta <= 1, "theta [0, 1]");
-        Ensures(m > 0, "equal_constraints number must be > 0");
+        Ensures(m > 0, "constraints number must be > 0");
         Ensures(n > 0, "variable number must be > 0");
 
         for (const auto& elem : pb.objective.elements)
             x(elem.variable_index) = c(elem.variable_index) <= 0;
 
-        for (index i = 0; i != n; ++i)
-            u(i) = pb.vars.values[i].max;
-
-        for (index i = 0; i != m; ++i)
-            for (const auto& elem : pb.equal_constraints[i].elements)
-                I[i].emplace_back(elem.variable_index);
+        // build the C_k, I_k vectors store -1/1 and -1 coefficient.
+        make_c_i();
 
         std::vector<index> R;
         while (loop != limit) {
@@ -199,24 +251,7 @@ public:
     }
 };
 
-} // namespace details
-
-inline
-result simple_wedelin(double kappa, double delta, double theta,
-                      long limit, const problem& pb)
-{
-    using maximize_solver = details::default_algorithm<details::maximize_tag>;
-    using minimize_solver = details::default_algorithm<details::minimize_tag>;
-    
-    if (pb.type == lp::objective_function_type::maximize) {
-        maximize_solver solver(kappa, delta, theta, limit, pb);
-        return solver.results();
-    }
-    
-    minimize_solver solver(kappa, delta, theta, limit, pb);
-    return solver.results();    
-}
-
+} // namespace wedelin
 } // namespace lp
 
 #endif
