@@ -25,6 +25,7 @@
 
 #include <algorithm>
 #include <limits>
+#include <map>
 #include <tuple>
 #include <stdexcept>
 #include <string>
@@ -235,21 +236,18 @@ struct LP_API  parameter {
         , type(tag::integer)
     {}
 
-    parameter(const std::string& name_, long value_)
+    explicit parameter(long value_)
         : l(value_)
-        , name(name_)
         , type(tag::integer)
     {}
 
-    parameter(const std::string& name_, double value_)
+    explicit parameter(double value_)
         : d(value_)
-        , name(name_)
         , type(tag::real)
     {}
 
-    parameter(const std::string& name_, const std::string& value_)
+    explicit parameter(const std::string& value_)
         : s(value_)
-        , name(name_)
         , type(tag::string)
     {}
 
@@ -267,6 +265,93 @@ struct LP_API  parameter {
             new (&s) std::string(w.s);
             break;
         }
+    }
+    
+    parameter(parameter&& w)
+        : type(w.type)
+    {
+        switch (w.type) {
+        case tag::integer:
+            l = w.l;
+            break;
+        case tag::real:
+            d = w.d;
+            break;
+        case tag::string:
+            s = std::move(w.s);
+            break;
+        }
+    }
+
+    parameter& operator=(parameter&& w)
+    {
+        switch (w.type) {
+        case tag::integer:
+            l = w.l;
+            break;
+        case tag::real:
+            d = w.d;
+            break;
+        case tag::string:
+            s = std::move(w.s);
+            break;
+        }
+
+        return *this;
+    }
+
+    parameter& operator=(double value)
+    {
+        if (type == tag::real) {
+            d = value;
+            return *this;
+        }
+
+        if (type == tag::string) {
+            using std::string;
+            s.~string();
+        }
+
+        type = tag::real;
+        d = value;
+
+        return *this;
+    }
+
+    parameter& operator=(long value)
+    {
+        if (type == tag::integer) {
+            l = value;
+            return *this;
+        }
+
+        if (type == tag::string) {
+            using std::string;
+            s.~string();
+        }
+
+        type = tag::integer;
+        l = value;
+
+        return *this;
+    }
+
+    parameter& operator=(const std::string& value)
+    {
+        if (type == tag::string) {
+            s = value;
+            return *this;
+        }
+
+        if (type == tag::string) {
+            using std::string;
+            s.~string();
+        }
+
+        type = tag::string;
+        new (&s) std::string(value);
+
+        return *this;
     }
 
     parameter& operator=(const parameter& w)
@@ -311,7 +396,6 @@ struct LP_API  parameter {
         std::string s;
     };
 
-    std::string name;
     enum class tag { integer, real, string } type;
 };
 
@@ -410,7 +494,8 @@ LP_API std::ostream& operator<<(std::ostream& os, const problem& p);
  *
  * \exception lp::solver_error
  */
-LP_API result solve(const problem& pb, const std::vector<parameter>& params);
+LP_API result solve(const problem& pb,
+                    const std::map<std::string, parameter>& params);
 
 }
 

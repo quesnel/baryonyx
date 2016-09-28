@@ -124,10 +124,10 @@ class default_algorithm
 public:
     default_algorithm(double kappa_, double delta_, double theta_,
                       long limit, const problem& pb_)
-        : m(std::distance(pb.equal_constraints.begin(),
-                          pb.equal_constraints.end()))
-        , n(std::distance(pb.vars.values.begin(),
-                          pb.vars.values.end()))
+        : m(std::distance(pb_.equal_constraints.begin(),
+                          pb_.equal_constraints.end()))
+        , n(std::distance(pb_.vars.values.begin(),
+                          pb_.vars.values.end()))
         , pb(pb_)
         , A(make_a<int>(m, n, pb))
         , b(make_b<int>(m, pb))

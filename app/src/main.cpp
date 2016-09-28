@@ -177,11 +177,11 @@ int main(int argc, char *argv[])
         try {
             auto pb = lp::make_problem(argv[i]);
 
-            std::vector<lp::parameter> params {
-                { "kappa", kappa },
-                    { "theta", theta },
-                    { "delta", delta },
-                    { "limit", limit }};
+            std::map<std::string, lp::parameter> params;
+            params.emplace("kappa", kappa);
+            params.emplace("theta", theta);
+            params.emplace("delta", delta);
+            params.emplace("limit", limit);
 
             auto ret = lp::solve(pb, params);
 

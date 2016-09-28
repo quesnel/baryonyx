@@ -179,10 +179,10 @@ class general_problem
 public:
     general_problem(double kappa_, double delta_, double theta_,
             long limit, const problem& pb_)
-        : m(numeric_cast<index>(pb.equal_constraints.size())
-            + numeric_cast<index>(pb.greater_equal_constraints.size())
-            + numeric_cast<index>(pb.less_equal_constraints.size()))
-        , n(numeric_cast<index>(pb.vars.values.size()))
+        : m(numeric_cast<index>(pb_.equal_constraints.size())
+            + numeric_cast<index>(pb_.greater_equal_constraints.size())
+            + numeric_cast<index>(pb_.less_equal_constraints.size()))
+        , n(numeric_cast<index>(pb_.vars.values.size()))
         , pb(adapt_problem(pb_))
         , A(make_inequality_a<int>(m, n, pb))
         , b(make_inequality_b<int>(m, n, pb))

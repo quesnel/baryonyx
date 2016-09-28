@@ -28,25 +28,35 @@
 #include <iterator>
 
 namespace lp {
+
 std::tuple<double, double, double, long>
-get_parameters(const std::vector<parameter>& params)
+get_parameters(const std::map<std::string, parameter>& params)
 {
     double kappa {0.001}, delta{0.001}, theta{0.0001};
     long limit {1000};
 
-    for (std::size_t i{0}, e{params.size()}; i != e; ++i) {
-        if (params[i].name == "kappa")
-            kappa = (params[i].type == parameter::tag::real) ?
-                params[i].d : kappa;
-        else if (params[i].name == "theta")
-            theta = (params[i].type == parameter::tag::real) ?
-                params[i].d : theta;
-        else if (params[i].name == "delta")
-            delta = (params[i].type == parameter::tag::real) ?
-                params[i].d : delta;
-        else if (params[i].name == "limit")
-            limit = (params[i].type == parameter::tag::integer) ?
-                params[i].l : limit;
+    {
+        auto it = params.find("kappa"); 
+        if (it->second.type == parameter::tag::real)
+            kappa = it->second.d;
+    }
+
+    {
+        auto it = params.find("theta"); 
+        if (it->second.type == parameter::tag::real)
+            theta = it->second.d;
+    }
+
+    {
+        auto it = params.find("delta"); 
+        if (it->second.type == parameter::tag::real)
+            delta = it->second.d;
+    }
+
+    {
+        auto it = params.find("limit"); 
+        if (it->second.type == parameter::tag::integer)
+            limit = it->second.d;
     }
 
     std::printf("Solve: kappa(%f) theta(%f) delta(%f) - limit(%ld)\n",
@@ -97,7 +107,7 @@ bool is_101_coefficient(const constraintsT csts)
     return true;
 }
 
-result mitm(const problem& pb, const std::vector<parameter>& params)
+result mitm(const problem& pb, const std::map<std::string, parameter>& params)
 {
     double kappa, delta, theta;
     long limit;

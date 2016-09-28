@@ -24,6 +24,7 @@
 #include <lpcore-compare>
 #include <iostream>
 #include <fstream>
+#include <map>
 #include <sstream>
 
 #ifdef NDEBUG
@@ -65,7 +66,7 @@ void test_examples_1()
 
 void test_examples_2()
 {
-    std::ifstream ifs();
+    std::ifstream ifs;
 
     auto pb = lp::make_problem(EXAMPLES_DIR "/assignment_problem_4.lp");
 
@@ -78,13 +79,21 @@ void test_examples_2()
     std::printf("%s\n", ss.str().c_str());
 
     auto pb2 = lp::make_problem(ss);
-
     assert(pb == pb2);
+    
+    std::map<std::string, lp::parameter> params;
+    params["kappa"] = 0.5;
+    params["theta"] = 0.5;
+    params["delta"] = 0.5;
+    params["limit"] = 1000l;
+    
+    auto result = lp::solve(pb, params);
 }
 
 void test_examples_3()
 {
-    auto pb = lp::make_problem(EXAMPLES_DIR "/geom-30a-3-ext_1000_support.lp");
+    auto pb = lp::make_problem(EXAMPLES_DIR
+                               "/geom-30a-3-ext_1000_support.lp");
 
     assert(pb.type == lp::objective_function_type::minimize);
     assert(pb.vars.names.size() == 819);

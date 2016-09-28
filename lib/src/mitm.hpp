@@ -159,7 +159,7 @@ make_inequality_b(index m, index n, const problem& p)
 inline
 problem adapt_problem(const problem& pb)
 {
-    problem ret {pb};
+    problem ret(pb);
     int constant {0};
 
     for (std::size_t i {0}, e{ret.vars.values.size()}; i != e; ++i) {
@@ -175,7 +175,8 @@ problem adapt_problem(const problem& pb)
     return ret;
 }
 
-result mitm(const problem& pb, const std::vector<parameter>& params);
+result mitm(const problem& pb,
+            const std::map<std::string, parameter>& params);
 
 }
 

@@ -51,7 +51,8 @@ std::ostream& operator<<(std::ostream& os, const problem& p)
     return os;
 }
 
-result solve(const problem& pb, const std::vector<parameter>& params)
+result solve(const problem& pb,
+             const std::map<std::string, parameter>& params)
 {
     check(pb);
 
