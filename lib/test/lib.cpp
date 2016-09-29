@@ -77,7 +77,56 @@ void check_numeric_cast()
     }
 }
 
+void check_parameter()
+{
+    lp::parameter real {3.0};
+    assert(real.type == lp::parameter::tag::real);
+
+    lp::parameter integer {1000l};
+    assert(integer.type == lp::parameter::tag::integer);
+
+    lp::parameter str {"hello world"};
+    assert(str.type == lp::parameter::tag::string);
+
+    str = real;
+    assert(str.type == lp::parameter::tag::real);
+    assert(str.d == 3.0);
+
+    str = integer;
+    assert(str.type == lp::parameter::tag::integer);
+    assert(str.l == 1000l);
+
+    std::vector<lp::parameter> x(100);
+    for (auto& elem : x) {
+        assert(elem.type == lp::parameter::tag::integer);
+        assert(elem.l == 0l);
+    }
+
+    auto y = lp::parameter(4.0);
+    assert(y.type == lp::parameter::tag::real);
+    assert(y.d == 4.0);
+
+    x[0] = lp::parameter(5.0);
+    assert(x[0].type == lp::parameter::tag::real);
+    assert(x[0].d == 5.0);
+
+    x[0].swap(x[1]);
+    assert(x[0].type == lp::parameter::tag::integer);
+    assert(x[0].l == 0l);
+    assert(x[1].type == lp::parameter::tag::real);
+    assert(x[1].d == 5.0);
+
+    x[2] = std::move(x[1]);
+    assert(x[0].type == lp::parameter::tag::integer);
+    assert(x[0].l == 0l);
+    assert(x[1].type == lp::parameter::tag::integer);
+    assert(x[1].l == 0l);
+    assert(x[2].type == lp::parameter::tag::real);
+    assert(x[2].d == 5.0);
+}
+
 int main(int /* argc */, char */* argv */[])
 {
     check_numeric_cast();
+    check_parameter();
 }

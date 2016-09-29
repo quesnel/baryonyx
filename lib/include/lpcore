@@ -98,14 +98,14 @@ inline bool is_numeric_castable(Source arg)
     using result_traits = std::numeric_limits<Target>;
 
     if (result_traits::digits == arg_traits::digits
-            and result_traits::is_signed == arg_traits::is_signed)
+        and result_traits::is_signed == arg_traits::is_signed)
         return true;
 
     if (result_traits::digits > arg_traits::digits)
         return result_traits::is_signed or arg >= 0;
 
     if (arg_traits::is_signed
-            and arg < static_cast<Source>(result_traits::min()))
+        and arg < static_cast<Source>(result_traits::min()))
         return false;
 
     return arg <= static_cast<Source>(result_traits::max());
@@ -144,11 +144,11 @@ private:
 
 struct LP_API file_format_error : std::runtime_error {
     enum class tag { end_of_file, unknown, already_defined, incomplete,
-            bad_name, bad_operator, bad_integer,
-            bad_objective_function_type,
-            bad_bound,
-            bad_function_element,
-            bad_constraint };
+                     bad_name, bad_operator, bad_integer,
+                     bad_objective_function_type,
+                     bad_bound,
+                     bad_function_element,
+                     bad_constraint };
 
     file_format_error(std::string element, tag failure, int line, int column)
         : std::runtime_error("file_format_error")
@@ -230,7 +230,10 @@ private:
     tag m_failure;
 };
 
-struct LP_API  parameter {
+struct LP_API  parameter
+{
+    enum class tag { integer, real, string };
+
     parameter()
         : l(0)
         , type(tag::integer)
@@ -266,7 +269,7 @@ struct LP_API  parameter {
             break;
         }
     }
-    
+
     parameter(parameter&& w)
         : type(w.type)
     {
@@ -281,10 +284,51 @@ struct LP_API  parameter {
             s = std::move(w.s);
             break;
         }
+
+        w.type = tag::integer;
+        w.l = 0;
     }
+
+    parameter& operator=(const parameter& w)
+    {
+        if (type == tag::string and w.type == tag::string) {
+            s = w.s;
+            return *this;
+        }
+
+        if (type == tag::string) {
+            using std::string;
+            s.~string();
+        }
+
+        switch (w.type) {
+        case tag::integer:
+            l = w.l;
+            break;
+            case tag::real:
+                d = w.d;
+                break;
+            case tag::string:
+                new (&s) std::string(w.s);
+                break;
+            }
+
+            type = w.type;
+            return *this;
+        }
 
     parameter& operator=(parameter&& w)
     {
+        if (type == tag::string and w.type == tag::string) {
+            s = std::move(w.s);
+            return *this;
+        }
+
+        if (type == tag::string) {
+            using std::string;
+            s.~string();
+        }
+
         switch (w.type) {
         case tag::integer:
             l = w.l;
@@ -296,6 +340,11 @@ struct LP_API  parameter {
             s = std::move(w.s);
             break;
         }
+
+        type = w.type;
+
+        w.type = tag::integer;
+        w.l = 0;
 
         return *this;
     }
@@ -354,34 +403,6 @@ struct LP_API  parameter {
         return *this;
     }
 
-    parameter& operator=(const parameter& w)
-    {
-        if (type == tag::string and w.type == tag::string) {
-            s = w.s;
-            return *this;
-        }
-
-        if (type == tag::string) {
-            using std::string;
-            s.~string();
-        }
-
-        switch (w.type) {
-        case tag::integer:
-            l = w.l;
-            break;
-        case tag::real:
-            d = w.d;
-            break;
-        case tag::string:
-            new (&s) std::string(w.s);
-            break;
-        }
-
-        type = w.type;
-        return *this;
-    }
-
     ~parameter() noexcept
     {
         if (type == tag::string) {
@@ -390,13 +411,20 @@ struct LP_API  parameter {
         }
     }
 
+    void swap(parameter& p)
+    {
+        parameter copy(*this);
+        *this = p;
+        p = copy;
+    }
+
     union {
         long l;
         double d;
         std::string s;
     };
 
-    enum class tag { integer, real, string } type;
+    tag type;
 };
 
 enum class variable_type { real, binary, general };

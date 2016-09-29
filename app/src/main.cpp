@@ -178,10 +178,10 @@ int main(int argc, char *argv[])
             auto pb = lp::make_problem(argv[i]);
 
             std::map<std::string, lp::parameter> params;
-            params.emplace("kappa", kappa);
-            params.emplace("theta", theta);
-            params.emplace("delta", delta);
-            params.emplace("limit", limit);
+            params["kappa"] = kappa;
+            params["theta"] = theta;
+            params["delta"] = delta;
+            params["limit"] = limit;
 
             auto ret = lp::solve(pb, params);
 
