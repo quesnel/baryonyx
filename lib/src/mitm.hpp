@@ -30,52 +30,6 @@
 
 namespace lp {
 
-template<typename T>
-Eigen::Matrix<T, 2, Eigen::Dynamic>
-make_a(index m, index n, const problem& pb)
-{
-    using matrix = Eigen::Matrix<T, 2, Eigen::Dynamic>;
-
-    matrix A(matrix::Zero(m, n));
-
-    for (lp::index i = 0; i != m; ++i) {
-        for (const auto& elem : pb.equal_constraints[i].elements) {
-            auto j = elem.variable_index;
-            A(i, j) = true;
-        }
-    }
-
-    return A;
-}
-
-template<typename T>
-Eigen::Matrix<T, 1, Eigen::Dynamic>
-make_b(index m, const problem& p)
-{
-    using vector = Eigen::Matrix<T, 1, Eigen::Dynamic>;
-
-    vector b(vector::Zero(m));
-
-    for (lp::index i = 0; i != m; ++i)
-        b(i) = p.equal_constraints[i].value;
-
-    return b;
-}
-
-
-template<typename T>
-Eigen::Matrix<T, 1, Eigen::Dynamic>
-make_c(index n, const problem& p)
-{
-    using vector = Eigen::Matrix<T, 1, Eigen::Dynamic>;
-
-    vector c(vector::Zero(n));
-
-    for (const auto& elem : p.objective.elements)
-        c(elem.variable_index) = elem.factor;
-
-    return c;
-}
 
 template<typename T>
 Eigen::Matrix<T, 2, Eigen::Dynamic>

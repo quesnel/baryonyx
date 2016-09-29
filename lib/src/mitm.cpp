@@ -56,7 +56,7 @@ get_parameters(const std::map<std::string, parameter>& params)
     {
         auto it = params.find("limit"); 
         if (it->second.type == parameter::tag::integer)
-            limit = it->second.d;
+            limit = it->second.l;
     }
 
     std::printf("Solve: kappa(%f) theta(%f) delta(%f) - limit(%ld)\n",

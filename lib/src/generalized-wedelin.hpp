@@ -186,7 +186,7 @@ public:
         , pb(adapt_problem(pb_))
         , A(make_inequality_a<int>(m, n, pb))
         , b(make_inequality_b<int>(m, n, pb))
-        , c(make_c<float>(n, pb))
+//        , c(make_c<float>(n, pb)) TODO initialize
         , x(Eigen::VectorXi::Zero(n))
         , u(Eigen::VectorXi::Zero(n))
         , P(Eigen::MatrixXf::Zero(m, n))

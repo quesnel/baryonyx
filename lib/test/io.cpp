@@ -22,6 +22,7 @@
 
 #include <lpcore>
 #include <lpcore-compare>
+#include <lpcore-out>
 #include <iostream>
 #include <fstream>
 #include <map>
@@ -76,8 +77,6 @@ void test_examples_2()
     std::stringstream ss;
     ss << pb;
 
-    std::printf("%s\n", ss.str().c_str());
-
     auto pb2 = lp::make_problem(ss);
     assert(pb == pb2);
     
@@ -85,9 +84,11 @@ void test_examples_2()
     params["kappa"] = 0.5;
     params["theta"] = 0.5;
     params["delta"] = 0.5;
-    params["limit"] = 1000l;
+    params["limit"] = 10l;
     
     auto result = lp::solve(pb, params);
+
+    std::cout << result << '\n';
 }
 
 void test_examples_3()
