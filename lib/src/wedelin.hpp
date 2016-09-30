@@ -98,19 +98,19 @@ void sort(iteratorT begin, iteratorT end, maximize_tag)
               });
 }
 
-struct r_data {
-    r_data(double value_, index index_)
-        : value(value_)
-        , id(index_)
-    {}
-
-    double value;
-    index id;
-};
-
 template<typename modeT>
 class default_algorithm
 {
+    struct r_data {
+        r_data(double value_, index index_)
+            : value(value_)
+            , id(index_)
+        {}
+
+        double value;
+        index id;
+    };
+
     using tag = modeT;
     index m, n;
     const problem& pb;
@@ -131,7 +131,8 @@ class default_algorithm
         for (auto i : I[k])
             P(k, i) *= theta;
 
-        for (index i = 0, endi = numeric_cast<index>(I[k].size()); i != endi; ++i) {
+        for (index i = 0, endi = numeric_cast<index>(I[k].size());
+             i != endi; ++i) {
             double sum_a_pi {0};
             double sum_a_p {0};
 
@@ -144,16 +145,6 @@ class default_algorithm
                     sum_a_p += A(h, I[k][i]) * P(h, I[k][i]);
                 }
             }
-
-            // assert(k < m);
-            // assert(i < n);
-            // assert(r.size() == (std::size_t)m);
-            // assert(r[k].size() > 0);
-
-            // std::cout << " c " << c(i) << " i " << i << '\n';
-            // std::cout << "r[k].size " << r[k].size() << '\n';
-
-            // assert(r[k].size() > (std::size_t)i);
 
             r[k][i].value = c(I[k][i]) - sum_a_pi - sum_a_p;
             r[k][i].id = I[k][i];
@@ -217,11 +208,11 @@ public:
             }
         }
 
-        std::cout << "A:\n" << A << '\n'
-                  << "b:\n" << b.transpose() << '\n'
-                  << "c:\n" << c.transpose() << '\n'
-                  << "x:\n" << x.transpose() << '\n'
-                  << '\n';
+        // std::cout << "A:\n" << A << '\n'
+        //           << "b:\n" << b.transpose() << '\n'
+        //           << "c:\n" << c.transpose() << '\n'
+        //           << "x:\n" << x.transpose() << '\n'
+        //           << '\n';
 
         std::vector<index> R;
         while (loop != limit) {
@@ -237,8 +228,6 @@ public:
             if (R.empty()) {
                 optimal = true;
                 return;
-            } else {
-                std::cout << R.size() << " constraints to update\n";
             }
 
             // std::cout << "P:\n" << P << '\n';

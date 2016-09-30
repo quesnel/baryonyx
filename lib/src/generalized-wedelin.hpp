@@ -29,10 +29,31 @@
 #include <iterator>
 
 namespace lp {
-namespace wedelin {
+namespace details {
 
-class general_problem
+Eigen::VectorXf
+make_generalized_c(index n, const problem& p)
 {
+    Eigen::VectorXf c = Eigen::VectorXf::Zero(n);
+
+    for (const auto& elem : p.objective.elements)
+        c(elem.variable_index) = elem.factor;
+
+    return c;
+}
+
+class generalized_wedelin
+{
+    struct r_data {
+        r_data(double value_, index index_)
+            : value(value_)
+            , id(index_)
+        {}
+
+        double value;
+        index id;
+    };
+
     index m, n;
     problem pb;                         // a copy to change the problem
                                         // (remove lower bound < 0)
@@ -45,6 +66,7 @@ class general_problem
     Eigen::VectorXf pi;
     std::vector<std::vector<index>> I; // Variable with non-zero coefficient
     std::vector<std::vector<index>> C; // Variable with negative coefficient
+    std::vector<std::vector<r_data>> r;
     double kappa, delta, theta;
     index loop;
     bool optimal;
@@ -98,32 +120,34 @@ class general_problem
 
     void update_row(int k)
     {
-        std::vector<std::tuple<double, index>> r(I[k].size());
-
         for (auto i : I[k])
             P(k, i) *= theta;
 
-        double sum_a_pi {0};
-        double sum_a_p {0};
+        for (index i = 0, endi = numeric_cast<index>(I[k].size());
+             i != endi; ++i) {
+            double sum_a_pi {0};
+            double sum_a_p {0};
 
-        for (auto i : I[k]) {
+            assert(k < numeric_cast<index>(I.size()));
+            assert(i < numeric_cast<index>(I[k].size()));
+
             for (index h = 0; h != m; ++h) {
-                if (A(h, i)) {
-                    sum_a_pi += A(h, i) * pi(h);
-                    sum_a_p += A(h, i) * P(h, i);
+                if (A(h, I[k][i])) {
+                    sum_a_pi += A(h, I[k][i]) * pi(h);
+                    sum_a_p += A(h, I[k][i]) * P(h, I[k][i]);
                 }
             }
 
-            std::get<double>(r[i]) = c[i] - sum_a_pi - sum_a_p;
-            std::get<index>(r[i]) = i;
+            r[k][i].value = c(I[k][i]) - sum_a_pi - sum_a_p;
+            r[k][i].id = I[k][i];
         }
 
         // negate reduced costs and coefficients of -1 coefficient.
-        for (auto i : C[k]) {
-            std::get<double>(r[i]) = - std::get<double>(r[i]);
-            A(k, i) = - A(k, i);
-            P(k, i) = - P(k, i);
-        }
+        // for (auto i : C[k]) {
+        //     std::get<double>(r[k][i]) = - std::get<double>(r[k][i]);
+        //     A(k, i) = - A(k, i);
+        //     P(k, i) = - P(k, i);
+        // }
 
         int a_ki_ui {0};
         for (auto i : C[k])
@@ -141,24 +165,24 @@ class general_problem
 
 
 
-        pi(k) += (std::get<double>(r[b(k)]) + std::get<double>(r[b(k) - 1])
-                / 2.0);
+        // pi(k) += (std::get<double>(r[b(k)]) + std::get<double>(r[b(k) - 1])
+        //         / 2.0);
 
-        double d = delta
-            + ((kappa / (1.0 - kappa))
-                    * (std::get<double>(r[b(k)])
-                       - std::get<double>(r[b(k) - 1])));
+        // double d = delta
+        //     + ((kappa / (1.0 - kappa))
+        //             * (std::get<double>(r[b(k)])
+        //                - std::get<double>(r[b(k) - 1])));
 
-        for (index j = 0; j < b(k); ++j) {
-            x(std::get<index>(r[j])) = 1;
-            P(k, std::get<index>(r[j])) += d;
-        }
+        // for (index j = 0; j < b(k); ++j) {
+        //     x(std::get<index>(r[j])) = 1;
+        //     P(k, std::get<index>(r[j])) += d;
+        // }
 
-        for (index j = b(k), endj = numeric_cast<index>(I[k].size());
-             j != endj; ++j) {
-            x(std::get<index>(r[j])) = 0;
-            P(k, std::get<index>(r[j])) -= d;
-        }
+        // for (index j = b(k), endj = numeric_cast<index>(I[k].size());
+        //      j != endj; ++j) {
+        //     x(std::get<index>(r[j])) = 0;
+        //     P(k, std::get<index>(r[j])) -= d;
+        // }
 
 
 
@@ -177,8 +201,8 @@ class general_problem
     }
 
 public:
-    general_problem(double kappa_, double delta_, double theta_,
-            long limit, const problem& pb_)
+    generalized_wedelin(double kappa_, double delta_, double theta_,
+                        long limit, const problem& pb_)
         : m(numeric_cast<index>(pb_.equal_constraints.size())
             + numeric_cast<index>(pb_.greater_equal_constraints.size())
             + numeric_cast<index>(pb_.less_equal_constraints.size()))
@@ -186,12 +210,13 @@ public:
         , pb(adapt_problem(pb_))
         , A(make_inequality_a<int>(m, n, pb))
         , b(make_inequality_b<int>(m, n, pb))
-//        , c(make_c<float>(n, pb)) TODO initialize
+        , c(make_generalized_c(n, pb))
         , x(Eigen::VectorXi::Zero(n))
         , u(Eigen::VectorXi::Zero(n))
         , P(Eigen::MatrixXf::Zero(m, n))
         , pi(Eigen::VectorXf::Zero(m))
         , I(m)
+        , r(m)
         , kappa(kappa_)
         , delta(delta_)
         , theta(theta_)
@@ -234,24 +259,47 @@ public:
         }
     }
 
+    double compute_value() const
+    {
+        double ret {0};
+
+        for (auto& elem : pb.objective.elements)
+            ret += elem.factor * x(elem.variable_index);
+
+        return ret;
+    }
+
     result results() const
     {
         result ret;
         ret.loop = loop;
         ret.optimal = optimal;
+        ret.value  = compute_value();
 
         for (index i = 0; i != n; ++i) {
-            if (x(i)) {
-                ret.variable_name[i] = pb.vars.names[i];
+            ret.variable_name[i] = pb.vars.names[i];
+            if (x(i))
                 ret.variable_value[i] = true;
-            }
         }
 
         return ret;
     }
 };
 
-} // namespace wedelin
+} // namespace generalized_wedelin
+
+inline
+result
+generalized_wedelin(double kappa, double delta, double theta,
+                    long limit, const problem& pb)
+{
+    if (pb.type == lp::objective_function_type::maximize)
+        throw lp::solver_error(lp::solver_error::tag::no_solver_available)
+
+    details::generalized_wedelin solver(kappa, delta, theta, limit, pb);
+    return solver.results();
+}
+
 } // namespace lp
 
 #endif

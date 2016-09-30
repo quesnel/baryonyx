@@ -130,8 +130,7 @@ result mitm(const problem& pb, const std::map<std::string, parameter>& params)
         and is_101_coefficient(pb.less_constraints)
         and is_101_coefficient(pb.less_equal_constraints)
         and is_integer_variable(pb.vars.values)) {
-        wedelin::general_problem solver(kappa, delta, theta, limit, pb);
-        return solver.results();
+        return lp::generalized_wedelin(kappa, delta, theta, limit, pb);
     }
 
     throw lp::solver_error(solver_error::tag::no_solver_available);
