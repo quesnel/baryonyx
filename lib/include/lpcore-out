@@ -38,6 +38,7 @@ operator<<(std::ostream& os, const result& result)
 
     os.flags(store | os.boolalpha);
     os << "optimal: " << result.optimal << '\n'
+       << "value..: " << result.value << '\n'
        << "loop...: " << result.loop << '\n'
        << "vars...: ";
 

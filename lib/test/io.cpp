@@ -69,26 +69,45 @@ void test_examples_2()
 {
     std::ifstream ifs;
 
-    auto pb = lp::make_problem(EXAMPLES_DIR "/assignment_problem_4.lp");
+    long loop[3] = { 5, 1, 4 };
+    double results[3] = { 15, 21, 95 };
+    std::vector<std::vector<int>> values(3);
 
-    assert(pb.vars.names.size() == 16);
-    assert(pb.vars.values.size() == 16);
+    values[0] = { 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1 };
+    values[1] = { 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0, 0 };
+    values[2] = { 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 1, 0, 0, 0 };
 
-    std::stringstream ss;
-    ss << pb;
+    for (int i = 1; i != 4; ++i) {
+        std::string filepath { EXAMPLES_DIR "/assignment_problem_" };
+        filepath += std::to_string(i);
+        filepath += ".lp";
 
-    auto pb2 = lp::make_problem(ss);
-    assert(pb == pb2);
-    
-    std::map<std::string, lp::parameter> params;
-    params["kappa"] = 0.5;
-    params["theta"] = 0.5;
-    params["delta"] = 0.5;
-    params["limit"] = 10l;
-    
-    auto result = lp::solve(pb, params);
+        auto pb = lp::make_problem(filepath);
 
-    std::cout << result << '\n';
+        assert(pb.vars.names.size() == 16);
+        assert(pb.vars.values.size() == 16);
+
+        std::stringstream ss;
+        ss << pb;
+
+        auto pb2 = lp::make_problem(ss);
+        assert(pb == pb2);
+
+        std::map<std::string, lp::parameter> params;
+        params["kappa"] = 0.5;
+        params["theta"] = 0.5;
+        params["delta"] = 0.5;
+        params["limit"] = 10l;
+
+        auto result = lp::solve(pb, params);
+
+        assert(result.optimal == true);
+        assert(result.loop == loop[i - 1]);
+        assert(result.value == results[i - 1]);
+        assert(result.variable_value == values[i - 1]);
+
+        std::cout << result << '\n';
+    }
 }
 
 void test_examples_3()
@@ -126,7 +145,7 @@ void test_examples_4()
 
 void test_examples_5()
 {
-    // Too many 
+    // Too many
     // auto pb = lp::make_problem(EXAMPLES_DIR "/verger.lp");
     //
     // assert(pb.vars.names.size() == 16);

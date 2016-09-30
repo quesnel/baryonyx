@@ -491,6 +491,7 @@ struct LP_API result
 {
     std::vector<std::string> variable_name;
     std::vector<int> variable_value;
+    double value;
     index loop;
     bool optimal;
 };

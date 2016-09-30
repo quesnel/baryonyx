@@ -103,7 +103,7 @@ struct r_data {
         : value(value_)
         , id(index_)
     {}
-    
+
     double value;
     index id;
 };
@@ -137,7 +137,7 @@ class default_algorithm
 
             assert(k < numeric_cast<index>(I.size()));
             assert(i < numeric_cast<index>(I[k].size()));
-            
+
             for (index h = 0; h != m; ++h) {
                 if (A(h, I[k][i])) {
                     sum_a_pi += A(h, I[k][i]) * pi(h);
@@ -154,13 +154,13 @@ class default_algorithm
             // std::cout << "r[k].size " << r[k].size() << '\n';
 
             // assert(r[k].size() > (std::size_t)i);
-            
+
             r[k][i].value = c(I[k][i]) - sum_a_pi - sum_a_p;
             r[k][i].id = I[k][i];
         }
 
         details::sort(r[k].begin(), r[k].end(), tag());
-        
+
         pi(k) += ((r[k][b(k)].value + r[k][b(k) - 1].value) / 2.0);
 
         double d = delta
@@ -222,7 +222,7 @@ public:
                   << "c:\n" << c.transpose() << '\n'
                   << "x:\n" << x.transpose() << '\n'
                   << '\n';
-        
+
         std::vector<index> R;
         while (loop != limit) {
             for (index k {0}; k != m; ++k) {
@@ -243,7 +243,7 @@ public:
 
             // std::cout << "P:\n" << P << '\n';
             // std::cout << "pi:\n" << pi.transpose() << '\n';
-            
+
             for (auto k : R)
                 update_row(k);
 
@@ -252,13 +252,24 @@ public:
         }
     }
 
+    double compute_value() const
+    {
+        double ret {0};
+
+        for (auto& elem : pb.objective.elements)
+            ret += elem.factor * x(elem.variable_index);
+
+        return ret;
+    }
+
     result results() const
     {
         std::cout << "result: " << n << '\n';
-        
+
         result ret;
         ret.loop = loop;
         ret.optimal = optimal;
+        ret.value  = compute_value();
         ret.variable_name.resize(n);
         ret.variable_value.resize(n, 0);
 
@@ -281,14 +292,14 @@ simple_wedelin(double kappa, double delta, double theta,
 {
     using maximize_solver = details::default_algorithm<details::maximize_tag>;
     using minimize_solver = details::default_algorithm<details::minimize_tag>;
-    
+
     if (pb.type == lp::objective_function_type::maximize) {
         maximize_solver solver(kappa, delta, theta, limit, pb);
         return solver.results();
     }
-    
+
     minimize_solver solver(kappa, delta, theta, limit, pb);
-    return solver.results();    
+    return solver.results();
 }
 
 } // namespace lp
