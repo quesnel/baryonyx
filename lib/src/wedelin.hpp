@@ -70,16 +70,16 @@ make_c(index n, const problem& p)
 }
 
 
-struct maximize_tag {};
-struct minimize_tag {};
+struct maximize_wedelin_tag {};
+struct minimize_wedelin_tag {};
 
 template<typename T>
-struct solver_tag {
+struct solver_wedelin_tag {
     using type = T;
 };
 
 template<typename iteratorT>
-void sort(iteratorT begin, iteratorT end, minimize_tag)
+void sort_wedelin(iteratorT begin, iteratorT end, minimize_wedelin_tag)
 {
     std::sort(begin, end,
               [](const auto& lhs, const auto& rhs)
@@ -89,7 +89,7 @@ void sort(iteratorT begin, iteratorT end, minimize_tag)
 }
 
 template<typename iteratorT>
-void sort(iteratorT begin, iteratorT end, maximize_tag)
+void sort_wedelin(iteratorT begin, iteratorT end, maximize_wedelin_tag)
 {
     std::sort(begin, end,
               [](const auto& lhs, const auto& rhs)
@@ -150,7 +150,7 @@ class default_algorithm
             r[k][i].id = I[k][i];
         }
 
-        details::sort(r[k].begin(), r[k].end(), tag());
+        details::sort_wedelin(r[k].begin(), r[k].end(), tag());
 
         pi(k) += ((r[k][b(k)].value + r[k][b(k) - 1].value) / 2.0);
 
@@ -279,8 +279,10 @@ result
 simple_wedelin(double kappa, double delta, double theta,
                long limit, const problem& pb)
 {
-    using maximize_solver = details::default_algorithm<details::maximize_tag>;
-    using minimize_solver = details::default_algorithm<details::minimize_tag>;
+    using namespace details;
+
+    using maximize_solver = default_algorithm<maximize_wedelin_tag>;
+    using minimize_solver = default_algorithm<minimize_wedelin_tag>;
 
     if (pb.type == lp::objective_function_type::maximize) {
         maximize_solver solver(kappa, delta, theta, limit, pb);

@@ -42,6 +42,38 @@ make_generalized_c(index n, const problem& p)
     return c;
 }
 
+struct maximize_generalized_tag {};
+struct minimize_generalized_tag {};
+
+template<typename T>
+struct solver_generalized_tag {
+    using type = T;
+};
+
+template<typename iteratorT>
+void sort_generalized(iteratorT begin, iteratorT end,
+                      minimize_generalized_tag)
+{
+    std::sort(begin, end,
+              [](const auto& lhs, const auto& rhs)
+              {
+                  return lhs.value < rhs.value;
+              });
+}
+
+template<typename iteratorT>
+void sort_generalized(iteratorT begin, iteratorT end,
+                      maximize_generalized_tag)
+{
+    std::sort(begin, end,
+              [](const auto& lhs, const auto& rhs)
+              {
+                  return rhs.value < lhs.value;
+              });
+}
+
+
+template<typename modeT>
 class generalized_wedelin
 {
     struct r_data {
@@ -54,6 +86,7 @@ class generalized_wedelin
         index id;
     };
 
+    using tag = modeT;
     index m, n;
     problem pb;                         // a copy to change the problem
                                         // (remove lower bound < 0)
@@ -143,11 +176,11 @@ class generalized_wedelin
         }
 
         // negate reduced costs and coefficients of -1 coefficient.
-        // for (auto i : C[k]) {
-        //     std::get<double>(r[k][i]) = - std::get<double>(r[k][i]);
-        //     A(k, i) = - A(k, i);
-        //     P(k, i) = - P(k, i);
-        // }
+        for (auto i : C[k]) {
+            r[k][i].value = - r[k][i].value;
+            A(k, i) = - A(k, i);
+            P(k, i) = - P(k, i);
+        }
 
         int a_ki_ui {0};
         for (auto i : C[k])
@@ -156,18 +189,32 @@ class generalized_wedelin
         b(k, 0) += a_ki_ui;
         b(k, 1) += a_ki_ui;
 
-        std::sort(r.begin(), r.end(),
-                  [](const auto& lhs, const auto& rhs)
-                  {
-                      return std::get<0>(lhs) < std::get<0>(rhs);
-                  });
+        details::sort_generalized(r[k].begin(), r[k].end(), tag());
 
+        // search lowerbound
+        index i = 0;
+        index lower = -1;
+        index upper = -1;
+        
+        for (index endi = numeric_cast<index>(r[k].size()); i != endi; ++i) {
+            if (r[k][i].value > b(k, 0))
+                break;
+            lower = i;
+        }
 
+        if (lower >= 0) {
+            for (index endi = numeric_cast<index>(r[k].size()); i != endi; ++i) {
+                if (r[k][i].value > 0 or r[k][i].value < b(k, 1))
+                    break;
+                upper = i;
+            }
 
-
-        // pi(k) += (std::get<double>(r[b(k)]) + std::get<double>(r[b(k) - 1])
-        //         / 2.0);
-
+            if (upper > 0) {
+                // need to test which binary variables
+                // 0 1 + 1 + 1 + ... = u
+            }
+        }
+        
         // double d = delta
         //     + ((kappa / (1.0 - kappa))
         //             * (std::get<double>(r[b(k)])
@@ -286,17 +333,22 @@ public:
     }
 };
 
-} // namespace generalized_wedelin
+} // namespace details
 
 inline
 result
 generalized_wedelin(double kappa, double delta, double theta,
                     long limit, const problem& pb)
 {
-    if (pb.type == lp::objective_function_type::maximize)
-        throw lp::solver_error(lp::solver_error::tag::no_solver_available)
+    // using maximize_solver = details::generalized_wedelin<
+    //     details::maximize_generalized_tag>;
+    using minimize_solver = details::generalized_wedelin<
+        details::minimize_generalized_tag>;
 
-    details::generalized_wedelin solver(kappa, delta, theta, limit, pb);
+    if (pb.type == lp::objective_function_type::maximize)
+        throw lp::solver_error(lp::solver_error::tag::no_solver_available);
+    
+    minimize_solver solver(kappa, delta, theta, limit, pb);
     return solver.results();
 }
 
