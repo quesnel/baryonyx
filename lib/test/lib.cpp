@@ -21,11 +21,7 @@
  */
 
 #include <lpcore>
-
-#ifdef NDEBUG
-#undef NDEBUG
-#endif
-#include <cassert>
+#include "unit-test.hpp"
 
 void check_numeric_cast()
 {
@@ -34,99 +30,107 @@ void check_numeric_cast()
     int large_positive = std::numeric_limits<int>::max();
     int large_negative = std::numeric_limits<int>::min();
 
-    assert(lp::is_numeric_castable<signed char>(small_positive));
-    assert(lp::is_numeric_castable<signed char>(small_negative));
-    assert(not lp::is_numeric_castable<signed char>(large_positive));
-    assert(not lp::is_numeric_castable<signed char>(large_negative));
+    Ensures(lp::is_numeric_castable<signed char>(small_positive));
+    Ensures(lp::is_numeric_castable<signed char>(small_negative));
+    Ensures(not lp::is_numeric_castable<signed char>(large_positive));
+    Ensures(not lp::is_numeric_castable<signed char>(large_negative));
 
-    assert(lp::is_numeric_castable<unsigned char>(small_positive));
-    assert(not lp::is_numeric_castable<unsigned char>(small_negative));
-    assert(not lp::is_numeric_castable<unsigned char>(large_positive));
-    assert(not lp::is_numeric_castable<unsigned char>(large_negative));
+    Ensures(lp::is_numeric_castable<unsigned char>(small_positive));
+    Ensures(not lp::is_numeric_castable<unsigned char>(small_negative));
+    Ensures(not lp::is_numeric_castable<unsigned char>(large_positive));
+    Ensures(not lp::is_numeric_castable<unsigned char>(large_negative));
 
-    assert(lp::is_numeric_castable<signed int>(small_positive));
-    assert(lp::is_numeric_castable<signed int>(small_negative));
-    assert(lp::is_numeric_castable<signed int>(large_positive));
-    assert(lp::is_numeric_castable<signed int>(large_negative));
+    Ensures(lp::is_numeric_castable<signed int>(small_positive));
+    Ensures(lp::is_numeric_castable<signed int>(small_negative));
+    Ensures(lp::is_numeric_castable<signed int>(large_positive));
+    Ensures(lp::is_numeric_castable<signed int>(large_negative));
 
-    assert(lp::is_numeric_castable<unsigned int>(small_positive));
-    assert(not lp::is_numeric_castable<unsigned int>(small_negative));
-    assert(lp::is_numeric_castable<unsigned int>(large_positive));
-    assert(not lp::is_numeric_castable<unsigned int>(large_negative));
+    Ensures(lp::is_numeric_castable<unsigned int>(small_positive));
+    Ensures(not lp::is_numeric_castable<unsigned int>(small_negative));
+    Ensures(lp::is_numeric_castable<unsigned int>(large_positive));
+    Ensures(not lp::is_numeric_castable<unsigned int>(large_negative));
 
-    assert(lp::is_numeric_castable<long long>(small_positive));
-    assert(lp::is_numeric_castable<long long>(large_negative));
-    assert(lp::is_numeric_castable<long long>(small_positive));
-    assert(lp::is_numeric_castable<long long>(large_negative));
+    Ensures(lp::is_numeric_castable<long long>(small_positive));
+    Ensures(lp::is_numeric_castable<long long>(large_negative));
+    Ensures(lp::is_numeric_castable<long long>(small_positive));
+    Ensures(lp::is_numeric_castable<long long>(large_negative));
 
-    assert(lp::is_numeric_castable<unsigned long long>(small_positive));
-    assert(not lp::is_numeric_castable<unsigned long long>(small_negative));
-    assert(lp::is_numeric_castable<unsigned long long>(large_positive));
-    assert(not lp::is_numeric_castable<unsigned long long>(large_negative));
+    Ensures(lp::is_numeric_castable<unsigned long long>(small_positive));
+    Ensures(not lp::is_numeric_castable<unsigned long long>(small_negative));
+    Ensures(lp::is_numeric_castable<unsigned long long>(large_positive));
+    Ensures(not lp::is_numeric_castable<unsigned long long>(large_negative));
 
-    assert(not lp::is_numeric_castable<size_t>(small_negative));
-    assert(not lp::is_numeric_castable<size_t>(large_negative));
+    Ensures(not lp::is_numeric_castable<size_t>(small_negative));
+    Ensures(not lp::is_numeric_castable<size_t>(large_negative));
 
-    try {
-        std::vector<int> v;
-        unsigned int checked_size = lp::numeric_cast<unsigned int>(v.size());
-        assert(0 == checked_size);
-    } catch(const std::exception& e) {
-        printf("%s\n", e.what());
-        assert(false && "bad cast");
-    }
+    std::vector<int> v;
+
+    EnsuresNotThrow(lp::numeric_cast<short int>(v.size()),
+                    std::exception);
+
+    EnsuresNotThrow(lp::numeric_cast<short int>(v.capacity()),
+                    std::exception);
+
+    EnsuresThrow(lp::numeric_cast<short int>(v.max_size()),
+                 std::exception);
+
+    unsigned int checked_size = lp::numeric_cast<unsigned int>(v.size());
+    Ensures(0 == checked_size);
 }
 
 void check_parameter()
 {
     lp::parameter real {3.0};
-    assert(real.type == lp::parameter::tag::real);
+    Ensures(real.type == lp::parameter::tag::real);
 
     lp::parameter integer {1000l};
-    assert(integer.type == lp::parameter::tag::integer);
+    Ensures(integer.type == lp::parameter::tag::integer);
 
     lp::parameter str {"hello world"};
-    assert(str.type == lp::parameter::tag::string);
+    Ensures(str.type == lp::parameter::tag::string);
 
     str = real;
-    assert(str.type == lp::parameter::tag::real);
-    assert(str.d == 3.0);
+    Ensures(str.type == lp::parameter::tag::real);
+    Ensures(str.d == 3.0);
 
     str = integer;
-    assert(str.type == lp::parameter::tag::integer);
-    assert(str.l == 1000l);
+    Ensures(str.type == lp::parameter::tag::integer);
+    Ensures(str.l == 1000l);
 
     std::vector<lp::parameter> x(100);
     for (auto& elem : x) {
-        assert(elem.type == lp::parameter::tag::integer);
-        assert(elem.l == 0l);
+        Ensures(elem.type == lp::parameter::tag::integer);
+        Ensures(elem.l == 0l);
     }
 
     auto y = lp::parameter(4.0);
-    assert(y.type == lp::parameter::tag::real);
-    assert(y.d == 4.0);
+    Ensures(y.type == lp::parameter::tag::real);
+    Ensures(y.d == 4.0);
 
     x[0] = lp::parameter(5.0);
-    assert(x[0].type == lp::parameter::tag::real);
-    assert(x[0].d == 5.0);
+    Ensures(x[0].type == lp::parameter::tag::real);
+    Ensures(x[0].d == 5.0);
 
     x[0].swap(x[1]);
-    assert(x[0].type == lp::parameter::tag::integer);
-    assert(x[0].l == 0l);
-    assert(x[1].type == lp::parameter::tag::real);
-    assert(x[1].d == 5.0);
+    Ensures(x[0].type == lp::parameter::tag::integer);
+    Ensures(x[0].l == 0l);
+    Ensures(x[1].type == lp::parameter::tag::real);
+    Ensures(x[1].d == 5.0);
 
     x[2] = std::move(x[1]);
-    assert(x[0].type == lp::parameter::tag::integer);
-    assert(x[0].l == 0l);
-    assert(x[1].type == lp::parameter::tag::integer);
-    assert(x[1].l == 0l);
-    assert(x[2].type == lp::parameter::tag::real);
-    assert(x[2].d == 5.0);
+    Ensures(x[0].type == lp::parameter::tag::integer);
+    Ensures(x[0].l == 0l);
+    Ensures(x[1].type == lp::parameter::tag::integer);
+    Ensures(x[1].l == 0l);
+    Ensures(x[2].type == lp::parameter::tag::real);
+    EnsuresEqual(x[2].d, 5.0);
+    EnsuresNotEqual(x[2].d, 6.0);
 }
 
 int main(int /* argc */, char */* argv */[])
 {
     check_numeric_cast();
     check_parameter();
+
+    return unit_test::report_errors();
 }

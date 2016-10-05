@@ -27,11 +27,7 @@
 #include <fstream>
 #include <map>
 #include <sstream>
-
-#ifdef NDEBUG
-#undef NDEBUG
-#endif
-#include <cassert>
+#include "unit-test.hpp"
 
 void test_examples_1()
 {
@@ -48,21 +44,21 @@ void test_examples_1()
 
     auto pb = lp::make_problem(iss);
 
-    assert(pb.type == lp::objective_function_type::maximize);
-    assert(pb.vars.names.size() == 3);
-    assert(pb.vars.values.size() == 3);
+    Ensures(pb.type == lp::objective_function_type::maximize);
+    Ensures(pb.vars.names.size() == 3);
+    Ensures(pb.vars.values.size() == 3);
 
-    assert(pb.vars.names[0] == "x1");
-    assert(pb.vars.names[1] == "x2");
-    assert(pb.vars.names[2] == "x3");
+    Ensures(pb.vars.names[0] == "x1");
+    Ensures(pb.vars.names[1] == "x2");
+    Ensures(pb.vars.names[2] == "x3");
 
-    assert(pb.vars.values[0].min == 0);
-    assert(pb.vars.values[1].min == 0);
-    assert(pb.vars.values[2].min == 0);
+    Ensures(pb.vars.values[0].min == 0);
+    Ensures(pb.vars.values[1].min == 0);
+    Ensures(pb.vars.values[2].min == 0);
 
-    assert(pb.vars.values[0].max == 40);
-    assert(pb.vars.values[1].max == std::numeric_limits<int>::max());
-    assert(pb.vars.values[2].max == std::numeric_limits<int>::max());
+    Ensures(pb.vars.values[0].max == 40);
+    Ensures(pb.vars.values[1].max == std::numeric_limits<int>::max());
+    Ensures(pb.vars.values[2].max == std::numeric_limits<int>::max());
 }
 
 void test_examples_2()
@@ -84,14 +80,14 @@ void test_examples_2()
 
         auto pb = lp::make_problem(filepath);
 
-        assert(pb.vars.names.size() == 16);
-        assert(pb.vars.values.size() == 16);
+        Ensures(pb.vars.names.size() == 16);
+        Ensures(pb.vars.values.size() == 16);
 
         std::stringstream ss;
         ss << pb;
 
         auto pb2 = lp::make_problem(ss);
-        assert(pb == pb2);
+        Ensures(pb == pb2);
 
         std::map<std::string, lp::parameter> params;
         params["kappa"] = 0.5;
@@ -101,10 +97,10 @@ void test_examples_2()
 
         auto result = lp::solve(pb, params);
 
-        assert(result.optimal == true);
-        assert(result.loop == loop[i - 1]);
-        assert(result.value == results[i - 1]);
-        assert(result.variable_value == values[i - 1]);
+        Ensures(result.optimal == true);
+        Ensures(result.loop == loop[i - 1]);
+        Ensures(result.value == results[i - 1]);
+        Ensures(result.variable_value == values[i - 1]);
 
         std::cout << result << '\n';
     }
@@ -115,32 +111,32 @@ void test_examples_3()
     auto pb = lp::make_problem(EXAMPLES_DIR
                                "/geom-30a-3-ext_1000_support.lp");
 
-    assert(pb.type == lp::objective_function_type::minimize);
-    assert(pb.vars.names.size() == 819);
-    assert(pb.vars.values.size() == 819);
+    Ensures(pb.type == lp::objective_function_type::minimize);
+    Ensures(pb.vars.names.size() == 819);
+    Ensures(pb.vars.values.size() == 819);
 
     lp::index nb {0};
     for (auto& elem : pb.vars.values)
         if (elem.type == lp::variable_type::binary)
             ++nb;
 
-    assert(nb == 90);
+    Ensures(nb == 90);
 }
 
 void test_examples_4()
 {
     auto pb = lp::make_problem(EXAMPLES_DIR "/general.lp");
 
-    assert(pb.type == lp::objective_function_type::minimize);
-    assert(pb.vars.names.size() == 3);
-    assert(pb.vars.values.size() == 3);
+    Ensures(pb.type == lp::objective_function_type::minimize);
+    Ensures(pb.vars.names.size() == 3);
+    Ensures(pb.vars.values.size() == 3);
 
     lp::index nb {0};
     for (auto& elem : pb.vars.values)
         if (elem.type == lp::variable_type::general)
             ++nb;
 
-    assert(nb == 3);
+    Ensures(nb == 3);
 }
 
 void test_examples_5()
@@ -148,8 +144,8 @@ void test_examples_5()
     // Too many
     // auto pb = lp::make_problem(EXAMPLES_DIR "/verger.lp");
     //
-    // assert(pb.vars.names.size() == 16);
-    // assert(pb.vars.values.size() == 16);
+    // Ensures(pb.vars.names.size() == 16);
+    // Ensures(pb.vars.values.size() == 16);
 }
 
 int main(int /* argc */, char */* argv */[])
@@ -160,5 +156,5 @@ int main(int /* argc */, char */* argv */[])
     test_examples_4();
     test_examples_5();
 
-    return 0;
+    return unit_test::report_errors();
 }
