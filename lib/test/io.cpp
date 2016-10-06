@@ -137,15 +137,28 @@ void test_examples_4()
             ++nb;
 
     Ensures(nb == 3);
+
+    std::map<std::string, lp::parameter> params;
+    params["kappa"] = 0.5;
+    params["theta"] = 0.5;
+    params["delta"] = 0.5;
+    params["limit"] = 10l;
+
+    auto result = lp::solve(pb, params);
+
+    std::cout << result << '\n';
 }
 
 void test_examples_5()
 {
-    // Too many
+    //
+    // Too many bugs for now with verger.lp
+    //
     // auto pb = lp::make_problem(EXAMPLES_DIR "/verger.lp");
     //
     // Ensures(pb.vars.names.size() == 16);
     // Ensures(pb.vars.values.size() == 16);
+    //
 }
 
 int main(int /* argc */, char */* argv */[])

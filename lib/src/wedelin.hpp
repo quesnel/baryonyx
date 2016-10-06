@@ -253,8 +253,6 @@ public:
 
     result results() const
     {
-        std::cout << "result: " << n << '\n';
-
         result ret;
         ret.loop = loop;
         ret.optimal = optimal;

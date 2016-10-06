@@ -31,6 +31,100 @@
 namespace lp {
 namespace details {
 
+Eigen::MatrixXi
+make_inequality_a(index m, index n, const problem& pb)
+{
+    Eigen::MatrixXi A(Eigen::MatrixXi::Zero(m, n));
+
+    lp::index i {0};
+    for (const auto& cst : pb.equal_constraints) {
+        for (const auto& elem : cst.elements) {
+            auto j = elem.variable_index;
+            A(i, j) = elem.factor;
+        }
+        ++i;
+    }
+
+    for (const auto& cst : pb.greater_equal_constraints) {
+        for (const auto& elem : cst.elements) {
+            auto j = elem.variable_index;
+            A(i, j) = elem.factor;
+        }
+        ++i;
+    }
+
+    for (const auto& cst : pb.less_equal_constraints) {
+        for (const auto& elem : cst.elements) {
+            auto j = elem.variable_index;
+            A(i, j) = elem.factor;
+        }
+        ++i;
+    }
+
+    Ensures(i == m, "make_inequality i != n");
+
+    return A;
+}
+
+Eigen::Matrix<int, 2, Eigen::Dynamic>
+make_inequality_b(index m, const problem& p)
+{
+    using matrix = Eigen::Matrix<int, 2, Eigen::Dynamic>;
+
+    matrix b(matrix::Zero(2, m));
+
+    lp::index i = 0;
+    for (const auto& elem : p.equal_constraints) {
+        b(0, i) = elem.value;
+        b(1, i) = elem.value;
+        ++i;
+    }
+
+    for (const auto& elem : p.greater_equal_constraints) {
+        b(0, i) = elem.value;
+        b(1, i) = std::numeric_limits<int>::max();
+        ++i;
+    }
+
+    for (const auto& elem : p.greater_equal_constraints) {
+        b(0, i) = 0; // std::numeric_limits<int>::min();
+        b(1, i) = elem.value;
+        ++i;
+    }
+
+    Ensures(i == m, "make_inequality_b != n");
+
+    return b;
+}
+
+/**
+ * Remove lower bound < 0 without changing the problem's structure other
+ * than modifying the right-hand side and adding a constant to the
+ * objective function.
+ *
+ * \param pb Initial problem definition.
+ *
+ * \return New problem without lower bound variable less than 0.
+ */
+inline
+problem adapt_problem(const problem& pb)
+{
+    problem ret(pb);
+    int constant {0};
+
+    for (std::size_t i {0}, e{ret.vars.values.size()}; i != e; ++i) {
+        if (ret.vars.values[i].min < 0) {
+            constant += ret.vars.values[i].min;
+            ret.vars.values[i].max -= ret.vars.values[i].min;
+            ret.vars.values[i].min = 0;
+        }
+    }
+
+    ret.objective.constant = constant;
+
+    return ret;
+}
+
 Eigen::VectorXf
 make_generalized_c(index n, const problem& p)
 {
@@ -91,7 +185,7 @@ class generalized_wedelin
     problem pb;                         // a copy to change the problem
                                         // (remove lower bound < 0)
     Eigen::MatrixXi A;
-    Eigen::VectorXi b;
+    Eigen::Matrix<int, 2, Eigen::Dynamic> b;
     Eigen::VectorXf c;
     Eigen::VectorXi x;
     Eigen::VectorXi u;
@@ -104,12 +198,13 @@ class generalized_wedelin
     index loop;
     bool optimal;
 
-    void make_c_i()
+    void make_c_i_r()
     {
         I.clear();
         C.clear();
         I.resize(m);
         C.resize(m);
+        r.resize(m);
 
         lp::index i {0};
         for (const auto& cst : pb.equal_constraints) {
@@ -119,6 +214,7 @@ class generalized_wedelin
                     C[i].push_back(j);
                 if (elem.factor)
                     I[i].push_back(j);
+                r[i].emplace_back(0.0, j);
             }
 
             ++i;
@@ -131,6 +227,7 @@ class generalized_wedelin
                     C[i].push_back(j);
                 if (elem.factor)
                     I[i].push_back(j);
+                r[i].emplace_back(0.0, j);
             }
 
             ++i;
@@ -143,16 +240,18 @@ class generalized_wedelin
                     C[i].push_back(j);
                 if (elem.factor)
                     I[i].push_back(j);
+                r[i].emplace_back(0.0, j);
             }
 
             ++i;
         }
 
-        Ensures(i == n, "make_c_i i != n");
+        Ensures(i == m, "make_c_i i != n");
     }
 
     void update_row(int k)
     {
+        printf("update_row %d / %zu\n", k, I.size());
         for (auto i : I[k])
             P(k, i) *= theta;
 
@@ -171,6 +270,10 @@ class generalized_wedelin
                 }
             }
 
+            printf("%ld %f %f\n", I[k][i], sum_a_pi, sum_a_p);
+            std::cout << c << '\n';
+            
+            
             r[k][i].value = c(I[k][i]) - sum_a_pi - sum_a_p;
             r[k][i].id = I[k][i];
         }
@@ -255,8 +358,8 @@ public:
             + numeric_cast<index>(pb_.less_equal_constraints.size()))
         , n(numeric_cast<index>(pb_.vars.values.size()))
         , pb(adapt_problem(pb_))
-        , A(make_inequality_a<int>(m, n, pb))
-        , b(make_inequality_b<int>(m, n, pb))
+        , A(make_inequality_a(m, n, pb))
+        , b(make_inequality_b(m, pb))
         , c(make_generalized_c(n, pb))
         , x(Eigen::VectorXi::Zero(n))
         , u(Eigen::VectorXi::Zero(n))
@@ -280,7 +383,7 @@ public:
             x(elem.variable_index) = c(elem.variable_index) <= 0;
 
         // build the C_k, I_k vectors store -1/1 and -1 coefficient.
-        make_c_i();
+        make_c_i_r();
 
         std::vector<index> R;
         while (loop != limit) {
@@ -289,8 +392,8 @@ public:
                 for (index i {0}; i != n; ++i)
                     v += A(k, i) * x(i);
 
-                if (v != b(k))
-                    R.push_back(v);
+                if (not (b(0, k) <= v and v <= b(1, k)))
+                    R.push_back(k);
             }
 
             if (R.empty()) {
@@ -321,7 +424,9 @@ public:
         result ret;
         ret.loop = loop;
         ret.optimal = optimal;
-        ret.value  = compute_value();
+        ret.value = compute_value();
+        ret.variable_name.resize(n);
+        ret.variable_value.resize(n, 0);
 
         for (index i = 0; i != n; ++i) {
             ret.variable_name[i] = pb.vars.names[i];
