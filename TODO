@@ -7,4 +7,5 @@
 - replace map<tuple<...>, string> in problem with a vector<string>. If no
   constraint names are specified, CPLEX assigns the names c1, c2, c3, etc.
 
-- use a true unit test framework or a custom one.
+- `main.cpp`: replace the kappa, delta and theta parameter with a more generic
+  system
