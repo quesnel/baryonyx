@@ -139,13 +139,13 @@ report_errors()
     tester.called_report_function = true;
     int errors = tester.errors;
 
-    if (errors == 0) {
+    if (errors == 0)
         std::cerr << "No errors detected.\n";
-        return 0;
-    }
+    else
+        std::cerr << errors << " error" << (errors == 1 ? "": "s")
+                  << " detected.\n";
 
-    std::cerr << errors << " error" << (errors == 1 ? "": "s") << " detected.\n";
-    return 1;
+    return errors;
 }
 
 } // namespace unit_test
