@@ -65,23 +65,22 @@ namespace lp {
 
 using index = long int;
 
-struct LP_API precondition_error : std::logic_error {
+struct precondition_error : std::logic_error
+{
     precondition_error(const char *msg)
         : std::logic_error(msg)
     {}
-
-    virtual ~precondition_error() noexcept {}
 };
 
-struct LP_API postcondition_error : std::logic_error {
+struct postcondition_error : std::logic_error
+{
     postcondition_error(const char *msg)
         : std::logic_error(msg)
     {}
-
-    virtual ~postcondition_error() noexcept {}
 };
 
-struct LP_API numeric_cast_error : public std::exception {
+struct numeric_cast_error : public std::exception
+{
     virtual const char *what() const noexcept
     {
         return "numeric cast error: loss of range in numeric_cast";
@@ -120,19 +119,13 @@ inline Target numeric_cast(Source s)
     return static_cast<Target>(s);
 }
 
-struct LP_API file_access_error : std::runtime_error {
+struct file_access_error : std::runtime_error
+{
     file_access_error(std::string file, int error)
         : std::runtime_error("file_access_error")
         , m_file(file)
         , m_error(error)
     {}
-
-    file_access_error(const file_access_error& f) = default;
-    file_access_error& operator=(const file_access_error& f) = default;
-    file_access_error(file_access_error&& f) = default;
-    file_access_error& operator=( file_access_error&& f) = default;
-
-    virtual ~file_access_error() noexcept {}
 
     std::string file() const { return m_file; }
     int error() const { return m_error; }
@@ -142,7 +135,8 @@ private:
     int m_error;
 };
 
-struct LP_API file_format_error : std::runtime_error {
+struct file_format_error : std::runtime_error
+{
     enum class tag { end_of_file, unknown, already_defined, incomplete,
                      bad_name, bad_operator, bad_integer,
                      bad_objective_function_type,
@@ -165,13 +159,6 @@ struct LP_API file_format_error : std::runtime_error {
         , m_failure(failure)
     {}
 
-    file_format_error(const file_format_error& f) = default;
-    file_format_error& operator=(const file_format_error& f) = default;
-    file_format_error(file_format_error&& f) = default;
-    file_format_error& operator=( file_format_error&& f) = default;
-
-    virtual ~file_format_error() noexcept {}
-
     std::string element() const { return m_element; }
     int line() const { return m_line; }
     int column() const { return m_column; }
@@ -184,7 +171,8 @@ private:
     tag m_failure;
 };
 
-struct LP_API problem_definition_error : std::runtime_error {
+struct problem_definition_error : std::runtime_error
+{
     enum class tag { empty_variables, empty_objective_function,
                      variable_not_used, bad_bound };
 
@@ -194,13 +182,6 @@ struct LP_API problem_definition_error : std::runtime_error {
         , m_failure(failure)
     {}
 
-    problem_definition_error(const problem_definition_error& f) = default;
-    problem_definition_error& operator=(const problem_definition_error& f) = default;
-    problem_definition_error(problem_definition_error&& f) = default;
-    problem_definition_error& operator=( problem_definition_error&& f) = default;
-
-    virtual ~problem_definition_error() noexcept {}
-
     std::string element() const { return m_element; }
     tag failure() const { return m_failure; }
 
@@ -209,7 +190,8 @@ private:
     tag m_failure;
 };
 
-struct LP_API solver_error : std::runtime_error {
+struct solver_error : std::runtime_error
+{
     enum class tag { no_solver_available, not_enough_memory };
 
     solver_error(tag failure)
@@ -217,20 +199,13 @@ struct LP_API solver_error : std::runtime_error {
         , m_failure(failure)
     {}
 
-    solver_error(const solver_error& f) = default;
-    solver_error& operator=(const solver_error& f) = default;
-    solver_error(solver_error&& f) = default;
-    solver_error& operator=( solver_error&& f) = default;
-
-    virtual ~solver_error() noexcept {}
-
     tag failure() const { return m_failure; }
 
 private:
     tag m_failure;
 };
 
-struct LP_API  parameter
+struct parameter
 {
     enum class tag { integer, real, string };
 
@@ -434,20 +409,20 @@ enum class objective_function_type { undefined, maximize, minimize };
 enum class operator_type { undefined, equal, greater, greater_equal,
                            less, less_equal };
 
-struct LP_API variable_value
+struct variable_value
 {
     int min = {0};
     int max = std::numeric_limits<int>::max();
     variable_type type = variable_type::real;
 };
 
-struct LP_API variables
+struct variables
 {
     std::vector<std::string> names;
     std::vector<variable_value> values;
 };
 
-struct LP_API function_element
+struct function_element
 {
     function_element(int factor_, index variable_index_) noexcept
         : factor(factor_)
@@ -458,19 +433,19 @@ struct LP_API function_element
     index variable_index {-1};
 };
 
-struct LP_API constraint
+struct constraint
 {
     std::vector<function_element> elements;
     int value;
 };
 
-struct LP_API objective_function
+struct objective_function
 {
     std::vector<function_element> elements;
     int constant = {0};
 };
 
-struct LP_API problem
+struct problem
 {
     objective_function objective;
     std::vector<constraint> equal_constraints;
@@ -487,7 +462,7 @@ struct LP_API problem
     objective_function_type type = {objective_function_type::maximize};
 };
 
-struct LP_API result
+struct result
 {
     std::vector<std::string> variable_name;
     std::vector<int> variable_value;
