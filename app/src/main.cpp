@@ -40,6 +40,36 @@ using experimental::make_optional;
 
 };
 
+std::tuple<std::string, std::string>
+split_param(const char *param)
+{
+    std::string name, value;
+
+    while (*param) {
+        if (isalpha(*param) or *param == '_')
+            name += *param;
+        else
+            break;
+
+        param++;
+    }
+
+    if (*param and *param == ':') {
+        param++;
+
+        while (*param) {
+            if (isalnum(*param) or *param == '_' or *param == ':')
+                value += *param;
+            else
+                break;
+
+            param++;
+        }
+    }
+
+    return std::make_tuple(name, value);
+}
+
 const char* file_format_error_format(lp::file_format_error::tag);
 const char* problem_definition_error_format(lp::problem_definition_error::tag);
 const char* solver_error_format(lp::solver_error::tag);
@@ -47,16 +77,16 @@ const char* solver_error_format(lp::solver_error::tag);
 void help()
 {
     std::fprintf(stdout,
-            "--help|-h        This help message\n"
-            "--kappa|-k real  Set Kappa parameter\n"
-            "--delta|-d real  Set Delta parameter\n"
-            "--theta|-t real  Set Theta parameter\n"
-            "--limit int      Set limit\n"
-            "--quiet          Remove any verbose message\n"
-            "--verbose|-v int Set verbose level\n");
+            "--help|-h                   This help message\n"
+            "--param|-p [name]:[value]   Add a new parameter (name is"
+            " [a-z][A-Z]_ value can be a double, an integer otherwise a"
+            " string.\n"
+            "--limit int                 Set limit\n"
+            "--quiet                     Remove any verbose message\n"
+            "--verbose|-v int            Set verbose level\n");
 }
 
-std::optional<double> to_double(const char* s, double min, double max)
+std::optional<double> to_double(const char* s)
 {
     char *c;
     errno = 0;
@@ -66,14 +96,12 @@ std::optional<double> to_double(const char* s, double min, double max)
                               or value == -std::numeric_limits<double>::max()))
         or (errno != 0 and value == 0)
         or (c == ::optarg)
-        or (value < min)
-        or (value > max))
         return std::make_optional(value);
 
     return std::optional<double>{};
 }
 
-std::optional<long> to_long(const char* s, long min, long max)
+std::optional<long> to_long(const char* s)
 {
     char *c;
     errno = 0;
@@ -83,8 +111,6 @@ std::optional<long> to_long(const char* s, long min, long max)
                               or value == std::numeric_limits<long>::max()))
         or (errno != 0 and value == 0)
         or (c == ::optarg)
-        or (value < min)
-        or (value > max))
         return std::make_optional(value);
 
     return std::optional<long>{};
@@ -92,25 +118,21 @@ std::optional<long> to_long(const char* s, long min, long max)
 
 int main(int argc, char *argv[])
 {
-    const char* const short_opts = "hk:d:t:l:qv:";
+    const char* const short_opts = "hp:l:qv:";
     const struct option long_opts[] = {
         {"help", 0, nullptr, 'h'},
-        {"kappa", 1, nullptr, 'k'},
-        {"delta", 1, nullptr, 'd'},
-        {"theta", 1, nullptr, 't'},
+        {"param", 1, nullptr, 'p'},
         {"limit", 1, nullptr, 'l'},
         {"quiet", 0, nullptr, 0},
         {"verbose", 1, nullptr, 'v'},
         {0, 0, nullptr, 0}};
 
     int opt_index;
-    double kappa = 0.001;
-    double delta = 0.0001;
-    double theta = 0.001;
     int verbose = 1;
     long limit = 1000;
     bool fail = false;
     bool quiet = false;
+    std::map<std::string, lp::parameter> parameters;
 
     while (not fail) {
         const auto opt = getopt_long(argc, argv, short_opts, long_opts,
@@ -124,45 +146,27 @@ int main(int argc, char *argv[])
         case 'h':
             help();
             return EXIT_SUCCESS;
-        case 'k':
+        case 'p':
             {
-                auto val = to_double(::optarg, 0, 1);
-                if (not val)
-                    std::fprintf(stderr, "fail to convert parameter `%s' for "
-                                 " parameter kappa (or k)\n", ::optarg);
-                else
-                    kappa = *val;
-            }
-            break;
-        case 'd':
-            {
-                auto val = to_double(::optarg, 0,
-                    std::numeric_limits<double>::max());
-                if (not val)
-                    std::fprintf(stderr, "fail to convert parameter `%s' for"
-                            " parameter delta (or d)\n", ::optarg);
-                else
-                    delta = *val;
-            }
-            break;
-        case 't':
-            {
-                auto val = to_double(::optarg, 0, 1);
-                if (not val)
-                    std::fprintf(stderr, "fail to convert parameter `%s' for"
-                            " parameter theta (or t)\n", ::optarg);
-                else
-                    theta = *val;
-            }
-            break;
-        case 'l':
-            {
-                auto val = to_long(::optarg, 0, std::numeric_limits<long>::max());
-                if (not val)
-                    std::fprintf(stderr, "fail to convert parameter `%s' for"
-                            " parameterffff limit (or l)\n", ::optarg);
-                else
-                    limit = *val;
+                std::string name, value;
+                std::tie(name, value) = split_param(::optarg);
+
+                if (name.empty() or value.empty()) {
+                    std::fprintf(stderr, "fail to parse parameter `%s'\n",
+                                 ::optarg);
+                    break;
+                }
+
+                auto valuel = to_long(::optarg);
+                if (valuel) {
+                    parameters[name] = * valuel;
+                } else {
+                    auto valued = to_double(::optarg);
+                    if (valued)
+                        parameters[name] = *valued;
+                    else
+                        parameters[name] = value;
+                }
             }
             break;
         case '?':
