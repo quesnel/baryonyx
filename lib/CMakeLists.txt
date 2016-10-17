@@ -44,6 +44,10 @@ install(TARGETS liblp
 
 install(DIRECTORY include/ DESTINATION include/lp)
 
+install(FILES test/sudoku.lp test/assignment_problem_1.lp
+              test/assignment_problem_2.lp test/assignment_problem_3.lp
+        DESTINATION share/doc/lp)
+
 # This makes the project importable from the build directory
 export(TARGETS liblp FILE LiblpConfig.cmake)
 
