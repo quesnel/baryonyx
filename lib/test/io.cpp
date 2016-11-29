@@ -151,14 +151,18 @@ void test_examples_4()
 
 void test_examples_5()
 {
-    //
-    // Too many bugs for now with verger.lp
-    //
-    // auto pb = lp::make_problem(EXAMPLES_DIR "/verger.lp");
-    //
-    // Ensures(pb.vars.names.size() == 16);
-    // Ensures(pb.vars.values.size() == 16);
-    //
+    auto pb = lp::make_problem(EXAMPLES_DIR "/sudoku.lp");
+
+    Ensures(pb.vars.names.size() == 81);
+    Ensures(pb.vars.values.size() == 81);
+
+    for (auto& vv : pb.vars.values) {
+        Ensures(vv.min == 1);
+        Ensures(vv.max == 9);
+        Ensures(vv.min_equal == true);
+        Ensures(vv.max_equal == true);
+        Ensures(vv.type == lp::variable_type::general);
+    }
 }
 
 int main(int /* argc */, char */* argv */[])

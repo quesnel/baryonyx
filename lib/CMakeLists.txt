@@ -51,7 +51,6 @@ install(FILES test/sudoku.lp test/assignment_problem_1.lp
 # This makes the project importable from the build directory
 export(TARGETS liblp FILE LiblpConfig.cmake)
 
-
 add_executable(testio test/io.cpp)
 set_target_properties(testio PROPERTIES
   COMPILE_DEFINITIONS EXAMPLES_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}/test\")

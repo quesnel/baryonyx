@@ -414,6 +414,8 @@ struct variable_value
     int min = {0};
     int max = std::numeric_limits<int>::max();
     variable_type type = variable_type::real;
+    bool min_equal {true};
+    bool max_equal {false};
 };
 
 struct variables
@@ -477,7 +479,9 @@ struct result
  * \exception lp::file_format_error, lp::file_access_error,
  *  std::system_error.
  */
-LP_API problem make_problem(const std::string& filename);
+LP_API
+problem
+make_problem(const std::string& filename);
 
 /**
  * Read a \e lp file from the \e is stream.
@@ -485,21 +489,26 @@ LP_API problem make_problem(const std::string& filename);
  * \exception lp::file_format_error, lp::file_access_error,
  *  std::system_error.
  */
-LP_API problem make_problem(std::istream& is);
+LP_API
+problem
+make_problem(std::istream& is);
 
 /**
  * Write \e lp problem into a stream.
  *
  */
-LP_API std::ostream& operator<<(std::ostream& os, const problem& p);
+LP_API
+std::ostream&
+operator<<(std::ostream& os, const problem& p);
 
 /**
  * Solve the \c lp::problem using the \c std::vector<parameter>.
  *
  * \exception lp::solver_error
  */
-LP_API result solve(const problem& pb,
-                    const std::map<std::string, parameter>& params);
+LP_API
+result
+solve(const problem& pb, const std::map<std::string, parameter>& params);
 
 }
 

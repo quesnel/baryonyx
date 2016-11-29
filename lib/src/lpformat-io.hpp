@@ -646,16 +646,102 @@ void read_constraints(parser_stack& stack, problem& p)
     }
 }
 
-std::tuple<std::string, operator_type, int>
-read_bound(parser_stack& stack)
+void apply_bound(int value, operator_type type, variable_value& variable)
 {
-    std::tuple<std::string, operator_type, int> ret;
+    switch (type) {
+    case operator_type::greater:
+        variable.max = value;
+        variable.max_equal = false;
+        break;
+    case operator_type::greater_equal:
+        variable.max = value;
+        variable.max_equal = true;
+        break;
+    case operator_type::less:
+        variable.min = value;
+        variable.min_equal = false;
+        break;
+    case operator_type::less_equal:
+        variable.min = value;
+        variable.min_equal = true;
+        break;
+    case operator_type::equal:
+        variable.min = value;
+        variable.max_equal = true;
+        variable.max = value;
+        variable.max_equal = true;
+        break;
+    case operator_type::undefined:
+        break;
+    }
+}
 
-    std::get<0>(ret) = read_name(stack);
-    std::get<1>(ret) = read_operator(stack);
-    std::get<2>(ret) = read_integer(stack);
+void apply_bound(variable_value& variable, operator_type type, int value)
+{
+    switch (type) {
+    case operator_type::greater:
+        variable.min = value;
+        variable.min_equal = false;
+        break;
+    case operator_type::greater_equal:
+        variable.min = value;
+        variable.min_equal = true;
+        break;
+    case operator_type::less:
+        variable.max = value;
+        variable.max_equal = false;
+        break;
+    case operator_type::less_equal:
+        variable.max = value;
+        variable.max_equal = true;
+        break;
+    case operator_type::equal:
+        variable.min = value;
+        variable.max_equal = true;
+        variable.max = value;
+        variable.max_equal = true;
+        break;
+    case operator_type::undefined:
+        break;
+    }
+}
 
-    return ret;
+void read_bound(parser_stack& stack, problem& p)
+{
+    /*
+     * If first character is a digit, tries to read the bound:
+     * value [<|<=|=|>|>=] variable_name [<|<=|=|>|>=] value or
+     * value [<|<=|=|>|>=] variable_name
+     */
+    if (std::isdigit(stack.peek())) {
+        auto value_first = read_integer(stack);
+        auto operator_type_first = read_operator(stack);
+        auto variable = read_name(stack);
+        auto id = get_variable(p, variable);
+
+        apply_bound(value_first, operator_type_first, p.vars.values[id]);
+
+        /*
+         * If next character is a <, > or =, then tries to read second part of
+         * the bound of: value [<|<=|=|>|>=] variable_name [<|<=|=|>|>=] value
+         */
+        if (is_operator(stack.peek())) {
+            auto operator_type_second = read_operator(stack);
+            auto value_second = read_integer(stack);
+
+            apply_bound(p.vars.values[id], operator_type_second, value_second);
+        }
+    } else {
+        /*
+         * Tries to read the bound: variable_name [>|>=|=|<|<=] value
+         */
+        auto variable = read_name(stack);
+        auto operator_type = read_operator(stack);
+        auto value = read_integer(stack);
+        auto id = get_variable(p, variable);
+
+        apply_bound(p.vars.values[id], operator_type, value);
+    }
 }
 
 void read_bounds(parser_stack& stack, problem& p)
@@ -664,28 +750,7 @@ void read_bounds(parser_stack& stack, problem& p)
 
     while (not iequals(str, "binary") and not iequals(str, "general")
            and not iequals(str, "end")) {
-        auto bound = read_bound(stack);
-        auto id = get_variable(p, std::get<0>(bound));
-
-        switch (std::get<1>(bound)) {
-        case operator_type::undefined:
-        case operator_type::equal:
-            throw file_format_error(file_format_error::tag::bad_bound,
-                                    stack.line(), stack.column());
-        case operator_type::greater:
-            p.vars.values[id].min = std::get<2>(bound) + 1;
-            break;
-        case operator_type::greater_equal:
-            p.vars.values[id].min = std::get<2>(bound);
-            break;
-        case operator_type::less:
-            p.vars.values[id].max = std::get<2>(bound) - 1;
-            break;
-        case operator_type::less_equal:
-            p.vars.values[id].max = std::get<2>(bound);
-            break;
-        }
-
+        read_bound(stack, p);
         str = stack.top();
     }
 }
