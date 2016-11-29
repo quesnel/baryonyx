@@ -149,7 +149,7 @@ void test_examples_4()
     std::cout << result << '\n';
 }
 
-void test_examples_5()
+void test_examples_sudoku()
 {
     auto pb = lp::make_problem(EXAMPLES_DIR "/sudoku.lp");
 
@@ -165,13 +165,30 @@ void test_examples_5()
     }
 }
 
+void test_examples_8_queens_puzzle()
+{
+    auto pb = lp::make_problem(EXAMPLES_DIR "/8_queens_puzzle.lp");
+
+    Ensures(pb.vars.names.size() == 64);
+    Ensures(pb.vars.values.size() == 64);
+
+    for (auto& vv : pb.vars.values) {
+        Ensures(vv.min == 0);
+        Ensures(vv.max == 1);
+        Ensures(vv.min_equal == true);
+        Ensures(vv.max_equal == true);
+        Ensures(vv.type == lp::variable_type::binary);
+    }
+}
+
 int main(int /* argc */, char */* argv */[])
 {
     test_examples_1();
     test_examples_2();
     test_examples_3();
     test_examples_4();
-    test_examples_5();
+    test_examples_sudoku();
+    test_examples_8_queens_puzzle();
 
     return unit_test::report_errors();
 }

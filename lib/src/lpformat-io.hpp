@@ -767,7 +767,7 @@ void read_binary(parser_stack& stack, problem& p)
             throw file_format_error(name, file_format_error::tag::unknown,
                                     stack.line(), stack.column());
 
-        p.vars.values[id] = { 0, 1, variable_type::binary };
+        p.vars.values[id] = { 0, 1, variable_type::binary, true, true };
 
         str = stack.top();
     }
