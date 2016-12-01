@@ -181,6 +181,19 @@ void test_examples_8_queens_puzzle()
     }
 }
 
+void test_examples_vm()
+{
+    auto pb = lp::make_problem(EXAMPLES_DIR "/vm.lp");
+
+    std::cout << "Verger maraicher:\n"
+        << "nb variable: " << pb.vars.names.size() << '\n'
+        << "nb =       : " << pb.equal_constraints.size() << '\n'
+        << "nb >       : " << pb.greater_constraints.size() << '\n'
+        << "nb >=      : " << pb.greater_equal_constraints.size() << '\n'
+        << "nb <       : " << pb.less_constraints.size() << '\n'
+        << "nb <=      : " << pb.less_equal_constraints.size() << '\n';
+}
+
 int main(int /* argc */, char */* argv */[])
 {
     test_examples_1();
@@ -189,6 +202,7 @@ int main(int /* argc */, char */* argv */[])
     test_examples_4();
     test_examples_sudoku();
     test_examples_8_queens_puzzle();
+    test_examples_vm();
 
     return unit_test::report_errors();
 }

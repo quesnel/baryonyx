@@ -136,7 +136,7 @@ struct parser_stack
     {
         auto str = top();
 
-        if (iequals(str, "binary"))
+        if (iequals(str, "binary") or iequals(str, "binaries"))
             return true;
 
         if (iequals(str, "general"))
@@ -205,7 +205,7 @@ struct parser_stack
         if (stack.size() <= 0)
             return false;
 
-        if (iequals(stack[0], "binary")) {
+        if (iequals(stack[0], "binary") or iequals(stack[0], "binaries")) {
             pop();
             return true;
         }
@@ -576,7 +576,7 @@ read_constraint(parser_stack& stack, problem& p)
 
     auto str = stack.top();
 
-    while (not iequals(str, "binary") and not iequals(str, "general")
+    while (not iequals(str, "binary") and not iequals(str, "binaries") and not iequals(str, "general")
            and not iequals(str, "end")) {
         if (is_operator(stack.peek())) {
             operator_type type = read_operator(stack);
@@ -599,7 +599,9 @@ void read_constraints(parser_stack& stack, problem& p)
 {
     auto str = stack.top();
 
-    while (not iequals(str, "binary") and not iequals(str, "bounds")
+    while (not iequals(str, "binary")
+           and not iequals(str, "binaries")
+           and not iequals(str, "bounds")
            and not iequals(str, "general") and not iequals(str, "end")) {
         auto cst = read_constraint(stack, p);
 
@@ -748,7 +750,9 @@ void read_bounds(parser_stack& stack, problem& p)
 {
     auto str = stack.top();
 
-    while (not iequals(str, "binary") and not iequals(str, "general")
+    while (not iequals(str, "binary")
+           and not iequals(str, "binaries")
+           and not iequals(str, "general")
            and not iequals(str, "end")) {
         read_bound(stack, p);
         str = stack.top();
