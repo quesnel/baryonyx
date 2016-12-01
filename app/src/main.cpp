@@ -24,8 +24,6 @@
 #include <fstream>
 #include <sstream>
 #include <limits>
-#include <experimental/optional>
-
 #include <lpcore>
 
 #include <cstdio>
@@ -33,14 +31,10 @@
 #include <cstring>
 #include <getopt.h>
 
-namespace std {
+double to_double(const char* s, double bad_value);
+long to_long(const char* s, long bad_value);
 
-using experimental::optional;
-using experimental::make_optional;
-
-};
-
-std::tuple<std::string, std::string>
+std::tuple<std::string, lp::parameter>
 split_param(const char *param)
 {
     std::string name, value;
@@ -67,7 +61,15 @@ split_param(const char *param)
         }
     }
 
-    return std::make_tuple(name, value);
+    auto valuel = to_long(::optarg, std::numeric_limits<long>::min());
+    if (valuel != std::numeric_limits<long>::min())
+        return std::make_tuple(name, lp::parameter(valuel));
+
+    auto valued = to_double(::optarg, std::numeric_limits<double>::min());
+    if (valued != std::numeric_limits<double>::min())
+        return std::make_tuple(name, lp::parameter(valued));
+
+    return std::make_tuple(name, lp::parameter(value));
 }
 
 const char* file_format_error_format(lp::file_format_error::tag);
@@ -86,35 +88,6 @@ void help()
             "--verbose|-v int            Set verbose level\n");
 }
 
-std::optional<double> to_double(const char* s)
-{
-    char *c;
-    errno = 0;
-    double value = std::strtof(s, &c);
-
-    if ((errno == ERANGE and (value == std::numeric_limits<double>::lowest()
-                              or value == -std::numeric_limits<double>::max()))
-        or (errno != 0 and value == 0)
-        or (c == ::optarg)
-        return std::make_optional(value);
-
-    return std::optional<double>{};
-}
-
-std::optional<long> to_long(const char* s)
-{
-    char *c;
-    errno = 0;
-    long value = std::strtol(s, &c, 10);
-
-    if ((errno == ERANGE and (value == std::numeric_limits<long>::lowest()
-                              or value == std::numeric_limits<long>::max()))
-        or (errno != 0 and value == 0)
-        or (c == ::optarg)
-        return std::make_optional(value);
-
-    return std::optional<long>{};
-}
 
 int main(int argc, char *argv[])
 {
@@ -129,7 +102,6 @@ int main(int argc, char *argv[])
 
     int opt_index;
     int verbose = 1;
-    long limit = 1000;
     bool fail = false;
     bool quiet = false;
     std::map<std::string, lp::parameter> parameters;
@@ -148,25 +120,11 @@ int main(int argc, char *argv[])
             return EXIT_SUCCESS;
         case 'p':
             {
-                std::string name, value;
+                std::string name;
+                lp::parameter value;
                 std::tie(name, value) = split_param(::optarg);
 
-                if (name.empty() or value.empty()) {
-                    std::fprintf(stderr, "fail to parse parameter `%s'\n",
-                                 ::optarg);
-                    break;
-                }
-
-                auto valuel = to_long(::optarg);
-                if (valuel) {
-                    parameters[name] = * valuel;
-                } else {
-                    auto valued = to_double(::optarg);
-                    if (valued)
-                        parameters[name] = *valued;
-                    else
-                        parameters[name] = value;
-                }
+                parameters[name] = value;
             }
             break;
         case '?':
@@ -186,14 +144,7 @@ int main(int argc, char *argv[])
     for (int i = ::optind; i < argc; ++i) {
         try {
             auto pb = lp::make_problem(argv[i]);
-
-            std::map<std::string, lp::parameter> params;
-            params["kappa"] = kappa;
-            params["theta"] = theta;
-            params["delta"] = delta;
-            params["limit"] = limit;
-
-            auto ret = lp::solve(pb, params);
+            auto ret = lp::solve(pb, parameters);
 
             for (std::size_t i {0}, e {ret.variable_name.size()};
                  i != e; ++i)
@@ -310,4 +261,34 @@ solver_error_format(lp::solver_error::tag failure)
     }
 
     return nullptr;
+}
+
+double to_double(const char* s, double bad_value)
+{
+    char *c;
+    errno = 0;
+    double value = std::strtof(s, &c);
+
+    if ((errno == ERANGE and (value == std::numeric_limits<double>::lowest()
+                              or value == -std::numeric_limits<double>::max()))
+        or (errno != 0 and value == 0)
+        or (c == ::optarg))
+        return value;
+
+    return bad_value;
+}
+
+long to_long(const char* s, long bad_value)
+{
+    char *c;
+    errno = 0;
+    long value = std::strtol(s, &c, 10);
+
+    if ((errno == ERANGE and (value == std::numeric_limits<long>::lowest()
+                              or value == std::numeric_limits<long>::max()))
+        or (errno != 0 and value == 0)
+        or (c == ::optarg))
+        return value;
+
+    return bad_value;
 }
