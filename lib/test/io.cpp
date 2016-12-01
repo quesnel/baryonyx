@@ -25,6 +25,7 @@
 #include <lpcore-out>
 #include <iostream>
 #include <fstream>
+#include <numeric>
 #include <map>
 #include <sstream>
 #include "unit-test.hpp"
@@ -43,6 +44,7 @@ void test_examples_1()
     std::istringstream iss(example_1);
 
     auto pb = lp::make_problem(iss);
+    std::cout << __func__ << '\n' << lp::resume(pb) << '\n';
 
     Ensures(pb.type == lp::objective_function_type::maximize);
     Ensures(pb.vars.names.size() == 3);
@@ -79,6 +81,7 @@ void test_examples_2()
         filepath += ".lp";
 
         auto pb = lp::make_problem(filepath);
+        std::cout << __func__ << '\n' << lp::resume(pb) << '\n';
 
         Ensures(pb.vars.names.size() == 16);
         Ensures(pb.vars.values.size() == 16);
@@ -110,6 +113,7 @@ void test_examples_3()
 {
     auto pb = lp::make_problem(EXAMPLES_DIR
                                "/geom-30a-3-ext_1000_support.lp");
+    std::cout << __func__ << '\n' << lp::resume(pb) << '\n';
 
     Ensures(pb.type == lp::objective_function_type::minimize);
     Ensures(pb.vars.names.size() == 819);
@@ -126,6 +130,7 @@ void test_examples_3()
 void test_examples_4()
 {
     auto pb = lp::make_problem(EXAMPLES_DIR "/general.lp");
+    std::cout << __func__ << '\n' << lp::resume(pb) << '\n';
 
     Ensures(pb.type == lp::objective_function_type::minimize);
     Ensures(pb.vars.names.size() == 3);
@@ -163,6 +168,8 @@ void test_examples_sudoku()
         Ensures(vv.max_equal == true);
         Ensures(vv.type == lp::variable_type::general);
     }
+
+    std::cout << __func__ << '\n' << lp::resume(pb) << '\n';
 }
 
 void test_examples_8_queens_puzzle()
@@ -179,19 +186,15 @@ void test_examples_8_queens_puzzle()
         Ensures(vv.max_equal == true);
         Ensures(vv.type == lp::variable_type::binary);
     }
+
+    std::cout << __func__ << '\n' << lp::resume(pb) << '\n';
 }
 
 void test_examples_vm()
 {
     auto pb = lp::make_problem(EXAMPLES_DIR "/vm.lp");
 
-    std::cout << "Verger maraicher:\n"
-        << "nb variable: " << pb.vars.names.size() << '\n'
-        << "nb =       : " << pb.equal_constraints.size() << '\n'
-        << "nb >       : " << pb.greater_constraints.size() << '\n'
-        << "nb >=      : " << pb.greater_equal_constraints.size() << '\n'
-        << "nb <       : " << pb.less_constraints.size() << '\n'
-        << "nb <=      : " << pb.less_equal_constraints.size() << '\n';
+    std::cout << __func__ << '\n' << lp::resume(pb) << '\n';
 }
 
 int main(int /* argc */, char */* argv */[])
