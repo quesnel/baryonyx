@@ -22,6 +22,7 @@
 
 #include "mitm.hpp"
 #include "generalized-wedelin.hpp"
+#include "inequalities-1coeff.hpp"
 #include "utils.hpp"
 #include "wedelin.hpp"
 #include <Eigen/Core>
@@ -108,7 +109,7 @@ is_101_coefficient(const constraintsT csts)
 {
     for (const auto& cst : csts)
         for (const auto& elem : cst.elements)
-            if (elem.factor < 1 or elem.factor > 1)
+            if (elem.factor < -1 or elem.factor > 1)
                 return false;
 
     return true;
@@ -124,22 +125,56 @@ mitm(const problem& pb, const std::map<std::string, parameter>& params)
 
     if (pb.greater_constraints.empty() and
         pb.greater_equal_constraints.empty() and
-        pb.less_constraints.empty() and pb.less_equal_constraints.empty()) {
-
-        if (is_boolean_coefficient(pb.equal_constraints) and
-            is_boolean_variable(pb.vars.values))
-            return simple_wedelin(kappa, delta, theta, limit, pb);
+        pb.less_constraints.empty() and pb.less_equal_constraints.empty() and
+        is_boolean_coefficient(pb.equal_constraints) and
+        is_boolean_variable(pb.vars.values)) {
+        printf("simple_wedelin\n");
+        return simple_wedelin(kappa, delta, theta, limit, pb);
     }
 
-    if (is_101_coefficient(pb.equal_constraints) and
-        is_101_coefficient(pb.greater_constraints) and
-        is_101_coefficient(pb.greater_equal_constraints) and
-        is_101_coefficient(pb.less_constraints) and
-        is_101_coefficient(pb.less_equal_constraints) and
+    // printf("test: %d\n", pb.equal_constraints.empty());
+    // printf("test: %d\n", pb.greater_equal_constraints.empty());
+    // printf("test: %d\n", pb.less_equal_constraints.empty());
+
+    if ((not pb.equal_constraints.empty() or
+         not pb.greater_equal_constraints.empty() or
+         not pb.less_equal_constraints.empty())) {
+        printf("test: %d\n", pb.greater_constraints.empty());
+        printf("test: %d\n", pb.less_constraints.empty());
+        printf("test: %d\n", is_101_coefficient(pb.equal_constraints));
+        printf("test: %d\n", is_101_coefficient(pb.greater_equal_constraints));
+        printf("test: %d\n", is_101_coefficient(pb.less_equal_constraints));
+        printf("test: %d\n", is_boolean_variable(pb.vars.values));
+
+        for (int i{ 0 },
+             e(numeric_cast<int>(pb.less_equal_constraints.size()));
+             i != e;
+             ++i)
+            for (const auto& elem : pb.less_equal_constraints[i].elements)
+                if (elem.factor < -1 or elem.factor > 1)
+                    printf("Error %d (factor=%d\n", i, elem.factor);
+
+        if (pb.greater_constraints.empty() and pb.less_constraints.empty() and
+            is_101_coefficient(pb.equal_constraints) and
+            is_101_coefficient(pb.greater_equal_constraints) and
+            is_101_coefficient(pb.less_equal_constraints) and
+            is_boolean_variable(pb.vars.values)) {
+            printf("inequalities-1coeff\n");
+            return lp::inequalities_1coeff_wedelin(
+              kappa, delta, theta, limit, pb);
+        }
+    }
+
+    if ((is_101_coefficient(pb.equal_constraints) or
+         is_101_coefficient(pb.greater_constraints) or
+         is_101_coefficient(pb.greater_equal_constraints) or
+         is_101_coefficient(pb.less_constraints) or
+         is_101_coefficient(pb.less_equal_constraints)) and
         is_integer_variable(pb.vars.values)) {
+        printf("generalized_wedelin\n");
         return lp::generalized_wedelin(kappa, delta, theta, limit, pb);
     }
 
     throw lp::solver_error(solver_error::tag::no_solver_available);
 }
-}
+} // namespace lp

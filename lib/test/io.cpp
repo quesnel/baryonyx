@@ -111,7 +111,7 @@ test_examples_2()
 
     long loop[3] = { 5, 1, 4 };
     double results[3] = { 15, 21, 95 };
-    std::vector<std::vector<int>> values(3);
+    std::vector<std::deque<int>> values(3);
 
     values[0] = { 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1 };
     values[1] = { 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0, 0 };
@@ -142,7 +142,7 @@ test_examples_2()
 
         auto result = lp::solve(pb, params);
 
-        Ensures(result.optimal == true);
+        Ensures(result.solution_found == true);
         Ensures(result.loop == loop[i - 1]);
         Ensures(result.value == results[i - 1]);
         Ensures(result.variable_value == values[i - 1]);
@@ -233,6 +233,14 @@ test_examples_vm()
     std::cout << __func__ << '\n' << lp::resume(pb) << '\n';
 }
 
+void
+test_verger_5_5()
+{
+    auto pb = lp::make_problem(EXAMPLES_DIR "/verger_5_5.lp");
+
+    std::cout << __func__ << '\n' << lp::resume(pb) << '\n';
+}
+
 int
 main(int /* argc */, char* /* argv */ [])
 {
@@ -243,6 +251,7 @@ main(int /* argc */, char* /* argv */ [])
     test_examples_sudoku();
     test_examples_8_queens_puzzle();
     test_examples_vm();
+    test_verger_5_5();
 
     return unit_test::report_errors();
 }

@@ -37,10 +37,11 @@ operator<<(std::ostream& os, const result& result)
     auto store = os.flags();
 
     os.flags(store | os.boolalpha);
-    os << "optimal: " << result.optimal << '\n'
-       << "value..: " << result.value << '\n'
-       << "loop...: " << result.loop << '\n'
-       << "vars...: ";
+    os << "solver........: " << result.method << '\n'
+       << "solution found: " << result.solution_found << '\n'
+       << "value.........: " << result.value << '\n'
+       << "loop..........: " << result.loop << '\n'
+       << "vars..........: ";
 
     std::copy(result.variable_name.begin(),
               result.variable_name.end(),
@@ -59,7 +60,8 @@ operator<<(std::ostream& os, const result& result)
     return os;
 }
 
-struct resume {
+struct resume
+{
     resume(const problem& pb)
       : variables{ 0, 0, 0 }
       , constraints{ 0, 0, 0, 0, 0 }

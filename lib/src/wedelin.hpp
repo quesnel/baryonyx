@@ -72,13 +72,16 @@ make_c(index n, const problem& p)
     return c;
 }
 
-struct maximize_wedelin_tag {
+struct maximize_wedelin_tag
+{
 };
-struct minimize_wedelin_tag {
+struct minimize_wedelin_tag
+{
 };
 
 template <typename T>
-struct solver_wedelin_tag {
+struct solver_wedelin_tag
+{
     using type = T;
 };
 
@@ -101,8 +104,10 @@ sort_wedelin(iteratorT begin, iteratorT end, maximize_wedelin_tag)
 }
 
 template <typename modeT>
-class default_algorithm {
-    struct r_data {
+class default_algorithm
+{
+    struct r_data
+    {
         r_data(double value_, index index_)
           : value(value_)
           , id(index_)
@@ -126,7 +131,7 @@ class default_algorithm {
     std::vector<std::vector<r_data>> r;
     double kappa, delta, theta;
     index loop;
-    bool optimal;
+    bool solution_found;
 
     void update_row(int k)
     {
@@ -194,7 +199,7 @@ public:
       , delta(delta_)
       , theta(theta_)
       , loop(0)
-      , optimal(false)
+      , solution_found(false)
     {
         Ensures(kappa >= 0 and kappa < 1, "kappa [0, 1[");
         Ensures(delta >= 0, "delta [0, +oo[");
@@ -230,7 +235,7 @@ public:
             }
 
             if (R.empty()) {
-                optimal = true;
+                solution_found = true;
                 return;
             }
 
@@ -258,8 +263,9 @@ public:
     result results() const
     {
         result ret;
+        ret.method = "wedelin";
         ret.loop = loop;
-        ret.optimal = optimal;
+        ret.solution_found = solution_found;
         ret.value = compute_value();
         ret.variable_name.resize(n);
         ret.variable_value.resize(n, 0);

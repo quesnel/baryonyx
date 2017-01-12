@@ -64,7 +64,7 @@ inline void
 are_bounds_correct(const problem& pb)
 {
     for (std::size_t i{ 0 }, e{ pb.vars.values.size() }; i != e; ++i)
-        if (pb.vars.values[i].min >= pb.vars.values[i].max)
+        if (pb.vars.values[i].min > pb.vars.values[i].max)
             throw problem_definition_error(
               pb.vars.names[i], problem_definition_error::tag::bad_bound);
 }

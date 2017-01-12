@@ -20,46 +20,105 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <lpcore>
+#include "unit-test.hpp"
+#include <fstream>
+#include <iostream>
 #include <lpcore-compare>
 #include <lpcore-out>
-#include <iostream>
-#include <fstream>
-#include <numeric>
+#include <lpcore>
 #include <map>
+#include <numeric>
+#include <random>
 #include <sstream>
-#include "unit-test.hpp"
 
-void test_general_lp()
+void
+test_8_queens_puzzle_fixed_cost()
 {
-    auto pb = lp::make_problem(EXAMPLES_DIR "/general.lp");
-    std::cout << __func__ << '\n' << lp::resume(pb) << '\n';
-
-    Ensures(pb.type == lp::objective_function_type::minimize);
-    Ensures(pb.vars.names.size() == 3);
-    Ensures(pb.vars.values.size() == 3);
-
-    lp::index nb {0};
-    for (auto& elem : pb.vars.values)
-        if (elem.type == lp::variable_type::general)
-            ++nb;
-
-    Ensures(nb == 3);
+    auto pb = lp::make_problem(EXAMPLES_DIR "/8_queens_puzzle.lp");
 
     std::map<std::string, lp::parameter> params;
-    params["kappa"] = 0.5;
+    params["kappa"] = 0.1;
     params["theta"] = 0.5;
     params["delta"] = 0.5;
-    params["limit"] = 1000l;
+    params["limit"] = 100l;
+
+    std::vector<int> cost{ 25, 89, 12, 22, 84, 3,  61, 14, 93, 97, 68, 5,  51,
+                           72, 96, 80, 13, 38, 81, 48, 70, 50, 66, 68, 30, 97,
+                           79, 4,  41, 44, 47, 62, 60, 11, 18, 44, 57, 24, 7,
+                           11, 66, 87, 9,  17, 27, 60, 95, 45, 94, 47, 60, 87,
+                           79, 53, 81, 52, 91, 53, 57, 8,  63, 78, 1,  8 };
+
+    std::size_t i{ 0 };
+
+    for (auto& elem : pb.objective.elements)
+        elem.factor = cost[i++];
+
+    auto result = lp::solve(pb, params);
+
+    std::cout << result << '\n';
+
+    for (int i = 0; i != 8; ++i) {
+        for (int j = 0; j != 8; ++j) {
+            std::cout << result.variable_value[j * 8 + i] << ' ';
+        }
+        std::cout << '\n';
+    }
+
+    Ensures(result.solution_found == true);
+}
+
+void
+test_8_queens_puzzle_random_cost()
+{
+    auto pb = lp::make_problem(EXAMPLES_DIR "/8_queens_puzzle.lp");
+
+    std::map<std::string, lp::parameter> params;
+    params["kappa"] = 0.1;
+    params["theta"] = 0.1;
+    params["delta"] = 0.1;
+    params["limit"] = 20l;
+
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<> dis(1, 100);
+
+    for (auto& elem : pb.objective.elements)
+        elem.factor = dis(gen);
+
+    auto result = lp::solve(pb, params);
+
+    std::cout << result << '\n';
+
+    for (int i = 0; i != 8; ++i) {
+        for (int j = 0; j != 8; ++j) {
+            std::cout << result.variable_value[j * 8 + i] << ' ';
+        }
+        std::cout << '\n';
+    }
+}
+
+void
+test_verger_5_5()
+{
+    auto pb = lp::make_problem(EXAMPLES_DIR "/verger_5_5.lp");
+
+    std::map<std::string, lp::parameter> params;
+    params["kappa"] = 0.8;
+    params["theta"] = 0.5;
+    params["delta"] = 0.5;
+    params["limit"] = 100l;
 
     auto result = lp::solve(pb, params);
 
     std::cout << result << '\n';
 }
 
-int main(int /* argc */, char */* argv */[])
+int
+main(int /* argc */, char* /* argv */ [])
 {
-    test_general_lp();
+    test_8_queens_puzzle_fixed_cost();
+    test_8_queens_puzzle_random_cost();
+    test_verger_5_5();
 
     return unit_test::report_errors();
 }

@@ -24,6 +24,7 @@
 #define ORG_VLEPROJECT_LP_LPCORE
 
 #include <algorithm>
+#include <deque>
 #include <limits>
 #include <map>
 #include <stdexcept>
@@ -65,21 +66,24 @@ namespace lp {
 
 using index = long int;
 
-struct precondition_error : std::logic_error {
+struct precondition_error : std::logic_error
+{
     precondition_error(const char* msg)
       : std::logic_error(msg)
     {
     }
 };
 
-struct postcondition_error : std::logic_error {
+struct postcondition_error : std::logic_error
+{
     postcondition_error(const char* msg)
       : std::logic_error(msg)
     {
     }
 };
 
-struct numeric_cast_error : public std::exception {
+struct numeric_cast_error : public std::exception
+{
     virtual const char* what() const noexcept
     {
         return "numeric cast error: loss of range in numeric_cast";
@@ -120,7 +124,8 @@ numeric_cast(Source s)
     return static_cast<Target>(s);
 }
 
-struct file_access_error : std::runtime_error {
+struct file_access_error : std::runtime_error
+{
     file_access_error(std::string file, int error)
       : std::runtime_error("file_access_error")
       , m_file(file)
@@ -130,14 +135,15 @@ struct file_access_error : std::runtime_error {
 
     std::string file() const { return m_file; }
     int error() const { return m_error; }
-
 private:
     std::string m_file;
     int m_error;
 };
 
-struct file_format_error : std::runtime_error {
-    enum class tag {
+struct file_format_error : std::runtime_error
+{
+    enum class tag
+    {
         end_of_file,
         unknown,
         already_defined,
@@ -172,7 +178,6 @@ struct file_format_error : std::runtime_error {
     int line() const { return m_line; }
     int column() const { return m_column; }
     tag failure() const { return m_failure; }
-
 private:
     std::string m_element;
     int m_line;
@@ -180,8 +185,10 @@ private:
     tag m_failure;
 };
 
-struct problem_definition_error : std::runtime_error {
-    enum class tag {
+struct problem_definition_error : std::runtime_error
+{
+    enum class tag
+    {
         empty_variables,
         empty_objective_function,
         variable_not_used,
@@ -197,14 +204,19 @@ struct problem_definition_error : std::runtime_error {
 
     std::string element() const { return m_element; }
     tag failure() const { return m_failure; }
-
 private:
     std::string m_element;
     tag m_failure;
 };
 
-struct solver_error : std::runtime_error {
-    enum class tag { no_solver_available, not_enough_memory };
+struct solver_error : std::runtime_error
+{
+    enum class tag
+    {
+        no_solver_available,
+        unrealisable_constraint,
+        not_enough_memory
+    };
 
     solver_error(tag failure)
       : std::runtime_error("solver_error")
@@ -218,27 +230,30 @@ private:
     tag m_failure;
 };
 
-struct parameter {
-    enum class tag { integer, real, string };
+struct parameter
+{
+    enum class tag
+    {
+        integer,
+        real,
+        string
+    };
 
     parameter()
       : l(0)
       , type(tag::integer)
     {
     }
-
     explicit parameter(long value_)
       : l(value_)
       , type(tag::integer)
     {
     }
-
     explicit parameter(double value_)
       : d(value_)
       , type(tag::real)
     {
     }
-
     explicit parameter(const std::string& value_)
       : s(value_)
       , type(tag::string)
@@ -409,7 +424,8 @@ struct parameter {
         p = copy;
     }
 
-    union {
+    union
+    {
         long l;
         double d;
         std::string s;
@@ -418,11 +434,22 @@ struct parameter {
     tag type;
 };
 
-enum class variable_type { real, binary, general };
+enum class variable_type
+{
+    real,
+    binary,
+    general
+};
 
-enum class objective_function_type { undefined, maximize, minimize };
+enum class objective_function_type
+{
+    undefined,
+    maximize,
+    minimize
+};
 
-enum class operator_type {
+enum class operator_type
+{
     undefined,
     equal,
     greater,
@@ -431,7 +458,8 @@ enum class operator_type {
     less_equal
 };
 
-struct variable_value {
+struct variable_value
+{
     int min = { 0 };
     int max = std::numeric_limits<int>::max();
     variable_type type = variable_type::real;
@@ -439,12 +467,14 @@ struct variable_value {
     bool max_equal{ false };
 };
 
-struct variables {
-    std::vector<std::string> names;
-    std::vector<variable_value> values;
+struct variables
+{
+    std::deque<std::string> names;
+    std::deque<variable_value> values;
 };
 
-struct function_element {
+struct function_element
+{
     function_element(int factor_, index variable_index_) noexcept
       : factor(factor_),
         variable_index(variable_index_)
@@ -455,26 +485,29 @@ struct function_element {
     index variable_index{ -1 };
 };
 
-struct constraint {
-    std::vector<function_element> elements;
+struct constraint
+{
+    std::deque<function_element> elements;
     double min;
     double max;
 };
 
-struct objective_function {
-    std::vector<function_element> elements;
+struct objective_function
+{
+    std::deque<function_element> elements;
     int constant = { 0 };
 };
 
-struct problem {
+struct problem
+{
     objective_function objective;
-    std::vector<constraint> equal_constraints;
-    std::vector<constraint> greater_constraints;
-    std::vector<constraint> greater_equal_constraints;
-    std::vector<constraint> less_constraints;
-    std::vector<constraint> less_equal_constraints;
+    std::deque<constraint> equal_constraints;
+    std::deque<constraint> greater_constraints;
+    std::deque<constraint> greater_equal_constraints;
+    std::deque<constraint> less_constraints;
+    std::deque<constraint> less_equal_constraints;
 
-    std::vector<std::tuple<std::string, index, operator_type>>
+    std::deque<std::tuple<std::string, index, operator_type>>
       names_constraints;
 
     variables vars;
@@ -482,12 +515,14 @@ struct problem {
     objective_function_type type = { objective_function_type::maximize };
 };
 
-struct result {
-    std::vector<std::string> variable_name;
-    std::vector<int> variable_value;
+struct result
+{
+    std::string method;
+    std::deque<std::string> variable_name;
+    std::deque<int> variable_value;
     double value;
     index loop;
-    bool optimal;
+    bool solution_found;
 };
 
 /**

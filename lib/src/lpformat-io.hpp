@@ -76,10 +76,8 @@ is_valid_character(int c) noexcept
         case '_':
         case '{':
         case '}':
-        case '~':
-            return true;
-        default:
-            return false;
+        case '~': return true;
+        default: return false;
     }
 }
 
@@ -89,7 +87,8 @@ is_value(int c) noexcept
     return std::isdigit(c) or c == '-';
 }
 
-struct parser_stack {
+struct parser_stack
+{
     parser_stack(std::istream& is_)
       : m_is(is_)
       , m_line(0)
@@ -287,8 +286,7 @@ struct parser_stack {
         if (stack[0].size() > i) {
             m_position_stack.emplace_front(m_line, m_column - i);
             stack[0] = stack[0].substr(i, std::string::npos);
-        }
-        else {
+        } else {
             m_position_stack.pop_front();
             stack.pop_front();
         }
@@ -441,8 +439,7 @@ read_operator(parser_stack& stack)
         if (str.size() > 1 and str[1] == '=') {
             stack.substr_front(2);
             return operator_type::less_equal;
-        }
-        else {
+        } else {
             stack.substr_front(1);
             return operator_type::less;
         }
@@ -452,8 +449,7 @@ read_operator(parser_stack& stack)
         if (str.size() > 1 and str[1] == '=') {
             stack.substr_front(2);
             return operator_type::greater_equal;
-        }
-        else {
+        } else {
             stack.substr_front(1);
             return operator_type::greater;
         }
@@ -482,8 +478,7 @@ read_integer(parser_stack& stack)
 
         if (str.size() > 1) {
             i = 1;
-        }
-        else {
+        } else {
             stack.pop();
             str = stack.top();
         }
@@ -498,8 +493,7 @@ read_integer(parser_stack& stack)
             if (std::isdigit(str[i])) {
                 ret *= 10;
                 ret += str[i] - '0';
-            }
-            else {
+            } else {
                 break;
             }
         }
@@ -526,8 +520,7 @@ read_function_element(parser_stack& stack)
 
             if (str.length() != 1)
                 stack.push_front(str.substr(1, std::string::npos));
-        }
-        else {
+        } else {
             stack.push_front(str);
         }
     }
@@ -539,8 +532,7 @@ read_function_element(parser_stack& stack)
             std::get<1>(ret) = read_integer(stack);
             if (negative)
                 std::get<1>(ret) *= -1;
-        }
-        else if (negative) {
+        } else if (negative) {
             std::get<1>(ret) = -1;
         }
     }
@@ -551,6 +543,8 @@ read_function_element(parser_stack& stack)
         std::get<0>(ret) = read_name(stack);
         return ret;
     }
+
+    printf("l:%d c:%d\n", stack.line(), stack.column());
 
     throw file_format_error(file_format_error::tag::bad_function_element,
                             stack.line(),
@@ -618,8 +612,7 @@ read_constraint(parser_stack& stack, problem& p)
         if (stack.peek() == ':') {
             label = tmp;
             stack.substr_front(1);
-        }
-        else {
+        } else {
             cst.elements.emplace_back(1, get_variable(p, tmp));
         }
     }
@@ -686,8 +679,7 @@ read_constraint(parser_stack& stack, problem& p)
                 cst.max = cst.min;
                 return std::make_tuple(cst, type, label);
             }
-        }
-        else {
+        } else {
             while (not is_operator(stack.peek()) and
                    not iequals(str, "binary") and
                    not iequals(str, "binaries") and
@@ -788,8 +780,7 @@ apply_bound(int value, operator_type type, variable_value& variable)
             variable.max = value;
             variable.max_equal = true;
             break;
-        case operator_type::undefined:
-            break;
+        case operator_type::undefined: break;
     }
 }
 
@@ -819,8 +810,7 @@ apply_bound(variable_value& variable, operator_type type, int value)
             variable.max = value;
             variable.max_equal = true;
             break;
-        case operator_type::undefined:
-            break;
+        case operator_type::undefined: break;
     }
 }
 
@@ -852,8 +842,7 @@ read_bound(parser_stack& stack, problem& p)
 
             apply_bound(p.vars.values[id], operator_type_second, value_second);
         }
-    }
-    else {
+    } else {
         /*
          * Tries to read the bound: variable_name [>|>=|=|<|<=] value
          */
@@ -951,7 +940,8 @@ read_problem(std::istream& is)
       "end", file_format_error::tag::incomplete, stack.line(), stack.column());
 }
 
-struct problem_writer {
+struct problem_writer
+{
     const problem& p;
     std::ostream& os;
     int error;
@@ -993,8 +983,7 @@ struct problem_writer {
                 have_binary = true;
                 if (have_general == true)
                     break;
-            }
-            else if (p.vars.values[i].type == variable_type::general) {
+            } else if (p.vars.values[i].type == variable_type::general) {
                 have_general = true;
                 if (have_binary == true)
                     break;
@@ -1034,7 +1023,7 @@ private:
         }
     }
 
-    void write_function_element(const std::vector<function_element>& f) const
+    void write_function_element(const std::deque<function_element>& f) const
     {
         for (auto& elem : f) {
             os << ((elem.factor < 0) ? "- " : "+ ");
@@ -1056,8 +1045,7 @@ private:
             os << cste.min << separator;
             write_function_element(cste.elements);
             os << separator << cste.max << '\n';
-        }
-        else {
+        } else {
             write_function_element(cste.elements);
             os << separator << cste.max << '\n';
         }
