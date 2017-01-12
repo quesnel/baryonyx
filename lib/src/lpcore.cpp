@@ -20,15 +20,16 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <lpcore>
-#include <fstream>
-#include "lpformat-io.hpp"
 #include "lpformat-consistency.hpp"
+#include "lpformat-io.hpp"
 #include "mitm.hpp"
+#include <fstream>
+#include <lpcore>
 
 namespace lp {
 
-problem make_problem(const std::string& filename)
+problem
+make_problem(const std::string& filename)
 {
     std::ifstream ifs;
     ifs.exceptions(std::ifstream::badbit);
@@ -37,26 +38,27 @@ problem make_problem(const std::string& filename)
     return details::read_problem(ifs);
 }
 
-problem make_problem(std::istream& is)
+problem
+make_problem(std::istream& is)
 {
     is.exceptions(std::ifstream::badbit);
 
     return details::read_problem(is);
 }
 
-std::ostream& operator<<(std::ostream& os, const problem& p)
+std::ostream&
+operator<<(std::ostream& os, const problem& p)
 {
     details::problem_writer pw(p, os);
 
     return os;
 }
 
-result solve(const problem& pb,
-             const std::map<std::string, parameter>& params)
+result
+solve(const problem& pb, const std::map<std::string, parameter>& params)
 {
     check(pb);
 
     return mitm(pb, params);
 }
-
 }

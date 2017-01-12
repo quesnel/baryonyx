@@ -27,30 +27,33 @@
 
 namespace lp {
 
-inline void Expects(bool condition)
+inline void
+Expects(bool condition)
 {
     if (not condition)
         throw precondition_error("precondition failure");
 }
 
-inline void Ensures(bool condition)
+inline void
+Ensures(bool condition)
 {
     if (not condition)
         throw postcondition_error("postcondition failure");
 }
 
-inline void Expects(bool condition, const char* s)
+inline void
+Expects(bool condition, const char* s)
 {
     if (not condition)
         throw precondition_error(s);
 }
 
-inline void Ensures(bool condition, const char* s)
+inline void
+Ensures(bool condition, const char* s)
 {
     if (not condition)
         throw postcondition_error(s);
 }
-
 }
 
 #endif

@@ -26,8 +26,8 @@
 #include "mitm.hpp"
 #include "utils.hpp"
 #include <Eigen/Core>
-#include <iterator>
 #include <iostream>
+#include <iterator>
 
 namespace lp {
 namespace details {
@@ -52,8 +52,11 @@ make_b(index m, const problem& p)
 {
     Eigen::VectorXi b = Eigen::VectorXi::Zero(m);
 
-    for (lp::index i = 0; i != m; ++i)
-        b(i) = p.equal_constraints[i].value;
+    for (lp::index i = 0; i != m; ++i) {
+        b(i) = p.equal_constraints[i].min;
+
+        assert(p.equal_constraints[i].min == p.equal_constraints[i].max);
+    }
 
     return b;
 }
@@ -69,43 +72,42 @@ make_c(index n, const problem& p)
     return c;
 }
 
+struct maximize_wedelin_tag {
+};
+struct minimize_wedelin_tag {
+};
 
-struct maximize_wedelin_tag {};
-struct minimize_wedelin_tag {};
-
-template<typename T>
+template <typename T>
 struct solver_wedelin_tag {
     using type = T;
 };
 
-template<typename iteratorT>
-void sort_wedelin(iteratorT begin, iteratorT end, minimize_wedelin_tag)
+template <typename iteratorT>
+void
+sort_wedelin(iteratorT begin, iteratorT end, minimize_wedelin_tag)
 {
-    std::sort(begin, end,
-              [](const auto& lhs, const auto& rhs)
-              {
-                  return lhs.value < rhs.value;
-              });
+    std::sort(begin, end, [](const auto& lhs, const auto& rhs) {
+        return lhs.value < rhs.value;
+    });
 }
 
-template<typename iteratorT>
-void sort_wedelin(iteratorT begin, iteratorT end, maximize_wedelin_tag)
+template <typename iteratorT>
+void
+sort_wedelin(iteratorT begin, iteratorT end, maximize_wedelin_tag)
 {
-    std::sort(begin, end,
-              [](const auto& lhs, const auto& rhs)
-              {
-                  return rhs.value < lhs.value;
-              });
+    std::sort(begin, end, [](const auto& lhs, const auto& rhs) {
+        return rhs.value < lhs.value;
+    });
 }
 
-template<typename modeT>
-class default_algorithm
-{
+template <typename modeT>
+class default_algorithm {
     struct r_data {
         r_data(double value_, index index_)
-            : value(value_)
-            , id(index_)
-        {}
+          : value(value_)
+          , id(index_)
+        {
+        }
 
         double value;
         index id;
@@ -131,10 +133,10 @@ class default_algorithm
         for (auto i : I[k])
             P(k, i) *= theta;
 
-        for (index i = 0, endi = numeric_cast<index>(I[k].size());
-             i != endi; ++i) {
-            double sum_a_pi {0};
-            double sum_a_p {0};
+        for (index i = 0, endi = numeric_cast<index>(I[k].size()); i != endi;
+             ++i) {
+            double sum_a_pi{ 0 };
+            double sum_a_p{ 0 };
 
             assert(k < numeric_cast<index>(I.size()));
             assert(i < numeric_cast<index>(I[k].size()));
@@ -154,9 +156,8 @@ class default_algorithm
 
         pi(k) += ((r[k][b(k)].value + r[k][b(k) - 1].value) / 2.0);
 
-        double d = delta
-            + ((kappa / (1.0 - kappa))
-               * (r[k][b(k) - 1].value - r[k][b(k)].value));
+        double d = delta + ((kappa / (1.0 - kappa)) *
+                            (r[k][b(k) - 1].value - r[k][b(k)].value));
 
         for (index j = 0; j < b(k); ++j) {
             x(r[k][j].id) = 1;
@@ -164,33 +165,36 @@ class default_algorithm
         }
 
         for (index j = b(k), endj = numeric_cast<index>(I[k].size());
-             j != endj; ++j) {
+             j != endj;
+             ++j) {
             x(r[k][j].id) = 0;
             P(k, r[k][j].id) -= -d;
         }
     }
 
 public:
-    default_algorithm(double kappa_, double delta_, double theta_,
-                      long limit, const problem& pb_)
-        : m(std::distance(pb_.equal_constraints.begin(),
-                          pb_.equal_constraints.end()))
-        , n(std::distance(pb_.vars.values.begin(),
-                          pb_.vars.values.end()))
-        , pb(pb_)
-        , A(make_a(m, n, pb))
-        , b(make_b(m, pb))
-        , c(make_c(n, pb))
-        , x(Eigen::VectorXi::Zero(n))
-        , P(Eigen::MatrixXf::Zero(m, n))
-        , pi(Eigen::VectorXf::Zero(m))
-        , I(m)
-        , r(m)
-        , kappa(kappa_)
-        , delta(delta_)
-        , theta(theta_)
-        , loop(0)
-        , optimal(false)
+    default_algorithm(double kappa_,
+                      double delta_,
+                      double theta_,
+                      long limit,
+                      const problem& pb_)
+      : m(std::distance(pb_.equal_constraints.begin(),
+                        pb_.equal_constraints.end()))
+      , n(std::distance(pb_.vars.values.begin(), pb_.vars.values.end()))
+      , pb(pb_)
+      , A(make_a(m, n, pb))
+      , b(make_b(m, pb))
+      , c(make_c(n, pb))
+      , x(Eigen::VectorXi::Zero(n))
+      , P(Eigen::MatrixXf::Zero(m, n))
+      , pi(Eigen::VectorXf::Zero(m))
+      , I(m)
+      , r(m)
+      , kappa(kappa_)
+      , delta(delta_)
+      , theta(theta_)
+      , loop(0)
+      , optimal(false)
     {
         Ensures(kappa >= 0 and kappa < 1, "kappa [0, 1[");
         Ensures(delta >= 0, "delta [0, +oo[");
@@ -216,9 +220,9 @@ public:
 
         std::vector<index> R;
         while (loop != limit) {
-            for (index k {0}; k != m; ++k) {
+            for (index k{ 0 }; k != m; ++k) {
                 int v = 0;
-                for (index i {0}; i != n; ++i)
+                for (index i{ 0 }; i != n; ++i)
                     v += A(k, i) * x(i);
 
                 if (v != b(k))
@@ -243,7 +247,7 @@ public:
 
     double compute_value() const
     {
-        double ret {0};
+        double ret{ 0 };
 
         for (auto& elem : pb.objective.elements)
             ret += elem.factor * x(elem.variable_index);
@@ -256,7 +260,7 @@ public:
         result ret;
         ret.loop = loop;
         ret.optimal = optimal;
-        ret.value  = compute_value();
+        ret.value = compute_value();
         ret.variable_name.resize(n);
         ret.variable_value.resize(n, 0);
 
@@ -272,10 +276,12 @@ public:
 
 } // namespace details
 
-inline
-result
-simple_wedelin(double kappa, double delta, double theta,
-               long limit, const problem& pb)
+inline result
+simple_wedelin(double kappa,
+               double delta,
+               double theta,
+               long limit,
+               const problem& pb)
 {
     using namespace details;
 

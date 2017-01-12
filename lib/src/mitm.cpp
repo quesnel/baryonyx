@@ -21,9 +21,9 @@
  */
 
 #include "mitm.hpp"
-#include "wedelin.hpp"
 #include "generalized-wedelin.hpp"
 #include "utils.hpp"
+#include "wedelin.hpp"
 #include <Eigen/Core>
 #include <iterator>
 
@@ -32,41 +32,45 @@ namespace lp {
 std::tuple<double, double, double, long>
 get_parameters(const std::map<std::string, parameter>& params)
 {
-    double kappa {0.001}, delta{0.001}, theta{0.0001};
-    long limit {1000};
+    double kappa{ 0.001 }, delta{ 0.001 }, theta{ 0.0001 };
+    long limit{ 1000 };
 
     {
-        auto it = params.find("kappa"); 
+        auto it = params.find("kappa");
         if (it->second.type == parameter::tag::real)
             kappa = it->second.d;
     }
 
     {
-        auto it = params.find("theta"); 
+        auto it = params.find("theta");
         if (it->second.type == parameter::tag::real)
             theta = it->second.d;
     }
 
     {
-        auto it = params.find("delta"); 
+        auto it = params.find("delta");
         if (it->second.type == parameter::tag::real)
             delta = it->second.d;
     }
 
     {
-        auto it = params.find("limit"); 
+        auto it = params.find("limit");
         if (it->second.type == parameter::tag::integer)
             limit = it->second.l;
     }
 
     std::printf("Solve: kappa(%f) theta(%f) delta(%f) - limit(%ld)\n",
-                kappa, theta, delta, limit);
+                kappa,
+                theta,
+                delta,
+                limit);
 
     return std::make_tuple(kappa, delta, theta, limit);
 }
 
-template<typename variableT>
-bool is_boolean_variable(const variableT& vars)
+template <typename variableT>
+bool
+is_boolean_variable(const variableT& vars)
 {
     for (const auto& elem : vars)
         if (elem.type != variable_type::binary)
@@ -75,8 +79,9 @@ bool is_boolean_variable(const variableT& vars)
     return true;
 }
 
-template<typename constraintsT>
-bool is_boolean_coefficient(const constraintsT csts)
+template <typename constraintsT>
+bool
+is_boolean_coefficient(const constraintsT csts)
 {
     for (const auto& cst : csts)
         for (const auto& elem : cst.elements)
@@ -86,8 +91,9 @@ bool is_boolean_coefficient(const constraintsT csts)
     return true;
 }
 
-template<typename variableT>
-bool is_integer_variable(const variableT& vars)
+template <typename variableT>
+bool
+is_integer_variable(const variableT& vars)
 {
     for (const auto& elem : vars)
         if (elem.type != variable_type::general)
@@ -96,8 +102,9 @@ bool is_integer_variable(const variableT& vars)
     return true;
 }
 
-template<typename constraintsT>
-bool is_101_coefficient(const constraintsT csts)
+template <typename constraintsT>
+bool
+is_101_coefficient(const constraintsT csts)
 {
     for (const auto& cst : csts)
         for (const auto& elem : cst.elements)
@@ -107,33 +114,32 @@ bool is_101_coefficient(const constraintsT csts)
     return true;
 }
 
-result mitm(const problem& pb, const std::map<std::string, parameter>& params)
+result
+mitm(const problem& pb, const std::map<std::string, parameter>& params)
 {
     double kappa, delta, theta;
     long limit;
 
     std::tie(kappa, delta, theta, limit) = get_parameters(params);
 
-    if (pb.greater_constraints.empty()
-        and pb.greater_equal_constraints.empty()
-        and pb.less_constraints.empty()
-        and pb.less_equal_constraints.empty()) {
+    if (pb.greater_constraints.empty() and
+        pb.greater_equal_constraints.empty() and
+        pb.less_constraints.empty() and pb.less_equal_constraints.empty()) {
 
-        if (is_boolean_coefficient(pb.equal_constraints)
-            and is_boolean_variable(pb.vars.values))
+        if (is_boolean_coefficient(pb.equal_constraints) and
+            is_boolean_variable(pb.vars.values))
             return simple_wedelin(kappa, delta, theta, limit, pb);
     }
 
-    if (is_101_coefficient(pb.equal_constraints)
-        and is_101_coefficient(pb.greater_constraints)
-        and is_101_coefficient(pb.greater_equal_constraints)
-        and is_101_coefficient(pb.less_constraints)
-        and is_101_coefficient(pb.less_equal_constraints)
-        and is_integer_variable(pb.vars.values)) {
+    if (is_101_coefficient(pb.equal_constraints) and
+        is_101_coefficient(pb.greater_constraints) and
+        is_101_coefficient(pb.greater_equal_constraints) and
+        is_101_coefficient(pb.less_constraints) and
+        is_101_coefficient(pb.less_equal_constraints) and
+        is_integer_variable(pb.vars.values)) {
         return lp::generalized_wedelin(kappa, delta, theta, limit, pb);
     }
 
     throw lp::solver_error(solver_error::tag::no_solver_available);
 }
-
 }

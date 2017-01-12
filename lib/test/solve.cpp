@@ -20,17 +20,46 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef ORG_VLEPROJECT_LP_MITM_HPP
-#define ORG_VLEPROJECT_LP_MITM_HPP
-
-#include "utils.hpp"
-#include <Eigen/Core>
 #include <lpcore>
-#include <type_traits>
+#include <lpcore-compare>
+#include <lpcore-out>
+#include <iostream>
+#include <fstream>
+#include <numeric>
+#include <map>
+#include <sstream>
+#include "unit-test.hpp"
 
-namespace lp {
+void test_general_lp()
+{
+    auto pb = lp::make_problem(EXAMPLES_DIR "/general.lp");
+    std::cout << __func__ << '\n' << lp::resume(pb) << '\n';
 
-result mitm(const problem& pb, const std::map<std::string, parameter>& params);
+    Ensures(pb.type == lp::objective_function_type::minimize);
+    Ensures(pb.vars.names.size() == 3);
+    Ensures(pb.vars.values.size() == 3);
+
+    lp::index nb {0};
+    for (auto& elem : pb.vars.values)
+        if (elem.type == lp::variable_type::general)
+            ++nb;
+
+    Ensures(nb == 3);
+
+    std::map<std::string, lp::parameter> params;
+    params["kappa"] = 0.5;
+    params["theta"] = 0.5;
+    params["delta"] = 0.5;
+    params["limit"] = 1000l;
+
+    auto result = lp::solve(pb, params);
+
+    std::cout << result << '\n';
 }
 
-#endif
+int main(int /* argc */, char */* argv */[])
+{
+    test_general_lp();
+
+    return unit_test::report_errors();
+}

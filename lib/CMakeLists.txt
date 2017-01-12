@@ -70,3 +70,13 @@ target_include_directories(testlib PUBLIC
   PRIVATE src)
 target_link_libraries(testlib liblp boost eigen3 threads)
 add_test(testlib testlib)
+
+add_executable(testsolver test/solve.cpp)
+set_target_properties(testsolver PROPERTIES
+  COMPILE_DEFINITIONS EXAMPLES_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}/test\")
+target_include_directories(testsolver PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>
+  PRIVATE src)
+target_link_libraries(testsolver liblp boost eigen3 threads)
+add_test(testsolver testsolver)

@@ -26,9 +26,9 @@
 #include <algorithm>
 #include <limits>
 #include <map>
-#include <tuple>
 #include <stdexcept>
 #include <string>
+#include <tuple>
 #include <vector>
 
 #if defined _WIN32 || defined __CYGWIN__
@@ -37,9 +37,9 @@
 #define LP_HELPER_DLL_LOCAL
 #else
 #if __GNUC__ >= 4
-#define LP_HELPER_DLL_IMPORT __attribute__ ((visibility ("default")))
-#define LP_HELPER_DLL_EXPORT __attribute__ ((visibility ("default")))
-#define LP_HELPER_DLL_LOCAL  __attribute__ ((visibility ("hidden")))
+#define LP_HELPER_DLL_IMPORT __attribute__((visibility("default")))
+#define LP_HELPER_DLL_EXPORT __attribute__((visibility("default")))
+#define LP_HELPER_DLL_LOCAL __attribute__((visibility("hidden")))
 #else
 #define LP_HELPER_DLL_IMPORT
 #define LP_HELPER_DLL_EXPORT
@@ -65,30 +65,30 @@ namespace lp {
 
 using index = long int;
 
-struct precondition_error : std::logic_error
-{
-    precondition_error(const char *msg)
-        : std::logic_error(msg)
-    {}
+struct precondition_error : std::logic_error {
+    precondition_error(const char* msg)
+      : std::logic_error(msg)
+    {
+    }
 };
 
-struct postcondition_error : std::logic_error
-{
-    postcondition_error(const char *msg)
-        : std::logic_error(msg)
-    {}
+struct postcondition_error : std::logic_error {
+    postcondition_error(const char* msg)
+      : std::logic_error(msg)
+    {
+    }
 };
 
-struct numeric_cast_error : public std::exception
-{
-    virtual const char *what() const noexcept
+struct numeric_cast_error : public std::exception {
+    virtual const char* what() const noexcept
     {
         return "numeric cast error: loss of range in numeric_cast";
     }
 };
 
-template<typename Target, typename Source>
-inline bool is_numeric_castable(Source arg)
+template <typename Target, typename Source>
+inline bool
+is_numeric_castable(Source arg)
 {
     static_assert(std::is_integral<Source>::value, "Integer required.");
     static_assert(std::is_integral<Target>::value, "Integer required.");
@@ -96,22 +96,23 @@ inline bool is_numeric_castable(Source arg)
     using arg_traits = std::numeric_limits<Source>;
     using result_traits = std::numeric_limits<Target>;
 
-    if (result_traits::digits == arg_traits::digits
-        and result_traits::is_signed == arg_traits::is_signed)
+    if (result_traits::digits == arg_traits::digits and
+        result_traits::is_signed == arg_traits::is_signed)
         return true;
 
     if (result_traits::digits > arg_traits::digits)
         return result_traits::is_signed or arg >= 0;
 
-    if (arg_traits::is_signed
-        and arg < static_cast<Source>(result_traits::min()))
+    if (arg_traits::is_signed and
+        arg < static_cast<Source>(result_traits::min()))
         return false;
 
     return arg <= static_cast<Source>(result_traits::max());
 }
 
-template<typename Target, typename Source>
-inline Target numeric_cast(Source s)
+template <typename Target, typename Source>
+inline Target
+numeric_cast(Source s)
 {
     if (not is_numeric_castable<Target>(s))
         throw lp::numeric_cast_error();
@@ -119,13 +120,13 @@ inline Target numeric_cast(Source s)
     return static_cast<Target>(s);
 }
 
-struct file_access_error : std::runtime_error
-{
+struct file_access_error : std::runtime_error {
     file_access_error(std::string file, int error)
-        : std::runtime_error("file_access_error")
-        , m_file(file)
-        , m_error(error)
-    {}
+      : std::runtime_error("file_access_error")
+      , m_file(file)
+      , m_error(error)
+    {
+    }
 
     std::string file() const { return m_file; }
     int error() const { return m_error; }
@@ -135,29 +136,37 @@ private:
     int m_error;
 };
 
-struct file_format_error : std::runtime_error
-{
-    enum class tag { end_of_file, unknown, already_defined, incomplete,
-                     bad_name, bad_operator, bad_integer,
-                     bad_objective_function_type,
-                     bad_bound,
-                     bad_function_element,
-                     bad_constraint };
+struct file_format_error : std::runtime_error {
+    enum class tag {
+        end_of_file,
+        unknown,
+        already_defined,
+        incomplete,
+        bad_name,
+        bad_operator,
+        bad_integer,
+        bad_objective_function_type,
+        bad_bound,
+        bad_function_element,
+        bad_constraint
+    };
 
     file_format_error(std::string element, tag failure, int line, int column)
-        : std::runtime_error("file_format_error")
-        , m_element(std::move(element))
-        , m_line(line)
-        , m_column(column)
-        , m_failure(failure)
-    {}
+      : std::runtime_error("file_format_error")
+      , m_element(std::move(element))
+      , m_line(line)
+      , m_column(column)
+      , m_failure(failure)
+    {
+    }
 
     file_format_error(tag failure, int line, int column)
-        : std::runtime_error("file_format_error")
-        , m_line(line)
-        , m_column(column)
-        , m_failure(failure)
-    {}
+      : std::runtime_error("file_format_error")
+      , m_line(line)
+      , m_column(column)
+      , m_failure(failure)
+    {
+    }
 
     std::string element() const { return m_element; }
     int line() const { return m_line; }
@@ -171,16 +180,20 @@ private:
     tag m_failure;
 };
 
-struct problem_definition_error : std::runtime_error
-{
-    enum class tag { empty_variables, empty_objective_function,
-                     variable_not_used, bad_bound };
+struct problem_definition_error : std::runtime_error {
+    enum class tag {
+        empty_variables,
+        empty_objective_function,
+        variable_not_used,
+        bad_bound
+    };
 
     problem_definition_error(std::string element, tag failure)
-        : std::runtime_error("problem_definition_error")
-        , m_element(element)
-        , m_failure(failure)
-    {}
+      : std::runtime_error("problem_definition_error")
+      , m_element(element)
+      , m_failure(failure)
+    {
+    }
 
     std::string element() const { return m_element; }
     tag failure() const { return m_failure; }
@@ -190,14 +203,14 @@ private:
     tag m_failure;
 };
 
-struct solver_error : std::runtime_error
-{
+struct solver_error : std::runtime_error {
     enum class tag { no_solver_available, not_enough_memory };
 
     solver_error(tag failure)
-        : std::runtime_error("solver_error")
-        , m_failure(failure)
-    {}
+      : std::runtime_error("solver_error")
+      , m_failure(failure)
+    {
+    }
 
     tag failure() const { return m_failure; }
 
@@ -205,59 +218,62 @@ private:
     tag m_failure;
 };
 
-struct parameter
-{
+struct parameter {
     enum class tag { integer, real, string };
 
     parameter()
-        : l(0)
-        , type(tag::integer)
-    {}
+      : l(0)
+      , type(tag::integer)
+    {
+    }
 
     explicit parameter(long value_)
-        : l(value_)
-        , type(tag::integer)
-    {}
+      : l(value_)
+      , type(tag::integer)
+    {
+    }
 
     explicit parameter(double value_)
-        : d(value_)
-        , type(tag::real)
-    {}
+      : d(value_)
+      , type(tag::real)
+    {
+    }
 
     explicit parameter(const std::string& value_)
-        : s(value_)
-        , type(tag::string)
-    {}
+      : s(value_)
+      , type(tag::string)
+    {
+    }
 
     parameter(const parameter& w)
-        : type(w.type)
+      : type(w.type)
     {
         switch (w.type) {
-        case tag::integer:
-            l = w.l;
-            break;
-        case tag::real:
-            d = w.d;
-            break;
-        case tag::string:
-            new (&s) std::string(w.s);
-            break;
+            case tag::integer:
+                l = w.l;
+                break;
+            case tag::real:
+                d = w.d;
+                break;
+            case tag::string:
+                new (&s) std::string(w.s);
+                break;
         }
     }
 
     parameter(parameter&& w)
-        : type(w.type)
+      : type(w.type)
     {
         switch (w.type) {
-        case tag::integer:
-            l = w.l;
-            break;
-        case tag::real:
-            d = w.d;
-            break;
-        case tag::string:
-            s = std::move(w.s);
-            break;
+            case tag::integer:
+                l = w.l;
+                break;
+            case tag::real:
+                d = w.d;
+                break;
+            case tag::string:
+                s = std::move(w.s);
+                break;
         }
 
         w.type = tag::integer;
@@ -277,20 +293,20 @@ struct parameter
         }
 
         switch (w.type) {
-        case tag::integer:
-            l = w.l;
-            break;
+            case tag::integer:
+                l = w.l;
+                break;
             case tag::real:
                 d = w.d;
                 break;
             case tag::string:
                 new (&s) std::string(w.s);
                 break;
-            }
-
-            type = w.type;
-            return *this;
         }
+
+        type = w.type;
+        return *this;
+    }
 
     parameter& operator=(parameter&& w)
     {
@@ -305,15 +321,15 @@ struct parameter
         }
 
         switch (w.type) {
-        case tag::integer:
-            l = w.l;
-            break;
-        case tag::real:
-            d = w.d;
-            break;
-        case tag::string:
-            s = std::move(w.s);
-            break;
+            case tag::integer:
+                l = w.l;
+                break;
+            case tag::real:
+                d = w.d;
+                break;
+            case tag::string:
+                s = std::move(w.s);
+                break;
         }
 
         type = w.type;
@@ -406,49 +422,51 @@ enum class variable_type { real, binary, general };
 
 enum class objective_function_type { undefined, maximize, minimize };
 
-enum class operator_type { undefined, equal, greater, greater_equal,
-                           less, less_equal };
-
-struct variable_value
-{
-    int min = {0};
-    int max = std::numeric_limits<int>::max();
-    variable_type type = variable_type::real;
-    bool min_equal {true};
-    bool max_equal {false};
+enum class operator_type {
+    undefined,
+    equal,
+    greater,
+    greater_equal,
+    less,
+    less_equal
 };
 
-struct variables
-{
+struct variable_value {
+    int min = { 0 };
+    int max = std::numeric_limits<int>::max();
+    variable_type type = variable_type::real;
+    bool min_equal{ true };
+    bool max_equal{ false };
+};
+
+struct variables {
     std::vector<std::string> names;
     std::vector<variable_value> values;
 };
 
-struct function_element
-{
+struct function_element {
     function_element(int factor_, index variable_index_) noexcept
-        : factor(factor_)
-        , variable_index(variable_index_)
-    {}
+      : factor(factor_),
+        variable_index(variable_index_)
+    {
+    }
 
-    int factor = {0};
-    index variable_index {-1};
+    int factor = { 0 };
+    index variable_index{ -1 };
 };
 
-struct constraint
-{
+struct constraint {
     std::vector<function_element> elements;
-    int value;
+    double min;
+    double max;
 };
 
-struct objective_function
-{
+struct objective_function {
     std::vector<function_element> elements;
-    int constant = {0};
+    int constant = { 0 };
 };
 
-struct problem
-{
+struct problem {
     objective_function objective;
     std::vector<constraint> equal_constraints;
     std::vector<constraint> greater_constraints;
@@ -456,16 +474,15 @@ struct problem
     std::vector<constraint> less_constraints;
     std::vector<constraint> less_equal_constraints;
 
-    std::vector<std::tuple<std::string, index,
-                           operator_type>> names_constraints;
+    std::vector<std::tuple<std::string, index, operator_type>>
+      names_constraints;
 
     variables vars;
 
-    objective_function_type type = {objective_function_type::maximize};
+    objective_function_type type = { objective_function_type::maximize };
 };
 
-struct result
-{
+struct result {
     std::vector<std::string> variable_name;
     std::vector<int> variable_value;
     double value;
@@ -480,8 +497,7 @@ struct result
  *  std::system_error.
  */
 LP_API
-problem
-make_problem(const std::string& filename);
+problem make_problem(const std::string& filename);
 
 /**
  * Read a \e lp file from the \e is stream.
@@ -490,16 +506,14 @@ make_problem(const std::string& filename);
  *  std::system_error.
  */
 LP_API
-problem
-make_problem(std::istream& is);
+problem make_problem(std::istream& is);
 
 /**
  * Write \e lp problem into a stream.
  *
  */
 LP_API
-std::ostream&
-operator<<(std::ostream& os, const problem& p);
+std::ostream& operator<<(std::ostream& os, const problem& p);
 
 /**
  * Solve the \c lp::problem using the \c std::vector<parameter>.
@@ -507,9 +521,8 @@ operator<<(std::ostream& os, const problem& p);
  * \exception lp::solver_error
  */
 LP_API
-result
-solve(const problem& pb, const std::map<std::string, parameter>& params);
-
+result solve(const problem& pb,
+             const std::map<std::string, parameter>& params);
 }
 
 #endif

@@ -23,8 +23,8 @@
 #ifndef ORG_VLEPROJECT_LP_LPFORMAT_CONSISTENCY_HPP
 #define ORG_VLEPROJECT_LP_LPFORMAT_CONSISTENCY_HPP
 
-#include <lpcore>
 #include <algorithm>
+#include <lpcore>
 
 namespace lp {
 namespace details {
@@ -56,23 +56,23 @@ are_variables_used(const problem& pb)
     auto it = std::find(std::begin(vars), std::end(vars), false);
     if (it != std::end(vars))
         throw problem_definition_error(
-                pb.vars.names[std::distance(std::begin(vars), it)],
-                problem_definition_error::tag::variable_not_used);
+          pb.vars.names[std::distance(std::begin(vars), it)],
+          problem_definition_error::tag::variable_not_used);
 }
 
 inline void
 are_bounds_correct(const problem& pb)
 {
-    for (std::size_t i{0}, e{pb.vars.values.size()}; i != e; ++i)
+    for (std::size_t i{ 0 }, e{ pb.vars.values.size() }; i != e; ++i)
         if (pb.vars.values[i].min >= pb.vars.values[i].max)
             throw problem_definition_error(
-                pb.vars.names[i],
-                problem_definition_error::tag::bad_bound);
+              pb.vars.names[i], problem_definition_error::tag::bad_bound);
 }
 
 } // namespace details
 
-void check(const problem& pb)
+void
+check(const problem& pb)
 {
     details::are_variables_used(pb);
     details::are_bounds_correct(pb);

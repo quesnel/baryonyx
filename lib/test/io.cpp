@@ -20,26 +20,28 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <lpcore>
+#include "unit-test.hpp"
+#include <fstream>
+#include <iostream>
 #include <lpcore-compare>
 #include <lpcore-out>
-#include <iostream>
-#include <fstream>
-#include <numeric>
+#include <lpcore>
 #include <map>
+#include <numeric>
 #include <sstream>
-#include "unit-test.hpp"
 
-void test_examples_1()
+void
+test_examples_1()
 {
-    const char *example_1 = "maximize\n"
-        "x1 + 2x2 + 3x3\n"
-        "st\n"
-        "time:  -x1 + x2 + x3 <= 20\n"
-        "labor:  x1 - 3x2 + x3 <= 30\n"
-        "bounds\n"
-        "x1 <= 40\n"
-        "end\n";
+    const char* example_1 = "maximize\n"
+                            "x1 + 2x2 + 3x3\n"
+                            "st\n"
+                            "time:  -x1 + x2 + x3 <= 20\n"
+                            "labor:  x1 - 3x2 + x3 <= 30\n"
+                            "test: -5 <= x1 - 3x2 + x3 <= 300\n"
+                            "bounds\n"
+                            "x1 <= 40\n"
+                            "end\n";
 
     std::istringstream iss(example_1);
 
@@ -47,8 +49,47 @@ void test_examples_1()
     std::cout << __func__ << '\n' << lp::resume(pb) << '\n';
 
     Ensures(pb.type == lp::objective_function_type::maximize);
+    Ensures(pb.objective.elements.size() == 3);
+    Ensures(pb.objective.elements[0].factor == 1);
+    Ensures(pb.objective.elements[0].variable_index == 0);
+    Ensures(pb.objective.elements[1].factor == 2);
+    Ensures(pb.objective.elements[1].variable_index == 1);
+    Ensures(pb.objective.elements[2].factor == 3);
+    Ensures(pb.objective.elements[2].variable_index == 2);
+
     Ensures(pb.vars.names.size() == 3);
     Ensures(pb.vars.values.size() == 3);
+    Ensures(pb.less_equal_constraints.size() == 3);
+
+    Ensures(pb.less_equal_constraints[0].elements.size() == 3);
+    Ensures(pb.less_equal_constraints[0].elements[0].factor == -1);
+    Ensures(pb.less_equal_constraints[0].elements[0].variable_index == 0);
+    Ensures(pb.less_equal_constraints[0].elements[1].factor == 1);
+    Ensures(pb.less_equal_constraints[0].elements[1].variable_index == 1);
+    Ensures(pb.less_equal_constraints[0].elements[2].factor == 1);
+    Ensures(pb.less_equal_constraints[0].elements[2].variable_index == 2);
+    Ensures(pb.less_equal_constraints[0].min == 20);
+    Ensures(pb.less_equal_constraints[0].max == 20);
+
+    Ensures(pb.less_equal_constraints[1].elements.size() == 3);
+    Ensures(pb.less_equal_constraints[1].elements[0].factor == 1);
+    Ensures(pb.less_equal_constraints[1].elements[0].variable_index == 0);
+    Ensures(pb.less_equal_constraints[1].elements[1].factor == -3);
+    Ensures(pb.less_equal_constraints[1].elements[1].variable_index == 1);
+    Ensures(pb.less_equal_constraints[1].elements[2].factor == 1);
+    Ensures(pb.less_equal_constraints[1].elements[2].variable_index == 2);
+    Ensures(pb.less_equal_constraints[1].min == 30);
+    Ensures(pb.less_equal_constraints[1].max == 30);
+
+    Ensures(pb.less_equal_constraints[2].elements.size() == 3);
+    Ensures(pb.less_equal_constraints[1].elements[0].factor == 1);
+    Ensures(pb.less_equal_constraints[2].elements[0].variable_index == 0);
+    Ensures(pb.less_equal_constraints[2].elements[1].factor == -3);
+    Ensures(pb.less_equal_constraints[2].elements[1].variable_index == 1);
+    Ensures(pb.less_equal_constraints[2].elements[2].factor == 1);
+    Ensures(pb.less_equal_constraints[2].elements[2].variable_index == 2);
+    Ensures(pb.less_equal_constraints[2].min == -5);
+    Ensures(pb.less_equal_constraints[2].max == 300);
 
     Ensures(pb.vars.names[0] == "x1");
     Ensures(pb.vars.names[1] == "x2");
@@ -63,7 +104,8 @@ void test_examples_1()
     Ensures(pb.vars.values[2].max == std::numeric_limits<int>::max());
 }
 
-void test_examples_2()
+void
+test_examples_2()
 {
     std::ifstream ifs;
 
@@ -76,7 +118,7 @@ void test_examples_2()
     values[2] = { 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 1, 0, 0, 0 };
 
     for (int i = 1; i != 4; ++i) {
-        std::string filepath { EXAMPLES_DIR "/assignment_problem_" };
+        std::string filepath{ EXAMPLES_DIR "/assignment_problem_" };
         filepath += std::to_string(i);
         filepath += ".lp";
 
@@ -109,17 +151,17 @@ void test_examples_2()
     }
 }
 
-void test_examples_3()
+void
+test_examples_3()
 {
-    auto pb = lp::make_problem(EXAMPLES_DIR
-                               "/geom-30a-3-ext_1000_support.lp");
+    auto pb = lp::make_problem(EXAMPLES_DIR "/geom-30a-3-ext_1000_support.lp");
     std::cout << __func__ << '\n' << lp::resume(pb) << '\n';
 
     Ensures(pb.type == lp::objective_function_type::minimize);
     Ensures(pb.vars.names.size() == 819);
     Ensures(pb.vars.values.size() == 819);
 
-    lp::index nb {0};
+    lp::index nb{ 0 };
     for (auto& elem : pb.vars.values)
         if (elem.type == lp::variable_type::binary)
             ++nb;
@@ -127,7 +169,8 @@ void test_examples_3()
     Ensures(nb == 90);
 }
 
-void test_examples_4()
+void
+test_examples_4()
 {
     auto pb = lp::make_problem(EXAMPLES_DIR "/general.lp");
     std::cout << __func__ << '\n' << lp::resume(pb) << '\n';
@@ -136,25 +179,16 @@ void test_examples_4()
     Ensures(pb.vars.names.size() == 3);
     Ensures(pb.vars.values.size() == 3);
 
-    lp::index nb {0};
+    lp::index nb{ 0 };
     for (auto& elem : pb.vars.values)
         if (elem.type == lp::variable_type::general)
             ++nb;
 
     Ensures(nb == 3);
-
-    std::map<std::string, lp::parameter> params;
-    params["kappa"] = 0.5;
-    params["theta"] = 0.5;
-    params["delta"] = 0.5;
-    params["limit"] = 10l;
-
-    auto result = lp::solve(pb, params);
-
-    std::cout << result << '\n';
 }
 
-void test_examples_sudoku()
+void
+test_examples_sudoku()
 {
     auto pb = lp::make_problem(EXAMPLES_DIR "/sudoku.lp");
 
@@ -172,7 +206,8 @@ void test_examples_sudoku()
     std::cout << __func__ << '\n' << lp::resume(pb) << '\n';
 }
 
-void test_examples_8_queens_puzzle()
+void
+test_examples_8_queens_puzzle()
 {
     auto pb = lp::make_problem(EXAMPLES_DIR "/8_queens_puzzle.lp");
 
@@ -190,14 +225,16 @@ void test_examples_8_queens_puzzle()
     std::cout << __func__ << '\n' << lp::resume(pb) << '\n';
 }
 
-void test_examples_vm()
+void
+test_examples_vm()
 {
     auto pb = lp::make_problem(EXAMPLES_DIR "/vm.lp");
 
     std::cout << __func__ << '\n' << lp::resume(pb) << '\n';
 }
 
-int main(int /* argc */, char */* argv */[])
+int
+main(int /* argc */, char* /* argv */ [])
 {
     test_examples_1();
     test_examples_2();
