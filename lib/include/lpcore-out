@@ -40,20 +40,23 @@ operator<<(std::ostream& os, const result& result)
     os << "solver........: " << result.method << '\n'
        << "solution found: " << result.solution_found << '\n'
        << "value.........: " << result.value << '\n'
-       << "loop..........: " << result.loop << '\n'
-       << "vars..........: ";
+       << "loop..........: " << result.loop << '\n';
 
-    std::copy(result.variable_name.begin(),
-              result.variable_name.end(),
-              std::ostream_iterator<std::string>(os, " "));
+    if (result.variable_name.size() <= 20) {
+        os << "vars..........: ";
 
-    os << '\n' << "values.: ";
+        std::copy(result.variable_name.begin(),
+                  result.variable_name.end(),
+                  std::ostream_iterator<std::string>(os, " "));
 
-    std::copy(result.variable_value.begin(),
-              result.variable_value.end(),
-              std::ostream_iterator<int>(os, " "));
+        os << '\n' << "values.: ";
 
-    os << '\n';
+        std::copy(result.variable_value.begin(),
+                  result.variable_value.end(),
+                  std::ostream_iterator<int>(os, " "));
+
+        os << '\n';
+    }
 
     os.flags(store);
 
