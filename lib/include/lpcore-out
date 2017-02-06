@@ -40,7 +40,9 @@ operator<<(std::ostream& os, const result& result)
     os << "solver........: " << result.method << '\n'
        << "solution found: " << result.solution_found << '\n'
        << "value.........: " << result.value << '\n'
-       << "loop..........: " << result.loop << '\n';
+       << "loop..........: " << result.loop << '\n'
+       << "constraints...: " << result.constraints << '\n'
+       << "variables.....: " << result.variables << '\n';
 
     if (result.variable_name.size() <= 20) {
         os << "vars..........: ";

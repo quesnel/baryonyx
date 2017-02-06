@@ -522,6 +522,8 @@ struct result
     std::deque<int> variable_value;
     double value;
     index loop;
+    index variables;
+    index constraints;
     bool solution_found;
 };
 
