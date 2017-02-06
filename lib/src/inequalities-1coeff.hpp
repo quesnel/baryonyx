@@ -165,70 +165,117 @@ struct constraint_calculator
 
         calculator_sort(r.begin(), r.end(), mode_type());
 
+        std::cout << "Reduced cost: ";
+        for (auto& elem : r)
+            std::cout << elem.value << "(" << elem.id << ") ";
+        std::cout << '\n';
+
+        std::cout << "bounds: " << b(0, k) << ' ' << b(1, k) << ' ';
+
+        b(0, k) += C.size();
+        b(1, k) += C.size();
+
+        if (not C.empty())
+            std::cout << "updated to " << b(0, k) << ' ' << b(1, k);
+        std::cout << '\n';
+
         /*
-         * If the bkmin and bkmax constraint bounds are equal, the previous
-         * algorithm is used.
+         * The bkmin and bkmax constraint bounds are not equal and can be
+         * assigned to -infinity or +infinity. We have to scan the r vector
+         * and search a value j such as b(0, k) <= Sum A(k, r[j]) < b(1,
+         * k).
          */
-        if (b(0, k) == b(1, k)) {
-            index first = b(0, k), second = b(0, k) - 1;
+        index i{ 0 };
+        const index endi{ numeric_cast<index>(r.size()) };
+        index sum{ 0 };
 
-            if (second < 0)
-                goto undo;
-
-            assert(second < numeric_cast<index>(r.size()));
-
-            pi(k) += ((r[first].value + r[second].value) / 2.0);
-
-            double d = delta + ((kappa / (1.0 - kappa)) *
-                                (r[second].value - r[first].value));
-
-            for (index j = 0; j < first; ++j) {
-                x(r[j].id) = 1;
-                P(k, r[j].id) += d;
-            }
-
-            for (index j = first, endj = numeric_cast<index>(I.size());
-                 j != endj;
-                 ++j) {
+        if (b(0, k) == 0 and b(1, k) == 0) {
+            for (index j{ 0 }; j != endi; ++j) {
                 x(r[j].id) = 0;
-                P(k, r[j].id) -= d;
+                // P(k, r[j].id) -= d;
             }
-        } else {
-            /*
-             * The bkmin and bkmax constraint bounds are not equal and can be
-             * assigned to -infinity or +infinity. We have to scan the r vector
-             * and search a value j such as b(0, k) <= Sum A(k, r[j]) < b(1,
-             * k).
-             */
-            index i{ 0 };
-            const index endi{ numeric_cast<index>(r.size()) };
-            index sum{ 0 };
 
-            if (b(0, k) <= 0 and 0 <= b(1, k))
-                goto undo;
+            goto undo;
+        }
+
+        {
+            index low = -1, up = -1;
 
             for (; i != endi; ++i) {
                 sum += A(k, r[i].id);
+                std::cout << "sum: " << sum << " i: " << i << '\n';
 
-                if (b(0, k) <= sum and sum <= b(1, k))
+                if (b(0, k) <= sum) {
+                    std::cout << "low found at " << i << '\n';
+                    low = i;
+                    up = i;
                     break;
+                }
             }
 
-            if (i >= endi)
+            if (low == -1) {
+                std::cout << "fail to found lower bound\n";
                 throw solver_error(solver_error::tag::unrealisable_constraint);
+            }
 
-            index first = i, second = i - 1;
+            ++i;
+            ++up;
+            for (; i != endi; ++i) {
+                sum += A(k, r[i].id);
+                std::cout << "sum: " << sum << " i: " << i << '\n';
 
-            assert(second >= 0);
-            assert(second < numeric_cast<index>(r.size()));
+                if (r[i].value > 0 or sum > b(1, k)) {
+                    // std::cout << "up found at " << i << '\n';
+                    up -= 1;
+                    break;
+                }
+            }
+
+            i = up;
+        }
+
+        if (endi == 1) {
+            pi(k) += ((r[0].value + r[0].value) / 2.0);
+
+            double d =
+              delta + ((kappa / (1.0 - kappa)) * (r[0].value - r[0].value));
+
+            x(r[0].id) = 1;
+            P(k, r[0].id) += d;
+
+            for (index j{ 1 }; j != endi; ++j)
+                x(r[0].id) = 0;
+
+        } else {
+            std::cout << "i=" << i << ' ' << endi << '\n';
+
+            if (i >= endi)    // If the upper bound was not reached, we use
+                i = endi - 1; // the last element in r.
+
+            std::cout << "inequality: " << b(0, k) << "<=" << sum
+                      << "<=" << b(1, k) << " at " << i << '\n';
+
+            index first = i, second = i + 1;
+            if (first < 0) {
+                first = 0;
+                second = 1;
+            }
+
+            if (second > endi) {
+                second -= 2;
+            }
 
             pi(k) += ((r[first].value + r[second].value) / 2.0);
 
             double d = delta + ((kappa / (1.0 - kappa)) *
                                 (r[second].value - r[first].value));
 
+            std::cout << "-> first: " << first << ' ' << " seoncd: " << second
+                      << " i: " << i << '\n';
+
             index j{ 0 };
-            for (; j < i; ++j) {
+            for (; j <= i; ++j) {
+                std::cout << "x(r[j].id) = 1 (" << r[j].id << ")\n";
                 x(r[j].id) = 1;
                 P(k, r[j].id) += d;
             }
@@ -240,6 +287,9 @@ struct constraint_calculator
         }
 
     undo:
+        b(0, k) -= C.size();
+        b(1, k) -= C.size();
+
         /*
          * Clean up: correct negated costs and adjust value of negated
          * variables.
@@ -247,7 +297,10 @@ struct constraint_calculator
         for (std::size_t i{ 0 }, e{ C.size() }; i != e; ++i) {
             A(k, C[i]) *= -1;
             P(k, C[i]) *= -1;
-            x[C[i]] *= -1;
+            std::cout << "x(C[i]) = 1 - x[C[i]]: " << C[i] << ' '
+                      << 1 - x[C[i]] << '\n';
+
+            x[C[i]] = 1 - x[C[i]];
         }
     }
 };
@@ -334,11 +387,13 @@ public:
             x(elem.variable_index) = c(elem.variable_index) <= 0 ? 1 : 0;
         }
 
+        // std::cout << A << '\n';
+
         for (index k = 0; k != m; ++k)
             row_updaters.emplace_back(k, m, n, A, b, c, x, P, pi);
     }
 
-    bool compute(double kappa, double delta, double theta)
+    std::size_t compute(double kappa, double delta, double theta)
     {
         R.clear();
 
@@ -352,16 +407,13 @@ public:
                 R.push_back(k);
         }
 
-        if (R.empty()) {
+        for (index k : R)
+            row_updaters[k].update_row(k, kappa, delta, theta);
+
+        if (R.empty())
             solution_found = true;
-        } else {
-            for (index k : R)
-                row_updaters[k].update_row(k, kappa, delta, theta);
 
-            solution_found = false;
-        }
-
-        return solution_found;
+        return R.size();
     }
 
     double compute_value() const
@@ -378,6 +430,8 @@ public:
     {
         result ret;
         ret.method = "inequalities_101coeff_wedelin";
+        ret.variables = n;
+        ret.constraints = m;
         ret.value = compute_value();
         ret.solution_found = solution_found;
         ret.variable_name.resize(n);
@@ -395,37 +449,137 @@ public:
 
 } // inequalities_1coeff
 
+double
+get_real(const std::map<std::string, parameter>& params,
+         std::string param,
+         double def)
+{
+    auto it = params.find(param);
+    if (it == params.cend())
+        return def;
+
+    if (it->second.type != parameter::tag::real)
+        return def;
+
+    return it->second.d;
+}
+
+long int
+get_integer(const std::map<std::string, parameter>& params,
+            std::string param,
+            double def)
+{
+    auto it = params.find(param);
+    if (it == params.cend())
+        return def;
+
+    if (it->second.type != parameter::tag::integer)
+        return def;
+
+    return it->second.l;
+}
+
 inline result
-inequalities_1coeff_wedelin(double kappa,
-                            double delta,
-                            double theta,
-                            long limit,
-                            const problem& pb)
+inequalities_1coeff_wedelin(const problem& pb,
+                            const std::map<std::string, parameter>& params)
 {
     namespace ine_1 = lp::inequalities_1coeff;
     using maximize_solver = ine_1::solver<ine_1::maximize_tag>;
     using minimize_solver = ine_1::solver<ine_1::minimize_tag>;
 
-    long int i{ 0 };
+    double theta = get_real(params, "theta", 0.5);
+    double delta = get_real(params, "delta", 0.5);
+    long int limit = get_integer(params, "limit", 100l);
+    double kappa_min = get_real(params, "kappa-min", 0.0);
+    double kappa_step = get_real(params, "kappa-step", 0.0001);
+    double kappa_max = get_real(params, "kappa-max", 0.6);
+    double alpha = get_real(params, "alpha", 2.0);
+    long int w = get_integer(params, "w", 20l);
+
+    long int i2{ 0 };
+    double kappa_old{ 0 };
+    double kappa = kappa_min;
+
+    printf("inequalities_1coeff_wedelin theta: %f delta %f limit=%ld "
+           "kappa-min: %f kappa-step: %f kappa-max: %f alpha: %f w: %ld\n",
+           theta,
+           delta,
+           limit,
+           kappa_min,
+           kappa_step,
+           kappa_max,
+           alpha,
+           w);
 
     if (pb.type == lp::objective_function_type::maximize) {
         maximize_solver slv(pb);
-        while (not slv.compute(kappa, delta, theta) and i < limit) {
+        for (long int i{ 0 }; i < limit; ++i) {
+            auto constraint_remaining = slv.compute(kappa, delta, theta);
+
             auto r = slv.results();
-            std::cout << "value: " << r.value << " loop: " << i << '\n';
-            ++i;
+            std::cout << "value: " << r.value << " binaries: " << r.variables
+                      << " constraints: " << constraint_remaining << "/"
+                      << r.constraints << " loop : " << i;
+
+            if (i2 <= w) {
+                kappa = kappa_min;
+                i2++;
+            } else {
+                i2 = 0;
+                kappa = kappa_old +
+                        kappa_step *
+                          std::pow(static_cast<double>(constraint_remaining) /
+                                     static_cast<double>(r.constraints),
+                                   alpha);
+                kappa_old = kappa;
+            }
+
+            if (kappa > kappa_max) {
+                std::cout << "kappa-max reached\n";
+                return r;
+            }
+
+            std::cout << " kappa: " << kappa << '\n';
+
+            if (r.solution_found)
+                return r;
         }
 
         return slv.results();
     }
 
     minimize_solver slv(pb);
-    while (not slv.compute(kappa, delta, theta) and i < limit) {
-        auto r = slv.results();
-        std::cout << "value: " << r.value << " loop: " << i << '\n';
-        ++i;
-    }
+    for (long int i{ 0 }; i < limit; ++i) {
+        auto constraint_remaining = slv.compute(kappa, delta, theta);
 
+        auto r = slv.results();
+        std::cout << "value: " << r.value << " binaries: " << r.variables
+                  << " constraints: " << constraint_remaining << "/"
+                  << r.constraints << " loop : " << i;
+
+        if (i2 <= w) {
+            kappa = kappa_min;
+            i2++;
+        } else {
+            i2 = 0;
+            kappa =
+              kappa_old +
+              kappa_step * std::pow(static_cast<double>(constraint_remaining) /
+                                      static_cast<double>(r.constraints),
+                                    alpha);
+            kappa_old = kappa;
+        }
+
+        if (kappa > kappa_max) {
+            std::cout << "kappa-max reached\n";
+            return r;
+        }
+
+        std::cout << " kappa: " << kappa << '\n';
+
+        if (r.solution_found)
+            return r;
+    }
     return slv.results();
 }
 

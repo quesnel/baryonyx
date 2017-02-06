@@ -118,33 +118,23 @@ is_101_coefficient(const constraintsT csts)
 result
 mitm(const problem& pb, const std::map<std::string, parameter>& params)
 {
-    double kappa, delta, theta;
-    long limit;
-
-    std::tie(kappa, delta, theta, limit) = get_parameters(params);
 
     if (pb.greater_constraints.empty() and
         pb.greater_equal_constraints.empty() and
         pb.less_constraints.empty() and pb.less_equal_constraints.empty() and
         is_boolean_coefficient(pb.equal_constraints) and
         is_boolean_variable(pb.vars.values)) {
-        printf("simple_wedelin\n");
-        return simple_wedelin(kappa, delta, theta, limit, pb);
-    }
+        double kappa, delta, theta;
+        long limit;
 
-    // printf("test: %d\n", pb.equal_constraints.empty());
-    // printf("test: %d\n", pb.greater_equal_constraints.empty());
-    // printf("test: %d\n", pb.less_equal_constraints.empty());
+        std::tie(kappa, delta, theta, limit) = get_parameters(params);
+        //         return simple_wedelin(kappa, delta, theta, limit, pb);
+        return lp::inequalities_1coeff_wedelin(pb, params);
+    }
 
     if ((not pb.equal_constraints.empty() or
          not pb.greater_equal_constraints.empty() or
          not pb.less_equal_constraints.empty())) {
-        printf("test: %d\n", pb.greater_constraints.empty());
-        printf("test: %d\n", pb.less_constraints.empty());
-        printf("test: %d\n", is_101_coefficient(pb.equal_constraints));
-        printf("test: %d\n", is_101_coefficient(pb.greater_equal_constraints));
-        printf("test: %d\n", is_101_coefficient(pb.less_equal_constraints));
-        printf("test: %d\n", is_boolean_variable(pb.vars.values));
 
         for (int i{ 0 },
              e(numeric_cast<int>(pb.less_equal_constraints.size()));
@@ -159,9 +149,8 @@ mitm(const problem& pb, const std::map<std::string, parameter>& params)
             is_101_coefficient(pb.greater_equal_constraints) and
             is_101_coefficient(pb.less_equal_constraints) and
             is_boolean_variable(pb.vars.values)) {
-            printf("inequalities-1coeff\n");
-            return lp::inequalities_1coeff_wedelin(
-              kappa, delta, theta, limit, pb);
+
+            return lp::inequalities_1coeff_wedelin(pb, params);
         }
     }
 
@@ -171,7 +160,11 @@ mitm(const problem& pb, const std::map<std::string, parameter>& params)
          is_101_coefficient(pb.less_constraints) or
          is_101_coefficient(pb.less_equal_constraints)) and
         is_integer_variable(pb.vars.values)) {
-        printf("generalized_wedelin\n");
+        double kappa, delta, theta;
+        long limit;
+
+        std::tie(kappa, delta, theta, limit) = get_parameters(params);
+
         return lp::generalized_wedelin(kappa, delta, theta, limit, pb);
     }
 

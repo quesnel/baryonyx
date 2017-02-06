@@ -32,6 +32,79 @@
 #include <sstream>
 
 void
+test_assignment_problem()
+{
+    auto pb = lp::make_problem(EXAMPLES_DIR "/assignment_problem_1.lp");
+
+    std::map<std::string, lp::parameter> params;
+    params["kappa"] = 0.0001;
+    params["theta"] = 0.5;
+    params["delta"] = 0.5;
+    params["limit"] = 50l;
+
+    auto result = lp::solve(pb, params);
+
+    Ensures(result.solution_found == true);
+}
+
+void
+test_assignment_problem_random_coast()
+{
+    auto pb = lp::make_problem(EXAMPLES_DIR "/assignment_problem_1.lp");
+
+    std::map<std::string, lp::parameter> params;
+    params["kappa"] = 0.0001;
+    params["theta"] = 0.5;
+    params["delta"] = 0.5;
+    params["limit"] = 50l;
+
+    for (int i{ 0 }, e{ 10 }; i != e; ++i) {
+        std::random_device rd;
+        std::mt19937 gen(rd());
+        std::uniform_int_distribution<> dis(1, 100);
+
+        for (auto& elem : pb.objective.elements)
+            elem.factor = dis(gen);
+
+        auto result = lp::solve(pb, params);
+
+        Ensures(result.solution_found == true);
+    }
+}
+
+void
+test_inequality()
+{
+    auto pb = lp::make_problem(EXAMPLES_DIR "/inequality.lp");
+
+    std::map<std::string, lp::parameter> params;
+    params["limit"] = 50l;
+
+    auto result = lp::solve(pb, params);
+    std::cout << result << '\n';
+
+    Ensures(result.solution_found == true);
+}
+
+void
+test_inequality_1()
+{
+    auto pb = lp::make_problem(EXAMPLES_DIR "/inequality0.lp");
+
+    std::map<std::string, lp::parameter> params;
+    params["limit"] = 50l;
+
+    auto result = lp::solve(pb, params);
+    std::cout << result << '\n';
+
+    Ensures(result.solution_found == true);
+    Ensures(result.variable_value[0] == 1);
+    Ensures(result.variable_value[1] == 0);
+    Ensures(result.variable_value[2] == 0);
+    Ensures(result.variable_value[3] == 1);
+}
+
+void
 test_8_queens_puzzle_fixed_cost()
 {
     auto pb = lp::make_problem(EXAMPLES_DIR "/8_queens_puzzle.lp");
@@ -73,28 +146,33 @@ test_8_queens_puzzle_random_cost()
     auto pb = lp::make_problem(EXAMPLES_DIR "/8_queens_puzzle.lp");
 
     std::map<std::string, lp::parameter> params;
-    params["kappa"] = 0.1;
-    params["theta"] = 0.1;
-    params["delta"] = 0.1;
-    params["limit"] = 20l;
+    params["limit"] = 1'000l;
 
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    std::uniform_int_distribution<> dis(1, 100);
+    for (int i{ 0 }, e{ 10 }; i != e; ++i) {
+        std::random_device rd;
+        std::mt19937 gen(rd());
+        std::uniform_int_distribution<> dis(1, 100);
 
-    for (auto& elem : pb.objective.elements)
-        elem.factor = dis(gen);
+        for (auto& elem : pb.objective.elements)
+            elem.factor = dis(gen);
+
+        auto result = lp::solve(pb, params);
+
+        Ensures(result.solution_found == true);
+    }
+}
+
+void
+test_qap()
+{
+    auto pb = lp::make_problem(EXAMPLES_DIR "/small4.lp");
+
+    std::map<std::string, lp::parameter> params;
+    params["limit"] = 10'000l;
 
     auto result = lp::solve(pb, params);
 
     std::cout << result << '\n';
-
-    for (int i = 0; i != 8; ++i) {
-        for (int j = 0; j != 8; ++j) {
-            std::cout << result.variable_value[j * 8 + i] << ' ';
-        }
-        std::cout << '\n';
-    }
 }
 
 void
@@ -103,10 +181,8 @@ test_verger_5_5()
     auto pb = lp::make_problem(EXAMPLES_DIR "/verger_5_5.lp");
 
     std::map<std::string, lp::parameter> params;
-    params["kappa"] = 0.8;
-    params["theta"] = 0.5;
-    params["delta"] = 0.5;
-    params["limit"] = 100l;
+    params["limit"] = 1'000l;
+    params["w"] = 3l;
 
     auto result = lp::solve(pb, params);
 
@@ -116,9 +192,14 @@ test_verger_5_5()
 int
 main(int /* argc */, char* /* argv */ [])
 {
-    test_8_queens_puzzle_fixed_cost();
-    test_8_queens_puzzle_random_cost();
-    test_verger_5_5();
+    // test_assignment_problem();
+    // test_assignment_problem_random_coast();
+    // test_inequality();
+    // test_inequality_1();
+    // test_8_queens_puzzle_fixed_cost();
+    // test_8_queens_puzzle_random_cost();
+    test_qap();
+    // test_verger_5_5();
 
     return unit_test::report_errors();
 }
