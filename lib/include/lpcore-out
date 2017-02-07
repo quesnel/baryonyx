@@ -43,20 +43,17 @@ operator<<(std::ostream& os, const result& result)
        << "loop..................: " << result.loop << '\n'
        << "constraints...........: " << result.constraints << '\n'
        << "remaining constraints.: " << result.remaining_constraints << '\n'
-       << "variables.............: " << result.variables << '\n';
+       << "variables.............: " << result.variables << '\n'
+       << "vars..................: ";
 
-    if (result.variable_name.size() <= 20) {
-        os << "vars..................: ";
-
-        for (std::size_t i {0}, e{result.variable_name.size()}; i != e; ++i) {
-            os << '[' << result.variable_name[i] << ',' <<
-            result.variable_value[i] << ']';
-            if ((i + 1 % 20) == 0 and i + 1 != e)
-                os << "\n......................: ";
-        }
-
-        os << '\n';
+    for (std::size_t i{ 0 }, e{ result.variable_name.size() }; i != e; ++i) {
+        os << '[' << result.variable_name[i] << ',' << result.variable_value[i]
+           << ']';
+        if (((i + 1) % 7) == 0 and i + 1 != e)
+            os << "\n......................: ";
     }
+
+    os << '\n';
 
     os.flags(store);
 
