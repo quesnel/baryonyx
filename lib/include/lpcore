@@ -524,6 +524,7 @@ struct result
     index loop;
     index variables;
     index constraints;
+    index remaining_constraints;
     bool solution_found;
 };
 

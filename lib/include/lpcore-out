@@ -37,25 +37,23 @@ operator<<(std::ostream& os, const result& result)
     auto store = os.flags();
 
     os.flags(store | os.boolalpha);
-    os << "solver........: " << result.method << '\n'
-       << "solution found: " << result.solution_found << '\n'
-       << "value.........: " << result.value << '\n'
-       << "loop..........: " << result.loop << '\n'
-       << "constraints...: " << result.constraints << '\n'
-       << "variables.....: " << result.variables << '\n';
+    os << "solver................: " << result.method << '\n'
+       << "solution found........: " << result.solution_found << '\n'
+       << "value.................: " << result.value << '\n'
+       << "loop..................: " << result.loop << '\n'
+       << "constraints...........: " << result.constraints << '\n'
+       << "remaining constraints.: " << result.remaining_constraints << '\n'
+       << "variables.............: " << result.variables << '\n';
 
     if (result.variable_name.size() <= 20) {
-        os << "vars..........: ";
+        os << "vars..................: ";
 
-        std::copy(result.variable_name.begin(),
-                  result.variable_name.end(),
-                  std::ostream_iterator<std::string>(os, " "));
-
-        os << '\n' << "values.: ";
-
-        std::copy(result.variable_value.begin(),
-                  result.variable_value.end(),
-                  std::ostream_iterator<int>(os, " "));
+        for (std::size_t i {0}, e{result.variable_name.size()}; i != e; ++i) {
+            os << '[' << result.variable_name[i] << ',' <<
+            result.variable_value[i] << ']';
+            if ((i + 1 % 20) == 0 and i + 1 != e)
+                os << "\n......................: ";
+        }
 
         os << '\n';
     }
