@@ -37,9 +37,6 @@ test_assignment_problem()
     auto pb = lp::make_problem(EXAMPLES_DIR "/assignment_problem_1.lp");
 
     std::map<std::string, lp::parameter> params;
-    params["kappa"] = 0.0001;
-    params["theta"] = 0.5;
-    params["delta"] = 0.5;
     params["limit"] = 50l;
 
     auto result = lp::solve(pb, params);
@@ -53,9 +50,6 @@ test_assignment_problem_random_coast()
     auto pb = lp::make_problem(EXAMPLES_DIR "/assignment_problem_1.lp");
 
     std::map<std::string, lp::parameter> params;
-    params["kappa"] = 0.0001;
-    params["theta"] = 0.5;
-    params["delta"] = 0.5;
     params["limit"] = 50l;
 
     for (int i{ 0 }, e{ 10 }; i != e; ++i) {
@@ -73,9 +67,9 @@ test_assignment_problem_random_coast()
 }
 
 void
-test_inequality()
+test_negative_coeff()
 {
-    auto pb = lp::make_problem(EXAMPLES_DIR "/inequality.lp");
+    auto pb = lp::make_problem(EXAMPLES_DIR "/negative-coeff.lp");
 
     std::map<std::string, lp::parameter> params;
     params["limit"] = 50l;
@@ -87,9 +81,9 @@ test_inequality()
 }
 
 void
-test_inequality_1()
+test_negative_coeff2()
 {
-    auto pb = lp::make_problem(EXAMPLES_DIR "/inequality0.lp");
+    auto pb = lp::make_problem(EXAMPLES_DIR "/negative-coeff2.lp");
 
     std::map<std::string, lp::parameter> params;
     params["limit"] = 50l;
@@ -102,6 +96,62 @@ test_inequality_1()
     Ensures(result.variable_value[1] == 0);
     Ensures(result.variable_value[2] == 0);
     Ensures(result.variable_value[3] == 1);
+}
+
+void
+test_negative_coeff3()
+{
+    auto pb = lp::make_problem(EXAMPLES_DIR "/negative-coeff3.lp");
+
+    std::map<std::string, lp::parameter> params;
+    params["limit"] = 50l;
+
+    auto result = lp::solve(pb, params);
+    std::cout << result << '\n';
+
+    Ensures(result.solution_found == true);
+}
+// aim-50-1_6-yes1-2.lp
+// bibd1n.lp
+//
+void
+test_negative_coeff4()
+{
+    auto pb = lp::make_problem(EXAMPLES_DIR "/flat30-7.lp");
+
+    std::map<std::string, lp::parameter> params;
+    params["limit"] = 10'000'000l;
+    params["theta"] = 0.5;
+    params["delta"] = 0.2;
+    params["kappa-step"] = 10e-4;
+    params["kappa-max"] = 10.0;
+    params["alpha"] = 1.0;
+    params["w"] = 20l;
+
+    auto result = lp::solve(pb, params);
+    std::cout << result << '\n';
+
+    Ensures(result.solution_found == true);
+}
+
+void
+test_negative_coeff5()
+{
+    auto pb = lp::make_problem(EXAMPLES_DIR "/uf50-0448.lp");
+
+    std::map<std::string, lp::parameter> params;
+    params["limit"] = 10'000'000l;
+    params["theta"] = 0.5;
+    params["delta"] = 0.2;
+    params["kappa-step"] = 10e-6;
+    params["kappa-max"] = 10.0;
+    params["alpha"] = 1.0;
+    params["w"] = 20l;
+
+    auto result = lp::solve(pb, params);
+    std::cout << result << '\n';
+
+    Ensures(result.solution_found == true);
 }
 
 void
@@ -168,7 +218,12 @@ test_qap()
     auto pb = lp::make_problem(EXAMPLES_DIR "/small4.lp");
 
     std::map<std::string, lp::parameter> params;
-    params["limit"] = 10'000l;
+    params["limit"] = 10'000'000l;
+    params["theta"] = 0.5;
+    params["delta"] = 0.2;
+    params["kappa-step"] = 10e-4;
+    params["alpha"] = 1.0;
+    params["w"] = 20l;
 
     auto result = lp::solve(pb, params);
 
@@ -194,11 +249,14 @@ main(int /* argc */, char* /* argv */ [])
 {
     // test_assignment_problem();
     // test_assignment_problem_random_coast();
-    // test_inequality();
-    // test_inequality_1();
+    // test_negative_coeff();
+    // test_negative_coeff2();
+    // test_negative_coeff3();
+    // test_negative_coeff4();
+    test_negative_coeff5();
     // test_8_queens_puzzle_fixed_cost();
     // test_8_queens_puzzle_random_cost();
-    test_qap();
+    // test_qap();
     // test_verger_5_5();
 
     return unit_test::report_errors();
