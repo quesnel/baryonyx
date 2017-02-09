@@ -460,8 +460,7 @@ public:
 
         for (index i = 0; i != n; ++i) {
             ret.variable_name[i] = pb.vars.names[i];
-            if (x(i))
-                ret.variable_value[i] = true;
+            ret.variable_value[i] = x(i);
         }
 
         return ret;
@@ -499,7 +498,8 @@ run(const problem& pb,
         current.remaining_constraints = remaining;
 
         if (remaining < best_satisfaction.remaining_constraints) {
-            std::cout << "\nBest best_satisfaction:\n" << current << '\n';
+            std::cout << "Constraints remaining: " << remaining << '\n';
+            // std::cout << "\nBest best_satisfaction:\n" << current << '\n';
             best_satisfaction = current;
         }
 
@@ -508,8 +508,10 @@ run(const problem& pb,
             best_value = current;
         }
 
-        if (current.solution_found)
+        if (current.solution_found) {
+            std::cout << current << '\n';
             return current;
+        }
 
         // std::cout << "value: " << r.value << " binaries: " << r.variables
         //           << " constraints: " << constraint_remaining << "/"
