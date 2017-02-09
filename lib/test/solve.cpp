@@ -75,7 +75,6 @@ test_negative_coeff()
     params["limit"] = 50l;
 
     auto result = lp::solve(pb, params);
-    std::cout << result << '\n';
 
     Ensures(result.solution_found == true);
 }
@@ -89,7 +88,6 @@ test_negative_coeff2()
     params["limit"] = 50l;
 
     auto result = lp::solve(pb, params);
-    std::cout << result << '\n';
 
     Ensures(result.solution_found == true);
     Ensures(result.variable_value[0] == 1);
@@ -107,15 +105,12 @@ test_negative_coeff3()
     params["limit"] = 50l;
 
     auto result = lp::solve(pb, params);
-    std::cout << result << '\n';
 
     Ensures(result.solution_found == true);
 }
-// aim-50-1_6-yes1-2.lp
-// bibd1n.lp
-//
+
 void
-test_negative_coeff4()
+test_flat30_7()
 {
     auto pb = lp::make_problem(EXAMPLES_DIR "/flat30-7.lp");
 
@@ -129,13 +124,12 @@ test_negative_coeff4()
     params["w"] = 20l;
 
     auto result = lp::solve(pb, params);
-    std::cout << result << '\n';
 
     Ensures(result.solution_found == true);
 }
 
 void
-test_negative_coeff5()
+test_uf50_0448()
 {
     auto pb = lp::make_problem(EXAMPLES_DIR "/uf50-0448.lp");
 
@@ -143,13 +137,50 @@ test_negative_coeff5()
     params["limit"] = 10'000'000l;
     params["theta"] = 0.5;
     params["delta"] = 0.2;
-    params["kappa-step"] = 10e-6;
+    params["kappa-step"] = 10e-4;
     params["kappa-max"] = 10.0;
     params["alpha"] = 1.0;
     params["w"] = 20l;
 
     auto result = lp::solve(pb, params);
-    std::cout << result << '\n';
+
+    Ensures(result.solution_found == true);
+}
+
+void
+aim_50_1_6_yes1_2()
+{
+    auto pb = lp::make_problem(EXAMPLES_DIR "/uf50-0448.lp");
+
+    std::map<std::string, lp::parameter> params;
+    params["limit"] = 10'000'000l;
+    params["theta"] = 0.5;
+    params["delta"] = 0.1;
+    params["kappa-step"] = 10e-5;
+    params["kappa-max"] = 10.0;
+    params["alpha"] = 2.0;
+    params["w"] = 20l;
+
+    auto result = lp::solve(pb, params);
+
+    Ensures(result.solution_found == true);
+}
+
+void
+test_bibd1n()
+{
+    auto pb = lp::make_problem(EXAMPLES_DIR "/uf50-0448.lp");
+
+    std::map<std::string, lp::parameter> params;
+    params["limit"] = 10'000'000'000l;
+    params["theta"] = 0.5;
+    params["delta"] = 0.2;
+    params["kappa-step"] = 10e-8;
+    params["kappa-max"] = 60.0;
+    params["alpha"] = 1.0;
+    params["w"] = 10l;
+
+    auto result = lp::solve(pb, params);
 
     Ensures(result.solution_found == true);
 }
@@ -177,8 +208,6 @@ test_8_queens_puzzle_fixed_cost()
         elem.factor = cost[i++];
 
     auto result = lp::solve(pb, params);
-
-    std::cout << result << '\n';
 
     for (int i = 0; i != 8; ++i) {
         for (int j = 0; j != 8; ++j) {
@@ -222,12 +251,11 @@ test_qap()
     params["theta"] = 0.5;
     params["delta"] = 0.2;
     params["kappa-step"] = 10e-4;
+    params["kappa-max"] = 10.0;
     params["alpha"] = 1.0;
     params["w"] = 20l;
 
     auto result = lp::solve(pb, params);
-
-    std::cout << result << '\n';
 }
 
 void
@@ -236,12 +264,15 @@ test_verger_5_5()
     auto pb = lp::make_problem(EXAMPLES_DIR "/verger_5_5.lp");
 
     std::map<std::string, lp::parameter> params;
-    params["limit"] = 1'000l;
-    params["w"] = 3l;
+    params["limit"] = 10'000'000l;
+    params["theta"] = 0.5;
+    params["delta"] = 0.2;
+    params["kappa-step"] = 10e-4;
+    params["kappa-max"] = 10.0;
+    params["alpha"] = 1.0;
+    params["w"] = 20l;
 
     auto result = lp::solve(pb, params);
-
-    std::cout << result << '\n';
 }
 
 int
@@ -252,11 +283,14 @@ main(int /* argc */, char* /* argv */ [])
     // test_negative_coeff();
     // test_negative_coeff2();
     // test_negative_coeff3();
-    // test_negative_coeff4();
-    test_negative_coeff5();
     // test_8_queens_puzzle_fixed_cost();
     // test_8_queens_puzzle_random_cost();
+    // test_flat30_7();
     // test_qap();
+
+    // test_uf50_0448();
+    // aim_50_1_6_yes1_2();
+    test_bibd1n();
     // test_verger_5_5();
 
     return unit_test::report_errors();
