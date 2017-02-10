@@ -134,11 +134,12 @@ test_uf50_0448()
     auto pb = lp::make_problem(EXAMPLES_DIR "/uf50-0448.lp");
 
     std::map<std::string, lp::parameter> params;
-    params["limit"] = 10'000'000l;
+    params["limit"] = 10'000'000'000l;
     params["theta"] = 0.5;
-    params["delta"] = 0.2;
-    params["kappa-step"] = 10e-4;
-    params["kappa-max"] = 10.0;
+    params["delta"] = 0.001;
+    params["kappa-min"] = 0.3;
+    params["kappa-step"] = 1e-4;
+    params["kappa-max"] = 100.0;
     params["alpha"] = 1.0;
     params["w"] = 20l;
 
@@ -150,15 +151,15 @@ test_uf50_0448()
 void
 aim_50_1_6_yes1_2()
 {
-    auto pb = lp::make_problem(EXAMPLES_DIR "/uf50-0448.lp");
+    auto pb = lp::make_problem(EXAMPLES_DIR "/aim-50-1_6-yes1-2.lp.lp");
 
     std::map<std::string, lp::parameter> params;
-    params["limit"] = 10'000'000l;
-    params["theta"] = 0.5;
-    params["delta"] = 0.1;
-    params["kappa-step"] = 10e-5;
-    params["kappa-max"] = 10.0;
-    params["alpha"] = 2.0;
+    params["limit"] = 10'000'000'000l;
+    params["theta"] = 0.6;
+    params["delta"] = 0.01;
+    params["kappa-step"] = 2 * 10e-4;
+    params["kappa-max"] = 100.0;
+    params["alpha"] = 1.0;
     params["w"] = 20l;
 
     auto result = lp::solve(pb, params);
@@ -169,16 +170,17 @@ aim_50_1_6_yes1_2()
 void
 test_bibd1n()
 {
-    auto pb = lp::make_problem(EXAMPLES_DIR "/uf50-0448.lp");
+    auto pb = lp::make_problem(EXAMPLES_DIR "/bibd1n.lp");
 
     std::map<std::string, lp::parameter> params;
     params["limit"] = 10'000'000'000l;
-    params["theta"] = 0.5;
-    params["delta"] = 0.2;
-    params["kappa-step"] = 10e-8;
-    params["kappa-max"] = 60.0;
-    params["alpha"] = 1.0;
-    params["w"] = 10l;
+    params["theta"] = 0.6;
+    params["delta"] = 0.01;
+    params["kappa-step"] = 2e-4;
+    params["kappa-min"] = 0.3;
+    params["kappa-max"] = 100.0;
+    params["alpha"] = 2.0;
+    params["w"] = 20l;
 
     auto result = lp::solve(pb, params);
 
@@ -266,11 +268,18 @@ test_verger_5_5()
     std::map<std::string, lp::parameter> params;
     params["limit"] = 10'000'000l;
     params["theta"] = 0.5;
-    params["delta"] = 0.2;
-    params["kappa-step"] = 10e-4;
-    params["kappa-max"] = 10.0;
+    params["delta"] = 0.01;
+    params["kappa-step"] = 2 * 10e-4;
+    params["kappa-max"] = 60.0;
     params["alpha"] = 1.0;
     params["w"] = 20l;
+    // params["limit"] = 10'000'000l;
+    // params["theta"] = 0.5;
+    // params["delta"] = 0.2;
+    // params["kappa-step"] = 10e-7;
+    // params["kappa-max"] = 60.0;
+    // params["alpha"] = 1.0;
+    // params["w"] = 20l;
 
     auto result = lp::solve(pb, params);
 }
