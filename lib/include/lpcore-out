@@ -36,6 +36,9 @@ operator<<(std::ostream& os, const result& result)
 {
     auto store = os.flags();
 
+    auto time_span = std::chrono::duration_cast<std::chrono::duration<double>>(
+      result.end - result.begin);
+
     os.flags(store | os.boolalpha);
     os << "solver................: " << result.method << '\n'
        << "solution found........: " << result.solution_found << '\n'
@@ -44,6 +47,7 @@ operator<<(std::ostream& os, const result& result)
        << "constraints...........: " << result.constraints << '\n'
        << "remaining constraints.: " << result.remaining_constraints << '\n'
        << "variables.............: " << result.variables << '\n'
+       << "duration..............: " << time_span.count() << "s\n"
        << "vars..................: ";
 
     for (std::size_t i{ 0 }, e{ result.variable_name.size() }; i != e; ++i) {

@@ -24,6 +24,7 @@
 #define ORG_VLEPROJECT_LP_LPCORE
 
 #include <algorithm>
+#include <chrono>
 #include <deque>
 #include <limits>
 #include <map>
@@ -520,6 +521,8 @@ struct result
     std::string method;
     std::deque<std::string> variable_name;
     std::deque<int> variable_value;
+    std::chrono::steady_clock::time_point begin;
+    std::chrono::steady_clock::time_point end;
     double value;
     index loop;
     index variables;
