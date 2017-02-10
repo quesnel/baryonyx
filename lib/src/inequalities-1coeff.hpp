@@ -481,41 +481,36 @@ run(const problem& pb,
 {
     using mode_type = modeT;
 
+    auto begin = std::chrono::steady_clock::now();
     long int i2{ 0 };
     double kappa_old{ 0 };
     double kappa = kappa_min;
 
     solver<mode_type> slv(pb);
-    result best_value, best_satisfaction;
-    best_value.value = -std::numeric_limits<double>::infinity();
-    best_satisfaction.remaining_constraints =
-      std::numeric_limits<index>::max();
+    result best;
+    best.remaining_constraints = std::numeric_limits<index>::max();
 
     for (long int i{ 0 }; i < limit; ++i) {
         index remaining = slv.compute(kappa, delta, theta);
         auto current = slv.results();
         current.loop = i;
         current.remaining_constraints = remaining;
+        current.begin = begin;
+        current.end = std::chrono::steady_clock::now();
 
-        if (remaining < best_satisfaction.remaining_constraints) {
-            std::cout << "Constraints remaining: " << remaining << '\n';
-            // std::cout << "\nBest best_satisfaction:\n" << current << '\n';
-            best_satisfaction = current;
-        }
+        if (remaining < best.remaining_constraints) {
+            auto t = std::chrono::duration_cast<std::chrono::duration<double>>(
+              current.end - current.begin);
 
-        if (compare(best_value.value, current.value, mode_type())) {
-            // std::cout << "\nBest value:\n" << current << '\n';
-            best_value = current;
+            printf(
+              "Constraints remaining: %ld at %fs\n", remaining, t.count());
+            best = current;
         }
 
         if (current.solution_found) {
             std::cout << current << '\n';
             return current;
         }
-
-        // std::cout << "value: " << r.value << " binaries: " << r.variables
-        //           << " constraints: " << constraint_remaining << "/"
-        //           << r.constraints << " loop : " << i;
 
         if (i2 <= w) {
             kappa = kappa_min;
@@ -532,12 +527,12 @@ run(const problem& pb,
 
         if (kappa > kappa_max) {
             std::cout << "\nFail: kappa-max reached\n";
-            return best_satisfaction;
+            return best;
         }
     }
 
     std::cout << "\nFail: limit reached\n";
-    return best_satisfaction;
+    return best;
 }
 
 } // inequalities_1coeff
