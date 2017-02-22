@@ -115,10 +115,98 @@ is_101_coefficient(const constraintsT csts)
     return true;
 }
 
+void
+cleanup_function_element(std::deque<function_element>& fct)
+{
+    if (fct.size() <= 1)
+        return;
+
+    std::sort(fct.begin(), fct.end(), [](const auto& lhs, const auto& rhs) {
+        return lhs.variable_index < rhs.variable_index;
+    });
+
+    std::deque<function_element> ret;
+    auto prev = fct.begin();
+    auto it = prev + 1;
+    auto end = fct.end();
+
+    ret.emplace_back(*prev);
+
+    while (it != end) {
+        if (it->variable_index == prev->variable_index) {
+            assert(ret.back().variable_index == it->variable_index);
+            ret.back().factor += it->factor;
+        } else {
+            prev = it;
+            ret.emplace_back(*it);
+        }
+        ++it;
+    }
+
+    std::swap(fct, ret);
+}
+
+std::deque<constraint>
+merge_constraints(std::deque<constraint> cst)
+{
+    if (cst.size() <= 1)
+        return cst;
+
+    std::sort(cst.begin(), cst.end(), [](const auto& lhs, const auto& rhs) {
+        return lhs.elements < rhs.elements;
+    });
+
+    std::deque<constraint> ret;
+    auto prev = cst.begin();
+    auto it = prev + 1;
+    auto end = cst.end();
+
+    ret.emplace_back(*prev);
+
+    while (it != end) {
+        if (prev->elements == it->elements) {
+            if (prev->value != it->value) {
+                throw "TODO problem error multiple equality constraint";
+            }
+        } else {
+            ret.emplace_back(*it);
+            prev = it;
+        }
+        ++it;
+    }
+
+    return ret;
+}
+
+void
+clean(const problem& pb)
+{
+    for (auto& elem : pb.equal_constraints)
+        cleanup_function_element(elem.elements);
+    for (auto& elem : pb.greater_constraints)
+        cleanup_function_element(elem.elements);
+    for (auto& elem : pb.greater_equal_constraints)
+        cleanup_function_element(elem.elements);
+    for (auto& elem : pb.less_constraints)
+        cleanup_function_element(elem.elements);
+    for (auto& elem : pb.less_equal_constraints)
+        cleanup_function_element(elem.elements);
+
+    printf("* cleaning problem definition\n");
+    problem ret;
+    ret.objective = pb.objective;
+    ret.equal_constraints = merge_constraints(pb.equal_constraints);
+
+    std::size_t nb{ 0 };
+    nb = pb.equal_constraints.size() - ret.equal_constraints.size();
+
+    printf("  - %ld constraints removed or merged\n",
+           numeric_cast<long int>(nb));
+}
+
 result
 mitm(const problem& pb, const std::map<std::string, parameter>& params)
 {
-
     if (pb.greater_constraints.empty() and
         pb.greater_equal_constraints.empty() and
         pb.less_constraints.empty() and pb.less_equal_constraints.empty() and

@@ -464,6 +464,19 @@ struct function_element
     index variable_index{ -1 };
 };
 
+bool
+operator<(const function_element& lhs, const function_element& rhs)
+{
+    return lhs.variable_index < rhs.variable_index;
+}
+
+bool
+operator==(const function_element& lhs, const function_element& rhs)
+{
+    return lhs.variable_index == rhs.variable_index and
+           lhs.factor == rhs.factor;
+}
+
 struct constraint
 {
     std::string label;
