@@ -345,40 +345,6 @@ private:
     }
 };
 
-inline bool
-set_constraint_name(problem& p,
-                    index id,
-                    operator_type op,
-                    const std::string& name)
-{
-    auto it =
-      std::find_if(p.names_constraints.cbegin(),
-                   p.names_constraints.cend(),
-                   [&name](const auto& t) { return std::get<0>(t) == name; });
-
-    if (it != p.names_constraints.cend())
-        return false;
-
-    p.names_constraints.emplace_back(name, id, op);
-    return true;
-}
-
-inline std::string
-get_constraint_name(const problem& p, index id, operator_type op)
-{
-    auto it =
-      std::find_if(p.names_constraints.cbegin(),
-                   p.names_constraints.cend(),
-                   [id, op](const auto& t) {
-                       return std::get<1>(t) == id and std::get<2>(t) == op;
-                   });
-
-    if (it != p.names_constraints.cend())
-        return std::get<0>(*it);
-    else
-        return std::string{};
-}
-
 inline index
 get_variable(problem& p, const std::string& name) noexcept
 {
@@ -600,7 +566,7 @@ read_objective_function(parser_stack& stack, problem& p)
     return ret;
 }
 
-std::tuple<constraint, operator_type, std::string>
+std::tuple<constraint, operator_type>
 read_constraint(parser_stack& stack, problem& p)
 {
     constraint cst;
@@ -619,83 +585,22 @@ read_constraint(parser_stack& stack, problem& p)
 
     auto str = stack.top();
 
-    while (not iequals(str, "binary") and not iequals(str, "binaries") and
-           not iequals(str, "general") and not iequals(str, "end")) {
+    if (not iequals(str, "binary") and not iequals(str, "binaries") and
+        not iequals(str, "general") and not iequals(str, "end")) {
 
-        //
-        // We can start to read -5 <= x1 + ... <= 300 or -5x1
-        //
-        if (stack.is_integer()) {
-            auto value = read_integer(stack);
-
-            // If next character is an operator, we read a constraint with two
-            // operators
-            if (is_operator(stack.peek())) {
-                operator_type type = read_operator(stack);
-
-                while (not is_operator(stack.peek()) and
-                       not iequals(str, "binary") and
-                       not iequals(str, "binaries") and
-                       not iequals(str, "general") and
-                       not iequals(str, "end")) {
-                    auto elem = read_function_element(stack);
-                    cst.elements.emplace_back(
-                      std::get<1>(elem), get_variable(p, std::get<0>(elem)));
-                }
-
-                operator_type type2 = read_operator(stack);
-
-                if (type != type2)
-                    throw file_format_error(
-                      "constraint",
-                      file_format_error::tag::bad_constraint,
-                      stack.line(),
-                      stack.column());
-
-                auto value2 = read_integer(stack);
-
-                cst.min = value;
-                cst.max = value2;
-                return std::make_tuple(cst, type, label);
-            }
-            // If next character is other, we are tring to read function
-            // element. We reinject the integer.
-            else {
-                stack.push_front(std::to_string(value));
-
-                while (not is_operator(stack.peek()) and
-                       not iequals(str, "binary") and
-                       not iequals(str, "binaries") and
-                       not iequals(str, "general") and
-                       not iequals(str, "end")) {
-                    auto elem = read_function_element(stack);
-                    cst.elements.emplace_back(
-                      std::get<1>(elem), get_variable(p, std::get<0>(elem)));
-                }
-
-                operator_type type = read_operator(stack);
-
-                cst.min = read_integer(stack);
-                cst.max = cst.min;
-                return std::make_tuple(cst, type, label);
-            }
-        } else {
-            while (not is_operator(stack.peek()) and
-                   not iequals(str, "binary") and
-                   not iequals(str, "binaries") and
-                   not iequals(str, "general") and not iequals(str, "end")) {
-                auto elem = read_function_element(stack);
-                cst.elements.emplace_back(std::get<1>(elem),
-                                          get_variable(p, std::get<0>(elem)));
-            }
-
-            operator_type type = read_operator(stack);
-            cst.min = read_integer(stack);
-            cst.max = cst.min;
-
-            return std::make_tuple(cst, type, label);
+        while (not is_operator(stack.peek()) and not iequals(str, "binary") and
+               not iequals(str, "binaries") and not iequals(str, "general") and
+               not iequals(str, "end")) {
+            auto elem = read_function_element(stack);
+            cst.elements.emplace_back(std::get<1>(elem),
+                                      get_variable(p, std::get<0>(elem)));
         }
-        str = stack.top();
+
+        operator_type type = read_operator(stack);
+        cst.label = label;
+        cst.value = read_integer(stack);
+
+        return std::make_tuple(cst, type);
     }
 
     throw file_format_error(
@@ -706,6 +611,7 @@ void
 read_constraints(parser_stack& stack, problem& p)
 {
     auto str = stack.top();
+    index i = 0;
 
     while (not iequals(str, "binary") and not iequals(str, "binaries") and
            not iequals(str, "bounds") and not iequals(str, "general") and
@@ -713,32 +619,21 @@ read_constraints(parser_stack& stack, problem& p)
 
         auto cst = read_constraint(stack, p);
 
-        index i = -1;
         switch (std::get<1>(cst)) {
             case operator_type::equal:
                 p.equal_constraints.emplace_back(std::get<0>(cst));
-                i = std::distance(p.equal_constraints.begin(),
-                                  p.equal_constraints.end());
                 break;
             case operator_type::greater:
                 p.greater_constraints.emplace_back(std::get<0>(cst));
-                i = std::distance(p.greater_constraints.begin(),
-                                  p.greater_constraints.end());
                 break;
             case operator_type::greater_equal:
                 p.greater_equal_constraints.emplace_back(std::get<0>(cst));
-                i = std::distance(p.greater_equal_constraints.begin(),
-                                  p.greater_equal_constraints.end());
                 break;
             case operator_type::less:
                 p.less_constraints.emplace_back(std::get<0>(cst));
-                i = std::distance(p.less_constraints.begin(),
-                                  p.less_constraints.end());
                 break;
             case operator_type::less_equal:
                 p.less_equal_constraints.emplace_back(std::get<0>(cst));
-                i = std::distance(p.less_equal_constraints.begin(),
-                                  p.less_equal_constraints.end());
                 break;
             default:
                 throw file_format_error(file_format_error::tag::unknown,
@@ -746,9 +641,8 @@ read_constraints(parser_stack& stack, problem& p)
                                         stack.column());
         }
 
-        i--;
-        if (not std::get<2>(cst).empty() and i >= 0)
-            set_constraint_name(p, i, std::get<1>(cst), std::get<2>(cst));
+        if (std::get<0>(cst).label.empty())
+            std::get<0>(cst).label = std::string("ct") + std::to_string(i);
 
         str = stack.top();
     }
@@ -1034,48 +928,35 @@ private:
         }
     }
 
-    void write_constraint(const std::string& label,
-                          const constraint& cste,
-                          const char* separator) const
+    void write_constraint(const constraint& cste, const char* separator) const
     {
-        if (not label.empty())
-            os << label << ": ";
+        if (not cste.label.empty())
+            os << cste.label << ": ";
 
-        if (cste.min != cste.max) {
-            os << cste.min << separator;
-            write_function_element(cste.elements);
-            os << separator << cste.max << '\n';
-        } else {
-            write_function_element(cste.elements);
-            os << separator << cste.max << '\n';
-        }
+        write_function_element(cste.elements);
+        os << separator << cste.value << '\n';
     }
 
     void write_constraints() const
     {
         for (long i = 0, e = p.equal_constraints.size(); i != e; ++i) {
-            auto str = get_constraint_name(p, i, operator_type::equal);
-            write_constraint(str, p.equal_constraints[i], " = ");
+            write_constraint(p.equal_constraints[i], " = ");
         }
 
         for (long i = 0, e = p.greater_constraints.size(); i != e; ++i) {
-            auto str = get_constraint_name(p, i, operator_type::greater);
-            write_constraint(str, p.greater_constraints[i], " > ");
+            write_constraint(p.greater_constraints[i], " > ");
         }
 
         for (long i = 0, e = p.greater_equal_constraints.size(); i != e; ++i) {
-            auto str = get_constraint_name(p, i, operator_type::greater_equal);
-            write_constraint(str, p.greater_equal_constraints[i], " >= ");
+            write_constraint(p.greater_equal_constraints[i], " >= ");
         }
 
         for (long i = 0, e = p.less_constraints.size(); i != e; ++i) {
-            auto str = get_constraint_name(p, i, operator_type::less);
-            write_constraint(str, p.less_constraints[i], " < ");
+            write_constraint(p.less_constraints[i], " < ");
         }
 
         for (long i = 0, e = p.less_equal_constraints.size(); i != e; ++i) {
-            auto str = get_constraint_name(p, i, operator_type::less_equal);
-            write_constraint(str, p.less_equal_constraints[i], " <= ");
+            write_constraint(p.less_equal_constraints[i], " <= ");
         }
     }
 };

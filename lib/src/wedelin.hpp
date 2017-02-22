@@ -52,11 +52,8 @@ make_b(index m, const problem& p)
 {
     Eigen::VectorXi b = Eigen::VectorXi::Zero(m);
 
-    for (lp::index i = 0; i != m; ++i) {
-        b(i) = p.equal_constraints[i].min;
-
-        assert(p.equal_constraints[i].min == p.equal_constraints[i].max);
-    }
+    for (lp::index i = 0; i != m; ++i)
+        b(i) = p.equal_constraints[i].value;
 
     return b;
 }

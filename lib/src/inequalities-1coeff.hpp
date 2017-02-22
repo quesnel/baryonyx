@@ -346,8 +346,8 @@ public:
             for (const auto& cst : elem.elements)
                 A(i, cst.variable_index) = cst.factor;
 
-            b(0, i) = elem.min;
-            b(1, i) = elem.max;
+            b(0, i) = elem.value;
+            b(1, i) = elem.value;
             ++i;
         }
 
@@ -355,14 +355,8 @@ public:
             for (const auto& cst : elem.elements)
                 A(i, cst.variable_index) = cst.factor;
 
-            if (elem.min != elem.max) {
-                b(0, i) = elem.min;
-                b(1, i) = elem.max;
-            } else {
-                b(0, i) = -std::numeric_limits<double>::infinity();
-                b(1, i) = elem.max;
-            }
-
+            b(0, i) = -std::numeric_limits<double>::infinity();
+            b(1, i) = elem.value;
             ++i;
         }
 
@@ -370,14 +364,8 @@ public:
             for (const auto& cst : elem.elements)
                 A(i, cst.variable_index) = cst.factor;
 
-            if (elem.min != elem.max) {
-                b(0, i) = elem.min;
-                b(1, i) = elem.max;
-            } else {
-                b(0, i) = elem.min;
-                b(1, i) = std::numeric_limits<double>::infinity();
-            }
-
+            b(0, i) = elem.value;
+            b(1, i) = std::numeric_limits<double>::infinity();
             ++i;
         }
 

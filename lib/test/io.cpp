@@ -38,7 +38,7 @@ test_examples_1()
                             "st\n"
                             "time:  -x1 + x2 + x3 <= 20\n"
                             "labor:  x1 - 3x2 + x3 <= 30\n"
-                            "test: -5 <= x1 - 3x2 + x3 <= 300\n"
+                            "test: x1 - 3x2 + x3 <= -5\n"
                             "bounds\n"
                             "x1 <= 40\n"
                             "end\n";
@@ -68,8 +68,7 @@ test_examples_1()
     Ensures(pb.less_equal_constraints[0].elements[1].variable_index == 1);
     Ensures(pb.less_equal_constraints[0].elements[2].factor == 1);
     Ensures(pb.less_equal_constraints[0].elements[2].variable_index == 2);
-    Ensures(pb.less_equal_constraints[0].min == 20);
-    Ensures(pb.less_equal_constraints[0].max == 20);
+    Ensures(pb.less_equal_constraints[0].value == 20);
 
     Ensures(pb.less_equal_constraints[1].elements.size() == 3);
     Ensures(pb.less_equal_constraints[1].elements[0].factor == 1);
@@ -78,8 +77,7 @@ test_examples_1()
     Ensures(pb.less_equal_constraints[1].elements[1].variable_index == 1);
     Ensures(pb.less_equal_constraints[1].elements[2].factor == 1);
     Ensures(pb.less_equal_constraints[1].elements[2].variable_index == 2);
-    Ensures(pb.less_equal_constraints[1].min == 30);
-    Ensures(pb.less_equal_constraints[1].max == 30);
+    Ensures(pb.less_equal_constraints[1].value == 30);
 
     Ensures(pb.less_equal_constraints[2].elements.size() == 3);
     Ensures(pb.less_equal_constraints[1].elements[0].factor == 1);
@@ -88,8 +86,7 @@ test_examples_1()
     Ensures(pb.less_equal_constraints[2].elements[1].variable_index == 1);
     Ensures(pb.less_equal_constraints[2].elements[2].factor == 1);
     Ensures(pb.less_equal_constraints[2].elements[2].variable_index == 2);
-    Ensures(pb.less_equal_constraints[2].min == -5);
-    Ensures(pb.less_equal_constraints[2].max == 300);
+    Ensures(pb.less_equal_constraints[2].value == -5);
 
     Ensures(pb.vars.names[0] == "x1");
     Ensures(pb.vars.names[1] == "x2");
@@ -109,8 +106,6 @@ test_examples_2()
 {
     std::ifstream ifs;
 
-    long loop[3] = { 5, 1, 4 };
-    double results[3] = { 15, 21, 95 };
     std::vector<std::deque<int>> values(3);
 
     values[0] = { 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1 };
@@ -133,21 +128,6 @@ test_examples_2()
 
         auto pb2 = lp::make_problem(ss);
         Ensures(pb == pb2);
-
-        std::map<std::string, lp::parameter> params;
-        params["kappa"] = 0.5;
-        params["theta"] = 0.5;
-        params["delta"] = 0.5;
-        params["limit"] = 10l;
-
-        auto result = lp::solve(pb, params);
-
-        Ensures(result.solution_found == true);
-        Ensures(result.loop == loop[i - 1]);
-        Ensures(result.value == results[i - 1]);
-        Ensures(result.variable_value == values[i - 1]);
-
-        std::cout << result << '\n';
     }
 }
 

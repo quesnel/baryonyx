@@ -49,8 +49,8 @@ operator==(const function_element& lhs, const function_element& rhs) noexcept
 inline bool
 operator==(const constraint& lhs, const constraint& rhs) noexcept
 {
-    return lhs.elements == rhs.elements and lhs.min == rhs.min and
-           lhs.max == rhs.max;
+    return lhs.elements == rhs.elements and lhs.value == rhs.value and
+           lhs.label == rhs.label;
 }
 
 inline bool
@@ -69,7 +69,6 @@ operator==(const problem& lhs, const problem& rhs) noexcept
            lhs.greater_equal_constraints == rhs.greater_equal_constraints and
            lhs.less_constraints == rhs.less_constraints and
            lhs.less_equal_constraints == rhs.less_equal_constraints and
-           lhs.names_constraints == rhs.names_constraints and
            lhs.vars.names == rhs.vars.names and
            lhs.vars.values == rhs.vars.values and
            lhs.objective == rhs.objective;

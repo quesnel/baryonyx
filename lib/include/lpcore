@@ -179,6 +179,7 @@ struct file_format_error : std::runtime_error
     int line() const { return m_line; }
     int column() const { return m_column; }
     tag failure() const { return m_failure; }
+
 private:
     std::string m_element;
     int m_line;
@@ -205,6 +206,7 @@ struct problem_definition_error : std::runtime_error
 
     std::string element() const { return m_element; }
     tag failure() const { return m_failure; }
+
 private:
     std::string m_element;
     tag m_failure;
@@ -265,15 +267,9 @@ struct parameter
       : type(w.type)
     {
         switch (w.type) {
-            case tag::integer:
-                l = w.l;
-                break;
-            case tag::real:
-                d = w.d;
-                break;
-            case tag::string:
-                new (&s) std::string(w.s);
-                break;
+            case tag::integer: l = w.l; break;
+            case tag::real: d = w.d; break;
+            case tag::string: new (&s) std::string(w.s); break;
         }
     }
 
@@ -281,15 +277,9 @@ struct parameter
       : type(w.type)
     {
         switch (w.type) {
-            case tag::integer:
-                l = w.l;
-                break;
-            case tag::real:
-                d = w.d;
-                break;
-            case tag::string:
-                s = std::move(w.s);
-                break;
+            case tag::integer: l = w.l; break;
+            case tag::real: d = w.d; break;
+            case tag::string: s = std::move(w.s); break;
         }
 
         w.type = tag::integer;
@@ -309,15 +299,9 @@ struct parameter
         }
 
         switch (w.type) {
-            case tag::integer:
-                l = w.l;
-                break;
-            case tag::real:
-                d = w.d;
-                break;
-            case tag::string:
-                new (&s) std::string(w.s);
-                break;
+            case tag::integer: l = w.l; break;
+            case tag::real: d = w.d; break;
+            case tag::string: new (&s) std::string(w.s); break;
         }
 
         type = w.type;
@@ -337,15 +321,9 @@ struct parameter
         }
 
         switch (w.type) {
-            case tag::integer:
-                l = w.l;
-                break;
-            case tag::real:
-                d = w.d;
-                break;
-            case tag::string:
-                s = std::move(w.s);
-                break;
+            case tag::integer: l = w.l; break;
+            case tag::real: d = w.d; break;
+            case tag::string: s = std::move(w.s); break;
         }
 
         type = w.type;
@@ -477,8 +455,8 @@ struct variables
 struct function_element
 {
     function_element(int factor_, index variable_index_) noexcept
-      : factor(factor_),
-        variable_index(variable_index_)
+      : factor(factor_)
+      , variable_index(variable_index_)
     {
     }
 
@@ -488,9 +466,9 @@ struct function_element
 
 struct constraint
 {
+    std::string label;
     std::deque<function_element> elements;
-    double min;
-    double max;
+    double value;
 };
 
 struct objective_function
@@ -507,9 +485,6 @@ struct problem
     std::deque<constraint> greater_equal_constraints;
     std::deque<constraint> less_constraints;
     std::deque<constraint> less_equal_constraints;
-
-    std::deque<std::tuple<std::string, index, operator_type>>
-      names_constraints;
 
     variables vars;
 
