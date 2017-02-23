@@ -149,9 +149,9 @@ test_uf50_0448()
 }
 
 void
-aim_50_1_6_yes1_2()
+test_aim_50_1_6_yes1_2()
 {
-    auto pb = lp::make_problem(EXAMPLES_DIR "/aim-50-1_6-yes1-2.lp.lp");
+    auto pb = lp::make_problem(EXAMPLES_DIR "/aim-50-1_6-yes1-2.lp");
 
     std::map<std::string, lp::parameter> params;
     params["limit"] = 10'000'000'000l;
@@ -273,6 +273,12 @@ test_verger_5_5()
     params["kappa-max"] = 60.0;
     params["alpha"] = 1.0;
     params["w"] = 20l;
+    // params["constraint-order"] = std::string("infeasibility-incr");
+    params["constraint-order"] = std::string("infeasibility-decr");
+    // params["constraint-order"] = std::string("random-sorting");
+    // params["constraint-order"] = std::string("reversing");
+    // params["constraint-order"] = std::string("none");
+
     // params["limit"] = 10'000'000l;
     // params["theta"] = 0.5;
     // params["delta"] = 0.2;
@@ -298,9 +304,9 @@ main(int /* argc */, char* /* argv */ [])
     // test_qap();
 
     // test_uf50_0448();
-    // aim_50_1_6_yes1_2();
-    test_bibd1n();
-    // test_verger_5_5();
+    // test_aim_50_1_6_yes1_2();
+    // test_bibd1n();
+    test_verger_5_5();
 
     return unit_test::report_errors();
 }
