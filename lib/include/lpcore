@@ -194,7 +194,8 @@ struct problem_definition_error : std::runtime_error
         empty_variables,
         empty_objective_function,
         variable_not_used,
-        bad_bound
+        bad_bound,
+        multiple_constraint,
     };
 
     problem_definition_error(std::string element, tag failure)
@@ -267,9 +268,15 @@ struct parameter
       : type(w.type)
     {
         switch (w.type) {
-            case tag::integer: l = w.l; break;
-            case tag::real: d = w.d; break;
-            case tag::string: new (&s) std::string(w.s); break;
+            case tag::integer:
+                l = w.l;
+                break;
+            case tag::real:
+                d = w.d;
+                break;
+            case tag::string:
+                new (&s) std::string(w.s);
+                break;
         }
     }
 
@@ -277,9 +284,15 @@ struct parameter
       : type(w.type)
     {
         switch (w.type) {
-            case tag::integer: l = w.l; break;
-            case tag::real: d = w.d; break;
-            case tag::string: s = std::move(w.s); break;
+            case tag::integer:
+                l = w.l;
+                break;
+            case tag::real:
+                d = w.d;
+                break;
+            case tag::string:
+                s = std::move(w.s);
+                break;
         }
 
         w.type = tag::integer;
@@ -299,9 +312,15 @@ struct parameter
         }
 
         switch (w.type) {
-            case tag::integer: l = w.l; break;
-            case tag::real: d = w.d; break;
-            case tag::string: new (&s) std::string(w.s); break;
+            case tag::integer:
+                l = w.l;
+                break;
+            case tag::real:
+                d = w.d;
+                break;
+            case tag::string:
+                new (&s) std::string(w.s);
+                break;
         }
 
         type = w.type;
@@ -321,9 +340,15 @@ struct parameter
         }
 
         switch (w.type) {
-            case tag::integer: l = w.l; break;
-            case tag::real: d = w.d; break;
-            case tag::string: s = std::move(w.s); break;
+            case tag::integer:
+                l = w.l;
+                break;
+            case tag::real:
+                d = w.d;
+                break;
+            case tag::string:
+                s = std::move(w.s);
+                break;
         }
 
         type = w.type;
@@ -455,27 +480,14 @@ struct variables
 struct function_element
 {
     function_element(int factor_, index variable_index_) noexcept
-      : factor(factor_)
-      , variable_index(variable_index_)
+      : factor(factor_),
+        variable_index(variable_index_)
     {
     }
 
     int factor = { 0 };
     index variable_index{ -1 };
 };
-
-bool
-operator<(const function_element& lhs, const function_element& rhs)
-{
-    return lhs.variable_index < rhs.variable_index;
-}
-
-bool
-operator==(const function_element& lhs, const function_element& rhs)
-{
-    return lhs.variable_index == rhs.variable_index and
-           lhs.factor == rhs.factor;
-}
 
 struct constraint
 {
@@ -545,13 +557,31 @@ LP_API
 std::ostream& operator<<(std::ostream& os, const problem& p);
 
 /**
- * Solve the \c lp::problem using the \c std::vector<parameter>.
+ * Try to solve the \c lp::problem using with a set of parameters.
+ *
+ * \param pb Problem definition.
+ * \param params Parameters for solver.
  *
  * \exception lp::solver_error
+ * \exception lp::problem_definition
  */
 LP_API
-result solve(const problem& pb,
-             const std::map<std::string, parameter>& params);
+result solve(problem& pb, const std::map<std::string, parameter>& params);
+
+/**
+ * Try to solve the \c lp::problem.
+ *
+ * \param pb Problem definition.
+ *
+ * \exception lp::solver_error
+ * \exception lp::problem_definition
+ */
+LP_API
+result solve(problem& pb);
+
+LP_API
+bool is_valid_solution(const problem& pb,
+                       const std::deque<int>& variable_value) noexcept;
 }
 
 #endif

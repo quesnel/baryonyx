@@ -227,10 +227,13 @@ file_format_error_format(lp::file_format_error::tag failure)
 const char*
 problem_definition_error_format(lp::problem_definition_error::tag failure)
 {
-    static const char* const tag[] = { "empty variables",
-                                       "empty objective function",
-                                       "variable not used",
-                                       "bad bound" };
+    static const char* const tag[] = {
+        "empty variables",
+        "empty objective function",
+        "variable not used",
+        "bad bound",
+        "multiple constraints with different value"
+    };
 
     switch (failure) {
         case lp::problem_definition_error::tag::empty_variables:
@@ -241,6 +244,8 @@ problem_definition_error_format(lp::problem_definition_error::tag failure)
             return tag[2];
         case lp::problem_definition_error::tag::bad_bound:
             return tag[3];
+        case lp::problem_definition_error::tag::multiple_constraint:
+            return tag[4];
     }
 
     return nullptr;

@@ -40,6 +40,12 @@ operator==(const variables& lhs, const variables& rhs) noexcept
 }
 
 inline bool
+operator<(const function_element& lhs, const function_element& rhs)
+{
+    return lhs.variable_index < rhs.variable_index;
+}
+
+inline bool
 operator==(const function_element& lhs, const function_element& rhs) noexcept
 {
     return lhs.factor == rhs.factor and

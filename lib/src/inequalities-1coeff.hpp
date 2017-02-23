@@ -23,15 +23,18 @@
 #ifndef ORG_VLEPROJECT_LP_INEQUALITIES_1COEFF_HPP
 #define ORG_VLEPROJECT_LP_INEQUALITIES_1COEFF_HPP
 
+#include "lpcore-compare"
 #include "lpcore-out"
 #include "mitm.hpp"
 #include "utils.hpp"
 #include <Eigen/Core>
 #include <algorithm>
 #include <chrono>
+#include <fstream>
 #include <iostream>
 #include <iterator>
 #include <random>
+#include <unordered_map>
 
 namespace lp {
 namespace inequalities_1coeff {
@@ -302,6 +305,109 @@ struct constraint_calculator
     }
 };
 
+struct merged_constraint
+{
+    merged_constraint(const std::deque<lp::function_element>& elements_,
+                      int min_,
+                      int max_)
+      : elements(elements_)
+      , min(min_)
+      , max(max_)
+    {
+    }
+
+    std::deque<lp::function_element> elements;
+    int min;
+    int max;
+};
+
+// template <typename functionT>
+// void
+// show_mc(const functionT& f)
+// {
+//     for (auto& elem : f)
+//         printf("%d * %ld ", elem.factor, elem.variable_index);
+//     printf("\n");
+// }
+
+class my_hash
+{
+public:
+    size_t operator()(const std::deque<lp::function_element>& fct) const
+    {
+        size_t sum{ 0 };
+
+        sum =
+          std::accumulate(fct.begin(),
+                          fct.end(),
+                          0,
+                          [](std::size_t i, const lp::function_element& f) {
+                              return i * 100 + f.variable_index;
+                          });
+
+        return sum;
+    }
+};
+
+std::deque<merged_constraint>
+make_merged_constraints(const lp::problem& pb)
+{
+    std::deque<merged_constraint> ret;
+    std::unordered_map<std::deque<lp::function_element>, std::size_t, my_hash>
+      cache;
+
+    for (const auto& elem : pb.equal_constraints) {
+        cache.emplace(elem.elements, ret.size());
+        ret.emplace_back(elem.elements,
+                         numeric_cast<int>(std::lround(elem.value)),
+                         numeric_cast<int>(std::lround(elem.value)));
+    }
+
+    for (const auto& elem : pb.less_equal_constraints) {
+        auto it = cache.find(elem.elements);
+        if (it == cache.end()) {
+            cache.emplace(elem.elements, ret.size());
+            ret.emplace_back(elem.elements,
+                             std::numeric_limits<int>::min(),
+                             numeric_cast<int>(std::lround(elem.value)));
+        } else {
+            ret[it->second].max = std::min(
+              ret[it->second].max, numeric_cast<int>(std::lround(elem.value)));
+        }
+    }
+
+    for (const auto& elem : pb.greater_equal_constraints) {
+        auto it = cache.find(elem.elements);
+        if (it == cache.end()) {
+            cache.emplace(elem.elements, ret.size());
+            ret.emplace_back(
+              elem.elements, elem.value, std::numeric_limits<int>::max());
+        } else {
+            ret[it->second].min = std::max(
+              ret[it->second].min, numeric_cast<int>(std::lround(elem.value)));
+        }
+    }
+
+    const std::size_t nb{ pb.equal_constraints.size() +
+                          pb.less_equal_constraints.size() +
+                          pb.greater_equal_constraints.size() - ret.size() };
+
+    printf("  - removed constraints: %ld\n", numeric_cast<long int>(nb));
+
+    printf("  - constraints stored in: constraints.tmp.lp\n");
+    std::ofstream ofs("constraints.tmp.lp");
+    for (auto& elem : ret) {
+        ofs << elem.min << " <= ";
+
+        for (auto& f : elem.elements)
+            ofs << ((f.factor < 0) ? "- " : "+ ") << f.variable_index << ' ';
+
+        ofs << " <= " << elem.max << '\n';
+    }
+
+    return ret;
+}
+
 template <typename modeT>
 class solver
 {
@@ -323,9 +429,8 @@ class solver
 public:
     using mode_type = modeT;
 
-    solver(const lp::problem& pb)
-      : m(pb.equal_constraints.size() + pb.less_equal_constraints.size() +
-          pb.greater_equal_constraints.size())
+    solver(const lp::problem& pb, const std::deque<merged_constraint>& csts)
+      : m(csts.size())
       , n(pb.vars.values.size())
       , A(A_type::Zero(m, n))
       , b(b_type::Zero(2, m))
@@ -341,32 +446,12 @@ public:
         for (std::size_t i{ 0 }, e = pb.vars.values.size(); i != e; ++i)
             u(i) = pb.vars.values[i].max;
 
-        index i = 0;
-        for (const auto& elem : pb.equal_constraints) {
-            for (const auto& cst : elem.elements)
+        for (std::size_t i{ 0 }, e{ csts.size() }; i != e; ++i) {
+            for (const auto& cst : csts[i].elements)
                 A(i, cst.variable_index) = cst.factor;
 
-            b(0, i) = elem.value;
-            b(1, i) = elem.value;
-            ++i;
-        }
-
-        for (const auto& elem : pb.less_equal_constraints) {
-            for (const auto& cst : elem.elements)
-                A(i, cst.variable_index) = cst.factor;
-
-            b(0, i) = -std::numeric_limits<double>::infinity();
-            b(1, i) = elem.value;
-            ++i;
-        }
-
-        for (const auto& elem : pb.greater_equal_constraints) {
-            for (const auto& cst : elem.elements)
-                A(i, cst.variable_index) = cst.factor;
-
-            b(0, i) = elem.value;
-            b(1, i) = std::numeric_limits<double>::infinity();
-            ++i;
+            b(0, i) = csts[i].min;
+            b(1, i) = csts[i].max;
         }
 
         for (const auto& elem : pb.objective.elements) {
@@ -617,7 +702,7 @@ run(const problem& pb,
     double kappa_old{ 0 };
     double kappa = kappa_min;
 
-    solver<mode_type> slv(pb);
+    solver<mode_type> slv(pb, make_merged_constraints(pb));
     result best;
     best.remaining_constraints = std::numeric_limits<index>::max();
 
@@ -788,9 +873,16 @@ inequalities_1coeff_wedelin(const problem& pb,
     double alpha = get_real(params, "alpha", 2.0);
     long int w = get_integer(params, "w", 20l);
 
-    printf("inequalities_1coeff_wedelin constraint-order: %s theta: %f delta "
-           "%f limit=%ld "
-           "kappa-min: %f kappa-step: %f kappa-max: %f alpha: %f w: %ld\n",
+    printf("* solver inequalities_1coeff_wedelin\n"
+           "  - constraint-order: %s\n"
+           "  - theta: %f\n"
+           "  - delta: %f\n"
+           "  - limit: %ld\n"
+           "  - kappa-min: %f\n"
+           "  - kappa-step: %f\n"
+           "  - kappa-max: %f\n"
+           "  - alpha: %f\n"
+           "  - w: %ld\n",
            constraint_order_to_string(order),
            theta,
            delta,

@@ -55,10 +55,74 @@ operator<<(std::ostream& os, const problem& p)
 }
 
 result
-solve(const problem& pb, const std::map<std::string, parameter>& params)
+solve(problem& pb)
+{
+    check(pb);
+
+    std::map<std::string, parameter> params;
+
+    return mitm(pb, params);
+}
+
+result
+solve(problem& pb, const std::map<std::string, parameter>& params)
 {
     check(pb);
 
     return mitm(pb, params);
+}
+
+template <typename functionT, typename variablesT>
+int
+compute_function(const functionT& fct, const variablesT& vars) noexcept
+{
+    int v{ 0 };
+
+    for (auto& f : fct)
+        v += f.factor * vars[f.variable_index];
+
+    return v;
+}
+
+bool
+is_valid_solution(const problem& pb,
+                  const std::deque<int>& variable_value) noexcept
+{
+    for (auto& cst : pb.equal_constraints) {
+        if (compute_function(cst.elements, variable_value) != cst.value) {
+            printf("constraint %s (=) fails\n", cst.label.c_str());
+            return false;
+        }
+    }
+
+    for (auto& cst : pb.greater_constraints) {
+        if (compute_function(cst.elements, variable_value) <= cst.value) {
+            printf("constraint %s (>) fails\n", cst.label.c_str());
+            return false;
+        }
+    }
+
+    for (auto& cst : pb.greater_equal_constraints) {
+        if (compute_function(cst.elements, variable_value) < cst.value) {
+            printf("constraint %s (>=) fails\n", cst.label.c_str());
+            return false;
+        }
+    }
+
+    for (auto& cst : pb.less_constraints) {
+        if (compute_function(cst.elements, variable_value) >= cst.value) {
+            printf("constraint %s (<) fails\n", cst.label.c_str());
+            return false;
+        }
+    }
+
+    for (auto& cst : pb.greater_constraints) {
+        if (compute_function(cst.elements, variable_value) > cst.value) {
+            printf("constraint %s (<=) fails\n", cst.label.c_str());
+            return false;
+        }
+    }
+
+    return true;
 }
 }

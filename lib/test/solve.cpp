@@ -42,6 +42,7 @@ test_assignment_problem()
     auto result = lp::solve(pb, params);
 
     Ensures(result.solution_found == true);
+    Ensures(lp::is_valid_solution(pb, result.variable_value) == true);
 }
 
 void
@@ -63,6 +64,7 @@ test_assignment_problem_random_coast()
         auto result = lp::solve(pb, params);
 
         Ensures(result.solution_found == true);
+        Ensures(lp::is_valid_solution(pb, result.variable_value) == true);
     }
 }
 
@@ -77,6 +79,7 @@ test_negative_coeff()
     auto result = lp::solve(pb, params);
 
     Ensures(result.solution_found == true);
+    Ensures(lp::is_valid_solution(pb, result.variable_value) == true);
 }
 
 void
@@ -94,6 +97,7 @@ test_negative_coeff2()
     Ensures(result.variable_value[1] == 0);
     Ensures(result.variable_value[2] == 0);
     Ensures(result.variable_value[3] == 1);
+    Ensures(lp::is_valid_solution(pb, result.variable_value) == true);
 }
 
 void
@@ -107,6 +111,7 @@ test_negative_coeff3()
     auto result = lp::solve(pb, params);
 
     Ensures(result.solution_found == true);
+    Ensures(lp::is_valid_solution(pb, result.variable_value) == true);
 }
 
 void
@@ -126,6 +131,7 @@ test_flat30_7()
     auto result = lp::solve(pb, params);
 
     Ensures(result.solution_found == true);
+    Ensures(lp::is_valid_solution(pb, result.variable_value) == true);
 }
 
 void
@@ -146,6 +152,7 @@ test_uf50_0448()
     auto result = lp::solve(pb, params);
 
     Ensures(result.solution_found == true);
+    Ensures(lp::is_valid_solution(pb, result.variable_value) == true);
 }
 
 void
@@ -165,6 +172,7 @@ test_aim_50_1_6_yes1_2()
     auto result = lp::solve(pb, params);
 
     Ensures(result.solution_found == true);
+    Ensures(lp::is_valid_solution(pb, result.variable_value) == true);
 }
 
 void
@@ -185,6 +193,7 @@ test_bibd1n()
     auto result = lp::solve(pb, params);
 
     Ensures(result.solution_found == true);
+    Ensures(lp::is_valid_solution(pb, result.variable_value) == true);
 }
 
 void
@@ -219,6 +228,7 @@ test_8_queens_puzzle_fixed_cost()
     }
 
     Ensures(result.solution_found == true);
+    Ensures(lp::is_valid_solution(pb, result.variable_value) == true);
 }
 
 void
@@ -240,6 +250,7 @@ test_8_queens_puzzle_random_cost()
         auto result = lp::solve(pb, params);
 
         Ensures(result.solution_found == true);
+        Ensures(lp::is_valid_solution(pb, result.variable_value) == true);
     }
 }
 
@@ -254,10 +265,11 @@ test_qap()
     params["delta"] = 0.2;
     params["kappa-step"] = 10e-4;
     params["kappa-max"] = 10.0;
-    params["alpha"] = 1.0;
+    params["alpha"] = 0.0;
     params["w"] = 20l;
 
     auto result = lp::solve(pb, params);
+    Ensures(lp::is_valid_solution(pb, result.variable_value) == true);
 }
 
 void
@@ -269,9 +281,9 @@ test_verger_5_5()
     params["limit"] = 10'000'000l;
     params["theta"] = 0.5;
     params["delta"] = 0.01;
-    params["kappa-step"] = 2 * 10e-4;
+    params["kappa-step"] = 0.01; // 2 * 10e-4;
     params["kappa-max"] = 60.0;
-    params["alpha"] = 1.0;
+    params["alpha"] = 0.0;
     params["w"] = 20l;
     // params["constraint-order"] = std::string("infeasibility-incr");
     params["constraint-order"] = std::string("infeasibility-decr");
@@ -288,25 +300,26 @@ test_verger_5_5()
     // params["w"] = 20l;
 
     auto result = lp::solve(pb, params);
+    Ensures(lp::is_valid_solution(pb, result.variable_value) == true);
 }
 
 int
 main(int /* argc */, char* /* argv */ [])
 {
-    // test_assignment_problem();
-    // test_assignment_problem_random_coast();
-    // test_negative_coeff();
-    // test_negative_coeff2();
-    // test_negative_coeff3();
-    // test_8_queens_puzzle_fixed_cost();
-    // test_8_queens_puzzle_random_cost();
-    // test_flat30_7();
-    // test_qap();
+    test_assignment_problem();
+    test_assignment_problem_random_coast();
+    test_negative_coeff();
+    test_negative_coeff2();
+    test_negative_coeff3();
+    test_8_queens_puzzle_fixed_cost();
+    test_8_queens_puzzle_random_cost();
+    test_flat30_7();
+    test_qap();
+    test_aim_50_1_6_yes1_2();
 
     // test_uf50_0448();
-    // test_aim_50_1_6_yes1_2();
     // test_bibd1n();
-    test_verger_5_5();
+    // test_verger_5_5();
 
     return unit_test::report_errors();
 }
