@@ -281,15 +281,15 @@ test_verger_5_5()
     params["limit"] = 10'000'000l;
     params["theta"] = 0.5;
     params["delta"] = 0.01;
-    params["kappa-step"] = 0.01; // 2 * 10e-4;
+    params["kappa-step"] = 0.0001; // 2 * 10e-4;
     params["kappa-max"] = 60.0;
-    params["alpha"] = 0.0;
+    params["alpha"] = 2.0;
     params["w"] = 20l;
     // params["constraint-order"] = std::string("infeasibility-incr");
-    params["constraint-order"] = std::string("infeasibility-decr");
+    // params["constraint-order"] = std::string("infeasibility-decr");
     // params["constraint-order"] = std::string("random-sorting");
     // params["constraint-order"] = std::string("reversing");
-    // params["constraint-order"] = std::string("none");
+    params["constraint-order"] = std::string("none");
 
     // params["limit"] = 10'000'000l;
     // params["theta"] = 0.5;
@@ -306,20 +306,20 @@ test_verger_5_5()
 int
 main(int /* argc */, char* /* argv */ [])
 {
-    test_assignment_problem();
-    test_assignment_problem_random_coast();
-    test_negative_coeff();
-    test_negative_coeff2();
-    test_negative_coeff3();
-    test_8_queens_puzzle_fixed_cost();
-    test_8_queens_puzzle_random_cost();
-    test_flat30_7();
-    test_qap();
-    test_aim_50_1_6_yes1_2();
+    // test_assignment_problem();
+    // test_assignment_problem_random_coast();
+    // test_negative_coeff();
+    // test_negative_coeff2();
+    // test_negative_coeff3();
+    // test_8_queens_puzzle_fixed_cost();
+    // test_8_queens_puzzle_random_cost();
+    // test_flat30_7();
+    // test_qap();
+    // test_aim_50_1_6_yes1_2();
 
     // test_uf50_0448();
     // test_bibd1n();
-    // test_verger_5_5();
+    test_verger_5_5();
 
     return unit_test::report_errors();
 }

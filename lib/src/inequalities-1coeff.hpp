@@ -405,6 +405,26 @@ make_merged_constraints(const lp::problem& pb)
         ofs << " <= " << elem.max << '\n';
     }
 
+    std::vector<int> vars(pb.vars.values.size(), 0);
+
+    for (auto& elem : ret)
+        for (auto& f : elem.elements)
+            vars[f.variable_index]++;
+
+    std::sort(
+      ret.begin(), ret.end(), [vars](const auto& lhs, const auto& rhs) {
+          int sumlhs{ 0 };
+          int sumrhs{ 0 };
+
+          for (auto& f : lhs.elements)
+              sumlhs += vars[f.variable_index];
+
+          for (auto& f : rhs.elements)
+              sumrhs += vars[f.variable_index];
+
+          return sumrhs < sumlhs;
+      });
+
     return ret;
 }
 
@@ -561,13 +581,6 @@ public:
         std::sort(currentR.begin(),
                   currentR.end(),
                   [](const auto& lhs, const auto& rhs) {
-
-                      // [this](const auto& lhs, const auto& rhs) {
-                      //     if (rhs.second == lhs.second) {
-                      //         std::bernoulli_distribution d(.5);
-                      //         return d(rng);
-                      //     }
-
                       return rhs.second < lhs.second;
                   });
 
@@ -619,13 +632,6 @@ public:
         std::sort(currentR.begin(),
                   currentR.end(),
                   [](const auto& lhs, const auto& rhs) {
-
-                      // [this](const auto& lhs, const auto& rhs) {
-                      //     if (rhs.second == lhs.second) {
-                      //         std::bernoulli_distribution d(.5);
-                      //         return d(rng);
-                      //     }
-
                       return lhs.second < rhs.second;
                   });
 
