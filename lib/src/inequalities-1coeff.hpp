@@ -307,7 +307,7 @@ struct constraint_calculator
 
 struct merged_constraint
 {
-    merged_constraint(const std::deque<lp::function_element>& elements_,
+    merged_constraint(const std::vector<lp::function_element>& elements_,
                       int min_,
                       int max_)
       : elements(elements_)
@@ -316,7 +316,7 @@ struct merged_constraint
     {
     }
 
-    std::deque<lp::function_element> elements;
+    std::vector<lp::function_element> elements;
     int min;
     int max;
 };
@@ -333,7 +333,7 @@ struct merged_constraint
 class my_hash
 {
 public:
-    size_t operator()(const std::deque<lp::function_element>& fct) const
+    size_t operator()(const std::vector<lp::function_element>& fct) const
     {
         size_t sum{ 0 };
 
@@ -349,11 +349,11 @@ public:
     }
 };
 
-std::deque<merged_constraint>
+std::vector<merged_constraint>
 make_merged_constraints(const lp::problem& pb)
 {
-    std::deque<merged_constraint> ret;
-    std::unordered_map<std::deque<lp::function_element>, std::size_t, my_hash>
+    std::vector<merged_constraint> ret;
+    std::unordered_map<std::vector<lp::function_element>, std::size_t, my_hash>
       cache;
 
     for (const auto& elem : pb.equal_constraints) {
@@ -411,7 +411,7 @@ make_merged_constraints(const lp::problem& pb)
 template <typename modeT>
 class solver
 {
-    std::deque<constraint_calculator<modeT>> row_updaters;
+    std::vector<constraint_calculator<modeT>> row_updaters;
     std::vector<index> R;
     index m;
     index n;
@@ -429,7 +429,7 @@ class solver
 public:
     using mode_type = modeT;
 
-    solver(const lp::problem& pb, const std::deque<merged_constraint>& csts)
+    solver(const lp::problem& pb, const std::vector<merged_constraint>& csts)
       : m(csts.size())
       , n(pb.vars.values.size())
       , A(A_type::Zero(m, n))

@@ -76,8 +76,10 @@ is_valid_character(int c) noexcept
         case '_':
         case '{':
         case '}':
-        case '~': return true;
-        default: return false;
+        case '~':
+            return true;
+        default:
+            return false;
     }
 }
 
@@ -674,7 +676,8 @@ apply_bound(int value, operator_type type, variable_value& variable)
             variable.max = value;
             variable.max_equal = true;
             break;
-        case operator_type::undefined: break;
+        case operator_type::undefined:
+            break;
     }
 }
 
@@ -704,7 +707,8 @@ apply_bound(variable_value& variable, operator_type type, int value)
             variable.max = value;
             variable.max_equal = true;
             break;
-        case operator_type::undefined: break;
+        case operator_type::undefined:
+            break;
     }
 }
 
@@ -917,7 +921,7 @@ private:
         }
     }
 
-    void write_function_element(const std::deque<function_element>& f) const
+    void write_function_element(const std::vector<function_element>& f) const
     {
         for (auto& elem : f) {
             os << ((elem.factor < 0) ? "- " : "+ ");

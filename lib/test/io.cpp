@@ -106,7 +106,7 @@ test_examples_2()
 {
     std::ifstream ifs;
 
-    std::vector<std::deque<int>> values(3);
+    std::vector<std::vector<int>> values(3);
 
     values[0] = { 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1 };
     values[1] = { 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0, 0 };

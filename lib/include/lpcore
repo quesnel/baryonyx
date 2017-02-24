@@ -25,7 +25,6 @@
 
 #include <algorithm>
 #include <chrono>
-#include <deque>
 #include <limits>
 #include <map>
 #include <stdexcept>
@@ -473,8 +472,8 @@ struct variable_value
 
 struct variables
 {
-    std::deque<std::string> names;
-    std::deque<variable_value> values;
+    std::vector<std::string> names;
+    std::vector<variable_value> values;
 };
 
 struct function_element
@@ -492,24 +491,24 @@ struct function_element
 struct constraint
 {
     std::string label;
-    std::deque<function_element> elements;
+    std::vector<function_element> elements;
     double value;
 };
 
 struct objective_function
 {
-    std::deque<function_element> elements;
+    std::vector<function_element> elements;
     int constant = { 0 };
 };
 
 struct problem
 {
     objective_function objective;
-    std::deque<constraint> equal_constraints;
-    std::deque<constraint> greater_constraints;
-    std::deque<constraint> greater_equal_constraints;
-    std::deque<constraint> less_constraints;
-    std::deque<constraint> less_equal_constraints;
+    std::vector<constraint> equal_constraints;
+    std::vector<constraint> greater_constraints;
+    std::vector<constraint> greater_equal_constraints;
+    std::vector<constraint> less_constraints;
+    std::vector<constraint> less_equal_constraints;
 
     variables vars;
 
@@ -519,8 +518,8 @@ struct problem
 struct result
 {
     std::string method;
-    std::deque<std::string> variable_name;
-    std::deque<int> variable_value;
+    std::vector<std::string> variable_name;
+    std::vector<int> variable_value;
     std::chrono::steady_clock::time_point begin;
     std::chrono::steady_clock::time_point end;
     double value;
@@ -581,7 +580,7 @@ result solve(problem& pb);
 
 LP_API
 bool is_valid_solution(const problem& pb,
-                       const std::deque<int>& variable_value) noexcept;
+                       const std::vector<int>& variable_value) noexcept;
 }
 
 #endif

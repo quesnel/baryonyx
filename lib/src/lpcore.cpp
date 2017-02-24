@@ -86,7 +86,7 @@ compute_function(const functionT& fct, const variablesT& vars) noexcept
 
 bool
 is_valid_solution(const problem& pb,
-                  const std::deque<int>& variable_value) noexcept
+                  const std::vector<int>& variable_value) noexcept
 {
     for (auto& cst : pb.equal_constraints) {
         if (compute_function(cst.elements, variable_value) != cst.value) {
