@@ -27,67 +27,19 @@
 #include <sstream>
 
 #include <cerrno>
+#include <cmath>
 #include <cstdio>
 #include <cstring>
 #include <getopt.h>
 
-double to_double(const char* s, double bad_value);
-long to_long(const char* s, long bad_value);
-
-std::tuple<std::string, lp::parameter>
-split_param(const char* param)
-{
-    std::string name, value;
-
-    while (*param) {
-        if (isalpha(*param) or *param == '_')
-            name += *param;
-        else
-            break;
-
-        param++;
-    }
-
-    if (*param and *param == ':') {
-        param++;
-
-        while (*param) {
-            if (isalnum(*param) or *param == '_' or *param == ':')
-                value += *param;
-            else
-                break;
-
-            param++;
-        }
-    }
-
-    auto valuel = to_long(::optarg, std::numeric_limits<long>::min());
-    if (valuel != std::numeric_limits<long>::min())
-        return std::make_tuple(name, lp::parameter(valuel));
-
-    auto valued = to_double(::optarg, std::numeric_limits<double>::min());
-    if (valued != std::numeric_limits<double>::min())
-        return std::make_tuple(name, lp::parameter(valued));
-
-    return std::make_tuple(name, lp::parameter(value));
-}
-
-const char* file_format_error_format(lp::file_format_error::tag);
-const char* problem_definition_error_format(lp::problem_definition_error::tag);
-const char* solver_error_format(lp::solver_error::tag);
-
-void
-help()
-{
-    std::fprintf(stdout,
-                 "--help|-h                   This help message\n"
-                 "--param|-p [name]:[value]   Add a new parameter (name is"
-                 " [a-z][A-Z]_ value can be a double, an integer otherwise a"
-                 " string.\n"
-                 "--limit int                 Set limit\n"
-                 "--quiet                     Remove any verbose message\n"
-                 "--verbose|-v int            Set verbose level\n");
-}
+void help() noexcept;
+double to_double(const char* s, double bad_value) noexcept;
+long to_long(const char* s, long bad_value) noexcept;
+std::tuple<std::string, lp::parameter> split_param(const char* param) noexcept;
+const char* file_format_error_format(lp::file_format_error::tag) noexcept;
+const char* problem_definition_error_format(
+  lp::problem_definition_error::tag) noexcept;
+const char* solver_error_format(lp::solver_error::tag) noexcept;
 
 int
 main(int argc, char* argv[])
@@ -114,6 +66,10 @@ main(int argc, char* argv[])
         switch (opt) {
             case 0:
                 break;
+            case 'l':
+                parameters["limit"] = to_long(::optarg, 1000l);
+                break;
+
             case 'h':
                 help();
                 return EXIT_SUCCESS;
@@ -121,7 +77,6 @@ main(int argc, char* argv[])
                 std::string name;
                 lp::parameter value;
                 std::tie(name, value) = split_param(::optarg);
-
                 parameters[name] = value;
             } break;
             case '?':
@@ -143,12 +98,18 @@ main(int argc, char* argv[])
             auto pb = lp::make_problem(argv[i]);
             auto ret = lp::solve(pb, parameters);
 
-            for (std::size_t i{ 0 }, e{ ret.variable_name.size() }; i != e;
-                 ++i)
-                std::fprintf(stdout,
-                             "%s = %d\n",
-                             ret.variable_name[i].c_str(),
-                             ret.variable_value[i]);
+            if (ret.solution_found and
+                lp::is_valid_solution(pb, ret.variable_value)) {
+                std::fprintf(stdout, "Solution found: %f\n", ret.value);
+                for (std::size_t i{ 0 }, e{ ret.variable_name.size() }; i != e;
+                     ++i)
+                    std::fprintf(stdout,
+                                 "%s = %d",
+                                 ret.variable_name[i].c_str(),
+                                 ret.variable_value[i]);
+            } else {
+                std::fprintf(stdout, "No solution found\n");
+            }
         } catch (const lp::precondition_error& e) {
             std::fprintf(stderr, "internal failure\n");
         } catch (const lp::postcondition_error& e) {
@@ -184,8 +145,21 @@ main(int argc, char* argv[])
     return EXIT_SUCCESS;
 }
 
+void
+help() noexcept
+{
+    std::fprintf(stdout,
+                 "--help|-h                   This help message\n"
+                 "--param|-p [name]:[value]   Add a new parameter (name is"
+                 " [a-z][A-Z]_ value can be a double, an integer otherwise a"
+                 " string.\n"
+                 "--limit int                 Set limit\n"
+                 "--quiet                     Remove any verbose message\n"
+                 "--verbose|-v int            Set verbose level\n");
+}
+
 const char*
-file_format_error_format(lp::file_format_error::tag failure)
+file_format_error_format(lp::file_format_error::tag failure) noexcept
 {
     static const char* const tag[] = {
         "end of file",     "unknown",
@@ -225,7 +199,8 @@ file_format_error_format(lp::file_format_error::tag failure)
 }
 
 const char*
-problem_definition_error_format(lp::problem_definition_error::tag failure)
+problem_definition_error_format(
+  lp::problem_definition_error::tag failure) noexcept
 {
     static const char* const tag[] = {
         "empty variables",
@@ -252,7 +227,7 @@ problem_definition_error_format(lp::problem_definition_error::tag failure)
 }
 
 const char*
-solver_error_format(lp::solver_error::tag failure)
+solver_error_format(lp::solver_error::tag failure) noexcept
 {
     static const char* const tag[] = { "no solver available",
                                        "unrealisable constraint",
@@ -271,7 +246,7 @@ solver_error_format(lp::solver_error::tag failure)
 }
 
 double
-to_double(const char* s, double bad_value)
+to_double(const char* s, double bad_value) noexcept
 {
     char* c;
     errno = 0;
@@ -280,13 +255,13 @@ to_double(const char* s, double bad_value)
     if ((errno == ERANGE and (value == std::numeric_limits<double>::lowest() or
                               value == -std::numeric_limits<double>::max())) or
         (errno != 0 and value == 0) or (c == ::optarg))
-        return value;
+        return bad_value;
 
-    return bad_value;
+    return value;
 }
 
 long
-to_long(const char* s, long bad_value)
+to_long(const char* s, long bad_value) noexcept
 {
     char* c;
     errno = 0;
@@ -295,7 +270,48 @@ to_long(const char* s, long bad_value)
     if ((errno == ERANGE and (value == std::numeric_limits<long>::lowest() or
                               value == std::numeric_limits<long>::max())) or
         (errno != 0 and value == 0) or (c == ::optarg))
-        return value;
+        return bad_value;
 
-    return bad_value;
+    return value;
+}
+
+std::tuple<std::string, lp::parameter>
+split_param(const char* param) noexcept
+{
+    std::string name, value;
+
+    while (*param) {
+        if (isalpha(*param) or *param == '_' or *param == '-')
+            name += *param;
+        else
+            break;
+
+        param++;
+    }
+
+    if (*param and (*param == ':' or *param == '=')) {
+        param++;
+
+        while (*param) {
+            if (isalnum(*param) or *param == '.')
+                value += *param;
+            else
+                break;
+
+            param++;
+        }
+    }
+
+    auto valuel = to_long(value.c_str(), std::numeric_limits<long>::min());
+    auto valued = to_double(value.c_str(), std::numeric_limits<double>::min());
+
+    double tmp;
+    if (valued != std::numeric_limits<double>::min() and
+        std::modf(valued, &tmp))
+        return std::make_tuple(name, lp::parameter(valued));
+
+    if (valuel != std::numeric_limits<long>::min())
+        return std::make_tuple(name, lp::parameter(valuel));
+
+    return std::make_tuple(name, lp::parameter(value));
 }
