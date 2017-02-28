@@ -233,13 +233,13 @@ calculator_sort(iteratorT begin, iteratorT end, maximize_tag)
 bool
 stop_iterating(double value, minimize_tag)
 {
-    return value > 0;
+    return value >= 0;
 }
 
 bool
 stop_iterating(double value, maximize_tag)
 {
-    return value < 0;
+    return value <= 0;
 }
 
 template <typename modeT>
@@ -261,7 +261,7 @@ struct constraint_calculator
 
     A_type& A;
     b_type& b;
-    c_type& c;
+    c_type& cost;
     x_type& x;
     P_type& P;
     pi_type& pi;
@@ -282,7 +282,7 @@ struct constraint_calculator
                           pi_type& pi_)
       : A(A_)
       , b(b_)
-      , c(c_)
+      , cost(c_)
       , x(x_)
       , P(P_)
       , pi(pi_)
@@ -319,8 +319,7 @@ struct constraint_calculator
         for (auto i : I)
             P(k, i) *= theta;
 
-        for (index i = 0, endi = numeric_cast<index>(I.size()); i != endi;
-             ++i) {
+        for (std::size_t i{ 0 }, endi{ I.size() }; i != endi; ++i) {
             double sum_a_pi{ 0 };
             double sum_a_p{ 0 };
 
@@ -331,15 +330,17 @@ struct constraint_calculator
                 }
             }
 
-            r[i].value = c(I[i]) - sum_a_pi - sum_a_p;
+            r[i].value = cost(I[i]) - sum_a_pi - sum_a_p;
             r[i].id = I[i];
+
+            // std::cerr << "update_row: " << r[i].id << "=" << I[i] << '\n';
         }
 
         /*
          * Negate reduced costs and coefficients of these variables.
          */
 
-        for (std::size_t i{ 0 }, e{ C.size() }; i != e; ++i) {
+        for (std::size_t i{ 0 }, endc{ C.size() }; i != endc; ++i) {
             int variable = C[i];
 
             auto it = std::find_if(r.begin(), r.end(), [variable](auto elem) {
@@ -358,100 +359,100 @@ struct constraint_calculator
         b(0, k) += C.size();
         b(1, k) += C.size();
 
+        assert(b(0, k) >= 0);
+        assert(b(0, k) <= b(1, k));
+
         /*
          * The bkmin and bkmax constraint bounds are not equal and can be
          * assigned to -infinity or +infinity. We have to scan the r vector
          * and search a value j such as b(0, k) <= Sum A(k, r[j]) < b(1,
          * k).
          */
-        index i{ 0 };
+        index i{ 0 }, selected{ -1 }, first, second;
         const index endi{ numeric_cast<index>(r.size()) };
-        index sum{ 0 };
+        int sum{ 0 };
 
-        if (b(0, k) == 0 and b(1, k) == 0) {
-            for (index j{ 0 }; j != endi; ++j)
-                x(r[j].id) = 0;
+        // std::cerr << "constraint " << k << " endi: " << endi << '\n';
+        // std::cerr << "   " << b(0, k) << " " << b(1, k) << '\n';
 
-            goto undo;
+        for (; i != endi; ++i) {
+            sum += A(k, r[i].id);
+            // std::cerr << "   " << sum << '\n';
+            assert(A(k, r[i].id) == 1);
+            if (b(0, k) <= sum)
+                break;
         }
 
-        {
-            index low = -1, up = -1;
+        //
+        // The sum seems good. The constraint is valid we continue to scan. If
+        // the minimum constraints is invalid, we assign 0 to all variable by
+        // settings the selected value to -1.
+        //
+        if (b(0, k) <= sum and sum <= b(1, k)) {
+            // std::cerr << "   begin sum:" << sum << " b(0,k):" << b(0, k)
+            //           << " selected:" << i << '\n';
 
-            for (; i != endi; ++i) {
-                sum += A(k, r[i].id);
-
-                if (b(0, k) <= sum) {
-                    low = i;
-                    up = i;
-                    break;
-                }
-            }
-
-            if (low == -1) {
+            if (b(0, k) > sum)
                 throw solver_error(solver_error::tag::unrealisable_constraint);
-            }
 
-            ++i;
-            ++up;
+            selected = i;
             for (; i != endi; ++i) {
                 sum += A(k, r[i].id);
 
-                if (stop_iterating(r[i].value, mode_type()) or sum > b(1, k)) {
-                    up -= 1;
+                // std::cerr << "   " << sum << '\n';
+
+                if (sum <= b(1, k)) {
+                    if (stop_iterating(r[i].value, mode_type()))
+                        break;
+                    ++selected;
+                } else
                     break;
-                }
             }
 
-            i = up;
-        }
+            if (i == endi)
+                throw solver_error(solver_error::tag::unrealisable_constraint);
 
-        if (endi == 1) {
-            pi(k) += ((r[0].value + r[0].value) / 2.0);
+            assert(selected < endi);
 
-            double d =
-              delta + ((kappa / (1.0 - kappa)) * (r[0].value - r[0].value));
+            // std::cerr << "   finish sum:" << sum << " b(1,k):" << b(1, k)
+            // << " selected:" << selected << '\n';
 
-            x(r[0].id) = 1;
-            P(k, r[0].id) += d;
-
-            for (index j{ 1 }; j != endi; ++j) {
-                x(r[0].id) = 0;
-                P(k, r[0].id) -= d;
-            }
+            first = selected;
+            second = selected + 1;
 
         } else {
-            if (i >= endi)    // If the upper bound was not reached, we use
-                i = endi - 1; // the last element in r.
-
-            index first = i, second = i + 1;
-            if (first < 0) {
-                first = 0;
-                second = 1;
-            }
-
-            if (second > endi) {
-                second -= 2;
-            }
-
-            pi(k) += ((r[first].value + r[second].value) / 2.0);
-
-            double d = delta + ((kappa / (1.0 - kappa)) *
-                                (r[second].value - r[first].value));
-
-            index j{ 0 };
-            for (; j <= i; ++j) {
-                x(r[j].id) = 1;
-                P(k, r[j].id) += d;
-            }
-
-            for (; j != endi; ++j) {
-                x(r[j].id) = 0;
-                P(k, r[j].id) -= d;
-            }
+            first = 0;
+            second = 1;
         }
 
-    undo:
+        if (second >= endi) {
+            first = selected - 1;
+            second = selected;
+        }
+
+        // std::cerr << "   finally first=" << first << " second=" << second
+        //           << '\n';
+
+        pi(k) += ((r[first].value + r[second].value) / 2.0);
+
+        double d = delta + ((kappa / (1.0 - kappa)) *
+                            (r[second].value - r[first].value));
+
+        index j{ 0 };
+        // std::cerr << "   Assign 1 from " << j << " to " << selected << '\n';
+        for (; j <= selected; ++j) {
+            // std::cerr << "   Assign 1 to " << r[j].id << '\n';
+            x(r[j].id) = 1;
+            P(k, r[j].id) += d;
+        }
+
+        // std::cerr << "   Assign 0 from " << j << " to " << endi << '\n';
+        for (; j != endi; ++j) {
+            // std::cerr << "   Assign 0 to " << r[j].id << '\n';
+            x(r[j].id) = 0;
+            P(k, r[j].id) -= d;
+        }
+
         b(0, k) -= C.size();
         b(1, k) -= C.size();
 
@@ -462,6 +463,9 @@ struct constraint_calculator
         for (std::size_t i{ 0 }, e{ C.size() }; i != e; ++i) {
             A(k, C[i]) *= -1;
             P(k, C[i]) *= -1;
+
+            // std::cerr << "   Reassign " << 1 - x[C[i]] << " to " << C[i]
+            // << '\n';
 
             x[C[i]] = 1 - x[C[i]];
         }
@@ -568,25 +572,25 @@ make_merged_constraints(const lp::problem& pb)
         ofs << " <= " << elem.max << '\n';
     }
 
-    std::vector<int> vars(pb.vars.values.size(), 0);
+    // std::vector<int> vars(pb.vars.values.size(), 0);
 
-    for (auto& elem : ret)
-        for (auto& f : elem.elements)
-            vars[f.variable_index]++;
+    // for (auto& elem : ret)
+    //     for (auto& f : elem.elements)
+    //         vars[f.variable_index]++;
 
-    std::sort(
-      ret.begin(), ret.end(), [vars](const auto& lhs, const auto& rhs) {
-          long sumlhs{ 1 };
-          long sumrhs{ 1 };
+    // std::sort(
+    //   ret.begin(), ret.end(), [vars](const auto& lhs, const auto& rhs) {
+    //       long sumlhs{ 1 };
+    //       long sumrhs{ 1 };
 
-          for (auto& f : lhs.elements)
-              sumlhs *= vars[f.variable_index];
+    //       for (auto& f : lhs.elements)
+    //           sumlhs *= vars[f.variable_index];
 
-          for (auto& f : rhs.elements)
-              sumrhs *= vars[f.variable_index];
+    //       for (auto& f : rhs.elements)
+    //           sumrhs *= vars[f.variable_index];
 
-          return sumrhs < sumlhs;
-      });
+    //       return sumrhs < sumlhs;
+    //   });
 
     return ret;
 }
@@ -659,7 +663,7 @@ public:
 
         for (const auto& elem : pb.objective.elements) {
             c(elem.variable_index) += elem.factor;
-            x(elem.variable_index) = 0; // c(elem.variable_index) <= 0 ? 1 : 0;
+            x(elem.variable_index) = c(elem.variable_index) <= 0 ? 1 : 0;
         }
 
         for (index k = 0; k != m; ++k)
