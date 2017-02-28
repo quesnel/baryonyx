@@ -1,5 +1,5 @@
 minimize
-19 x1 +  10 x2 + 7 x3 + 20 x4
+2 x1 +  10 x2 + 7 x3 + 2 x4
 
 subject to
 x4 - x1 = 0
