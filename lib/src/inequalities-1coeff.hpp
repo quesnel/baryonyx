@@ -56,9 +56,158 @@ enum class constraint_order
     infeasibility_incr
 };
 
+const char*
+constraint_order_to_string(constraint_order type)
+{
+    static const char* ret[] = { "none",
+                                 "reversing",
+                                 "random-sorting",
+                                 "infeasibility-decr",
+                                 "infeasibility-incr" };
+
+    switch (type) {
+        case inequalities_1coeff::constraint_order::none:
+            return ret[0];
+        case inequalities_1coeff::constraint_order::reversing:
+            return ret[1];
+        case inequalities_1coeff::constraint_order::random_sorting:
+            return ret[2];
+        case inequalities_1coeff::constraint_order::infeasibility_decr:
+            return ret[3];
+        case inequalities_1coeff::constraint_order::infeasibility_incr:
+            return ret[4];
+    }
+
+    return nullptr;
+}
+
+double
+get_real(const std::map<std::string, parameter>& params,
+         std::string param,
+         double def)
+{
+    auto it = params.find(param);
+    if (it == params.cend())
+        return def;
+
+    if (it->second.type == parameter::tag::real)
+        return it->second.d;
+
+    if (it->second.type == parameter::tag::integer)
+        return static_cast<double>(it->second.l);
+
+    std::fprintf(
+      stderr, " [FAIL] fail to convert parameter %s\n", param.c_str());
+
+    return def;
+}
+
+long int
+get_integer(const std::map<std::string, parameter>& params,
+            std::string param,
+            double def)
+{
+    auto it = params.find(param);
+    if (it == params.cend())
+        return def;
+
+    if (it->second.type == parameter::tag::integer)
+        return it->second.l;
+
+    if (it->second.type == parameter::tag::real)
+        return static_cast<long>(it->second.d);
+
+    std::fprintf(
+      stderr, " [FAIL] fail to convert parameter %s\n", param.c_str());
+
+    return def;
+}
+
+inequalities_1coeff::constraint_order
+get_constraint_order(const std::map<std::string, parameter>& params,
+                     std::string param,
+                     inequalities_1coeff::constraint_order def)
+{
+    auto it = params.find(param);
+    if (it == params.cend())
+        return def;
+
+    if (it->second.type != parameter::tag::string)
+        return def;
+
+    if (it->second.s == "none")
+        return inequalities_1coeff::constraint_order::none;
+    if (it->second.s == "reversing")
+        return inequalities_1coeff::constraint_order::reversing;
+    if (it->second.s == "random-sorting")
+        return inequalities_1coeff::constraint_order::random_sorting;
+    if (it->second.s == "infeasibility-decr")
+        return inequalities_1coeff::constraint_order::infeasibility_decr;
+    if (it->second.s == "infeasibility-incr")
+        return inequalities_1coeff::constraint_order::infeasibility_incr;
+
+    return def;
+}
+
+struct parameters
+{
+    parameters(const std::map<std::string, parameter>& params)
+      : order(get_constraint_order(params,
+                                   "constraint-order",
+                                   constraint_order::none))
+      , theta(get_real(params, "theta", 0.5))
+      , delta(get_real(params, "delta", 0.5))
+      , limit(get_integer(params, "limit", 100l))
+      , kappa_min(get_real(params, "kappa-min", 0.0))
+      , kappa_step(get_real(params, "kappa-step", 0.0001))
+      , kappa_max(get_real(params, "kappa-max", 0.6))
+      , alpha(get_real(params, "alpha", 2.0))
+      , w(get_integer(params, "w", 20l))
+      , serialize(get_integer(params, "serialize", 0l))
+    {
+    }
+
+    void print() const noexcept
+    {
+        printf("* solver inequalities_1coeff_wedelin\n"
+               "  - constraint-order: %s\n"
+               "  - theta: %f\n"
+               "  - delta: %f\n"
+               "  - limit: %ld\n"
+               "  - kappa-min: %f\n"
+               "  - kappa-step: %f\n"
+               "  - kappa-max: %f\n"
+               "  - alpha: %f\n"
+               "  - w: %ld\n"
+               "  - serialise: %d\n",
+               constraint_order_to_string(order),
+               theta,
+               delta,
+               limit,
+               kappa_min,
+               kappa_step,
+               kappa_max,
+               alpha,
+               w,
+               serialize);
+    }
+
+    constraint_order order;
+    double theta;
+    double delta;
+    long int limit;
+    double kappa_min;
+    double kappa_step;
+    double kappa_max;
+    double alpha;
+    long int w;
+    bool serialize;
+};
+
 struct maximize_tag
 {
 };
+
 struct minimize_tag
 {
 };
@@ -149,6 +298,20 @@ struct constraint_calculator
             if (A(k, i) < 0)
                 C.emplace_back(i);
         }
+    }
+
+    void serialize(index k, std::ostream& os) const
+    {
+        os << "[P(" << k << ", i): ";
+        for (auto i : I)
+            os << P(k, i) << ' ';
+        os << "] ";
+
+        os << b(0, k) << " <= ";
+
+        for (index i = 0, endi = numeric_cast<index>(I.size()); i != endi; ++i)
+            os << A(k, I[i]) << ' ';
+        os << " <= " << b(1, k) << '\n';
     }
 
     void update_row(index k, double kappa, double delta, double theta)
@@ -413,14 +576,14 @@ make_merged_constraints(const lp::problem& pb)
 
     std::sort(
       ret.begin(), ret.end(), [vars](const auto& lhs, const auto& rhs) {
-          int sumlhs{ 0 };
-          int sumrhs{ 0 };
+          long sumlhs{ 1 };
+          long sumrhs{ 1 };
 
           for (auto& f : lhs.elements)
-              sumlhs += vars[f.variable_index];
+              sumlhs *= vars[f.variable_index];
 
           for (auto& f : rhs.elements)
-              sumrhs += vars[f.variable_index];
+              sumrhs *= vars[f.variable_index];
 
           return sumrhs < sumlhs;
       });
@@ -466,21 +629,59 @@ public:
         for (std::size_t i{ 0 }, e = pb.vars.values.size(); i != e; ++i)
             u(i) = pb.vars.values[i].max;
 
-        for (std::size_t i{ 0 }, e{ csts.size() }; i != e; ++i) {
-            for (const auto& cst : csts[i].elements)
-                A(i, cst.variable_index) = cst.factor;
+        //
+        // Compute bkmin and bkmax acccording to the value of the constraints
+        // (infinity or constant) and the number of element in the expression
+        // (avoid the bkmax += C.size() in inequalities).
+        //
 
-            b(0, i) = csts[i].min;
-            b(1, i) = csts[i].max;
+        for (std::size_t i{ 0 }, e{ csts.size() }; i != e; ++i) {
+            index lower{ 0 }, upper{ 0 };
+            // index lower{ -1 }, upper{ 1 };
+            for (const auto& cst : csts[i].elements) {
+                A(i, cst.variable_index) = cst.factor;
+                if (cst.factor < 0)
+                    lower--;
+                if (cst.factor > 0)
+                    upper++;
+            }
+
+            if (csts[i].min == std::numeric_limits<int>::min())
+                b(0, i) = lower;
+            else
+                b(0, i) = csts[i].min;
+
+            if (csts[i].max == std::numeric_limits<int>::max())
+                b(1, i) = upper;
+            else
+                b(1, i) = csts[i].max;
         }
 
         for (const auto& elem : pb.objective.elements) {
             c(elem.variable_index) += elem.factor;
-            x(elem.variable_index) = c(elem.variable_index) <= 0 ? 1 : 0;
+            x(elem.variable_index) = 0; // c(elem.variable_index) <= 0 ? 1 : 0;
         }
 
         for (index k = 0; k != m; ++k)
             row_updaters.emplace_back(k, m, n, A, b, c, x, P, pi);
+    }
+
+    void serialize(std::ostream& os) const
+    {
+        std::vector<index> vec;
+
+        for (index k{ 0 }; k != m; ++k) {
+            int v = 0;
+
+            for (index i{ 0 }; i != n; ++i)
+                v += A(k, i) * x(i);
+
+            if (not(b(0, k) <= v and v <= b(1, k)))
+                vec.push_back(k);
+        }
+
+        for (auto it{ vec.cbegin() }, et{ vec.cend() }; it != et; ++it)
+            row_updaters[*it].serialize(*it, os);
     }
 
     std::size_t compute_none(double kappa, double delta, double theta)
@@ -690,48 +891,39 @@ public:
 
 template <typename modeT>
 inline result
-run(const problem& pb,
-    constraint_order order,
-    double theta,
-    double delta,
-    long int limit,
-    double kappa_min,
-    double kappa_step,
-    double kappa_max,
-    double alpha,
-    long int w)
+run(const problem& pb, const parameters& p)
 {
     using mode_type = modeT;
 
     auto begin = std::chrono::steady_clock::now();
     long int i2{ 0 };
     double kappa_old{ 0 };
-    double kappa = kappa_min;
+    double kappa = p.kappa_min;
 
     solver<mode_type> slv(pb, make_merged_constraints(pb));
     result best;
     best.remaining_constraints = std::numeric_limits<index>::max();
 
-    for (long int i{ 0 }; i < limit; ++i) {
+    for (long int i{ 0 }; i < p.limit; ++i) {
         index remaining;
-
-        switch (order) {
-            case inequalities_1coeff::constraint_order::none:
-                remaining = slv.compute_none(kappa, delta, theta);
+        switch (p.order) {
+            case constraint_order::none:
+                remaining = slv.compute_none(kappa, p.delta, p.theta);
                 break;
-            case inequalities_1coeff::constraint_order::reversing:
-                remaining = slv.compute_reversing(kappa, delta, theta);
+            case constraint_order::reversing:
+                remaining = slv.compute_reversing(kappa, p.delta, p.theta);
                 break;
-            case inequalities_1coeff::constraint_order::random_sorting:
-                remaining = slv.compute_random_sorting(kappa, delta, theta);
-                break;
-            case inequalities_1coeff::constraint_order::infeasibility_decr:
+            case constraint_order::random_sorting:
                 remaining =
-                  slv.compute_infeasibility_decr(kappa, delta, theta);
+                  slv.compute_random_sorting(kappa, p.delta, p.theta);
                 break;
-            case inequalities_1coeff::constraint_order::infeasibility_incr:
+            case constraint_order::infeasibility_decr:
                 remaining =
-                  slv.compute_infeasibility_incr(kappa, delta, theta);
+                  slv.compute_infeasibility_decr(kappa, p.delta, p.theta);
+                break;
+            case constraint_order::infeasibility_incr:
+                remaining =
+                  slv.compute_infeasibility_incr(kappa, p.delta, p.theta);
                 break;
         }
 
@@ -745,30 +937,45 @@ run(const problem& pb,
             auto t = std::chrono::duration_cast<std::chrono::duration<double>>(
               current.end - current.begin);
 
-            printf(
-              "Constraints remaining: %ld at %fs\n", remaining, t.count());
+            // printf("\r  - constraints remaining: %ld/%ld at %fs",
+            //        remaining,
+            //        current.constraints,
+            //        t.count());
+
+            // fflush(stdout);
+
+            printf("  - constraints remaining: %ld/%ld at %fs\n",
+                   remaining,
+                   current.constraints,
+                   t.count());
+
             best = current;
+
+            if (p.serialize) {
+                std::ofstream ofs("current-solver.lp.dat");
+                slv.serialize(ofs);
+            }
         }
 
         if (current.solution_found) {
-            std::cout << current << '\n';
+            std::cout << '\n' << current << '\n';
             return current;
         }
 
-        if (i2 <= w) {
-            kappa = kappa_min;
+        if (i2 <= p.w) {
+            kappa = p.kappa_min;
             i2++;
         } else {
             i2 = 0;
-            kappa =
-              kappa_old +
-              kappa_step * std::pow(static_cast<double>(remaining) /
-                                      static_cast<double>(current.constraints),
-                                    alpha);
+            kappa = kappa_old +
+                    p.kappa_step *
+                      std::pow(static_cast<double>(remaining) /
+                                 static_cast<double>(current.constraints),
+                               p.alpha);
             kappa_old = kappa;
         }
 
-        if (kappa > kappa_max) {
+        if (kappa > p.kappa_max) {
             std::cout << "\nFail: kappa-max reached\n";
             return best;
         }
@@ -780,147 +987,18 @@ run(const problem& pb,
 
 } // inequalities_1coeff
 
-double
-get_real(const std::map<std::string, parameter>& params,
-         std::string param,
-         double def)
-{
-    auto it = params.find(param);
-    if (it == params.cend())
-        return def;
-
-    if (it->second.type != parameter::tag::real)
-        return def;
-
-    return it->second.d;
-}
-
-long int
-get_integer(const std::map<std::string, parameter>& params,
-            std::string param,
-            double def)
-{
-    auto it = params.find(param);
-    if (it == params.cend())
-        return def;
-
-    if (it->second.type != parameter::tag::integer)
-        return def;
-
-    return it->second.l;
-}
-
-inequalities_1coeff::constraint_order
-get_constraint_order(const std::map<std::string, parameter>& params,
-                     std::string param,
-                     inequalities_1coeff::constraint_order def)
-{
-    auto it = params.find(param);
-    if (it == params.cend())
-        return def;
-
-    if (it->second.type != parameter::tag::string)
-        return def;
-
-    if (it->second.s == "none")
-        return inequalities_1coeff::constraint_order::none;
-    if (it->second.s == "reversing")
-        return inequalities_1coeff::constraint_order::reversing;
-    if (it->second.s == "random-sorting")
-        return inequalities_1coeff::constraint_order::random_sorting;
-    if (it->second.s == "infeasibility-decr")
-        return inequalities_1coeff::constraint_order::infeasibility_decr;
-    if (it->second.s == "infeasibility-incr")
-        return inequalities_1coeff::constraint_order::infeasibility_incr;
-
-    return def;
-}
-
-const char*
-constraint_order_to_string(inequalities_1coeff::constraint_order type)
-{
-    static const char* ret[] = { "none",
-                                 "reversing",
-                                 "random-sorting",
-                                 "infeasibility-decr",
-                                 "infeasibility-incr" };
-
-    switch (type) {
-        case inequalities_1coeff::constraint_order::none:
-            return ret[0];
-        case inequalities_1coeff::constraint_order::reversing:
-            return ret[1];
-        case inequalities_1coeff::constraint_order::random_sorting:
-            return ret[2];
-        case inequalities_1coeff::constraint_order::infeasibility_decr:
-            return ret[3];
-        case inequalities_1coeff::constraint_order::infeasibility_incr:
-            return ret[4];
-    }
-
-    return nullptr;
-}
-
 inline result
 inequalities_1coeff_wedelin(const problem& pb,
                             const std::map<std::string, parameter>& params)
 {
     namespace ine_1 = lp::inequalities_1coeff;
-
-    auto order = get_constraint_order(
-      params, "constraint-order", ine_1::constraint_order::infeasibility_decr);
-
-    double theta = get_real(params, "theta", 0.5);
-    double delta = get_real(params, "delta", 0.5);
-    long int limit = get_integer(params, "limit", 100l);
-    double kappa_min = get_real(params, "kappa-min", 0.0);
-    double kappa_step = get_real(params, "kappa-step", 0.0001);
-    double kappa_max = get_real(params, "kappa-max", 0.6);
-    double alpha = get_real(params, "alpha", 2.0);
-    long int w = get_integer(params, "w", 20l);
-
-    printf("* solver inequalities_1coeff_wedelin\n"
-           "  - constraint-order: %s\n"
-           "  - theta: %f\n"
-           "  - delta: %f\n"
-           "  - limit: %ld\n"
-           "  - kappa-min: %f\n"
-           "  - kappa-step: %f\n"
-           "  - kappa-max: %f\n"
-           "  - alpha: %f\n"
-           "  - w: %ld\n",
-           constraint_order_to_string(order),
-           theta,
-           delta,
-           limit,
-           kappa_min,
-           kappa_step,
-           kappa_max,
-           alpha,
-           w);
+    ine_1::parameters p(params);
+    p.print();
 
     if (pb.type == lp::objective_function_type::maximize)
-        return ine_1::run<ine_1::maximize_tag>(pb,
-                                               order,
-                                               theta,
-                                               delta,
-                                               limit,
-                                               kappa_min,
-                                               kappa_step,
-                                               kappa_max,
-                                               alpha,
-                                               w);
+        return ine_1::run<ine_1::maximize_tag>(pb, p);
 
-    return ine_1::run<ine_1::minimize_tag>(pb,
-                                           order,
-                                           theta,
-                                           delta,
-                                           limit,
-                                           kappa_min,
-                                           kappa_step,
-                                           kappa_max,
-                                           alpha,
-                                           w);
+    return ine_1::run<ine_1::minimize_tag>(pb, p);
 }
 
 } // lp
