@@ -332,8 +332,6 @@ struct constraint_calculator
 
             r[i].value = cost(I[i]) - sum_a_pi - sum_a_p;
             r[i].id = I[i];
-
-            // std::cerr << "update_row: " << r[i].id << "=" << I[i] << '\n';
         }
 
         /*
@@ -372,13 +370,9 @@ struct constraint_calculator
         const index endi{ numeric_cast<index>(r.size()) };
         int sum{ 0 };
 
-        // std::cerr << "constraint " << k << " endi: " << endi << '\n';
-        // std::cerr << "   " << b(0, k) << " " << b(1, k) << '\n';
-
         for (; i != endi; ++i) {
             sum += A(k, r[i].id);
-            // std::cerr << "   " << sum << '\n';
-            assert(A(k, r[i].id) == 1);
+
             if (b(0, k) <= sum)
                 break;
         }
@@ -389,17 +383,12 @@ struct constraint_calculator
         // settings the selected value to -1.
         //
         if (b(0, k) <= sum and sum <= b(1, k)) {
-            // std::cerr << "   begin sum:" << sum << " b(0,k):" << b(0, k)
-            //           << " selected:" << i << '\n';
-
             if (b(0, k) > sum)
                 throw solver_error(solver_error::tag::unrealisable_constraint);
 
             selected = i;
             for (; i != endi; ++i) {
                 sum += A(k, r[i].id);
-
-                // std::cerr << "   " << sum << '\n';
 
                 if (sum <= b(1, k)) {
                     if (stop_iterating(r[i].value, mode_type()))
@@ -412,14 +401,8 @@ struct constraint_calculator
             if (i == endi)
                 throw solver_error(solver_error::tag::unrealisable_constraint);
 
-            assert(selected < endi);
-
-            // std::cerr << "   finish sum:" << sum << " b(1,k):" << b(1, k)
-            // << " selected:" << selected << '\n';
-
             first = selected;
             second = selected + 1;
-
         } else {
             first = 0;
             second = 1;
@@ -430,25 +413,18 @@ struct constraint_calculator
             second = selected;
         }
 
-        // std::cerr << "   finally first=" << first << " second=" << second
-        //           << '\n';
-
         pi(k) += ((r[first].value + r[second].value) / 2.0);
 
         double d = delta + ((kappa / (1.0 - kappa)) *
                             (r[second].value - r[first].value));
 
         index j{ 0 };
-        // std::cerr << "   Assign 1 from " << j << " to " << selected << '\n';
         for (; j <= selected; ++j) {
-            // std::cerr << "   Assign 1 to " << r[j].id << '\n';
             x(r[j].id) = 1;
             P(k, r[j].id) += d;
         }
 
-        // std::cerr << "   Assign 0 from " << j << " to " << endi << '\n';
         for (; j != endi; ++j) {
-            // std::cerr << "   Assign 0 to " << r[j].id << '\n';
             x(r[j].id) = 0;
             P(k, r[j].id) -= d;
         }
@@ -463,10 +439,6 @@ struct constraint_calculator
         for (std::size_t i{ 0 }, e{ C.size() }; i != e; ++i) {
             A(k, C[i]) *= -1;
             P(k, C[i]) *= -1;
-
-            // std::cerr << "   Reassign " << 1 - x[C[i]] << " to " << C[i]
-            // << '\n';
-
             x[C[i]] = 1 - x[C[i]];
         }
     }
@@ -487,15 +459,6 @@ struct merged_constraint
     int min;
     int max;
 };
-
-// template <typename functionT>
-// void
-// show_mc(const functionT& f)
-// {
-//     for (auto& elem : f)
-//         printf("%d * %ld ", elem.factor, elem.variable_index);
-//     printf("\n");
-// }
 
 class my_hash
 {
@@ -572,34 +535,33 @@ make_merged_constraints(const lp::problem& pb)
         ofs << " <= " << elem.max << '\n';
     }
 
-    // std::vector<int> vars(pb.vars.values.size(), 0);
+    std::vector<int> vars(pb.vars.values.size(), 0);
 
-    // for (auto& elem : ret)
-    //     for (auto& f : elem.elements)
-    //         vars[f.variable_index]++;
+    for (auto& elem : ret)
+        for (auto& f : elem.elements)
+            vars[f.variable_index]++;
 
-    // std::sort(
-    //   ret.begin(), ret.end(), [vars](const auto& lhs, const auto& rhs) {
-    //       long sumlhs{ 1 };
-    //       long sumrhs{ 1 };
+    std::sort(
+      ret.begin(), ret.end(), [vars](const auto& lhs, const auto& rhs) {
+          long sumlhs{ 1 };
+          long sumrhs{ 1 };
 
-    //       for (auto& f : lhs.elements)
-    //           sumlhs *= vars[f.variable_index];
+          for (auto& f : lhs.elements)
+              sumlhs *= vars[f.variable_index];
 
-    //       for (auto& f : rhs.elements)
-    //           sumrhs *= vars[f.variable_index];
+       for (auto& f : rhs.elements)
+             sumrhs *= vars[f.variable_index];
 
-    //       return sumrhs < sumlhs;
-    //   });
+          return sumrhs < sumlhs;
+      });
 
     return ret;
 }
 
 template <typename modeT>
-class solver
+struct solver
 {
     std::vector<constraint_calculator<modeT>> row_updaters;
-    std::vector<index> R;
     index m;
     index n;
     A_type A;
@@ -610,10 +572,7 @@ class solver
     pi_type pi;
     u_type u;
     const lp::problem& pb;
-    bool solution_found;
-    std::default_random_engine rng;
 
-public:
     using mode_type = modeT;
 
     solver(const lp::problem& pb, const std::vector<merged_constraint>& csts)
@@ -627,8 +586,6 @@ public:
       , pi(pi_type::Zero(m))
       , u(u_type::Zero(n))
       , pb(pb)
-      , solution_found(false)
-      , rng(std::chrono::system_clock::now().time_since_epoch().count())
     {
         for (std::size_t i{ 0 }, e = pb.vars.values.size(); i != e; ++i)
             u(i) = pb.vars.values[i].max;
@@ -641,7 +598,7 @@ public:
 
         for (std::size_t i{ 0 }, e{ csts.size() }; i != e; ++i) {
             index lower{ 0 }, upper{ 0 };
-            // index lower{ -1 }, upper{ 1 };
+
             for (const auto& cst : csts[i].elements) {
                 A(i, cst.variable_index) = cst.factor;
                 if (cst.factor < 0)
@@ -688,182 +645,7 @@ public:
             row_updaters[*it].serialize(*it, os);
     }
 
-    std::size_t compute_none(double kappa, double delta, double theta)
-    {
-        R.clear();
-
-        for (index k{ 0 }; k != m; ++k) {
-            int v = 0;
-
-            for (index i{ 0 }; i != n; ++i)
-                v += A(k, i) * x(i);
-
-            if (not(b(0, k) <= v and v <= b(1, k)))
-                R.push_back(k);
-        }
-
-        for (auto it{ R.cbegin() }, et{ R.cend() }; it != et; ++it)
-            row_updaters[*it].update_row(*it, kappa, delta, theta);
-
-        if (R.empty())
-            solution_found = true;
-
-        return R.size();
-    }
-
-    std::size_t compute_reversing(double kappa, double delta, double theta)
-    {
-        R.clear();
-
-        for (index k{ 0 }; k != m; ++k) {
-            int v = 0;
-
-            for (index i{ 0 }; i != n; ++i)
-                v += A(k, i) * x(i);
-
-            if (not(b(0, k) <= v and v <= b(1, k)))
-                R.push_back(k);
-        }
-
-        for (auto it{ R.crbegin() }, et{ R.crend() }; it != et; ++it)
-            row_updaters[*it].update_row(*it, kappa, delta, theta);
-
-        if (R.empty())
-            solution_found = true;
-
-        return R.size();
-    }
-
-    std::size_t compute_random_sorting(double kappa,
-                                       double delta,
-                                       double theta)
-    {
-        R.clear();
-
-        for (index k{ 0 }; k != m; ++k) {
-            int v = 0;
-
-            for (index i{ 0 }; i != n; ++i)
-                v += A(k, i) * x(i);
-
-            if (not(b(0, k) <= v and v <= b(1, k)))
-                R.push_back(k);
-        }
-
-        std::shuffle(R.begin(), R.end(), rng);
-
-        for (index k : R)
-            row_updaters[k].update_row(k, kappa, delta, theta);
-
-        if (R.empty())
-            solution_found = true;
-
-        return R.size();
-    }
-
-    std::size_t compute_infeasibility_decr(double kappa,
-                                           double delta,
-                                           double theta)
-    {
-        std::vector<std::pair<index, index>> currentR;
-
-        for (index k{ 0 }; k != m; ++k) {
-            int v = 0;
-
-            for (index i{ 0 }; i != n; ++i)
-                v += A(k, i) * x(i);
-
-            if (not(b(0, k) <= v and v <= b(1, k))) {
-                currentR.emplace_back(k, 0);
-
-                if (v < b(0, k))
-                    currentR.back().second = b(0, k) - v;
-                else
-                    currentR.back().second = v - b(1, k);
-            }
-        }
-
-        std::sort(currentR.begin(),
-                  currentR.end(),
-                  [](const auto& lhs, const auto& rhs) {
-                      return rhs.second < lhs.second;
-                  });
-
-        std::bernoulli_distribution d(.5);
-        std::size_t i{ 0 };
-        const std::size_t e{ currentR.size() };
-
-        for (; i != e; ++i) {
-            if (i + 1 == e)
-                break;
-
-            if (currentR[i].second == currentR[i + 1].second)
-                if (d(rng))
-                    std::swap(currentR[i].first, currentR[i + 1].second);
-        }
-
-        for (i = 0; i != e; ++i)
-            row_updaters[currentR[i].first].update_row(
-              currentR[i].first, kappa, delta, theta);
-
-        if (currentR.empty())
-            solution_found = true;
-
-        return currentR.size();
-    }
-
-    std::size_t compute_infeasibility_incr(double kappa,
-                                           double delta,
-                                           double theta)
-    {
-        std::vector<std::pair<index, index>> currentR;
-
-        for (index k{ 0 }; k != m; ++k) {
-            int v = 0;
-
-            for (index i{ 0 }; i != n; ++i)
-                v += A(k, i) * x(i);
-
-            if (not(b(0, k) <= v and v <= b(1, k))) {
-                currentR.emplace_back(k, 0);
-
-                if (v < b(0, k))
-                    currentR.back().second = b(0, k) - v;
-                else
-                    currentR.back().second = v - b(1, k);
-            }
-        }
-
-        std::sort(currentR.begin(),
-                  currentR.end(),
-                  [](const auto& lhs, const auto& rhs) {
-                      return lhs.second < rhs.second;
-                  });
-
-        std::bernoulli_distribution d(.5);
-        std::size_t i{ 0 };
-        const std::size_t e{ currentR.size() };
-
-        for (; i != e; ++i) {
-            if (i + 1 == e)
-                break;
-
-            if (currentR[i].second == currentR[i + 1].second)
-                if (d(rng))
-                    std::swap(currentR[i].first, currentR[i + 1].second);
-        }
-
-        for (i = 0; i != e; ++i)
-            row_updaters[currentR[i].first].update_row(
-              currentR[i].first, kappa, delta, theta);
-
-        if (currentR.empty())
-            solution_found = true;
-
-        return currentR.size();
-    }
-
-    double compute_value() const
+    double compute_value() const noexcept
     {
         double ret = pb.objective.constant;
 
@@ -873,6 +655,21 @@ public:
         return ret;
     }
 
+    bool is_valid_solution() const noexcept
+    {
+        for (index k {0}; k != m; ++k) {
+            int v {0};
+
+            for (index i{0}; i != n; ++i)
+                v += A(k, i) * x(i);
+
+            if (not (b(0, k) <= v and v <= b(1, k)))
+                return false;
+        }
+
+        return true;
+    }
+
     result results() const
     {
         result ret;
@@ -880,7 +677,7 @@ public:
         ret.variables = n;
         ret.constraints = m;
         ret.value = compute_value();
-        ret.solution_found = solution_found;
+        ret.solution_found = is_valid_solution();
         ret.variable_name.resize(n);
         ret.variable_value.resize(n, 0);
 
@@ -893,11 +690,208 @@ public:
     }
 };
 
-template <typename modeT>
+struct compute_reversing
+{
+    std::vector<index> R;
+
+    template<typename solverT>
+    std::size_t run(solverT& solver, double kappa, double delta, double theta)
+    {
+        R.clear();
+
+        for (index k {0}; k != solver.m; ++k) {
+            int v {0};
+
+            for (index i{0}; i != solver.n; ++i)
+                v += solver.A(k, i) * solver.x(i);
+
+            if (not (solver.b(0, k) <= v and v <= solver.b(1, k)))
+                R.push_back(k);
+        }
+
+        for (auto it{R.crbegin()}, et = R.crend(); it != et; ++it)
+            solver.row_updaters[*it].update_row(*it, kappa, delta, theta);
+
+        return R.size();
+    }
+};
+
+struct compute_none
+{
+    std::vector<index> R;
+
+    template<typename solverT>
+    std::size_t run(solverT& solver, double kappa, double delta, double theta)
+    {
+        R.clear();
+
+        for (index k{ 0 }; k != solver.m; ++k) {
+            int v = 0;
+
+            for (index i{ 0 }; i != solver.n; ++i)
+                v += solver.A(k, i) * solver.x(i);
+
+            if (not(solver.b(0, k) <= v and v <= solver.b(1, k)))
+                R.push_back(k);
+        }
+
+        for (auto it{ R.cbegin() }, et{ R.cend() }; it != et; ++it)
+            solver.row_updaters[*it].update_row(*it, kappa, delta, theta);
+
+        return R.size();
+    }
+};
+
+struct compute_random
+{
+    std::default_random_engine rng;
+    std::vector<index> R;
+
+    template<typename solverT>
+    std::size_t run(solverT& solver, double kappa, double delta, double theta)
+    {
+        R.clear();
+
+        for (index k{ 0 }; k != solver.m; ++k) {
+            int v = 0;
+
+            for (index i{ 0 }; i != solver.n; ++i)
+                v += solver.A(k, i) * solver.x(i);
+
+            if (not(solver.b(0, k) <= v and v <= solver.b(1, k)))
+                R.push_back(k);
+        }
+
+        std::shuffle(R.begin(), R.end(), rng);
+
+        for (index k : R)
+            solver.row_updaters[k].update_row(k, kappa, delta, theta);
+
+        return R.size();
+    }
+};
+
+struct compute_infeasibility_decr
+{
+    std::default_random_engine rng;
+    std::vector<std::pair<index, index>> R;
+
+    compute_infeasibility_decr()
+        : rng(std::chrono::system_clock::now().time_since_epoch().count())
+    {}
+
+    template<typename solverT>
+    std::size_t run(solverT& solver, double kappa, double delta, double theta)
+    {
+        R.clear();
+
+        for (index k{ 0 }; k != solver.m; ++k) {
+            int v = 0;
+
+            for (index i{ 0 }; i != solver.n; ++i)
+                v += solver.A(k, i) * solver.x(i);
+
+            if (not(solver.b(0, k) <= v and v <= solver.b(1, k))) {
+                R.emplace_back(k, 0);
+
+                if (v < solver.b(0, k))
+                    R.back().second = solver.b(0, k) - v;
+                else
+                    R.back().second = v - solver.b(1, k);
+            }
+        }
+
+        std::sort(R.begin(),
+                  R.end(),
+                  [](const auto& lhs, const auto& rhs) {
+                      return rhs.second < lhs.second;
+                  });
+
+        std::bernoulli_distribution d(.5);
+        std::size_t i{ 0 };
+        const std::size_t e{ R.size() };
+
+        for (; i != e; ++i) {
+            if (i + 1 == e)
+                break;
+
+            if (R[i].second == R[i + 1].second)
+                if (d(rng))
+                    std::swap(R[i].first, R[i + 1].second);
+        }
+
+        for (i = 0; i != e; ++i)
+            solver.row_updaters[R[i].first].update_row(
+                    R[i].first, kappa, delta, theta);
+
+        return R.size();
+    }
+};
+
+struct compute_infeasibility_incr
+{
+    std::default_random_engine rng;
+    std::vector<std::pair<index, index>> R;
+
+    compute_infeasibility_incr()
+        : rng(std::chrono::system_clock::now().time_since_epoch().count())
+    {}
+    
+    template<typename solverT>
+    std::size_t run(solverT& solver, double kappa, double delta, double theta)
+    {
+        R.clear();
+
+        for (index k{ 0 }; k != solver.m; ++k) {
+            int v = 0;
+
+            for (index i{ 0 }; i != solver.n; ++i)
+                v += solver.A(k, i) * solver.x(i);
+
+            if (not(solver.b(0, k) <= v and v <= solver.b(1, k))) {
+                R.emplace_back(k, 0);
+
+                if (v < solver.b(0, k))
+                    R.back().second = solver.b(0, k) - v;
+                else
+                    R.back().second = v - solver.b(1, k);
+            }
+        }
+
+        std::sort(R.begin(),
+                  R.end(),
+                  [](const auto& lhs, const auto& rhs) {
+                      return lhs.second < rhs.second;
+                  });
+
+        std::bernoulli_distribution d(.5);
+        std::size_t i{ 0 };
+        const std::size_t e{ R.size() };
+
+        for (; i != e; ++i) {
+            if (i + 1 == e)
+                break;
+
+            if (R[i].second == R[i + 1].second)
+                if (d(rng))
+                    std::swap(R[i].first, R[i + 1].second);
+        }
+
+        for (i = 0; i != e; ++i)
+            solver.row_updaters[R[i].first].update_row(
+              R[i].first, kappa, delta, theta);
+
+        return R.size();
+    }
+};
+
+
+template <typename modeT, typename constraintOrderT>
 inline result
 run(const problem& pb, const parameters& p)
 {
     using mode_type = modeT;
+    using constraint_order_type = constraintOrderT;
 
     auto begin = std::chrono::steady_clock::now();
     long int i2{ 0 };
@@ -907,29 +901,10 @@ run(const problem& pb, const parameters& p)
     solver<mode_type> slv(pb, make_merged_constraints(pb));
     result best;
     best.remaining_constraints = std::numeric_limits<index>::max();
+    constraint_order_type compute;
 
     for (long int i{ 0 }; i < p.limit; ++i) {
-        index remaining;
-        switch (p.order) {
-            case constraint_order::none:
-                remaining = slv.compute_none(kappa, p.delta, p.theta);
-                break;
-            case constraint_order::reversing:
-                remaining = slv.compute_reversing(kappa, p.delta, p.theta);
-                break;
-            case constraint_order::random_sorting:
-                remaining =
-                  slv.compute_random_sorting(kappa, p.delta, p.theta);
-                break;
-            case constraint_order::infeasibility_decr:
-                remaining =
-                  slv.compute_infeasibility_decr(kappa, p.delta, p.theta);
-                break;
-            case constraint_order::infeasibility_incr:
-                remaining =
-                  slv.compute_infeasibility_incr(kappa, p.delta, p.theta);
-                break;
-        }
+        index remaining = compute.run(slv, kappa, p.delta, p.theta);
 
         auto current = slv.results();
         current.loop = i;
@@ -998,11 +973,31 @@ inequalities_1coeff_wedelin(const problem& pb,
     namespace ine_1 = lp::inequalities_1coeff;
     ine_1::parameters p(params);
     p.print();
+    
+    switch (p.order) {
+        case ine_1::constraint_order::none:
+            if (pb.type == lp::objective_function_type::maximize)
+                return ine_1::run<ine_1::maximize_tag, ine_1::compute_none>(pb, p);
+            return ine_1::run<ine_1::minimize_tag, ine_1::compute_none>(pb, p);
+        case ine_1::constraint_order::reversing:
+            if (pb.type == lp::objective_function_type::maximize)
+                return ine_1::run<ine_1::maximize_tag, ine_1::compute_reversing>(pb, p);
+            return ine_1::run<ine_1::minimize_tag, ine_1::compute_reversing>(pb, p);
+        case ine_1::constraint_order::random_sorting:
+            if (pb.type == lp::objective_function_type::maximize)
+                return ine_1::run<ine_1::maximize_tag, ine_1::compute_random>(pb, p);
+            return ine_1::run<ine_1::minimize_tag, ine_1::compute_random>(pb, p);
+        case ine_1::constraint_order::infeasibility_decr:
+            if (pb.type == lp::objective_function_type::maximize)
+                return ine_1::run<ine_1::maximize_tag, ine_1::compute_infeasibility_decr>(pb, p);
+            return ine_1::run<ine_1::minimize_tag, ine_1::compute_infeasibility_decr>(pb, p);
+        case ine_1::constraint_order::infeasibility_incr:
+            if (pb.type == lp::objective_function_type::maximize)
+                return ine_1::run<ine_1::maximize_tag, ine_1::compute_infeasibility_incr>(pb, p);
+            return ine_1::run<ine_1::minimize_tag, ine_1::compute_infeasibility_incr>(pb, p);
+    }
 
-    if (pb.type == lp::objective_function_type::maximize)
-        return ine_1::run<ine_1::maximize_tag>(pb, p);
-
-    return ine_1::run<ine_1::minimize_tag>(pb, p);
+    throw "TODO internal error";
 }
 
 } // lp
