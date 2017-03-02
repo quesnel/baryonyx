@@ -247,16 +247,19 @@ struct parameter
       , type(tag::integer)
     {
     }
+
     explicit parameter(long value_)
       : l(value_)
       , type(tag::integer)
     {
     }
+
     explicit parameter(double value_)
       : d(value_)
       , type(tag::real)
     {
     }
+
     explicit parameter(const std::string& value_)
       : s(value_)
       , type(tag::string)
@@ -290,7 +293,7 @@ struct parameter
                 d = w.d;
                 break;
             case tag::string:
-                s = std::move(w.s);
+                new (&s) std::string(w.s);
                 break;
         }
 
@@ -329,7 +332,9 @@ struct parameter
     parameter& operator=(parameter&& w)
     {
         if (type == tag::string and w.type == tag::string) {
-            s = std::move(w.s);
+            new (&s) std::string(w.s);
+            w.type = tag::integer;
+            w.l = 0;
             return *this;
         }
 
@@ -346,7 +351,7 @@ struct parameter
                 d = w.d;
                 break;
             case tag::string:
-                s = std::move(w.s);
+                new (&s) std::string(w.s);
                 break;
         }
 

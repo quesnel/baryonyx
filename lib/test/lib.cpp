@@ -20,10 +20,11 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <lpcore>
 #include "unit-test.hpp"
+#include <lpcore>
 
-void check_numeric_cast()
+void
+check_numeric_cast()
 {
     int small_positive = 1;
     int small_negative = -1;
@@ -65,28 +66,26 @@ void check_numeric_cast()
 
     std::vector<int> v;
 
-    EnsuresNotThrow(lp::numeric_cast<short int>(v.size()),
-                    std::exception);
+    EnsuresNotThrow(lp::numeric_cast<short int>(v.size()), std::exception);
 
-    EnsuresNotThrow(lp::numeric_cast<short int>(v.capacity()),
-                    std::exception);
+    EnsuresNotThrow(lp::numeric_cast<short int>(v.capacity()), std::exception);
 
-    EnsuresThrow(lp::numeric_cast<short int>(v.max_size()),
-                 std::exception);
+    EnsuresThrow(lp::numeric_cast<short int>(v.max_size()), std::exception);
 
     unsigned int checked_size = lp::numeric_cast<unsigned int>(v.size());
     Ensures(0 == checked_size);
 }
 
-void check_parameter()
+void
+check_parameter()
 {
-    lp::parameter real {3.0};
+    lp::parameter real{ 3.0 };
     Ensures(real.type == lp::parameter::tag::real);
 
-    lp::parameter integer {1000l};
+    lp::parameter integer{ 1000l };
     Ensures(integer.type == lp::parameter::tag::integer);
 
-    lp::parameter str {"hello world"};
+    lp::parameter str{ "hello world" };
     Ensures(str.type == lp::parameter::tag::string);
 
     str = real;
@@ -125,9 +124,14 @@ void check_parameter()
     Ensures(x[2].type == lp::parameter::tag::real);
     EnsuresEqual(x[2].d, 5.0);
     EnsuresNotEqual(x[2].d, 6.0);
+
+    x[3] = lp::parameter(std::string("hello world!"));
+    Ensures(x[3].type == lp::parameter::tag::string);
+    Ensures(x[3].s == "hello world!");
 }
 
-int main(int /* argc */, char */* argv */[])
+int
+main(int /* argc */, char* /* argv */ [])
 {
     check_numeric_cast();
     check_parameter();
