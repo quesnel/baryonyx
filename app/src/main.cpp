@@ -27,6 +27,7 @@
 #include <sstream>
 
 #include <cerrno>
+#include <climits>
 #include <cmath>
 #include <cstdio>
 #include <cstring>
@@ -250,11 +251,10 @@ to_double(const char* s, double bad_value) noexcept
 {
     char* c;
     errno = 0;
-    double value = std::strtof(s, &c);
+    double value = std::strtod(s, &c);
 
-    if ((errno == ERANGE and (value == std::numeric_limits<double>::lowest() or
-                              value == -std::numeric_limits<double>::max())) or
-        (errno != 0 and value == 0) or (c == ::optarg))
+    if ((errno == ERANGE and (value == HUGE_VAL or value == -HUGE_VAL)) or
+        (value == 0.0 and c == s))
         return bad_value;
 
     return value;
@@ -267,9 +267,8 @@ to_long(const char* s, long bad_value) noexcept
     errno = 0;
     long value = std::strtol(s, &c, 10);
 
-    if ((errno == ERANGE and (value == std::numeric_limits<long>::lowest() or
-                              value == std::numeric_limits<long>::max())) or
-        (errno != 0 and value == 0) or (c == ::optarg))
+    if ((errno == ERANGE and (value == LONG_MIN or value == LONG_MAX)) or
+        (value == 0 and c == s))
         return bad_value;
 
     return value;
@@ -292,25 +291,18 @@ split_param(const char* param) noexcept
     if (*param and (*param == ':' or *param == '=')) {
         param++;
 
-        while (*param) {
-            if (isalnum(*param) or *param == '.')
-                value += *param;
-            else
-                break;
-
-            param++;
-        }
+        while (*param)
+            value += *param++;
     }
 
-    auto valuel = to_long(value.c_str(), std::numeric_limits<long>::min());
-    auto valued = to_double(value.c_str(), std::numeric_limits<double>::min());
+    auto valuel = to_long(value.c_str(), LONG_MIN);
+    auto valued = to_double(value.c_str(), -HUGE_VAL);
 
     double tmp;
-    if (valued != std::numeric_limits<double>::min() and
-        std::modf(valued, &tmp))
+    if (valued != -HUGE_VAL and std::modf(valued, &tmp))
         return std::make_tuple(name, lp::parameter(valued));
 
-    if (valuel != std::numeric_limits<long>::min())
+    if (valuel != LONG_MIN)
         return std::make_tuple(name, lp::parameter(valuel));
 
     return std::make_tuple(name, lp::parameter(value));
