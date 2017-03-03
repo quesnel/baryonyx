@@ -785,6 +785,112 @@ struct solver
     }
 };
 
+std::size_t
+cycle_avoidance_hash(const std::vector<index>& vec)
+{
+    std::size_t seed{ vec.size() };
+
+    for (auto& elem : vec)
+        seed ^= elem + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+
+    return seed;
+}
+
+struct cycle_avoidance
+{
+    std::vector<std::size_t> history;
+    std::size_t limit;
+
+    cycle_avoidance(std::size_t limit_ = 48l)
+      : history(limit_)
+      , limit(limit_)
+    {
+        history.clear();
+    }
+
+    void limit_size()
+    {
+        if (history.size() > limit)
+            history.erase(history.begin(),
+                          history.begin() + (history.size() - limit));
+    }
+
+    bool have_cycle(const std::vector<index>& R)
+    {
+        history.push_back(cycle_avoidance_hash(R));
+        long distance{ 2 };
+        const long end{ numeric_cast<long>(history.size()) };
+
+        if (end < distance)
+            return false;
+
+        for (; distance != end; ++distance) {
+            index i{ end - 1 };
+            index j{ i - distance };
+            long cycle_size{ 0 };
+
+            while (j >= 0 and history[i] == history[j]) {
+                cycle_size++;
+                --j;
+                --i;
+            }
+
+            if (cycle_size >= 1) {
+                history.clear();
+                return true;
+            }
+        }
+
+        limit_size();
+
+        return false;
+    }
+};
+
+struct compute_random
+{
+    cycle_avoidance detect;
+    std::default_random_engine rng;
+    std::vector<index> R;
+
+    compute_random()
+      : rng(std::chrono::system_clock::now().time_since_epoch().count())
+    {
+    }
+
+    template <typename solverT>
+    std::size_t run(solverT& solver, double kappa, double delta, double theta)
+    {
+        R.clear();
+
+        for (index k{ 0 }; k != solver.m; ++k) {
+            int v = 0;
+
+            for (index i{ 0 }; i != solver.n; ++i)
+                v += solver.A(k, i) * solver.x(i);
+
+            if (not(solver.b(0, k) <= v and v <= solver.b(1, k)))
+                R.push_back(k);
+        }
+
+        if (detect.have_cycle(R)) {
+            printf("/!\\ Cycle found\n");
+
+            for (index i{ 0 }; i != solver.m; ++i)
+                solver.row_updaters[i].update_row(i, 0.0, delta, 1.0);
+
+            return numeric_cast<std::size_t>(solver.m);
+        } else {
+            std::shuffle(R.begin(), R.end(), rng);
+
+            for (index k : R)
+                solver.row_updaters[k].update_row(k, kappa, delta, theta);
+
+            return R.size();
+        }
+    }
+};
+
 struct compute_reversing
 {
     std::vector<index> R;
@@ -832,35 +938,6 @@ struct compute_none
 
         for (auto it{ R.cbegin() }, et{ R.cend() }; it != et; ++it)
             solver.row_updaters[*it].update_row(*it, kappa, delta, theta);
-
-        return R.size();
-    }
-};
-
-struct compute_random
-{
-    std::default_random_engine rng;
-    std::vector<index> R;
-
-    template <typename solverT>
-    std::size_t run(solverT& solver, double kappa, double delta, double theta)
-    {
-        R.clear();
-
-        for (index k{ 0 }; k != solver.m; ++k) {
-            int v = 0;
-
-            for (index i{ 0 }; i != solver.n; ++i)
-                v += solver.A(k, i) * solver.x(i);
-
-            if (not(solver.b(0, k) <= v and v <= solver.b(1, k)))
-                R.push_back(k);
-        }
-
-        std::shuffle(R.begin(), R.end(), rng);
-
-        for (index k : R)
-            solver.row_updaters[k].update_row(k, kappa, delta, theta);
 
         return R.size();
     }
@@ -1007,13 +1084,6 @@ run(const problem& pb, const parameters& p)
         if (remaining < best.remaining_constraints) {
             auto t = std::chrono::duration_cast<std::chrono::duration<double>>(
               current.end - current.begin);
-
-            // printf("\r  - constraints remaining: %ld/%ld at %fs",
-            //        remaining,
-            //        current.constraints,
-            //        t.count());
-
-            // fflush(stdout);
 
             printf("  - constraints remaining: %ld/%ld at %fs\n",
                    remaining,
