@@ -334,9 +334,9 @@ struct constraint_calculator
             r[i].id = I[i];
         }
 
-        /*
-         * Negate reduced costs and coefficients of these variables.
-         */
+        //
+        // Negate reduced costs and coefficients of these variables.
+        //
 
         for (std::size_t i{ 0 }, endc{ C.size() }; i != endc; ++i) {
             int variable = C[i];
@@ -357,15 +357,13 @@ struct constraint_calculator
         b(0, k) += C.size();
         b(1, k) += C.size();
 
-        assert(b(0, k) >= 0);
-        assert(b(0, k) <= b(1, k));
+        //
+        // The bkmin and bkmax constraint bounds are not equal and can be
+        // assigned to -infinity or +infinity. We have to scan the r vector
+        // and search a value j such as b(0, k) <= Sum A(k, r[j]) < b(1,
+        // k).
+        //
 
-        /*
-         * The bkmin and bkmax constraint bounds are not equal and can be
-         * assigned to -infinity or +infinity. We have to scan the r vector
-         * and search a value j such as b(0, k) <= Sum A(k, r[j]) < b(1,
-         * k).
-         */
         index i{ 0 }, selected{ -1 }, first, second;
         const index endi{ numeric_cast<index>(r.size()) };
         int sum{ 0 };
@@ -382,6 +380,7 @@ struct constraint_calculator
         // the minimum constraints is invalid, we assign 0 to all variable by
         // settings the selected value to -1.
         //
+
         if (b(0, k) <= sum and sum <= b(1, k)) {
             if (b(0, k) > sum)
                 throw solver_error(solver_error::tag::unrealisable_constraint);
@@ -432,10 +431,10 @@ struct constraint_calculator
         b(0, k) -= C.size();
         b(1, k) -= C.size();
 
-        /*
-         * Clean up: correct negated costs and adjust value of negated
-         * variables.
-         */
+        //
+        // Clean up: correct negated costs and adjust value of negated
+        // variables.
+        //
         for (std::size_t i{ 0 }, e{ C.size() }; i != e; ++i) {
             A(k, C[i]) *= -1;
             P(k, C[i]) *= -1;
@@ -686,9 +685,10 @@ struct solver
             u(i) = pb.vars.values[i].max;
 
         //
-        // Compute bkmin and bkmax acccording to the value of the constraints
+        // Compute bkmin and bkmax according to the value of the constraints
         // (infinity or constant) and the number of element in the expression
-        // (avoid the bkmax += C.size() in inequalities).
+        // (avoid the bkmax += C.size() in negative coefficient solver which
+        // may overflow the integer.
         //
 
         for (std::size_t i{ 0 }, e{ csts.size() }; i != e; ++i) {
