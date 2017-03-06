@@ -32,6 +32,8 @@
 #include <cstdio>
 #include <cstring>
 #include <getopt.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 void help() noexcept;
 double to_double(const char* s, double bad_value) noexcept;
@@ -102,12 +104,18 @@ main(int argc, char* argv[])
             if (ret.solution_found and
                 lp::is_valid_solution(pb, ret.variable_value)) {
                 std::fprintf(stdout, "Solution found: %f\n", ret.value);
+
+                std::string filename(argv[i]);
+                filename += '-';
+                filename += std::to_string(::getpid());
+                filename += ".sol";
+
+                std::ofstream ofs(filename);
                 for (std::size_t i{ 0 }, e{ ret.variable_name.size() }; i != e;
                      ++i)
-                    std::fprintf(stdout,
-                                 "%s = %d",
-                                 ret.variable_name[i].c_str(),
-                                 ret.variable_value[i]);
+                    ofs << ret.variable_name[i] << " = "
+                        << ret.variable_value[i] << '\n';
+
             } else {
                 std::fprintf(stdout, "No solution found\n");
             }
