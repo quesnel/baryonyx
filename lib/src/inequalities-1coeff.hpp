@@ -212,22 +212,45 @@ struct minimize_tag
 {
 };
 
-template <typename iteratorT>
+template <typename iteratorT, typename randomT>
 void
-calculator_sort(iteratorT begin, iteratorT end, minimize_tag)
+random_shuffle_unique(iteratorT begin, iteratorT end, randomT& rng)
 {
-    std::sort(begin, end, [](const auto& lhs, const auto& rhs) {
-        return lhs.value < rhs.value;
-    });
+    auto ret = begin++;
+    for (; begin != end; ++begin) {
+        if (ret->value != begin->value) {
+            std::shuffle(ret, begin, rng);
+            ret = begin;
+        }
+    }
+
+    std::shuffle(ret, begin, rng);
 }
 
-template <typename iteratorT>
+template <typename iteratorT, typename randomT>
 void
-calculator_sort(iteratorT begin, iteratorT end, maximize_tag)
+calculator_sort(iteratorT begin, iteratorT end, randomT& rng, minimize_tag)
 {
-    std::sort(begin, end, [](const auto& lhs, const auto& rhs) {
-        return rhs.value < lhs.value;
-    });
+    if (std::distance(begin, end) > 1) {
+        std::stable_sort(begin, end, [](const auto& lhs, const auto& rhs) {
+            return lhs.value < rhs.value;
+        });
+
+        random_shuffle_unique(begin, end, rng);
+    }
+}
+
+template <typename iteratorT, typename randomT>
+void
+calculator_sort(iteratorT begin, iteratorT end, randomT& rng, maximize_tag)
+{
+    if (std::distance(begin, end) > 1) {
+        std::stable_sort(begin, end, [](const auto& lhs, const auto& rhs) {
+            return rhs.value < lhs.value;
+        });
+
+        random_shuffle_unique(begin, end, rng);
+    }
 }
 
 bool
@@ -242,10 +265,11 @@ stop_iterating(double value, maximize_tag)
     return value <= 0;
 }
 
-template <typename modeT>
+template <typename modeT, typename randomT>
 struct constraint_calculator
 {
     using mode_type = modeT;
+    using random_generator_type = randomT;
 
     struct r_data
     {
@@ -259,6 +283,7 @@ struct constraint_calculator
         index id;
     };
 
+    random_generator_type& rng;
     A_type& A;
     b_type& b;
     c_type& cost;
@@ -271,7 +296,8 @@ struct constraint_calculator
     index m;
     index n;
 
-    constraint_calculator(index k,
+    constraint_calculator(random_generator_type& rng_,
+                          index k,
                           index m_,
                           index n_,
                           A_type& A_,
@@ -280,7 +306,8 @@ struct constraint_calculator
                           x_type& x_,
                           P_type& P_,
                           pi_type& pi_)
-      : A(A_)
+      : rng(rng_)
+      , A(A_)
       , b(b_)
       , cost(c_)
       , x(x_)
@@ -352,7 +379,7 @@ struct constraint_calculator
             P(k, variable) *= -1;
         }
 
-        calculator_sort(r.begin(), r.end(), mode_type());
+        calculator_sort(r.begin(), r.end(), rng, mode_type());
 
         b(0, k) += C.size();
         b(1, k) += C.size();
@@ -459,22 +486,18 @@ struct merged_constraint
     int max;
 };
 
-class my_hash
+struct merged_constraint_hash
 {
-public:
-    size_t operator()(const std::vector<lp::function_element>& fct) const
+    inline size_t operator()(
+      const std::vector<lp::function_element>& fct) const noexcept
     {
-        size_t sum{ 0 };
+        std::size_t seed{ fct.size() };
 
-        sum =
-          std::accumulate(fct.begin(),
-                          fct.end(),
-                          0,
-                          [](std::size_t i, const lp::function_element& f) {
-                              return i * 100 + f.variable_index;
-                          });
+        for (auto& elem : fct)
+            seed ^=
+              elem.variable_index + 0x9e3779b9 + (seed << 6) + (seed >> 2);
 
-        return sum;
+        return seed;
     }
 };
 
@@ -546,7 +569,9 @@ std::vector<merged_constraint>
 make_merged_constraints(const lp::problem& pb)
 {
     std::vector<merged_constraint> ret;
-    std::unordered_map<std::vector<lp::function_element>, std::size_t, my_hash>
+    std::unordered_map<std::vector<lp::function_element>,
+                       std::size_t,
+                       merged_constraint_hash>
       cache;
 
     const std::size_t origin_constraints_number{
@@ -652,10 +677,14 @@ make_merged_constraints(const lp::problem& pb)
     return ret;
 }
 
-template <typename modeT>
+template <typename modeT, typename randomT>
 struct solver
 {
-    std::vector<constraint_calculator<modeT>> row_updaters;
+    using mode_type = modeT;
+    using random_generator_type = randomT;
+
+    random_generator_type& rng;
+    std::vector<constraint_calculator<modeT, randomT>> row_updaters;
     index m;
     index n;
     A_type A;
@@ -667,10 +696,11 @@ struct solver
     u_type u;
     const lp::problem& pb;
 
-    using mode_type = modeT;
-
-    solver(const lp::problem& pb, const std::vector<merged_constraint>& csts)
-      : m(csts.size())
+    solver(random_generator_type& rng_,
+           const lp::problem& pb,
+           const std::vector<merged_constraint>& csts)
+      : rng(rng_)
+      , m(csts.size())
       , n(pb.vars.values.size())
       , A(A_type::Zero(m, n))
       , b(b_type::Zero(2, m))
@@ -719,7 +749,7 @@ struct solver
         }
 
         for (index k = 0; k != m; ++k)
-            row_updaters.emplace_back(k, m, n, A, b, c, x, P, pi);
+            row_updaters.emplace_back(rng, k, m, n, A, b, c, x, P, pi);
     }
 
     void serialize(std::ostream& os) const
@@ -785,8 +815,9 @@ struct solver
     }
 };
 
+template <typename T>
 std::size_t
-cycle_avoidance_hash(const std::vector<index>& vec)
+cycle_avoidance_hash(const std::vector<T>& vec)
 {
     std::size_t seed{ vec.size() };
 
@@ -796,28 +827,64 @@ cycle_avoidance_hash(const std::vector<index>& vec)
     return seed;
 }
 
+std::size_t
+cycle_avoidance_hash(const x_type& vec)
+{
+    std::size_t seed{ numeric_cast<std::size_t>(vec.rows()) };
+
+    for (std::size_t i{ 0 }, e{ seed }; i != e; ++i)
+        seed ^= vec(i) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+
+    return seed;
+}
+
+std::size_t
+cycle_avoidance_hash(const std::vector<std::pair<index, index>>& vec)
+{
+    std::size_t seed{ vec.size() };
+
+    for (auto& elem : vec)
+        seed ^= elem.first + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+
+    return seed;
+}
+
+template <typename T>
+struct no_cycle_avoidance
+{
+    using value_type = T;
+
+    no_cycle_avoidance(std::size_t limit_ = 0) noexcept { (void)limit_; }
+
+    bool have_cycle(const x_type&) const noexcept { return false; }
+    bool have_cycle(const std::vector<T>&) const noexcept { return false; }
+    bool have_cycle(const std::vector<std::pair<index, index>>&) const noexcept
+    {
+        return false;
+    }
+};
+
+template <typename T>
 struct cycle_avoidance
 {
+    using value_type = T;
+
     std::vector<std::size_t> history;
     std::size_t limit;
+    index nb;
 
     cycle_avoidance(std::size_t limit_ = 48l)
       : history(limit_)
       , limit(limit_)
+      , nb(0)
     {
         history.clear();
     }
 
-    void limit_size()
-    {
-        if (history.size() > limit)
-            history.erase(history.begin(),
-                          history.begin() + (history.size() - limit));
-    }
+    ~cycle_avoidance() { printf("  - Cycle: %ld\n", nb); }
 
-    bool have_cycle(const std::vector<index>& R)
+    bool have_cycle()
     {
-        history.push_back(cycle_avoidance_hash(R));
         long distance{ 2 };
         const long end{ numeric_cast<long>(history.size()) };
 
@@ -835,65 +902,47 @@ struct cycle_avoidance
                 --i;
             }
 
-            if (cycle_size >= 1) {
+            if (cycle_size > 1) {
                 history.clear();
+                nb++;
                 return true;
             }
         }
 
-        limit_size();
+        if (history.size() > limit)
+            history.erase(history.begin(),
+                          history.begin() + (history.size() - limit));
 
         return false;
     }
-};
 
-struct compute_random
-{
-    cycle_avoidance detect;
-    std::default_random_engine rng;
-    std::vector<index> R;
-
-    compute_random()
-      : rng(std::chrono::system_clock::now().time_since_epoch().count())
+    bool have_cycle(const x_type& x)
     {
+        history.push_back(cycle_avoidance_hash(x));
+        return have_cycle();
     }
 
-    template <typename solverT>
-    std::size_t run(solverT& solver, double kappa, double delta, double theta)
+    bool have_cycle(const std::vector<T>& R)
     {
-        R.clear();
+        history.push_back(cycle_avoidance_hash(R));
+        return have_cycle();
+    }
 
-        for (index k{ 0 }; k != solver.m; ++k) {
-            int v = 0;
-
-            for (index i{ 0 }; i != solver.n; ++i)
-                v += solver.A(k, i) * solver.x(i);
-
-            if (not(solver.b(0, k) <= v and v <= solver.b(1, k)))
-                R.push_back(k);
-        }
-
-        if (detect.have_cycle(R)) {
-            printf("/!\\ Cycle found\n");
-
-            for (index i{ 0 }; i != solver.m; ++i)
-                solver.row_updaters[i].update_row(i, 0.0, delta, 1.0);
-
-            return numeric_cast<std::size_t>(solver.m);
-        } else {
-            std::shuffle(R.begin(), R.end(), rng);
-
-            for (index k : R)
-                solver.row_updaters[k].update_row(k, kappa, delta, theta);
-
-            return R.size();
-        }
+    bool have_cycle(const std::vector<std::pair<index, index>>& R)
+    {
+        history.push_back(cycle_avoidance_hash(R));
+        return have_cycle();
     }
 };
 
+template <typename randomT>
 struct compute_reversing
 {
     std::vector<index> R;
+    cycle_avoidance<index> detect_infeasability_cycle;
+    no_cycle_avoidance<int> detect_result_cycle;
+
+    compute_reversing(randomT&) {}
 
     template <typename solverT>
     std::size_t run(solverT& solver, double kappa, double delta, double theta)
@@ -910,16 +959,29 @@ struct compute_reversing
                 R.push_back(k);
         }
 
-        for (auto it{ R.crbegin() }, et = R.crend(); it != et; ++it)
-            solver.row_updaters[*it].update_row(*it, kappa, delta, theta);
+        if (detect_infeasability_cycle.have_cycle(R) or
+            detect_result_cycle.have_cycle(solver.x)) {
+            for (index i{ 0 }; i != solver.m; ++i)
+                solver.row_updaters[i].update_row(i, 0.0, delta, theta);
 
-        return R.size();
+            return numeric_cast<std::size_t>(solver.m);
+        } else {
+            for (auto it{ R.crbegin() }, et = R.crend(); it != et; ++it)
+                solver.row_updaters[*it].update_row(*it, kappa, delta, theta);
+
+            return R.size();
+        }
     }
 };
 
+template <typename randomT>
 struct compute_none
 {
     std::vector<index> R;
+    cycle_avoidance<index> detect_infeasability_cycle;
+    no_cycle_avoidance<int> detect_result_cycle;
+
+    compute_none(randomT&) {}
 
     template <typename solverT>
     std::size_t run(solverT& solver, double kappa, double delta, double theta)
@@ -936,20 +998,34 @@ struct compute_none
                 R.push_back(k);
         }
 
-        for (auto it{ R.cbegin() }, et{ R.cend() }; it != et; ++it)
-            solver.row_updaters[*it].update_row(*it, kappa, delta, theta);
+        if (detect_infeasability_cycle.have_cycle(R) or
+            detect_result_cycle.have_cycle(solver.x)) {
+            for (index i{ 0 }; i != solver.m; ++i)
+                solver.row_updaters[i].update_row(i, 0.0, delta, theta);
 
-        return R.size();
+            return numeric_cast<std::size_t>(solver.m);
+        } else {
+            for (auto it{ R.cbegin() }, et{ R.cend() }; it != et; ++it)
+                solver.row_updaters[*it].update_row(*it, kappa, delta, theta);
+
+            return R.size();
+        }
     }
 };
 
-struct compute_infeasibility_decr
+template <typename randomT>
+struct compute_random
 {
-    std::default_random_engine rng;
-    std::vector<std::pair<index, index>> R;
+    using random_generator_type = randomT;
 
-    compute_infeasibility_decr()
-      : rng(std::chrono::system_clock::now().time_since_epoch().count())
+    cycle_avoidance<index> detect_infeasability_cycle;
+    no_cycle_avoidance<int> detect_result_cycle;
+
+    random_generator_type& rng;
+    std::vector<index> R;
+
+    compute_random(random_generator_type& rng_)
+      : rng(rng_)
     {
     }
 
@@ -964,48 +1040,64 @@ struct compute_infeasibility_decr
             for (index i{ 0 }; i != solver.n; ++i)
                 v += solver.A(k, i) * solver.x(i);
 
-            if (not(solver.b(0, k) <= v and v <= solver.b(1, k))) {
-                R.emplace_back(k, 0);
-
-                if (v < solver.b(0, k))
-                    R.back().second = solver.b(0, k) - v;
-                else
-                    R.back().second = v - solver.b(1, k);
-            }
+            if (not(solver.b(0, k) <= v and v <= solver.b(1, k)))
+                R.push_back(k);
         }
 
-        std::sort(R.begin(), R.end(), [](const auto& lhs, const auto& rhs) {
-            return rhs.second < lhs.second;
-        });
+        if (detect_infeasability_cycle.have_cycle(R) or
+            detect_result_cycle.have_cycle(solver.x)) {
+            for (index i{ 0 }; i != solver.m; ++i)
+                solver.row_updaters[i].update_row(i, 0.0, delta, theta);
 
-        std::bernoulli_distribution d(.5);
-        std::size_t i{ 0 };
-        const std::size_t e{ R.size() };
+            return numeric_cast<std::size_t>(solver.m);
+        } else {
+            std::shuffle(R.begin(), R.end(), rng);
 
-        for (; i != e; ++i) {
-            if (i + 1 == e)
-                break;
+            for (index k : R)
+                solver.row_updaters[k].update_row(k, kappa, delta, theta);
 
-            if (R[i].second == R[i + 1].second)
-                if (d(rng))
-                    std::swap(R[i].first, R[i + 1].second);
+            return R.size();
         }
-
-        for (i = 0; i != e; ++i)
-            solver.row_updaters[R[i].first].update_row(
-              R[i].first, kappa, delta, theta);
-
-        return R.size();
     }
 };
 
 struct compute_infeasibility_incr
 {
-    std::default_random_engine rng;
-    std::vector<std::pair<index, index>> R;
+};
 
-    compute_infeasibility_incr()
-      : rng(std::chrono::system_clock::now().time_since_epoch().count())
+struct compute_infeasibility_decr
+{
+};
+
+template <typename randomT, typename directionT>
+struct compute_infeasibility
+{
+    using random_generator_type = randomT;
+    using direction_type = directionT;
+
+    random_generator_type& rng;
+    std::vector<std::pair<index, index>> R;
+    cycle_avoidance<index> detect_infeasability_cycle;
+    no_cycle_avoidance<int> detect_result_cycle;
+
+    template <typename iteratorT>
+    void sort(iteratorT begin, iteratorT end, compute_infeasibility_incr) const
+    {
+        std::sort(begin, end, [](const auto& lhs, const auto& rhs) {
+            return lhs.second < rhs.second;
+        });
+    }
+
+    template <typename iteratorT>
+    void sort(iteratorT begin, iteratorT end, compute_infeasibility_decr) const
+    {
+        std::sort(begin, end, [](const auto& lhs, const auto& rhs) {
+            return rhs.second < lhs.second;
+        });
+    }
+
+    compute_infeasibility(random_generator_type& rng_)
+      : rng(rng_)
     {
     }
 
@@ -1020,57 +1112,60 @@ struct compute_infeasibility_incr
             for (index i{ 0 }; i != solver.n; ++i)
                 v += solver.A(k, i) * solver.x(i);
 
-            if (not(solver.b(0, k) <= v and v <= solver.b(1, k))) {
-                R.emplace_back(k, 0);
+            if (solver.b(0, k) > v)
+                R.emplace_back(k, solver.b(0, k) - v);
 
-                if (v < solver.b(0, k))
-                    R.back().second = solver.b(0, k) - v;
-                else
-                    R.back().second = v - solver.b(1, k);
+            if (solver.b(1, k) < v)
+                R.emplace_back(k, v - solver.b(1, k));
+        }
+
+        if (detect_infeasability_cycle.have_cycle(R) or
+            detect_result_cycle.have_cycle(solver.x)) {
+            for (index i{ 0 }; i != solver.m; ++i)
+                solver.row_updaters[i].update_row(i, 0.0, delta, theta);
+
+            return numeric_cast<std::size_t>(solver.m);
+        } else {
+            sort(R.begin(), R.end(), direction_type());
+
+            auto ret = R.begin();
+            auto it = ret + 1;
+            for (; it != R.end(); ++it) {
+                if (ret->second != it->second) {
+                    std::shuffle(ret, it, rng);
+                    ret = it;
+                }
             }
+
+            std::shuffle(ret, R.end(), rng);
+
+            for (std::size_t i{ 0 }, e = { R.size() }; i != e; ++i)
+                solver.row_updaters[R[i].first].update_row(
+                  R[i].first, kappa, delta, theta);
+
+            return R.size();
         }
-
-        std::sort(R.begin(), R.end(), [](const auto& lhs, const auto& rhs) {
-            return lhs.second < rhs.second;
-        });
-
-        std::bernoulli_distribution d(.5);
-        std::size_t i{ 0 };
-        const std::size_t e{ R.size() };
-
-        for (; i != e; ++i) {
-            if (i + 1 == e)
-                break;
-
-            if (R[i].second == R[i + 1].second)
-                if (d(rng))
-                    std::swap(R[i].first, R[i + 1].second);
-        }
-
-        for (i = 0; i != e; ++i)
-            solver.row_updaters[R[i].first].update_row(
-              R[i].first, kappa, delta, theta);
-
-        return R.size();
     }
 };
 
-template <typename modeT, typename constraintOrderT>
+template <typename modeT, typename constraintOrderT, typename randomT>
 inline result
-run(const problem& pb, const parameters& p)
+run(const problem& pb, const parameters& p, randomT& rng)
 {
     using mode_type = modeT;
     using constraint_order_type = constraintOrderT;
+    using random_generator_type = randomT;
 
     auto begin = std::chrono::steady_clock::now();
     long int i2{ 0 };
     double kappa_old{ 0 };
     double kappa = p.kappa_min;
 
-    solver<mode_type> slv(pb, make_merged_constraints(pb));
+    solver<mode_type, random_generator_type> slv(
+      rng, pb, make_merged_constraints(pb));
     result best;
     best.remaining_constraints = std::numeric_limits<index>::max();
-    constraint_order_type compute;
+    constraint_order_type compute(rng);
 
     for (long int i{ 0 }; i < p.limit; ++i) {
         index remaining = compute.run(slv, kappa, p.delta, p.theta);
@@ -1132,6 +1227,16 @@ inline result
 inequalities_1coeff_wedelin(const problem& pb,
                             const std::map<std::string, parameter>& params)
 {
+    using random_generator_type = std::default_random_engine;
+
+    //
+    // TODO we need to add parameters to select the type of the generator to
+    // use several type of PRNG and perhaps the seed too.
+    //
+
+    random_generator_type rng(
+      std::chrono::system_clock::now().time_since_epoch().count());
+
     namespace ine_1 = lp::inequalities_1coeff;
     ine_1::parameters p(params);
     p.print();
@@ -1139,33 +1244,52 @@ inequalities_1coeff_wedelin(const problem& pb,
     switch (p.order) {
         case ine_1::constraint_order::none:
             if (pb.type == lp::objective_function_type::maximize)
-                return ine_1::run<ine_1::maximize_tag, ine_1::compute_none>(pb,
-                                                                            p);
-            return ine_1::run<ine_1::minimize_tag, ine_1::compute_none>(pb, p);
+                return ine_1::run<ine_1::maximize_tag,
+                                  ine_1::compute_none<random_generator_type>,
+                                  random_generator_type>(pb, p, rng);
+            return ine_1::run<ine_1::minimize_tag,
+                              ine_1::compute_none<random_generator_type>,
+                              random_generator_type>(pb, p, rng);
         case ine_1::constraint_order::reversing:
             if (pb.type == lp::objective_function_type::maximize)
-                return ine_1::run<ine_1::maximize_tag,
-                                  ine_1::compute_reversing>(pb, p);
-            return ine_1::run<ine_1::minimize_tag, ine_1::compute_reversing>(
-              pb, p);
+                return ine_1::run<
+                  ine_1::maximize_tag,
+                  ine_1::compute_reversing<random_generator_type>>(pb, p, rng);
+            return ine_1::run<ine_1::minimize_tag,
+                              ine_1::compute_reversing<random_generator_type>>(
+              pb, p, rng);
         case ine_1::constraint_order::random_sorting:
             if (pb.type == lp::objective_function_type::maximize)
-                return ine_1::run<ine_1::maximize_tag, ine_1::compute_random>(
-                  pb, p);
-            return ine_1::run<ine_1::minimize_tag, ine_1::compute_random>(pb,
-                                                                          p);
+                return ine_1::run<
+                  ine_1::maximize_tag,
+                  ine_1::compute_random<random_generator_type>>(pb, p, rng);
+            return ine_1::run<ine_1::minimize_tag,
+                              ine_1::compute_random<random_generator_type>>(
+              pb, p, rng);
         case ine_1::constraint_order::infeasibility_decr:
             if (pb.type == lp::objective_function_type::maximize)
                 return ine_1::run<ine_1::maximize_tag,
-                                  ine_1::compute_infeasibility_decr>(pb, p);
-            return ine_1::run<ine_1::minimize_tag,
-                              ine_1::compute_infeasibility_decr>(pb, p);
+                                  ine_1::compute_infeasibility<
+                                    random_generator_type,
+                                    ine_1::compute_infeasibility_decr>>(
+                  pb, p, rng);
+            return ine_1::run<
+              ine_1::minimize_tag,
+              ine_1::compute_infeasibility<random_generator_type,
+                                           ine_1::compute_infeasibility_decr>>(
+              pb, p, rng);
         case ine_1::constraint_order::infeasibility_incr:
             if (pb.type == lp::objective_function_type::maximize)
                 return ine_1::run<ine_1::maximize_tag,
-                                  ine_1::compute_infeasibility_incr>(pb, p);
-            return ine_1::run<ine_1::minimize_tag,
-                              ine_1::compute_infeasibility_incr>(pb, p);
+                                  ine_1::compute_infeasibility<
+                                    random_generator_type,
+                                    ine_1::compute_infeasibility_incr>>(
+                  pb, p, rng);
+            return ine_1::run<
+              ine_1::minimize_tag,
+              ine_1::compute_infeasibility<random_generator_type,
+                                           ine_1::compute_infeasibility_incr>>(
+              pb, p, rng);
     }
 
     throw "TODO internal error";
