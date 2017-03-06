@@ -88,9 +88,21 @@ test_negative_coeff2()
     auto pb = lp::make_problem(EXAMPLES_DIR "/negative-coeff2.lp");
 
     std::map<std::string, lp::parameter> params;
-    params["limit"] = 50l;
+    // params["constraint-order"] = std::string("random");
+    params["limit"] = 2l;
+    // params["theta"] = 0.5;
+    // params["delta"] = 0.05;
+    // params["kappa-step"] = 10e-4;
+    // params["kappa-max"] = 10.0;
+    // params["alpha"] = 0.0;
+    // params["w"] = 60l;
+    params["serialize"] = 1l;
 
     auto result = lp::solve(pb, params);
+
+    for (auto elen : result.variable_value)
+        std::cout << elen << ' ';
+    std::cout << '\n';
 
     Ensures(result.solution_found == true);
     Ensures(result.variable_value[0] == 1);
@@ -185,12 +197,15 @@ test_bibd1n()
     std::map<std::string, lp::parameter> params;
     params["limit"] = 10'000'000'000l;
     params["theta"] = 0.5;
-    params["delta"] = 0.005;
-    params["kappa-step"] = 0.002;
-    params["kappa-min"] = 0.0;
+    params["delta"] = 0.001;
+    params["kappa-step"] = 0.00000001;
+    params["kappa-min"] = 0.3;
     params["kappa-max"] = 0.6;
-    params["alpha"] = 1.0;
-    params["w"] = 40l;
+    params["alpha"] = 0.0;
+    params["w"] = 60l;
+    params["serialize"] = 1l;
+    // params["constraint-order"] = std::string("random-sorting");
+    params["constraint-order"] = std::string("adaptative");
 
     auto result = lp::solve(pb, params);
 
@@ -288,12 +303,13 @@ test_verger_5_5()
 
     std::map<std::string, lp::parameter> params;
     params["limit"] = 10'000'000l;
-    params["theta"] = 0.5;
-    params["delta"] = 0.02; // 0.05; // 0.2; // 0.01
-    params["kappa-step"] = 0.01;
+    params["theta"] = 0.2;
+    params["delta"] = 0.001; // 0.05; // 0.2; // 0.01
+    params["kappa-min"] = 0.05;
+    params["kappa-step"] = 0.003;
     params["kappa-max"] = 60.0;
-    params["alpha"] = 0.0;
-    params["w"] = 20l;
+    params["alpha"] = 1.0;
+    params["w"] = 40l;
     // params["constraint-order"] = std::string("infeasibility-incr");
     params["constraint-order"] = std::string("infeasibility-decr");
     // params["constraint-order"] = std::string("random-sorting");
@@ -315,19 +331,19 @@ test_verger_5_5()
 int
 main(int /* argc */, char* /* argv */ [])
 {
-    test_assignment_problem();
-    test_assignment_problem_random_coast();
-    test_negative_coeff();
-    test_negative_coeff2();
-    test_negative_coeff3();
-    test_8_queens_puzzle_fixed_cost();
-    test_8_queens_puzzle_random_cost();
-    test_flat30_7();
-    test_qap();
-    test_aim_50_1_6_yes1_2();
-
+    // test_assignment_problem();
+    // test_assignment_problem_random_coast();
+    // test_negative_coeff();
+    // test_negative_coeff2();
+    // test_negative_coeff3();
+    // test_8_queens_puzzle_fixed_cost();
+    // test_8_queens_puzzle_random_cost();
+    // test_flat30_7();
+    // test_qap();
+    // test_aim_50_1_6_yes1_2();
     // test_uf50_0448();
-    // test_bibd1n();
+
+    test_bibd1n();
     // test_verger_5_5();
 
     return unit_test::report_errors();
