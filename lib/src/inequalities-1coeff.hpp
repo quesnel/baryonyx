@@ -171,13 +171,13 @@ struct parameters
     {
         printf("* solver inequalities_1coeff_wedelin\n"
                "  - constraint-order: %s\n"
-               "  - theta: %f\n"
-               "  - delta: %f\n"
+               "  - theta: %.10g\n"
+               "  - delta: %.10g\n"
                "  - limit: %ld\n"
-               "  - kappa-min: %f\n"
-               "  - kappa-step: %f\n"
-               "  - kappa-max: %f\n"
-               "  - alpha: %f\n"
+               "  - kappa-min: %.10g\n"
+               "  - kappa-step: %.10g\n"
+               "  - kappa-max: %.10g\n"
+               "  - alpha: %.10g\n"
                "  - w: %ld\n"
                "  - serialise: %d\n",
                constraint_order_to_string(order),
