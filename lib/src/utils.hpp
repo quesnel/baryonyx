@@ -23,6 +23,7 @@
 #ifndef ORG_VLEPROJECT_LP_UTILS_HPP
 #define ORG_VLEPROJECT_LP_UTILS_HPP
 
+#include <cmath>
 #include <lpcore>
 
 namespace lp {
@@ -54,6 +55,15 @@ Ensures(bool condition, const char* s)
     if (not condition)
         throw postcondition_error(s);
 }
-}
 
+template <typename T>
+inline bool
+is_essentially_equal(const T v1, const T v2, const T epsilon)
+{
+    static_assert(std::is_floating_point<T>::value);
+
+    return fabs((v1) - (v2)) <=
+           ((fabs(v1) > fabs(v2) ? fabs(v2) : fabs(v1)) * (epsilon));
+}
+}
 #endif
