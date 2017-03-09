@@ -158,17 +158,18 @@ get_constraint_order(const std::map<std::string, parameter>& params,
 struct parameters
 {
     parameters(const std::map<std::string, parameter>& params)
-      : order(get_constraint_order(params,
-                                   "constraint-order",
-                                   constraint_order::random_sorting))
+      : time_limit(get_real(params, "time-limit", -1.0))
       , theta(get_real(params, "theta", 0.5))
       , delta(get_real(params, "delta", 0.01))
-      , limit(get_integer(params, "limit", 1000l))
       , kappa_min(get_real(params, "kappa-min", 0.0))
       , kappa_step(get_real(params, "kappa-step", 1.e-3))
       , kappa_max(get_real(params, "kappa-max", 0.6))
       , alpha(get_real(params, "alpha", 1.0))
+      , limit(get_integer(params, "limit", 1000l))
       , w(get_integer(params, "w", 20l))
+      , order(get_constraint_order(params,
+                                   "constraint-order",
+                                   constraint_order::random_sorting))
       , serialize(get_integer(params, "serialize", 0l))
     {
     }
@@ -177,6 +178,7 @@ struct parameters
     {
         printf("* solver inequalities_1coeff_wedelin\n"
                "  - constraint-order: %s\n"
+               "  - time_limit: %.10g\n"
                "  - theta: %.10g\n"
                "  - delta: %.10g\n"
                "  - limit: %ld\n"
@@ -187,6 +189,7 @@ struct parameters
                "  - w: %ld\n"
                "  - serialise: %d\n",
                constraint_order_to_string(order),
+               time_limit,
                theta,
                delta,
                limit,
@@ -198,15 +201,16 @@ struct parameters
                serialize);
     }
 
-    constraint_order order;
+    double time_limit;
     double theta;
     double delta;
-    long int limit;
     double kappa_min;
     double kappa_step;
     double kappa_max;
     double alpha;
+    long int limit;
     long int w;
+    constraint_order order;
     bool serialize;
 };
 
@@ -1378,6 +1382,7 @@ run(const problem& pb, const parameters& p, randomT& rng)
     constraint_order_type compute(rng);
 
     for (long int i{ 0 }; i < p.limit; ++i) {
+
         index remaining = compute.run(slv, kappa, p.delta, p.theta);
 
         auto current = slv.results();
@@ -1423,6 +1428,14 @@ run(const problem& pb, const parameters& p, randomT& rng)
 
         if (kappa > p.kappa_max) {
             std::cout << "\nFail: kappa-max reached\n";
+            return best;
+        }
+
+        if (p.time_limit > 0 and
+            std::chrono::duration_cast<std::chrono::duration<double>>(
+              current.end - current.begin)
+                .count() > p.time_limit) {
+            std::cout << "\nFail: time limit\n";
             return best;
         }
     }
