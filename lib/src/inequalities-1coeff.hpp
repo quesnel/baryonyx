@@ -455,36 +455,6 @@ struct constraint_calculator
                 P(k, r[j].id) += delta;
             }
         } else {
-#if 1
-            //
-            // If r[second].value and r[first].value are too closed, we add
-            // small
-            // random perturbations to create asymmetry.
-            //
-
-            if (is_essentially_equal<double>(
-                  r[second].value - r[first].value, 0.0, 1e-6)) {
-
-                // if (is_essentially_equal<double>(
-                //       std::abs(r[second].value), std::abs(r[first].value),
-                //       1e-6)) {
-                std::uniform_real_distribution<> dst(1e-2, 1e-3);
-                auto nb = dst(rng);
-                r[second].value += nb;
-                r[first].value -= nb;
-
-                // if (not
-                // is_essentially_equal<double>(std::abs(r[second].value),
-                //                                      std::abs(r[first].value),
-                //                                      1e-6)) {
-                // printf("%.10g %.10g %.10g\n",
-                // nb,
-                // r[second].value,
-                // r[first].value);
-                // assert(false);
-                // }
-            }
-#endif
             pi(k) += ((r[first].value + r[second].value) / 2.0);
 
             double d = delta + ((kappa / (1.0 - kappa)) *
