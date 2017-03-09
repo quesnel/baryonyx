@@ -349,8 +349,8 @@ struct constraint_calculator
 
     void update_row(index k, double kappa, double delta, double theta)
     {
-        for (auto i : I)
-            P(k, i) *= theta;
+        for (std::size_t i{ 0 }, endi{ I.size() }; i != endi; ++i)
+            P(k, I[i]) *= theta;
 
         for (std::size_t i{ 0 }, endi{ I.size() }; i != endi; ++i) {
             double sum_a_pi{ 0 };
@@ -360,6 +360,12 @@ struct constraint_calculator
                 if (A(h, I[i])) {
                     sum_a_pi += A(h, I[i]) * pi(h);
                     sum_a_p += A(h, I[i]) * P(h, I[i]);
+
+                    // We use std::abs(A(h, I[i])) that is always 1. So we use
+                    // only the pi(h) and P(h, I[i]).
+
+                    // sum_a_pi += pi(h);
+                    // sum_a_p += P(h, I[i]);
                 }
             }
 
@@ -371,18 +377,12 @@ struct constraint_calculator
         // Negate reduced costs and coefficients of these variables.
         //
 
-        for (std::size_t i{ 0 }, endc{ C.size() }; i != endc; ++i) {
-            int variable = C[i];
-
-            auto it = std::find_if(r.begin(), r.end(), [variable](auto elem) {
-                return elem.id == variable;
-            });
-
-            assert(it != r.end());
-
-            it->value *= -1;
-            A(k, variable) *= -1;
-            P(k, variable) *= -1;
+        for (std::size_t i{ 0 }, endi{ I.size() }; i != endi; ++i) {
+            if (A(k, I[i]) < 0) {
+                r[i].value = -r[i].value;
+                A(k, I[i]) = -A(k, I[i]);
+                P(k, I[i]) = -P(k, I[i]);
+            }
         }
 
         calculator_sort(r.begin(), r.end(), rng, mode_type());
@@ -392,9 +392,8 @@ struct constraint_calculator
 
         //
         // The bkmin and bkmax constraint bounds are not equal and can be
-        // assigned to -infinity or +infinity. We have to scan the r vector
-        // and search a value j such as b(0, k) <= Sum A(k, r[j]) < b(1,
-        // k).
+        // assigned to -infinity or +infinity. We have to scan the r vector and
+        // search a value j such as b(0, k) <= Sum A(k, r[j]) < b(1, k).
         //
 
         index i{ 0 }, selected{ -1 }, first, second;
@@ -409,17 +408,19 @@ struct constraint_calculator
         }
 
         //
-        // The sum seems good. The constraint is valid we continue to scan.
-        // If
-        // the minimum constraints is invalid, we assign 0 to all variable
-        // by
-        // settings the selected value to -1.
+        // If the b(0, k) can not be reached, this is an error of the
+        // preprocessing step.
+        //
+
+        if (b(0, k) > sum)
+            throw solver_error(solver_error::tag::unrealisable_constraint);
+
+        //
+        // If all variable must be assigned to 0, we let selected assigned to 0
+        // and we go to the next part otherwise, we continue to scan.
         //
 
         if (b(0, k) <= sum and sum <= b(1, k)) {
-            if (b(0, k) > sum)
-                throw solver_error(solver_error::tag::unrealisable_constraint);
-
             selected = i;
             for (; i != endi; ++i) {
                 sum += A(k, r[i].id);
@@ -437,30 +438,64 @@ struct constraint_calculator
 
             first = selected;
             second = selected + 1;
+        }
+
+        if (selected < 0) {
+            for (index j{ 0 }; j < endi; ++j) {
+                x(r[j].id) = 0;
+                P(k, r[j].id) -= delta;
+            }
+        } else if (second >= endi) {
+            for (index j{ 0 }; j < endi; ++j) {
+                x(r[j].id) = 1;
+                P(k, r[j].id) += delta;
+            }
         } else {
-            first = 0;
-            second = 1;
-        }
+#if 1
+            //
+            // If r[second].value and r[first].value are too closed, we add
+            // small
+            // random perturbations to create asymmetry.
+            //
 
-        if (second >= endi) {
-            first = selected - 1;
-            second = selected;
-        }
+            if (is_essentially_equal<double>(
+                  r[second].value - r[first].value, 0.0, 1e-6)) {
 
-        pi(k) += ((r[first].value + r[second].value) / 2.0);
+                // if (is_essentially_equal<double>(
+                //       std::abs(r[second].value), std::abs(r[first].value),
+                //       1e-6)) {
+                std::uniform_real_distribution<> dst(1e-2, 1e-3);
+                auto nb = dst(rng);
+                r[second].value += nb;
+                r[first].value -= nb;
 
-        double d = delta + ((kappa / (1.0 - kappa)) *
-                            (r[second].value - r[first].value));
+                // if (not
+                // is_essentially_equal<double>(std::abs(r[second].value),
+                //                                      std::abs(r[first].value),
+                //                                      1e-6)) {
+                // printf("%.10g %.10g %.10g\n",
+                // nb,
+                // r[second].value,
+                // r[first].value);
+                // assert(false);
+                // }
+            }
+#endif
+            pi(k) += ((r[first].value + r[second].value) / 2.0);
 
-        index j{ 0 };
-        for (; j <= selected; ++j) {
-            x(r[j].id) = 1;
-            P(k, r[j].id) += d;
-        }
+            double d = delta + ((kappa / (1.0 - kappa)) *
+                                (r[second].value - r[first].value));
 
-        for (; j != endi; ++j) {
-            x(r[j].id) = 0;
-            P(k, r[j].id) -= d;
+            index j{ 0 };
+            for (; j <= selected; ++j) {
+                x(r[j].id) = 1;
+                P(k, r[j].id) += d;
+            }
+
+            for (; j != endi; ++j) {
+                x(r[j].id) = 0;
+                P(k, r[j].id) -= d;
+            }
         }
 
         b(0, k) -= C.size();
@@ -470,6 +505,7 @@ struct constraint_calculator
         // Clean up: correct negated costs and adjust value of negated
         // variables.
         //
+
         for (std::size_t i{ 0 }, e{ C.size() }; i != e; ++i) {
             A(k, C[i]) *= -1;
             P(k, C[i]) *= -1;
@@ -726,36 +762,35 @@ struct solver
         for (std::size_t i{ 0 }, e = pb.vars.values.size(); i != e; ++i)
             u(i) = pb.vars.values[i].max;
 
-        //
-        // Compute bkmin and bkmax according to the value of the
-        // constraints
-        // (infinity or constant) and the number of element in the
-        // expression
-        // (avoid the bkmax += C.size() in negative coefficient solver
-        // which
-        // may overflow the integer.
-        //
-
         for (std::size_t i{ 0 }, e{ csts.size() }; i != e; ++i) {
-            index lower{ 0 }, upper{ 0 };
+            int lower{ 0 }, upper{ 0 };
 
             for (const auto& cst : csts[i].elements) {
                 A(i, cst.variable_index) = cst.factor;
-                if (cst.factor < 0)
-                    lower--;
+
                 if (cst.factor > 0)
-                    upper++;
+                    ++upper;
+                if (cst.factor < 0)
+                    --lower;
             }
 
             if (csts[i].min == std::numeric_limits<int>::min())
                 b(0, i) = lower;
-            else
-                b(0, i) = csts[i].min;
+            else {
+                if (csts[i].min < 0)
+                    b(0, i) = std::max(csts[i].min, lower);
+                else
+                    b(0, i) = csts[i].min;
+            }
 
             if (csts[i].max == std::numeric_limits<int>::max())
                 b(1, i) = upper;
-            else
-                b(1, i) = csts[i].max;
+            else {
+                if (csts[i].max > 0)
+                    b(1, i) = std::min(csts[i].max, upper);
+                else
+                    b(1, i) = csts[i].max;
+            }
         }
 
         for (const auto& elem : pb.objective.elements) {
@@ -1431,8 +1466,7 @@ inequalities_1coeff_wedelin(const problem& pb,
     using random_generator_type = std::default_random_engine;
 
     //
-    // TODO we need to add parameters to select the type of the generator
-    // to
+    // TODO we need to add parameters to select the type of the generator to
     // use several type of PRNG and perhaps the seed too.
     //
 
