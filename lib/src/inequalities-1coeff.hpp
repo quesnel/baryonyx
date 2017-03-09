@@ -160,14 +160,14 @@ struct parameters
     parameters(const std::map<std::string, parameter>& params)
       : order(get_constraint_order(params,
                                    "constraint-order",
-                                   constraint_order::none))
+                                   constraint_order::random_sorting))
       , theta(get_real(params, "theta", 0.5))
-      , delta(get_real(params, "delta", 0.5))
-      , limit(get_integer(params, "limit", 100l))
+      , delta(get_real(params, "delta", 0.01))
+      , limit(get_integer(params, "limit", 1000l))
       , kappa_min(get_real(params, "kappa-min", 0.0))
-      , kappa_step(get_real(params, "kappa-step", 0.0001))
+      , kappa_step(get_real(params, "kappa-step", 1.e-3))
       , kappa_max(get_real(params, "kappa-max", 0.6))
-      , alpha(get_real(params, "alpha", 2.0))
+      , alpha(get_real(params, "alpha", 1.0))
       , w(get_integer(params, "w", 20l))
       , serialize(get_integer(params, "serialize", 0l))
     {
