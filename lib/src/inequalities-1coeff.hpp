@@ -335,10 +335,10 @@ struct constraint_calculator
 
     void serialize(index k, std::ostream& os) const
     {
-        os << "[P(" << k << ", i): ";
+        os << "[k: " << k << " pi(k): " << pi(k) << " P(k, i): ";
         for (auto i : I)
             os << P(k, i) << ' ';
-        os << "] ";
+        os << "] ### ";
 
         os << b(0, k) << " <= ";
 
