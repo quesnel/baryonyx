@@ -900,11 +900,11 @@ cycle_avoidance_hash(const std::vector<std::pair<index, index>>& vec)
 }
 
 template <typename T>
-struct cycle_avoidance
+struct no_cycle_avoidance
 {
     using value_type = T;
 
-    cycle_avoidance(std::size_t limit_ = 0) noexcept { (void)limit_; }
+    no_cycle_avoidance(std::size_t limit_ = 0) noexcept { (void)limit_; }
 
     bool have_cycle(const x_type&) const noexcept { return false; }
     bool have_cycle(const std::vector<T>&) const noexcept { return false; }
@@ -915,7 +915,7 @@ struct cycle_avoidance
 };
 
 template <typename T>
-struct no_cycle_avoidance
+struct cycle_avoidance
 {
     using value_type = T;
 
@@ -923,7 +923,7 @@ struct no_cycle_avoidance
     std::size_t limit;
     index nb;
 
-    no_cycle_avoidance(std::size_t limit_ = 48l)
+    cycle_avoidance(std::size_t limit_ = 48l)
       : history(limit_)
       , limit(limit_)
       , nb(0)
@@ -931,7 +931,7 @@ struct no_cycle_avoidance
         history.clear();
     }
 
-    ~no_cycle_avoidance() { printf("  - Cycle: %ld\n", nb); }
+    ~cycle_avoidance() { printf("  - Cycle: %ld\n", nb); }
 
     bool have_cycle()
     {
@@ -1032,7 +1032,7 @@ struct compute_reversing
             return 0;
 
         if (detect_infeasability_cycle.have_cycle(R))
-            return run_all(solver, 0.0, delta, theta);
+            return run_all(solver, 0.8 * kappa, delta, theta);
 
         for (auto it{ R.crbegin() }, et{ R.crend() }; it != et; ++it)
             solver.row_updaters[*it].update_row(*it, kappa, delta, theta);
@@ -1069,7 +1069,7 @@ struct compute_none
             return 0;
 
         if (detect_infeasability_cycle.have_cycle(R))
-            return run_all(solver, 0.0, delta, theta);
+            return run_all(solver, 0.8 * kappa, delta, theta);
 
         for (auto it{ R.cbegin() }, et{ R.cend() }; it != et; ++it)
             solver.row_updaters[*it].update_row(*it, kappa, delta, theta);
@@ -1116,7 +1116,7 @@ struct compute_random
             return 0;
 
         if (detect_infeasability_cycle.have_cycle(R))
-            return run_all(solver, 0.0, delta, theta);
+            return run_all(solver, 0.8 * kappa, delta, theta);
 
         std::shuffle(R.begin(), R.end(), rng);
         for (auto it{ R.cbegin() }, et{ R.cend() }; it != et; ++it)
@@ -1235,7 +1235,7 @@ struct compute_infeasibility
             return 0;
 
         if (detect_infeasability_cycle.have_cycle(R))
-            return run_all(solver, 0.0, delta, theta);
+            return run_all(solver, 0.8 * kappa, delta, theta);
 
         sort(R.begin(), R.end(), direction_type());
 
