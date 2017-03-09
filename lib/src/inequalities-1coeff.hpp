@@ -352,6 +352,7 @@ struct constraint_calculator
         for (std::size_t i{ 0 }, endi{ I.size() }; i != endi; ++i)
             P(k, I[i]) *= theta;
 
+        std::uniform_real_distribution<> dst(0.0, 1e-4);
         for (std::size_t i{ 0 }, endi{ I.size() }; i != endi; ++i) {
             double sum_a_pi{ 0 };
             double sum_a_p{ 0 };
@@ -370,6 +371,9 @@ struct constraint_calculator
             }
 
             r[i].value = cost(I[i]) - sum_a_pi - sum_a_p;
+            if (is_essentially_equal(r[i].value, 0.0, 1e-7))
+                r[i].value += (std::signbit(r[i].value) ? -1. : 1.) * dst(rng);
+
             r[i].id = I[i];
         }
 
