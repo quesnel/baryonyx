@@ -21,6 +21,7 @@
  */
 
 #include <fstream>
+#include <iomanip>
 #include <iostream>
 #include <limits>
 #include <lpcore>
@@ -99,25 +100,43 @@ main(int argc, char* argv[])
     for (int i = ::optind; i < argc; ++i) {
         try {
             auto pb = lp::make_problem(argv[i]);
+
+            std::string filename(argv[i]);
+            filename += '-';
+            filename += std::to_string(::getpid());
+            filename += '_';
+            filename += std::to_string(i);
+            filename += ".sol";
+
+            std::cout << "output: " << filename << '\n';
+
+            std::ofstream ofs(filename);
+            ofs << std::boolalpha
+                << std::setprecision(std::floor(
+                     std::numeric_limits<double>::digits * std::log10(2) + 2));
+
+            auto now = std::chrono::system_clock::now();
+            auto in_time_t = std::chrono::system_clock::to_time_t(now);
+
+            ofs << "start: "
+                << std::put_time(std::localtime(&in_time_t), "%Y-%m-%d %X")
+                << '\n';
+
             auto ret = lp::solve(pb, parameters);
 
-            if (ret.solution_found and
-                lp::is_valid_solution(pb, ret.variable_value)) {
-                std::fprintf(stdout, "Solution found: %f\n", ret.value);
+            if (ret.solution_found) {
+                ofs << "Solution found: " << ret.value << '\n'
+                    << "Solution confirmed: "
+                    << lp::is_valid_solution(pb, ret.variable_value) << '\n';
 
-                std::string filename(argv[i]);
-                filename += '-';
-                filename += std::to_string(::getpid());
-                filename += ".sol";
-
-                std::ofstream ofs(filename);
                 for (std::size_t i{ 0 }, e{ ret.variable_name.size() }; i != e;
                      ++i)
                     ofs << ret.variable_name[i] << " = "
                         << ret.variable_value[i] << '\n';
 
             } else {
-                std::fprintf(stdout, "No solution found\n");
+                ofs << "Solution not found. Missing constraints: "
+                    << ret.remaining_constraints << '\n';
             }
         } catch (const lp::precondition_error& e) {
             std::fprintf(stderr, "internal failure\n");
