@@ -262,13 +262,13 @@ calculator_sort(iteratorT begin, iteratorT end, randomT& rng, maximize_tag)
 bool
 stop_iterating(double value, minimize_tag)
 {
-    return value >= 0;
+    return value > 0;
 }
 
 bool
 stop_iterating(double value, maximize_tag)
 {
-    return value <= 0;
+    return value < 0;
 }
 
 template <typename modeT, typename randomT>
