@@ -25,6 +25,7 @@
 
 #include "lpcore-compare"
 #include "lpcore-out"
+#include "matrix.hpp"
 #include "mitm.hpp"
 #include "utils.hpp"
 #include <Eigen/Core>
@@ -40,11 +41,11 @@
 namespace lp {
 namespace inequalities_1coeff {
 
-using A_type = Eigen::MatrixXi;
+using A_type = lp::SparseArray<int>;
 using b_type = Eigen::Matrix<double, 2, Eigen::Dynamic>;
 using c_type = Eigen::VectorXf;
 using x_type = Eigen::VectorXi;
-using P_type = Eigen::MatrixXf;
+using P_type = lp::SparseArray<double>;
 using pi_type = Eigen::VectorXf;
 using u_type = Eigen::VectorXi;
 
@@ -327,14 +328,27 @@ struct constraint_calculator
       , m(m_)
       , n(n_)
     {
-        for (index i = 0; i != n; ++i) {
-            if (A(k, i)) {
-                I.emplace_back(i);
-                r.emplace_back(0.0, i);
+        // for (index i = 0; i != n; ++i) {
+        //     if (A(k, i)) {
+        //         I.emplace_back(i);
+        //         r.emplace_back(0.0, i);
+        //     }
+
+        //     if (A(k, i) < 0)
+        //         C.emplace_back(i);
+        // }
+
+        const auto& ak{ A.row(k) };
+        const auto& values{ A.values() };
+
+        for (std::size_t i{ 0 }, e{ ak.size() }; i != e; ++i) {
+            if (values[ak[i].value]) {
+                I.emplace_back(ak[i].position);
+                r.emplace_back(0.0, ak[i].position);
             }
 
-            if (A(k, i) < 0)
-                C.emplace_back(i);
+            if (values[ak[i].value] < 0)
+                C.emplace_back(ak[i].position);
         }
     }
 
@@ -349,32 +363,42 @@ struct constraint_calculator
 
         for (index i = 0, endi = numeric_cast<index>(I.size()); i != endi; ++i)
             os << A(k, I[i]) << ' ';
+
         os << " <= " << b(1, k) << '\n';
     }
 
     void update_row(index k, double kappa, double delta, double theta)
     {
         for (std::size_t i{ 0 }, endi{ I.size() }; i != endi; ++i)
-            P(k, I[i]) *= theta;
+            P.set(k, I[i], P(k, I[i]) * theta) ;
 
         std::uniform_real_distribution<> dst(0.0, 1e-4);
         for (std::size_t i{ 0 }, endi{ I.size() }; i != endi; ++i) {
             double sum_a_pi{ 0 };
             double sum_a_p{ 0 };
 
-            for (index h = 0; h != m; ++h) {
-                if (A(h, I[i])) {
-                    sum_a_pi += A(h, I[i]) * pi(h);
-                    sum_a_p += A(h, I[i]) * P(h, I[i]);
+            const auto& ai{ A.column(I[i]) };
+            const auto& values{ A.values() };
 
-                    // We use std::abs(A(h, I[i])) that is always 1. So we use
-                    // only the pi(h) and P(h, I[i]).
-
-                    // sum_a_pi += pi(h);
-                    // sum_a_p += P(h, I[i]);
-                }
+            for (std::size_t h{0}, eh{ai.size()}; h != eh; ++h) {
+                sum_a_pi += values[ai[h].value] * pi(ai[h].position);
+                sum_a_p += values[ai[h].value] * P(ai[h].position, I[i]);
             }
+            
+            // for (index h = 0; h != m; ++h) {
+            //     if (A(h, I[i])) {
+            //         sum_a_pi += A(h, I[i]) * pi(h);
+            //         sum_a_p += A(h, I[i]) * P(h, I[i]);
 
+            //         // We use std::abs(A(h, I[i])) that is always 1. So we use
+            //         // only the pi(h) and P(h, I[i]).
+
+            //         // sum_a_pi += pi(h);
+            //         // sum_a_p += P(h, I[i]);
+            //     }
+            // }
+
+            
             r[i].value = cost(I[i]) - sum_a_pi - sum_a_p;
             if (is_essentially_equal(r[i].value, 0.0, 1e-7))
                 r[i].value += (std::signbit(r[i].value) ? -1. : 1.) * dst(rng);
@@ -389,8 +413,8 @@ struct constraint_calculator
         for (std::size_t i{ 0 }, endi{ I.size() }; i != endi; ++i) {
             if (A(k, I[i]) < 0) {
                 r[i].value = -r[i].value;
-                A(k, I[i]) = -A(k, I[i]);
-                P(k, I[i]) = -P(k, I[i]);
+                A.set(k, I[i], -A(k, I[i]));
+                P.set(k, I[i], -P(k, I[i]));
             }
         }
 
@@ -452,12 +476,12 @@ struct constraint_calculator
         if (selected < 0) {
             for (index j{ 0 }; j < endi; ++j) {
                 x(r[j].id) = 0;
-                P(k, r[j].id) -= delta;
+                P.set(k, r[j].id, P(k, r[j].id) - delta);
             }
         } else if (second >= endi) {
             for (index j{ 0 }; j < endi; ++j) {
                 x(r[j].id) = 1;
-                P(k, r[j].id) += delta;
+                P.set(k, r[j].id, P(k, r[j].id) + delta);
             }
         } else {
             pi(k) += ((r[first].value + r[second].value) / 2.0);
@@ -468,12 +492,12 @@ struct constraint_calculator
             index j{ 0 };
             for (; j <= selected; ++j) {
                 x(r[j].id) = 1;
-                P(k, r[j].id) += d;
+                P.set(k, r[j].id, P(k, r[j].id) + d);
             }
 
             for (; j != endi; ++j) {
                 x(r[j].id) = 0;
-                P(k, r[j].id) -= d;
+                P.set(k, r[j].id, P(k, r[j].id) - d);
             }
         }
 
@@ -486,8 +510,8 @@ struct constraint_calculator
         //
 
         for (std::size_t i{ 0 }, e{ C.size() }; i != e; ++i) {
-            A(k, C[i]) *= -1;
-            P(k, C[i]) *= -1;
+            A.set(k, C[i], -A(k, C[i]));
+            P.set(k, C[i], -P(k, C[i]));
             x[C[i]] = 1 - x[C[i]];
         }
     }
@@ -818,11 +842,11 @@ struct solver
       : rng(rng_)
       , m(csts.size())
       , n(pb.vars.values.size())
-      , A(A_type::Zero(m, n))
+      , A(m, n)
       , b(b_type::Zero(2, m))
       , c(c_type::Zero(n))
       , x(x_type::Zero(n))
-      , P(P_type::Zero(m, n))
+      , P(m, n)
       , pi(pi_type::Zero(m))
       , u(u_type::Zero(n))
       , pb(pb)
@@ -834,7 +858,8 @@ struct solver
             int lower{ 0 }, upper{ 0 };
 
             for (const auto& cst : csts[i].elements) {
-                A(i, cst.variable_index) = cst.factor;
+                A.set(i, cst.variable_index, cst.factor);
+                P.set(i, cst.variable_index, 0.0);
 
                 if (cst.factor > 0)
                     ++upper;
@@ -877,8 +902,14 @@ struct solver
         for (index k{ 0 }; k != m; ++k) {
             int v = 0;
 
-            for (index i{ 0 }; i != n; ++i)
-                v += A(k, i) * x(i);
+            const auto& ak{ A.row(k) };
+            const auto& values{ A.values() };
+
+            for (std::size_t i{ 0 }, e{ ak.size() }; i != e; ++i)
+                v += values[ak[i].value] * x(ak[i].position);
+                        
+            // for (index i{ 0 }; i != n; ++i)
+            //     v += A(k, i) * x(i);
 
             if (not(b(0, k) <= v and v <= b(1, k)))
                 vec.push_back(k);
@@ -902,9 +933,14 @@ struct solver
     {
         for (index k{ 0 }; k != m; ++k) {
             int v{ 0 };
+            const auto& ak{ A.row(k) };
+            const auto& values{ A.values() };
 
-            for (index i{ 0 }; i != n; ++i)
-                v += A(k, i) * x(i);
+            for (std::size_t i{ 0 }, e{ ak.size() }; i != e; ++i)
+                v += values[ak[i].value] * x(ak[i].position);
+           
+            // for (index i{ 0 }; i != n; ++i)
+            //     v += A(k, i) * x(i);
 
             if (not(b(0, k) <= v and v <= b(1, k)))
                 return false;
@@ -1061,9 +1097,14 @@ compute_missing_constraint(solverT& solver, std::vector<index>& R)
 
     for (index k{ 0 }; k != solver.m; ++k) {
         int v = 0;
+        const auto& ak{ solver.A.row(k) };
+        const auto& values{ solver.A.values() };
 
-        for (index i{ 0 }; i != solver.n; ++i)
-            v += solver.A(k, i) * solver.x(i);
+        for (std::size_t i{ 0 }, e{ ak.size() }; i != e; ++i)
+            v += values[ak[i].value] * solver.x(ak[i].position);
+        
+        // for (index i{ 0 }; i != solver.n; ++i)
+        //     v += solver.A(k, i) * solver.x(i);
 
         if (not(solver.b(0, k) <= v and v <= solver.b(1, k)))
             R.push_back(k);
@@ -1241,8 +1282,14 @@ struct compute_infeasibility
         for (index k{ 0 }; k != solver.m; ++k) {
             int v = 0;
 
-            for (index i{ 0 }; i != solver.n; ++i)
-                v += solver.A(k, i) * solver.x(i);
+            const auto& ak{ solver.A.row(k) };
+            const auto& values{ solver.A.values() };
+
+            for (std::size_t i{ 0 }, e{ ak.size() }; i != e; ++i)
+                v += values[ak[i].value] * solver.x(ak[i].position);
+
+            // for (index i{ 0 }; i != solver.n; ++i)
+            //     v += solver.A(k, i) * solver.x(i);
 
             if (solver.b(0, k) > v)
                 R.emplace_back(k, solver.b(0, k) - v);
@@ -1265,8 +1312,14 @@ struct compute_infeasibility
         for (index k{ 0 }; k != solver.m; ++k) {
             int v = 0;
 
-            for (index i{ 0 }; i != solver.n; ++i)
-                v += solver.A(k, i) * solver.x(i);
+            const auto& ak{ solver.A.row(k) };
+            const auto& values{ solver.A.values() };
+
+            for (std::size_t i{ 0 }, e{ ak.size() }; i != e; ++i)
+                v += values[ak[i].value] * solver.x(ak[i].position);
+
+            // for (index i{ 0 }; i != solver.n; ++i)
+            //     v += solver.A(k, i) * solver.x(i);
 
             if (solver.b(0, k) > v)
                 R.emplace_back(k, solver.b(0, k) - v);
