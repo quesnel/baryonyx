@@ -136,14 +136,14 @@ check_matrix()
 {
     lp::SparseArray<double> m(4, 2);
 
-    Ensures(m(0, 0) == 0.0);
-    Ensures(m(0, 1) == 0.0);
-    Ensures(m(1, 0) == 0.0);
-    Ensures(m(1, 1) == 0.0);
-    Ensures(m(2, 0) == 0.0);
-    Ensures(m(2, 1) == 0.0);
-    Ensures(m(3, 0) == 0.0);
-    Ensures(m(3, 1) == 0.0);
+    EnsuresThrow(m(0, 0), std::out_of_range);
+    EnsuresThrow(m(0, 1), std::out_of_range);
+    EnsuresThrow(m(1, 0), std::out_of_range);
+    EnsuresThrow(m(1, 1), std::out_of_range);
+    EnsuresThrow(m(2, 0), std::out_of_range);
+    EnsuresThrow(m(2, 1), std::out_of_range);
+    EnsuresThrow(m(3, 0), std::out_of_range);
+    EnsuresThrow(m(3, 1), std::out_of_range);
     Ensures(m.size() == 0);
 
     m.emplace(1, 0, 1.0);
@@ -152,22 +152,31 @@ check_matrix()
     m.emplace(2, 1, 4.0);
     Ensures(m.size() == 4);
 
-    Ensures(m(0, 0) == 0.0);
+    EnsuresThrow(m(0, 0), std::out_of_range);
     Ensures(m(0, 1) == 2.0);
     Ensures(m(1, 0) == 1.0);
-    Ensures(m(1, 1) == 0.0);
-    Ensures(m(2, 0) == 0.0);
+    EnsuresThrow(m(1, 1), std::out_of_range);
+    EnsuresThrow(m(2, 0), std::out_of_range);
     Ensures(m(2, 1) == 4.0);
-    Ensures(m(3, 0) == 0.0);
+    EnsuresThrow(m(3, 0), std::out_of_range);
     Ensures(m(3, 1) == 3.0);
     Ensures(m.size() == 4);
 
+    Ensures(m.rows() == 4);
+    Ensures(m.columns() == 2);
+    
     Ensures(m.row(0).size() == 1);
-    Ensures(m.row(1).size() == 3);
+    Ensures(m.row(1).size() == 1);
+    Ensures(m.row(2).size() == 1);
+    Ensures(m.row(3).size() == 1);
     Ensures(m.column(0).size() == 1);
-    Ensures(m.column(1).size() == 1);
-    Ensures(m.column(2).size() == 1);
-    Ensures(m.column(3).size() == 1);
+    Ensures(m.column(1).size() == 3);
+
+    Ensures(m.values().size() == 4);
+    Ensures(m.values()[0] == 1.0);
+    Ensures(m.values()[1] == 2.0);
+    Ensures(m.values()[2] == 3.0);
+    Ensures(m.values()[3] == 4.0);
 }
 
 int

@@ -34,6 +34,7 @@
 #include <iostream>
 #include <iterator>
 #include <random>
+#include <set>
 #include <unordered_map>
 
 namespace lp {
@@ -169,7 +170,7 @@ struct parameters
       , w(get_integer(params, "w", 20l))
       , order(get_constraint_order(params,
                                    "constraint-order",
-                                   constraint_order::random_sorting))
+                                   constraint_order::none))
       , serialize(get_integer(params, "serialize", 0l))
     {
     }
@@ -675,29 +676,118 @@ make_merged_constraints(const lp::problem& pb)
     }
 
     //
-    // We sort constraints according to the maximum presence of variables
-    // in
+    // We sort constraints according to the maximum presence of variables in
     // the constraints.
-    //
+    // - vars counts the number of use of the variables
+    // - link the link between vars
 
     std::vector<int> vars(pb.vars.values.size(), 0);
+    std::vector<std::set<int>> linkvars(pb.vars.values.size());
+    std::vector<std::set<int>> linkcst(pb.vars.values.size());
 
-    for (auto& elem : ret)
-        for (auto& f : elem.elements)
+    for (auto it{ ret.begin() }, et{ ret.end() }; it != et; ++it) {
+        for (std::size_t i{ 0 }, e{ it->elements.size() }; i != e; ++i) {
+
+            linkcst[it->elements[i].variable_index].emplace(
+              std::distance(it, ret.end()));
+
+            for (std::size_t j{ 0 }; j != e; ++j) {
+                if (i != j)
+                    linkvars[it->elements[i].variable_index].emplace(
+                      it->elements[j].variable_index);
+            }
+        }
+
+        for (auto& f : it->elements) {
             vars[f.variable_index]++;
+        }
+    }
+
+    {
+        auto it = vars.begin(), end = vars.end();
+
+        int moy{ 0 };
+        for (it = vars.begin(); it != end; ++it)
+            moy += *it;
+        moy = moy / vars.size();
+
+        // auto it = std::min_element(vars.begin(), vars.end());
+        // int min{ *it };
+
+        for (it = vars.begin(); it != end; ++it)
+            *it = std::max(0, *it - moy);
+    }
+
+    // std::cout << "linkvars:\n";
+    // for (std::size_t i{ 0 }, e{ linkvars.size() }; i != e; ++i) {
+    //     std::cout << i << '=';
+    //     for (auto elem : linkvars[i])
+    //         std::cout << elem << ' ';
+    //     std::cout << '\n';
+    // }
+
+    // std::cout << "linkcst:\n";
+    // for (std::size_t i{ 0 }, e{ linkcst.size() }; i != e; ++i) {
+    //     std::cout << i << '=';
+    //     for (auto elem : linkcst[i])
+    //         std::cout << elem << ' ';
+    //     std::cout << '\n';
+    // }
+
+    // std::cout << "variable:\n";
+    // for (auto elem : vars)
+    //     std::cout << elem << ' ';
+    // std::cout << '\n';
+
+    // std::vector<std::pair<merged_constraint, long>> tosort;
+    // long i{ 0 };
+    // for (auto& cst : ret) {
+    //     tosort.emplace_back(cst, 0);
+    //     for (auto& elem : cst.elements) {
+    //         for (auto& s : linkcst[elem.variable_index])
+    //             tosort.back().second += linkvars[s].size();
+    //     }
+
+    //     std::cout << i++ << ' ' << tosort.back().second << '\n';
+    // }
+
+    // std::sort(
+    //   tosort.begin(), tosort.end(), [](const auto& lhs, const auto& rhs) {
+    //       return rhs.second < lhs.second;
+    //   });
+
+    // ret.clear();
+    // for (auto& elem : tosort)
+    //     ret.emplace_back(elem.first);
+
+    // std::sort(ret.begin(),
+    //           ret.end(),
+    //           [linkvars, linkcst](const auto& lhs, const auto& rhs) {
+    //               long sumlhs{ 1 };
+    //               long sumrhs{ 1 };
+    //               // std::size_t i, e;
+
+    //               for (auto& f : lhs.elements)
+    //                   sumlhs *= linkcst[f.variable_index].size();
+
+    //               for (auto& f : rhs.elements)
+    //                   sumrhs *= linkcst[f.variable_index].size();
+
+    //               return sumrhs > sumlhs;
+    //           });
 
     std::sort(
       ret.begin(), ret.end(), [vars](const auto& lhs, const auto& rhs) {
-          long sumlhs{ 1 };
-          long sumrhs{ 1 };
+          long sumlhs{ 0 };
+          long sumrhs{ 0 };
 
           for (auto& f : lhs.elements)
-              sumlhs *= vars[f.variable_index];
+              sumlhs += vars[f.variable_index];
 
           for (auto& f : rhs.elements)
-              sumrhs *= vars[f.variable_index];
+              sumrhs += vars[f.variable_index];
 
-          return sumrhs < sumlhs;
+          return sumlhs < sumrhs;
       });
 
     return ret;

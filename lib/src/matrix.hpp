@@ -42,6 +42,7 @@ class SparseArray
 {
 public:
     using value_type = T;
+    using index_type = long int;
     using container_type = std::vector<value_type>;
     using reference = typename container_type::reference;
     using const_reference = typename container_type::const_reference;
@@ -63,8 +64,8 @@ public:
         {
         }
 
-        std::size_t position;
-        std::size_t value;
+        index_type position;
+        index_type value;
     };
 
     using accessor_type = std::vector<access>;
@@ -76,7 +77,7 @@ protected:
 
 public:
     SparseArray();
-    explicit SparseArray(size_type cols, size_type rows);
+    explicit SparseArray(index_type rows, index_type cols);
 
     ~SparseArray() = default;
 
@@ -86,7 +87,7 @@ public:
     SparseArray& operator=(const SparseArray& q) = default;
     SparseArray& operator=(SparseArray&& q) = default;
 
-    void resize(size_type cols, size_type rows);
+    void resize(index_type rows, index_type cols);
 
     bool empty() const noexcept;
     size_type size() const noexcept;
@@ -94,23 +95,26 @@ public:
     size_type rows() const noexcept;
     size_type columns() const noexcept;
 
-    const accessor_type& row(size_type row) const noexcept;
-    const accessor_type& column(size_type col) const noexcept;
+    const accessor_type& row(index_type row) const noexcept;
+    const accessor_type& column(index_type col) const noexcept;
 
-    void set(size_type col, size_type row, const value_type& x);
-    void set(size_type col, size_type row, value_type&& x);
+    void set(index_type row, index_type col, const value_type& x);
+    void set(index_type row, index_type col, value_type&& x);
 
     template <class... Args>
-    void emplace(size_type col, size_type row, Args&&... args);
+    void emplace(index_type row, index_type col, Args&&... args);
 
-    value_type operator()(size_type col, size_type row) const;
+    value_type operator()(index_type row, index_type col) const;
+
+    container_type& values();
+    const container_type& values() const;
 
     void swap(SparseArray& c) noexcept(noexcept(swap(m_values, c.m_values)) &&
                                        noexcept(swap(m_cols, c.m_cols)) &&
                                        noexcept(swap(m_rows, c.m_rows)));
 
 private:
-    void m_check_index(size_type col, size_type row) const;
+    void m_check_index(index_type row, index_type col) const noexcept;
 };
 
 template <typename T>
@@ -119,15 +123,15 @@ SparseArray<T>::SparseArray()
 }
 
 template <typename T>
-SparseArray<T>::SparseArray(size_type columns, size_type rows)
+SparseArray<T>::SparseArray(index_type rows, index_type cols)
   : m_rows(rows)
-  , m_cols(columns)
+  , m_cols(cols)
 {
 }
 
 template <typename T>
 void
-SparseArray<T>::resize(size_type cols, size_type rows)
+SparseArray<T>::resize(index_type rows, index_type cols)
 {
     m_cols.clear();
     m_cols.resize(cols);
@@ -168,97 +172,112 @@ SparseArray<T>::columns() const noexcept
 
 template <typename T>
 const typename SparseArray<T>::accessor_type&
-SparseArray<T>::row(size_type row) const noexcept
+SparseArray<T>::row(index_type row) const noexcept
 {
-    m_check_index(0, row);
+    m_check_index(row, 0);
+
     return m_rows[row];
 }
 
 template <typename T>
 const typename SparseArray<T>::accessor_type&
-SparseArray<T>::column(size_type col) const noexcept
+SparseArray<T>::column(index_type col) const noexcept
 {
-    m_check_index(col, 0);
+    m_check_index(0, col);
 
     return m_cols[col];
 }
 
 template <typename T>
 void
-SparseArray<T>::set(size_type column, size_type row, const value_type& x)
+SparseArray<T>::set(index_type row, index_type col, const value_type& x)
 {
-    m_check_index(column, row);
+    m_check_index(row, col);
 
     auto it = std::find_if(
-      m_rows[row].begin(), m_rows[row].end(), [column](const auto& access) {
-          return access.position == column;
+      m_rows[row].begin(), m_rows[row].end(), [col](const auto& access) {
+          return access.position == col;
       });
 
     if (it == m_rows[row].end()) {
-        m_rows[row].emplace_back(column, m_values.size());
-        m_cols[column].emplace_back(row, m_values.size());
+        m_rows[row].emplace_back(col, m_values.size());
+        m_cols[col].emplace_back(row, m_values.size());
         m_values.emplace_back(x);
     } else {
-        it->value = x;
+        m_values[it->value] = x;
     }
 }
 
 template <typename T>
 void
-SparseArray<T>::set(size_type column, size_type row, value_type&& x)
+SparseArray<T>::set(index_type row, index_type col, value_type&& x)
 {
-    m_check_index(column, row);
+    m_check_index(row, col);
 
     auto it = std::find_if(
-      m_rows[row].begin(), m_rows[row].end(), [column](const auto& access) {
-          return access.position == column;
+      m_rows[row].begin(), m_rows[row].end(), [col](const auto& access) {
+          return access.position == col;
       });
 
     if (it == m_rows[row].end()) {
-        m_rows[row].emplace_back(column, m_values.size());
-        m_cols[column].emplace_back(row, m_values.size());
+        m_rows[row].emplace_back(col, m_values.size());
+        m_cols[col].emplace_back(row, m_values.size());
         m_values.emplace_back(x);
     } else {
-        it->value = std::move(x);
+        m_values[it->value] = std::move(x);
     }
 }
 
 template <typename T>
 template <class... Args>
 void
-SparseArray<T>::emplace(size_type column, size_type row, Args&&... args)
+SparseArray<T>::emplace(index_type row, index_type col, Args&&... args)
 {
-    m_check_index(column, row);
+    m_check_index(row, col);
 
     auto it = std::find_if(
-      m_rows[row].begin(), m_rows[row].end(), [column](const auto& access) {
-          return access.position == column;
+        m_rows[row].begin(), m_rows[row].end(), [col](const auto& access) {
+          return access.position == col;
       });
 
     if (it == m_rows[row].end()) {
-        m_rows[row].emplace_back(column, m_values.size());
-        m_cols[column].emplace_back(row, m_values.size());
+        m_rows[row].emplace_back(col, m_values.size());
+        m_cols[col].emplace_back(row, m_values.size());
         m_values.emplace_back(std::forward<Args>(args)...);
     } else {
-        it->value = value_type(std::forward<Args>(args)...);
+        m_values[it->value] = value_type(std::forward<Args>(args)...);
     }
 }
 
 template <typename T>
 typename SparseArray<T>::value_type
-SparseArray<T>::operator()(size_type column, size_type row) const
+SparseArray<T>::operator()(index_type row, index_type col) const
 {
-    m_check_index(column, row);
+    m_check_index(row, col);
 
     auto it = std::find_if(
-      m_rows[row].begin(), m_rows[row].end(), [column](const auto& access) {
-          return access.position == column;
+      m_rows[row].begin(), m_rows[row].end(), [col](const auto& access) {
+          return access.position == col;
       });
 
     if (it == m_rows[row].end())
-        return { 0 };
+        throw std::out_of_range("SparseArray::operator()");
 
     return m_values[it->value];
+}
+
+template <typename T>
+typename SparseArray<T>::container_type&
+SparseArray<T>::values()
+{
+    return m_values;
+}
+
+template <typename T>
+const typename SparseArray<T>::container_type&
+SparseArray<T>::values() const
+{
+    return m_values;
 }
 
 template <typename T>
@@ -275,14 +294,17 @@ SparseArray<T>::swap(SparseArray& c) noexcept(
 #ifndef NDEBUG
 template <typename T>
 void
-SparseArray<T>::m_check_index(size_type column, size_type row) const
+SparseArray<T>::m_check_index(index_type row, index_type col) const noexcept
 {
-    Expects(column < m_cols.size(), "SparseArray: bad column access");
-    Expects(row < m_rows.size(), "SparseArray: bad row access");
+    Expects(col >= 0 and numeric_cast<std::size_t>(col) < m_cols.size(),
+            "SparseArray: bad column access");
+
+    Expects(row >= 0 and numeric_cast<std::size_t>(row) < m_rows.size(),
+            "SparseArray: bad row access");
 }
 #else
 template <typename T>
-void SparseArray<T>::m_check_index(size_type, size_type) const
+void SparseArray<T>::m_check_index(index_type, index_type) const noexcept
 {
 }
 #endif
