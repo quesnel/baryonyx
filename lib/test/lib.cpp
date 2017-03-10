@@ -20,6 +20,7 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+#include "matrix.hpp"
 #include "unit-test.hpp"
 #include <lpcore>
 
@@ -130,11 +131,51 @@ check_parameter()
     Ensures(x[3].s == "hello world!");
 }
 
+void
+check_matrix()
+{
+    lp::SparseArray<double> m(4, 2);
+
+    Ensures(m(0, 0) == 0.0);
+    Ensures(m(0, 1) == 0.0);
+    Ensures(m(1, 0) == 0.0);
+    Ensures(m(1, 1) == 0.0);
+    Ensures(m(2, 0) == 0.0);
+    Ensures(m(2, 1) == 0.0);
+    Ensures(m(3, 0) == 0.0);
+    Ensures(m(3, 1) == 0.0);
+    Ensures(m.size() == 0);
+
+    m.emplace(1, 0, 1.0);
+    m.emplace(0, 1, 2.0);
+    m.emplace(3, 1, 3.0);
+    m.emplace(2, 1, 4.0);
+    Ensures(m.size() == 4);
+
+    Ensures(m(0, 0) == 0.0);
+    Ensures(m(0, 1) == 2.0);
+    Ensures(m(1, 0) == 1.0);
+    Ensures(m(1, 1) == 0.0);
+    Ensures(m(2, 0) == 0.0);
+    Ensures(m(2, 1) == 4.0);
+    Ensures(m(3, 0) == 0.0);
+    Ensures(m(3, 1) == 3.0);
+    Ensures(m.size() == 4);
+
+    Ensures(m.row(0).size() == 1);
+    Ensures(m.row(1).size() == 3);
+    Ensures(m.column(0).size() == 1);
+    Ensures(m.column(1).size() == 1);
+    Ensures(m.column(2).size() == 1);
+    Ensures(m.column(3).size() == 1);
+}
+
 int
 main(int /* argc */, char* /* argv */ [])
 {
     check_numeric_cast();
     check_parameter();
+    check_matrix();
 
     return unit_test::report_errors();
 }
