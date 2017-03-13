@@ -370,7 +370,7 @@ struct constraint_calculator
     void update_row(index k, double kappa, double delta, double theta)
     {
         for (std::size_t i{ 0 }, endi{ I.size() }; i != endi; ++i)
-            P.set(k, I[i], P(k, I[i]) * theta) ;
+            P.set(k, I[i], P(k, I[i]) * theta);
 
         std::uniform_real_distribution<> dst(0.0, 1e-4);
         for (std::size_t i{ 0 }, endi{ I.size() }; i != endi; ++i) {
@@ -380,17 +380,18 @@ struct constraint_calculator
             const auto& ai{ A.column(I[i]) };
             const auto& values{ A.values() };
 
-            for (std::size_t h{0}, eh{ai.size()}; h != eh; ++h) {
+            for (std::size_t h{ 0 }, eh{ ai.size() }; h != eh; ++h) {
                 sum_a_pi += values[ai[h].value] * pi(ai[h].position);
                 sum_a_p += values[ai[h].value] * P(ai[h].position, I[i]);
             }
-            
+
             // for (index h = 0; h != m; ++h) {
             //     if (A(h, I[i])) {
             //         sum_a_pi += A(h, I[i]) * pi(h);
             //         sum_a_p += A(h, I[i]) * P(h, I[i]);
 
-            //         // We use std::abs(A(h, I[i])) that is always 1. So we use
+            //         // We use std::abs(A(h, I[i])) that is always 1. So we
+            //         use
             //         // only the pi(h) and P(h, I[i]).
 
             //         // sum_a_pi += pi(h);
@@ -398,7 +399,6 @@ struct constraint_calculator
             //     }
             // }
 
-            
             r[i].value = cost(I[i]) - sum_a_pi - sum_a_p;
             if (is_essentially_equal(r[i].value, 0.0, 1e-7))
                 r[i].value += (std::signbit(r[i].value) ? -1. : 1.) * dst(rng);
@@ -907,7 +907,7 @@ struct solver
 
             for (std::size_t i{ 0 }, e{ ak.size() }; i != e; ++i)
                 v += values[ak[i].value] * x(ak[i].position);
-                        
+
             // for (index i{ 0 }; i != n; ++i)
             //     v += A(k, i) * x(i);
 
@@ -938,7 +938,7 @@ struct solver
 
             for (std::size_t i{ 0 }, e{ ak.size() }; i != e; ++i)
                 v += values[ak[i].value] * x(ak[i].position);
-           
+
             // for (index i{ 0 }; i != n; ++i)
             //     v += A(k, i) * x(i);
 
@@ -1102,7 +1102,7 @@ compute_missing_constraint(solverT& solver, std::vector<index>& R)
 
         for (std::size_t i{ 0 }, e{ ak.size() }; i != e; ++i)
             v += values[ak[i].value] * solver.x(ak[i].position);
-        
+
         // for (index i{ 0 }; i != solver.n; ++i)
         //     v += solver.A(k, i) * solver.x(i);
 
