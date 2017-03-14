@@ -30,7 +30,10 @@
 
 namespace lp {
 
-result mitm(problem& pb, const std::map<std::string, parameter>& params);
+result mitm_solve(problem& pb, const std::map<std::string, parameter>& params);
+
+result mitm_optimize(problem& pb,
+                     const std::map<std::string, parameter>& params);
 }
 
 #endif

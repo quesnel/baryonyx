@@ -561,7 +561,8 @@ LP_API
 std::ostream& operator<<(std::ostream& os, const problem& p);
 
 /**
- * Try to solve the \c lp::problem using with a set of parameters.
+ * Try to solve or find a feasible solution for the \c lp::problem using with a
+ * set of parameters.
  *
  * \param pb Problem definition.
  * \param params Parameters for solver.
@@ -573,7 +574,21 @@ LP_API
 result solve(problem& pb, const std::map<std::string, parameter>& params);
 
 /**
- * Try to solve the \c lp::problem.
+ * Try to optimize the \c lp::problem with a set of parameters.
+ *
+ * @param pb Problem definition.
+ * @param params Parameters for the solver.
+ *
+ * @return A representation of the result.
+ *
+ * @throw \c lp::solver_error.
+ */
+LP_API
+result optimize(problem& pb, const std::map<std::string, parameter>& params);
+
+/**
+ * Try to solve or find a feasible solution for the \c lp::problem using a set
+ * of default parameters.
  *
  * \param pb Problem definition.
  *
@@ -583,9 +598,25 @@ result solve(problem& pb, const std::map<std::string, parameter>& params);
 LP_API
 result solve(problem& pb);
 
+/**
+ * Try to optimize the \c lp::problem using a set of default parameters.
+ *
+ * @param pb Problem definition.
+ *
+ * @return A representation of the result.
+ *
+ * @throw \c lp::solver_error.
+ */
+LP_API
+result optimize(problem& pb);
+
 LP_API
 bool is_valid_solution(const problem& pb,
                        const std::vector<int>& variable_value) noexcept;
+
+LP_API
+double compute_solution(const problem& pb,
+                        const std::vector<int>& variable_value) noexcept;
 }
 
 #endif

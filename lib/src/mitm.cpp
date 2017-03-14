@@ -178,7 +178,7 @@ cleanup_problem(problem& pb)
 }
 
 result
-mitm(problem& pb, const std::map<std::string, parameter>& params)
+mitm_solve(problem& pb, const std::map<std::string, parameter>& params)
 {
     cleanup_problem(pb);
 
@@ -187,6 +187,7 @@ mitm(problem& pb, const std::map<std::string, parameter>& params)
         pb.less_constraints.empty() and pb.less_equal_constraints.empty() and
         is_boolean_coefficient(pb.equal_constraints) and
         is_boolean_variable(pb.vars.values)) {
+
         //
         // I can use simple_wedelin or inequalities algorithm to solve the
         // default binary and equality problem.
@@ -197,7 +198,7 @@ mitm(problem& pb, const std::map<std::string, parameter>& params)
         // return simple_wedelin(kappa, delta, theta, limit, pb);
         //
 
-        return lp::inequalities_1coeff_wedelin(pb, params);
+        return lp::inequalities_1coeff_wedelin_solve(pb, params);
     }
 
     if ((not pb.equal_constraints.empty() or
@@ -218,7 +219,7 @@ mitm(problem& pb, const std::map<std::string, parameter>& params)
             is_101_coefficient(pb.less_equal_constraints) and
             is_boolean_variable(pb.vars.values)) {
 
-            return lp::inequalities_1coeff_wedelin(pb, params);
+            return lp::inequalities_1coeff_wedelin_solve(pb, params);
         }
     }
 
@@ -238,4 +239,68 @@ mitm(problem& pb, const std::map<std::string, parameter>& params)
 
     throw lp::solver_error(solver_error::tag::no_solver_available);
 }
+
+result
+mitm_optimize(problem& pb, const std::map<std::string, parameter>& params)
+{
+    cleanup_problem(pb);
+
+    if (pb.greater_constraints.empty() and
+        pb.greater_equal_constraints.empty() and
+        pb.less_constraints.empty() and pb.less_equal_constraints.empty() and
+        is_boolean_coefficient(pb.equal_constraints) and
+        is_boolean_variable(pb.vars.values)) {
+
+        //
+        // I can use simple_wedelin or inequalities algorithm to solve the
+        // default binary and equality problem.
+        //
+        // double kappa, delta, theta;
+        // long limit;
+        // std::tie(kappa, delta, theta, limit) = get_parameters(params);
+        // return simple_wedelin(kappa, delta, theta, limit, pb);
+        //
+
+        return lp::inequalities_1coeff_wedelin_optimize(pb, params);
+    }
+
+    if ((not pb.equal_constraints.empty() or
+         not pb.greater_equal_constraints.empty() or
+         not pb.less_equal_constraints.empty())) {
+
+        for (int i{ 0 },
+             e(numeric_cast<int>(pb.less_equal_constraints.size()));
+             i != e;
+             ++i)
+            for (const auto& elem : pb.less_equal_constraints[i].elements)
+                if (elem.factor < -1 or elem.factor > 1)
+                    printf("Error %d (factor=%d\n", i, elem.factor);
+
+        if (pb.greater_constraints.empty() and pb.less_constraints.empty() and
+            is_101_coefficient(pb.equal_constraints) and
+            is_101_coefficient(pb.greater_equal_constraints) and
+            is_101_coefficient(pb.less_equal_constraints) and
+            is_boolean_variable(pb.vars.values)) {
+
+            return lp::inequalities_1coeff_wedelin_optimize(pb, params);
+        }
+    }
+
+    if ((is_101_coefficient(pb.equal_constraints) or
+         is_101_coefficient(pb.greater_constraints) or
+         is_101_coefficient(pb.greater_equal_constraints) or
+         is_101_coefficient(pb.less_constraints) or
+         is_101_coefficient(pb.less_equal_constraints)) and
+        is_integer_variable(pb.vars.values)) {
+        double kappa, delta, theta;
+        long limit;
+
+        std::tie(kappa, delta, theta, limit) = get_parameters(params);
+
+        return lp::generalized_wedelin(kappa, delta, theta, limit, pb);
+    }
+
+    throw lp::solver_error(solver_error::tag::no_solver_available);
+}
+
 } // namespace lp

@@ -61,7 +61,7 @@ solve(problem& pb)
 
     std::map<std::string, parameter> params;
 
-    return mitm(pb, params);
+    return mitm_solve(pb, params);
 }
 
 result
@@ -69,7 +69,25 @@ solve(problem& pb, const std::map<std::string, parameter>& params)
 {
     check(pb);
 
-    return mitm(pb, params);
+    return mitm_solve(pb, params);
+}
+
+result
+optimize(problem& pb, const std::map<std::string, parameter>& params)
+{
+    check(pb);
+
+    return mitm_optimize(pb, params);
+}
+
+result
+optimize(problem& pb)
+{
+    check(pb);
+
+    std::map<std::string, parameter> params;
+
+    return mitm_optimize(pb, params);
 }
 
 template <typename functionT, typename variablesT>
@@ -124,5 +142,17 @@ is_valid_solution(const problem& pb,
     }
 
     return true;
+}
+
+double
+compute_solution(const problem& pb,
+                 const std::vector<int>& variable_value) noexcept
+{
+    double ret = pb.objective.constant;
+
+    for (auto& elem : pb.objective.elements)
+        ret += elem.factor * variable_value[elem.variable_index];
+
+    return ret;
 }
 }
