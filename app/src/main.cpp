@@ -45,19 +45,26 @@ const char* problem_definition_error_format(
   lp::problem_definition_error::tag) noexcept;
 const char* solver_error_format(lp::solver_error::tag) noexcept;
 
+lp::result solve(lp::problem& pb,
+                 const std::map<std::string, lp::parameter>& params,
+                 bool optimize);
+
 int
 main(int argc, char* argv[])
 {
-    const char* const short_opts = "hp:l:qv:";
-    const struct option long_opts[] = {
-        { "help", 0, nullptr, 'h' },    { "param", 1, nullptr, 'p' },
-        { "limit", 1, nullptr, 'l' },   { "quiet", 0, nullptr, 0 },
-        { "verbose", 1, nullptr, 'v' }, { 0, 0, nullptr, 0 }
-    };
+    const char* const short_opts = "Ohp:l:qv:";
+    const struct option long_opts[] = { { "optimize", 0, nullptr, 'O' },
+                                        { "help", 0, nullptr, 'h' },
+                                        { "param", 1, nullptr, 'p' },
+                                        { "limit", 1, nullptr, 'l' },
+                                        { "quiet", 0, nullptr, 0 },
+                                        { "verbose", 1, nullptr, 'v' },
+                                        { 0, 0, nullptr, 0 } };
 
     int opt_index;
     int verbose = 1;
     bool fail = false;
+    bool optimize = false;
     bool quiet = false;
     std::map<std::string, lp::parameter> parameters;
 
@@ -70,10 +77,12 @@ main(int argc, char* argv[])
         switch (opt) {
             case 0:
                 break;
+            case 'O':
+                optimize = true;
+                break;
             case 'l':
                 parameters["limit"] = to_long(::optarg, 1000l);
                 break;
-
             case 'h':
                 help();
                 return EXIT_SUCCESS;
@@ -122,7 +131,7 @@ main(int argc, char* argv[])
                 << std::put_time(std::localtime(&in_time_t), "%Y-%m-%d %X")
                 << '\n';
 
-            auto ret = lp::solve(pb, parameters);
+            auto ret = solve(pb, parameters, optimize);
 
             if (ret.solution_found) {
                 ofs << "Solution found: " << ret.value << '\n'
@@ -181,6 +190,8 @@ help() noexcept
                  "--param|-p [name]:[value]   Add a new parameter (name is"
                  " [a-z][A-Z]_ value can be a double, an integer otherwise a"
                  " string.\n"
+                 "--optimize|-O               Optimize model (default "
+                 "feasibility search only)\n"
                  "--limit int                 Set limit\n"
                  "--quiet                     Remove any verbose message\n"
                  "--verbose|-v int            Set verbose level\n");
@@ -333,4 +344,15 @@ split_param(const char* param) noexcept
         return std::make_tuple(name, lp::parameter(valuel));
 
     return std::make_tuple(name, lp::parameter(value));
+}
+
+lp::result
+solve(lp::problem& pb,
+      const std::map<std::string, lp::parameter>& params,
+      bool optimize)
+{
+    if (optimize)
+        return lp::optimize(pb, params);
+
+    return lp::solve(pb, params);
 }
