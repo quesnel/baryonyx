@@ -80,3 +80,13 @@ target_include_directories(testsolver PUBLIC
   PRIVATE src)
 target_link_libraries(testsolver liblp boost eigen3 threads)
 add_test(testsolver testsolver)
+
+add_executable(testoptimizer test/optimize.cpp)
+set_target_properties(testoptimizer PROPERTIES
+  COMPILE_DEFINITIONS EXAMPLES_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}/test\")
+target_include_directories(testoptimizer PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>
+  PRIVATE src)
+target_link_libraries(testoptimizer liblp boost eigen3 threads)
+add_test(testoptimizer testoptimizer)
