@@ -42,12 +42,12 @@ test_qap()
     params["delta"] = 0.2;
     params["kappa-step"] = 10e-4;
     params["kappa-max"] = 10.0;
-    params["alpha"] = 2.0;
+    params["alpha"] = 0.0;
     params["w"] = 20l;
 
     params["pushing-k-factor"] = 0.9;
     params["pushes-limit"] = 100l;
-    params["pushing-objective-amplifier"] = 5l;
+    params["pushing-objective-amplifier"] = 10l;
     params["pushing-iteration-limit"] = 50l;
 
     auto result = lp::optimize(pb, params);
