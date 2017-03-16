@@ -28,6 +28,7 @@
 #include <limits>
 #include <lpcore>
 #include <ostream>
+#include <unordered_map>
 
 namespace lp {
 namespace details {
@@ -264,6 +265,7 @@ struct parser_stack
         // If the first character is '-', we need to ensure the next character
         // is a digit to avoid the "-x1" string.
         //
+
         if (stack[0][0] == '-') {
             if (stack[0].size() > 1)
                 return std::isdigit(stack[0][1]);
@@ -300,8 +302,12 @@ struct parser_stack
     int line() const { return m_line; }
     int column() const { return m_column; }
 
+    std::unordered_map<std::string, long>& cache() { return m_variable_cache; }
+
 private:
     std::deque<std::tuple<int, int>> m_position_stack;
+    std::unordered_map<std::string, long> m_variable_cache;
+
     std::istream& m_is;
     int m_line;
     int m_column;
@@ -348,25 +354,30 @@ private:
 };
 
 inline index
-get_variable(problem& p, const std::string& name) noexcept
+get_variable(std::unordered_map<std::string, long>& cache,
+             lp::variables& vars,
+             const std::string& name) noexcept
 {
-    auto it = std::find(p.vars.names.begin(), p.vars.names.end(), name);
-    if (it != p.vars.names.end())
-        return std::distance(p.vars.names.begin(), it);
+    auto it = cache.find(name);
+    if (it != cache.end())
+        return it->second;
 
-    index id = std::distance(p.vars.names.cbegin(), p.vars.names.cend());
-    p.vars.names.emplace_back(name);
-    p.vars.values.emplace_back();
+    index id = std::distance(vars.names.cbegin(), vars.names.cend());
+    vars.names.emplace_back(name);
+    vars.values.emplace_back();
+
+    cache[name] = id;
 
     return id;
 }
 
 inline index
-get_variable_only(const problem& p, const std::string& name) noexcept
+get_variable_only(std::unordered_map<std::string, long>& cache,
+                  const std::string& name) noexcept
 {
-    auto it = std::find(p.vars.names.cbegin(), p.vars.names.cend(), name);
-    if (it != p.vars.names.cend())
-        return std::distance(p.vars.names.cbegin(), it);
+    auto it = cache.find(name);
+    if (it != cache.end())
+        return it->second;
 
     return -1;
 }
@@ -561,8 +572,9 @@ read_objective_function(parser_stack& stack, problem& p)
         if (std::get<0>(elem).empty()) // we read a constant
             ret.constant += std::get<1>(elem);
         else
-            ret.elements.emplace_back(std::get<1>(elem),
-                                      get_variable(p, std::get<0>(elem)));
+            ret.elements.emplace_back(
+              std::get<1>(elem),
+              get_variable(stack.cache(), p.vars, std::get<0>(elem)));
     }
 
     return ret;
@@ -581,7 +593,8 @@ read_constraint(parser_stack& stack, problem& p)
             label = tmp;
             stack.substr_front(1);
         } else {
-            cst.elements.emplace_back(1, get_variable(p, tmp));
+            cst.elements.emplace_back(
+              1, get_variable(stack.cache(), p.vars, tmp));
         }
     }
 
@@ -594,8 +607,9 @@ read_constraint(parser_stack& stack, problem& p)
                not iequals(str, "binaries") and not iequals(str, "general") and
                not iequals(str, "end")) {
             auto elem = read_function_element(stack);
-            cst.elements.emplace_back(std::get<1>(elem),
-                                      get_variable(p, std::get<0>(elem)));
+            cst.elements.emplace_back(
+              std::get<1>(elem),
+              get_variable(stack.cache(), p.vars, std::get<0>(elem)));
         }
 
         operator_type type = read_operator(stack);
@@ -724,7 +738,7 @@ read_bound(parser_stack& stack, problem& p)
         auto value_first = read_integer(stack);
         auto operator_type_first = read_operator(stack);
         auto variable = read_name(stack);
-        auto id = get_variable(p, variable);
+        auto id = get_variable(stack.cache(), p.vars, variable);
 
         apply_bound(value_first, operator_type_first, p.vars.values[id]);
 
@@ -747,8 +761,7 @@ read_bound(parser_stack& stack, problem& p)
         auto variable = read_name(stack);
         auto operator_type = read_operator(stack);
         auto value = read_integer(stack);
-        auto id = get_variable(p, variable);
-
+        auto id = get_variable(stack.cache(), p.vars, variable);
         apply_bound(p.vars.values[id], operator_type, value);
     }
 }
@@ -772,7 +785,7 @@ read_binary(parser_stack& stack, problem& p)
 
     while (not iequals(str, "general") and not iequals(str, "end")) {
         auto name = read_name(stack);
-        auto id = get_variable_only(p, name);
+        auto id = get_variable_only(stack.cache(), name);
 
         if (id < 0 or p.vars.values[id].type != variable_type::real)
             throw file_format_error(name,
@@ -793,7 +806,7 @@ read_general(parser_stack& stack, problem& p)
 
     while (not iequals(str, "end")) {
         auto name = read_name(stack);
-        auto id = get_variable_only(p, name);
+        auto id = get_variable_only(stack.cache(), name);
 
         if (id < 0 or p.vars.values[id].type != variable_type::real)
             throw file_format_error(name,
