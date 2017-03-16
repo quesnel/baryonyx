@@ -111,7 +111,7 @@ get_real(const std::map<std::string, parameter>& params,
 long int
 get_integer(const std::map<std::string, parameter>& params,
             std::string param,
-            double def)
+            long int def)
 {
     auto it = params.find(param);
     if (it == params.cend())
