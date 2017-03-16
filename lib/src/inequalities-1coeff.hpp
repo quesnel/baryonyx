@@ -1852,19 +1852,23 @@ inequalities_1coeff_wedelin_optimize(
   const problem& pb,
   const std::map<std::string, parameter>& params)
 {
+    namespace ine_1 = lp::inequalities_1coeff;
+    ine_1::parameters p(params);
+    p.print();
+
     using random_generator_type = std::default_random_engine;
 
     //
     // TODO we need to add parameters to select the type of the generator to
-    // use several type of PRNG and perhaps the seed too.
+    // use several type of PRNG.
     //
 
-    random_generator_type rng(
+    random_generator_type::result_type seed = ine_1::get_integer(
+      params,
+      "seed",
       std::chrono::system_clock::now().time_since_epoch().count());
 
-    namespace ine_1 = lp::inequalities_1coeff;
-    ine_1::parameters p(params);
-    p.print();
+    random_generator_type rng(seed);
 
     switch (p.order) {
         case ine_1::constraint_order::none:
