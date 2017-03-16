@@ -198,15 +198,16 @@ test_bibd1n()
     params["limit"] = 10'000'000'000l;
     params["theta"] = 0.5;
     params["delta"] = 0.001;
-    params["kappa-step"] = 0.00000001;
-    params["kappa-min"] = 0.3;
+    params["kappa-step"] = 1e-8;
+    params["kappa-min"] = 0.0; // 0.28;
     params["kappa-max"] = 6.0;
     params["alpha"] = 1.0;
     params["w"] = 60l;
     params["serialize"] = 1l;
-    // params["constraint-order"] = std::string("random-sorting");
+    // params["constraint-order"] = std::string("infeasibility-incr");
     // params["constraint-order"] = std::string("adaptative");
-    params["constraint-order"] = std::string("adaptative");
+    // params["constraint-order"] = std::string("");
+    params["time-limit"] = -100.0;
 
     auto result = lp::solve(pb, params);
 
@@ -332,19 +333,19 @@ test_verger_5_5()
 int
 main(int /* argc */, char* /* argv */ [])
 {
-    // test_assignment_problem();
-    // test_assignment_problem_random_coast();
-    // test_negative_coeff();
-    // test_negative_coeff2();
-    // test_negative_coeff3();
-    // test_8_queens_puzzle_fixed_cost();
-    // test_8_queens_puzzle_random_cost();
-    // test_qap();
-    // test_uf50_0448();
-    // test_flat30_7();
-    // test_aim_50_1_6_yes1_2();
+    test_assignment_problem();
+    test_assignment_problem_random_coast();
+    test_negative_coeff();
+    test_negative_coeff2();
+    test_negative_coeff3();
+    test_8_queens_puzzle_fixed_cost();
+    test_8_queens_puzzle_random_cost();
+    test_qap();
+    test_uf50_0448();
+    test_flat30_7();
+    test_aim_50_1_6_yes1_2();
 
-    test_bibd1n();
+    // test_bibd1n();
     // test_verger_5_5();
 
     return unit_test::report_errors();
