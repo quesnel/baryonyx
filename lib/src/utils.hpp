@@ -60,7 +60,9 @@ template <typename T>
 inline bool
 is_essentially_equal(const T v1, const T v2, const T epsilon)
 {
-    static_assert(std::is_floating_point<T>::value);
+    static_assert(std::is_floating_point<T>::value,
+                  "is_essentially_equal required a float/double "
+                  "as template arguement");
 
     return fabs((v1) - (v2)) <=
            ((fabs(v1) > fabs(v2) ? fabs(v2) : fabs(v1)) * (epsilon));
