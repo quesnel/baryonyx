@@ -100,6 +100,10 @@ public:
 
     void set(index_type row, index_type col, const value_type& x);
     void set(index_type row, index_type col, value_type&& x);
+    void add(index_type row, index_type col, const value_type& x);
+    void add(index_type row, index_type col, value_type&& x);
+    void mult(index_type row, index_type col, const value_type& x);
+    void mult(index_type row, index_type col, value_type&& x);
 
     template <class... Args>
     void emplace(index_type row, index_type col, Args&&... args);
@@ -225,6 +229,86 @@ SparseArray<T>::set(index_type row, index_type col, value_type&& x)
         m_values.emplace_back(x);
     } else {
         m_values[it->value] = std::move(x);
+    }
+}
+
+template <typename T>
+void
+SparseArray<T>::add(index_type row, index_type col, const value_type& x)
+{
+    m_check_index(row, col);
+
+    auto it = std::find_if(
+      m_rows[row].begin(), m_rows[row].end(), [col](const auto& access) {
+          return access.position == col;
+      });
+
+    if (it == m_rows[row].end()) {
+        m_rows[row].emplace_back(col, m_values.size());
+        m_cols[col].emplace_back(row, m_values.size());
+        m_values.emplace_back(x);
+    } else {
+        m_values[it->value] += x;
+    }
+}
+
+template <typename T>
+void
+SparseArray<T>::add(index_type row, index_type col, value_type&& x)
+{
+    m_check_index(row, col);
+
+    auto it = std::find_if(
+      m_rows[row].begin(), m_rows[row].end(), [col](const auto& access) {
+          return access.position == col;
+      });
+
+    if (it == m_rows[row].end()) {
+        m_rows[row].emplace_back(col, m_values.size());
+        m_cols[col].emplace_back(row, m_values.size());
+        m_values.emplace_back(x);
+    } else {
+        m_values[it->value] += std::move(x);
+    }
+}
+
+template <typename T>
+void
+SparseArray<T>::mult(index_type row, index_type col, const value_type& x)
+{
+    m_check_index(row, col);
+
+    auto it = std::find_if(
+      m_rows[row].begin(), m_rows[row].end(), [col](const auto& access) {
+          return access.position == col;
+      });
+
+    if (it == m_rows[row].end()) {
+        m_rows[row].emplace_back(col, m_values.size());
+        m_cols[col].emplace_back(row, m_values.size());
+        m_values.emplace_back(x);
+    } else {
+        m_values[it->value] *= x;
+    }
+}
+
+template <typename T>
+void
+SparseArray<T>::mult(index_type row, index_type col, value_type&& x)
+{
+    m_check_index(row, col);
+
+    auto it = std::find_if(
+      m_rows[row].begin(), m_rows[row].end(), [col](const auto& access) {
+          return access.position == col;
+      });
+
+    if (it == m_rows[row].end()) {
+        m_rows[row].emplace_back(col, m_values.size());
+        m_cols[col].emplace_back(row, m_values.size());
+        m_values.emplace_back(x);
+    } else {
+        m_values[it->value] *= std::move(x);
     }
 }
 

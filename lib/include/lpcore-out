@@ -23,6 +23,7 @@
 #ifndef ORG_VLEPROJECT_LP_LPCORE_OUT
 #define ORG_VLEPROJECT_LP_LPCORE_OUT
 
+#include <array>
 #include <iomanip>
 #include <iterator>
 #include <lpcore>
@@ -67,8 +68,8 @@ operator<<(std::ostream& os, const result& result)
 struct resume
 {
     resume(const problem& pb)
-      : variables{ 0, 0, 0 }
-      , constraints{ 0, 0, 0, 0, 0 }
+      : variables({})
+      , constraints({})
     {
         variables =
           std::accumulate(pb.vars.values.begin(),

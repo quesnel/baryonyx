@@ -128,13 +128,27 @@ test_negative_coeff3()
 }
 
 void
+test_negative_coeff4()
+{
+    auto pb = lp::make_problem(EXAMPLES_DIR "/negative-coeff4.lp");
+
+    std::map<std::string, lp::parameter> params;
+    params["limit"] = 50l;
+
+    auto result = lp::solve(pb, params);
+
+    Ensures(result.solution_found == true);
+    Ensures(lp::is_valid_solution(pb, result.variable_value) == true);
+}
+
+void
 test_flat30_7()
 {
     auto pb = lp::make_problem(EXAMPLES_DIR "/flat30-7.lp");
 
     std::map<std::string, lp::parameter> params;
     params["limit"] = 10'000'000l;
-    params["delta"] = 0.2;
+    params["delta"] = 0.001;
     params["kappa-min"] = 0.3;
     params["kappa-step"] = 1e-4;
     params["kappa-max"] = 10.0;
@@ -197,13 +211,14 @@ test_bibd1n()
     std::map<std::string, lp::parameter> params;
     params["limit"] = 10'000'000'000l;
     params["theta"] = 0.5;
-    params["delta"] = 0.001;
-    params["kappa-step"] = 1e-8;
-    params["kappa-min"] = 0.0; // 0.28;
-    params["kappa-max"] = 6.0;
-    params["alpha"] = 1.0;
+    params["delta"] = 9.5e-3; // 9e-3; //7.e-2;
+    params["kappa-step"] = 1e-2;
+    params["kappa-min"] = 0.65; // 0.7;
+    params["kappa-max"] = 600.0;
+    params["alpha"] = 0.0;
     params["w"] = 60l;
     params["serialize"] = 1l;
+    params["constraint-order"] = std::string("none");
     // params["constraint-order"] = std::string("infeasibility-incr");
     // params["constraint-order"] = std::string("adaptative");
     // params["constraint-order"] = std::string("");
@@ -338,6 +353,7 @@ main(int /* argc */, char* /* argv */ [])
     test_negative_coeff();
     test_negative_coeff2();
     test_negative_coeff3();
+    test_negative_coeff4();
     test_8_queens_puzzle_fixed_cost();
     test_8_queens_puzzle_random_cost();
     test_qap();

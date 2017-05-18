@@ -156,7 +156,7 @@ struct simple_constraint_calculator : public constraint_calculator<modeT>
         }
     }
 
-    virtual void update_row(index k,
+    void update_row(index k,
                             double kappa,
                             double delta,
                             double theta) override
@@ -266,7 +266,7 @@ struct advanded_constraint_calculator : public constraint_calculator<modeT>
                 C.emplace_back(i);
     }
 
-    virtual void update_row(index k,
+    void update_row(index k,
                             double /*kappa*/,
                             double /*delta*/,
                             double theta) override

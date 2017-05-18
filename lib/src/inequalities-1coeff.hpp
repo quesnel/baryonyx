@@ -70,18 +70,18 @@ constraint_order_to_string(constraint_order type)
                                  "adaptative" };
 
     switch (type) {
-        case inequalities_1coeff::constraint_order::none:
-            return ret[0];
-        case inequalities_1coeff::constraint_order::reversing:
-            return ret[1];
-        case inequalities_1coeff::constraint_order::random_sorting:
-            return ret[2];
-        case inequalities_1coeff::constraint_order::infeasibility_decr:
-            return ret[3];
-        case inequalities_1coeff::constraint_order::infeasibility_incr:
-            return ret[4];
-        case inequalities_1coeff::constraint_order::adaptative:
-            return ret[5];
+    case inequalities_1coeff::constraint_order::none:
+        return ret[0];
+    case inequalities_1coeff::constraint_order::reversing:
+        return ret[1];
+    case inequalities_1coeff::constraint_order::random_sorting:
+        return ret[2];
+    case inequalities_1coeff::constraint_order::infeasibility_decr:
+        return ret[3];
+    case inequalities_1coeff::constraint_order::infeasibility_incr:
+        return ret[4];
+    case inequalities_1coeff::constraint_order::adaptative:
+        return ret[5];
     }
 
     return nullptr;
@@ -402,7 +402,7 @@ struct constraint_calculator
     void update_row(index k, double kappa, double delta, double theta)
     {
         for (std::size_t i{ 0 }, endi{ I.size() }; i != endi; ++i)
-            P.set(k, I[i], P(k, I[i]) * theta);
+            P.mult(k, I[i], theta);
 
         std::uniform_real_distribution<> dst(0.0, 1e-4);
         for (std::size_t i{ 0 }, endi{ I.size() }; i != endi; ++i) {
@@ -413,6 +413,15 @@ struct constraint_calculator
             const auto& values{ A.values() };
 
             for (std::size_t h{ 0 }, eh{ ai.size() }; h != eh; ++h) {
+                //
+                // We use std::abs(A(h, I[i])) that is always 1. So we use
+                // only the pi(h) and P(h, I[i]). However. With this behaviour,
+                // solver found less solution? Strange behaviour.
+                //
+
+                // sum_a_pi += pi(ai[h].position);
+                // sum_a_p += P(ai[h].position, I[i]);
+
                 sum_a_pi += values[ai[h].value] * pi(ai[h].position);
                 sum_a_p += values[ai[h].value] * P(ai[h].position, I[i]);
             }
@@ -421,10 +430,6 @@ struct constraint_calculator
             //     if (A(h, I[i])) {
             //         sum_a_pi += A(h, I[i]) * pi(h);
             //         sum_a_p += A(h, I[i]) * P(h, I[i]);
-
-            //         // We use std::abs(A(h, I[i])) that is always 1. So we
-            //         use
-            //         // only the pi(h) and P(h, I[i]).
 
             //         // sum_a_pi += pi(h);
             //         // sum_a_p += P(h, I[i]);
@@ -445,8 +450,8 @@ struct constraint_calculator
         for (std::size_t i{ 0 }, endi{ I.size() }; i != endi; ++i) {
             if (A(k, I[i]) < 0) {
                 r[i].value = -r[i].value;
-                A.set(k, I[i], -A(k, I[i]));
-                P.set(k, I[i], -P(k, I[i]));
+                A.mult(k, I[i], -1);
+                P.mult(k, I[i], -1);
             }
         }
 
@@ -508,12 +513,12 @@ struct constraint_calculator
         if (selected < 0) {
             for (index j{ 0 }; j < endi; ++j) {
                 x(r[j].id) = 0;
-                P.set(k, r[j].id, P(k, r[j].id) - delta);
+                P.add(k, r[j].id, -delta);
             }
         } else if (second >= endi) {
             for (index j{ 0 }; j < endi; ++j) {
                 x(r[j].id) = 1;
-                P.set(k, r[j].id, P(k, r[j].id) + delta);
+                P.add(k, r[j].id, +delta);
             }
         } else {
             pi(k) += ((r[first].value + r[second].value) / 2.0);
@@ -524,12 +529,12 @@ struct constraint_calculator
             index j{ 0 };
             for (; j <= selected; ++j) {
                 x(r[j].id) = 1;
-                P.set(k, r[j].id, P(k, r[j].id) + d);
+                P.add(k, r[j].id, +d);
             }
 
             for (; j != endi; ++j) {
                 x(r[j].id) = 0;
-                P.set(k, r[j].id, P(k, r[j].id) - d);
+                P.add(k, r[j].id, -d);
             }
         }
 
@@ -542,8 +547,8 @@ struct constraint_calculator
         //
 
         for (std::size_t i{ 0 }, e{ C.size() }; i != e; ++i) {
-            A.set(k, C[i], -A(k, C[i]));
-            P.set(k, C[i], -P(k, C[i]));
+            A.mult(k, C[i], -1);
+            P.set(k, C[i], -1);
             x[C[i]] = 1 - x[C[i]];
         }
     }
@@ -731,7 +736,6 @@ make_merged_constraints(const lp::problem& pb)
         ofs << " <= " << elem.max << '\n';
     }
 
-    //
     // We sort constraints according to the maximum presence of variables in
     // the constraints.
     // - vars counts the number of use of the variables
@@ -759,20 +763,20 @@ make_merged_constraints(const lp::problem& pb)
         }
     }
 
-    {
-        auto it = vars.begin(), end = vars.end();
+    // {
+    //     auto it = vars.begin(), end = vars.end();
 
-        int moy{ 0 };
-        for (it = vars.begin(); it != end; ++it)
-            moy += *it;
-        moy = moy / vars.size();
+    //     int moy{ 0 };
+    //     for (it = vars.begin(); it != end; ++it)
+    //         moy += *it;
+    //     moy = moy / vars.size();
 
-        // auto it = std::min_element(vars.begin(), vars.end());
-        // int min{ *it };
+    //     // auto it = std::min_element(vars.begin(), vars.end());
+    //     // int min{ *it };
 
-        for (it = vars.begin(); it != end; ++it)
-            *it = std::max(0, *it - moy);
-    }
+    //     for (it = vars.begin(); it != end; ++it)
+    //         *it = std::max(0, *it - moy);
+    // }
 
     // std::cout << "linkvars:\n";
     // for (std::size_t i{ 0 }, e{ linkvars.size() }; i != e; ++i) {
@@ -795,26 +799,27 @@ make_merged_constraints(const lp::problem& pb)
     //     std::cout << elem << ' ';
     // std::cout << '\n';
 
-    // std::vector<std::pair<merged_constraint, long>> tosort;
-    // long i{ 0 };
-    // for (auto& cst : ret) {
-    //     tosort.emplace_back(cst, 0);
-    //     for (auto& elem : cst.elements) {
-    //         for (auto& s : linkcst[elem.variable_index])
-    //             tosort.back().second += linkvars[s].size();
-    //     }
+    std::vector<std::pair<merged_constraint, long>> tosort;
 
-    //     std::cout << i++ << ' ' << tosort.back().second << '\n';
-    // }
+    for (auto& cst : ret) {
+        tosort.emplace_back(cst, 0);
+        for (auto& elem : cst.elements) {
+            for (auto& s : linkcst[elem.variable_index])
+                tosort.back().second += linkvars[s].size();
+        }
+    }
 
-    // std::sort(
-    //   tosort.begin(), tosort.end(), [](const auto& lhs, const auto& rhs) {
-    //       return rhs.second < lhs.second;
-    //   });
+    std::sort(
+      tosort.begin(), tosort.end(), [](const auto& lhs, const auto& rhs) {
+          return rhs.second < lhs.second;
+      });
 
-    // ret.clear();
-    // for (auto& elem : tosort)
-    //     ret.emplace_back(elem.first);
+    ret.clear();
+    // for (auto it = tosort.rbegin(), et = tosort.rend(); it != et; ++it)
+    //     ret.emplace_back(it->first);
+
+    for (auto& elem : tosort)
+        ret.emplace_back(elem.first);
 
     // std::sort(ret.begin(),
     //           ret.end(),
@@ -832,19 +837,19 @@ make_merged_constraints(const lp::problem& pb)
     //               return sumrhs > sumlhs;
     //           });
 
-    std::sort(
-      ret.begin(), ret.end(), [vars](const auto& lhs, const auto& rhs) {
-          long sumlhs{ 0 };
-          long sumrhs{ 0 };
+    // std::sort(
+    //   ret.begin(), ret.end(), [vars](const auto& lhs, const auto& rhs) {
+    //       long sumlhs{ 0 };
+    //       long sumrhs{ 0 };
 
-          for (auto& f : lhs.elements)
-              sumlhs += vars[f.variable_index];
+    //       for (auto& f : lhs.elements)
+    //           sumlhs += vars[f.variable_index];
 
-          for (auto& f : rhs.elements)
-              sumrhs += vars[f.variable_index];
+    //       for (auto& f : rhs.elements)
+    //           sumrhs += vars[f.variable_index];
 
-          return sumlhs < sumrhs;
-      });
+    //       return sumlhs < sumrhs;
+    //   });
 
     return ret;
 }
@@ -1040,10 +1045,19 @@ struct no_cycle_avoidance
 {
     using value_type = T;
 
-    no_cycle_avoidance(std::size_t limit_ = 0) noexcept { (void)limit_; }
+    no_cycle_avoidance(std::size_t limit_ = 0) noexcept
+    {
+        (void)limit_;
+    }
 
-    bool have_cycle(const x_type&) const noexcept { return false; }
-    bool have_cycle(const std::vector<T>&) const noexcept { return false; }
+    bool have_cycle(const x_type&) const noexcept
+    {
+        return false;
+    }
+    bool have_cycle(const std::vector<T>&) const noexcept
+    {
+        return false;
+    }
     bool have_cycle(const std::vector<std::pair<index, index>>&) const noexcept
     {
         return false;
@@ -1067,7 +1081,10 @@ struct cycle_avoidance
         history.clear();
     }
 
-    ~cycle_avoidance() { printf("  - Cycle: %ld\n", nb); }
+    ~cycle_avoidance()
+    {
+        printf("  - Cycle: %ld\n", nb);
+    }
 
     bool have_cycle()
     {
@@ -1151,7 +1168,9 @@ struct compute_reversing
     std::vector<index> R;
     cycle_avoidance<index> detect_infeasability_cycle;
 
-    compute_reversing(randomT&) {}
+    compute_reversing(randomT&)
+    {
+    }
 
     template <typename solverT>
     std::size_t run_all(solverT& solver,
@@ -1188,7 +1207,9 @@ struct compute_none
     std::vector<index> R;
     cycle_avoidance<index> detect_infeasability_cycle;
 
-    compute_none(randomT&) {}
+    compute_none(randomT&)
+    {
+    }
 
     template <typename solverT>
     std::size_t run_all(solverT& solver,
@@ -1451,24 +1472,24 @@ struct compute_adaptative
                         double theta)
     {
         switch (constraint) {
-            case constraint_order::none:
-                return cpt_none.run_all(solver, kappa, delta, theta);
-                break;
-            case constraint_order::reversing:
-                return cpt_reversing.run_all(solver, kappa, delta, theta);
-                break;
-            case constraint_order::random_sorting:
-                return cpt_random.run_all(solver, kappa, delta, theta);
-                break;
-            case constraint_order::infeasibility_decr:
-                return cpt_inf_incr.run_all(solver, kappa, delta, theta);
-                break;
-            case constraint_order::infeasibility_incr:
-                return cpt_inf_decr.run_all(solver, kappa, delta, theta);
-                break;
-            default:
-                return cpt_none.run_all(solver, kappa, delta, theta);
-                break;
+        case constraint_order::none:
+            return cpt_none.run_all(solver, kappa, delta, theta);
+            break;
+        case constraint_order::reversing:
+            return cpt_reversing.run_all(solver, kappa, delta, theta);
+            break;
+        case constraint_order::random_sorting:
+            return cpt_random.run_all(solver, kappa, delta, theta);
+            break;
+        case constraint_order::infeasibility_decr:
+            return cpt_inf_incr.run_all(solver, kappa, delta, theta);
+            break;
+        case constraint_order::infeasibility_incr:
+            return cpt_inf_decr.run_all(solver, kappa, delta, theta);
+            break;
+        default:
+            return cpt_none.run_all(solver, kappa, delta, theta);
+            break;
         }
     }
 
@@ -1479,46 +1500,46 @@ struct compute_adaptative
 
         if (not have_switch) {
             switch (constraint) {
-                case constraint_order::none:
-                    ret = cpt_none.run(solver, kappa, delta, theta);
-                    break;
-                case constraint_order::reversing:
-                    ret = cpt_reversing.run(solver, kappa, delta, theta);
-                    break;
-                case constraint_order::random_sorting:
-                    ret = cpt_random.run(solver, kappa, delta, theta);
-                    break;
-                case constraint_order::infeasibility_decr:
-                    ret = cpt_inf_incr.run(solver, kappa, delta, theta);
-                    break;
-                case constraint_order::infeasibility_incr:
-                    ret = cpt_inf_decr.run(solver, kappa, delta, theta);
-                    break;
-                default:
-                    ret = cpt_none.run(solver, kappa, delta, theta);
-                    break;
+            case constraint_order::none:
+                ret = cpt_none.run(solver, kappa, delta, theta);
+                break;
+            case constraint_order::reversing:
+                ret = cpt_reversing.run(solver, kappa, delta, theta);
+                break;
+            case constraint_order::random_sorting:
+                ret = cpt_random.run(solver, kappa, delta, theta);
+                break;
+            case constraint_order::infeasibility_decr:
+                ret = cpt_inf_incr.run(solver, kappa, delta, theta);
+                break;
+            case constraint_order::infeasibility_incr:
+                ret = cpt_inf_decr.run(solver, kappa, delta, theta);
+                break;
+            default:
+                ret = cpt_none.run(solver, kappa, delta, theta);
+                break;
             }
         } else {
             have_switch = false;
             switch (constraint) {
-                case constraint_order::none:
-                    ret = cpt_none.run_all(solver, kappa, delta, theta);
-                    break;
-                case constraint_order::reversing:
-                    ret = cpt_reversing.run_all(solver, kappa, delta, theta);
-                    break;
-                case constraint_order::random_sorting:
-                    ret = cpt_random.run_all(solver, kappa, delta, theta);
-                    break;
-                case constraint_order::infeasibility_decr:
-                    ret = cpt_inf_incr.run_all(solver, kappa, delta, theta);
-                    break;
-                case constraint_order::infeasibility_incr:
-                    ret = cpt_inf_decr.run_all(solver, kappa, delta, theta);
-                    break;
-                default:
-                    ret = cpt_none.run_all(solver, kappa, delta, theta);
-                    break;
+            case constraint_order::none:
+                ret = cpt_none.run_all(solver, kappa, delta, theta);
+                break;
+            case constraint_order::reversing:
+                ret = cpt_reversing.run_all(solver, kappa, delta, theta);
+                break;
+            case constraint_order::random_sorting:
+                ret = cpt_random.run_all(solver, kappa, delta, theta);
+                break;
+            case constraint_order::infeasibility_decr:
+                ret = cpt_inf_incr.run_all(solver, kappa, delta, theta);
+                break;
+            case constraint_order::infeasibility_incr:
+                ret = cpt_inf_decr.run_all(solver, kappa, delta, theta);
+                break;
+            default:
+                ret = cpt_none.run_all(solver, kappa, delta, theta);
+                break;
             }
         }
 
@@ -1530,24 +1551,24 @@ struct compute_adaptative
                   std::chrono::steady_clock::now() - begin)
                   .count() > 30) {
                 switch (constraint) {
-                    case constraint_order::none:
-                        constraint = constraint_order::reversing;
-                        break;
-                    case constraint_order::reversing:
-                        constraint = constraint_order::random_sorting;
-                        break;
-                    case constraint_order::random_sorting:
-                        constraint = constraint_order::infeasibility_decr;
-                        break;
-                    case constraint_order::infeasibility_decr:
-                        constraint = constraint_order::reversing;
-                        break;
-                    case constraint_order::infeasibility_incr:
-                        constraint = constraint_order::reversing;
-                        break;
-                    default:
-                        constraint = constraint_order::random_sorting;
-                        break;
+                case constraint_order::none:
+                    constraint = constraint_order::reversing;
+                    break;
+                case constraint_order::reversing:
+                    constraint = constraint_order::random_sorting;
+                    break;
+                case constraint_order::random_sorting:
+                    constraint = constraint_order::infeasibility_decr;
+                    break;
+                case constraint_order::infeasibility_decr:
+                    constraint = constraint_order::reversing;
+                    break;
+                case constraint_order::infeasibility_incr:
+                    constraint = constraint_order::reversing;
+                    break;
+                default:
+                    constraint = constraint_order::random_sorting;
+                    break;
                 };
                 printf("     * Switch to %s\n",
                        constraint_order_to_string(constraint));
@@ -1581,7 +1602,6 @@ solve(const problem& pb, const parameters& p, randomT& rng)
     constraint_order_type compute(rng);
 
     for (long int i{ 0 }; i < p.limit; ++i) {
-
         index remaining = compute.run(slv, kappa, p.delta, p.theta);
 
         auto current = slv.results();
@@ -1706,6 +1726,7 @@ optimize(const problem& pb, const parameters& p, randomT& rng)
                       std::pow(static_cast<double>(remaining) /
                                  static_cast<double>(current.constraints),
                                p.alpha);
+
             kappa_old = kappa;
         }
 
@@ -1728,21 +1749,22 @@ optimize(const problem& pb, const parameters& p, randomT& rng)
             return best;
         }
 
-        if (pushed >= 0)
+        if (pushed >= 0) {
+            if (current.solution_found) {
+                if (is_better_solution(
+                      current.value, best.value, mode_type())) {
+                    std::cout << "  - Solution value: " << current.value
+                              << '\n';
+                    best = current;
+                }
+            }
             ++pushing_iteration;
-        else if (current.solution_found) {
+        } else if (current.solution_found) {
             pushed = 0;
             pushing_iteration = 0;
         }
 
-        if (current.solution_found and
-            (pushed >= 0 and pushing_iteration >= p.pushing_iteration_limit)) {
-
-            if (is_better_solution(current.value, best.value, mode_type())) {
-                std::cout << "  - Solution value: " << current.value << '\n';
-                best = current;
-            }
-
+        if (pushed >= 0 and pushing_iteration >= p.pushing_iteration_limit) {
             pushed++;
             pushing_iteration = 0;
 
@@ -1785,63 +1807,62 @@ inequalities_1coeff_wedelin_solve(
     p.print();
 
     switch (p.order) {
-        case ine_1::constraint_order::none:
-            if (pb.type == lp::objective_function_type::maximize)
-                return ine_1::solve<ine_1::maximize_tag,
-                                    ine_1::compute_none<random_generator_type>,
-                                    random_generator_type>(pb, p, rng);
-            return ine_1::solve<ine_1::minimize_tag,
+    case ine_1::constraint_order::none:
+        if (pb.type == lp::objective_function_type::maximize)
+            return ine_1::solve<ine_1::maximize_tag,
                                 ine_1::compute_none<random_generator_type>,
                                 random_generator_type>(pb, p, rng);
-        case ine_1::constraint_order::reversing:
-            if (pb.type == lp::objective_function_type::maximize)
-                return ine_1::solve<
-                  ine_1::maximize_tag,
-                  ine_1::compute_reversing<random_generator_type>>(pb, p, rng);
+        return ine_1::solve<ine_1::minimize_tag,
+                            ine_1::compute_none<random_generator_type>,
+                            random_generator_type>(pb, p, rng);
+    case ine_1::constraint_order::reversing:
+        if (pb.type == lp::objective_function_type::maximize)
             return ine_1::solve<
-              ine_1::minimize_tag,
+              ine_1::maximize_tag,
               ine_1::compute_reversing<random_generator_type>>(pb, p, rng);
-        case ine_1::constraint_order::random_sorting:
-            if (pb.type == lp::objective_function_type::maximize)
-                return ine_1::solve<
-                  ine_1::maximize_tag,
-                  ine_1::compute_random<random_generator_type>>(pb, p, rng);
-            return ine_1::solve<ine_1::minimize_tag,
+        return ine_1::solve<ine_1::minimize_tag,
+                            ine_1::compute_reversing<random_generator_type>>(
+          pb, p, rng);
+    case ine_1::constraint_order::random_sorting:
+        if (pb.type == lp::objective_function_type::maximize)
+            return ine_1::solve<ine_1::maximize_tag,
                                 ine_1::compute_random<random_generator_type>>(
               pb, p, rng);
-        case ine_1::constraint_order::infeasibility_decr:
-            if (pb.type == lp::objective_function_type::maximize)
-                return ine_1::solve<ine_1::maximize_tag,
-                                    ine_1::compute_infeasibility<
-                                      random_generator_type,
-                                      ine_1::compute_infeasibility_decr>>(
-                  pb, p, rng);
+        return ine_1::solve<ine_1::minimize_tag,
+                            ine_1::compute_random<random_generator_type>>(
+          pb, p, rng);
+    case ine_1::constraint_order::infeasibility_decr:
+        if (pb.type == lp::objective_function_type::maximize)
             return ine_1::solve<
-              ine_1::minimize_tag,
+              ine_1::maximize_tag,
               ine_1::compute_infeasibility<random_generator_type,
                                            ine_1::compute_infeasibility_decr>>(
               pb, p, rng);
-        case ine_1::constraint_order::infeasibility_incr:
-            if (pb.type == lp::objective_function_type::maximize)
-                return ine_1::solve<ine_1::maximize_tag,
-                                    ine_1::compute_infeasibility<
-                                      random_generator_type,
-                                      ine_1::compute_infeasibility_incr>>(
-                  pb, p, rng);
+        return ine_1::solve<
+          ine_1::minimize_tag,
+          ine_1::compute_infeasibility<random_generator_type,
+                                       ine_1::compute_infeasibility_decr>>(
+          pb, p, rng);
+    case ine_1::constraint_order::infeasibility_incr:
+        if (pb.type == lp::objective_function_type::maximize)
             return ine_1::solve<
-              ine_1::minimize_tag,
+              ine_1::maximize_tag,
               ine_1::compute_infeasibility<random_generator_type,
                                            ine_1::compute_infeasibility_incr>>(
               pb, p, rng);
-        case ine_1::constraint_order::adaptative:
-            if (pb.type == lp::objective_function_type::maximize)
-                return ine_1::solve<
-                  ine_1::maximize_tag,
-                  ine_1::compute_adaptative<random_generator_type>>(
-                  pb, p, rng);
+        return ine_1::solve<
+          ine_1::minimize_tag,
+          ine_1::compute_infeasibility<random_generator_type,
+                                       ine_1::compute_infeasibility_incr>>(
+          pb, p, rng);
+    case ine_1::constraint_order::adaptative:
+        if (pb.type == lp::objective_function_type::maximize)
             return ine_1::solve<
-              ine_1::minimize_tag,
+              ine_1::maximize_tag,
               ine_1::compute_adaptative<random_generator_type>>(pb, p, rng);
+        return ine_1::solve<ine_1::minimize_tag,
+                            ine_1::compute_adaptative<random_generator_type>>(
+          pb, p, rng);
     }
 
     throw "TODO internal error";
@@ -1871,64 +1892,62 @@ inequalities_1coeff_wedelin_optimize(
     random_generator_type rng(seed);
 
     switch (p.order) {
-        case ine_1::constraint_order::none:
-            if (pb.type == lp::objective_function_type::maximize)
-                return ine_1::optimize<
-                  ine_1::maximize_tag,
-                  ine_1::compute_none<random_generator_type>,
-                  random_generator_type>(pb, p, rng);
-            return ine_1::optimize<ine_1::minimize_tag,
+    case ine_1::constraint_order::none:
+        if (pb.type == lp::objective_function_type::maximize)
+            return ine_1::optimize<ine_1::maximize_tag,
                                    ine_1::compute_none<random_generator_type>,
                                    random_generator_type>(pb, p, rng);
-        case ine_1::constraint_order::reversing:
-            if (pb.type == lp::objective_function_type::maximize)
-                return ine_1::optimize<
-                  ine_1::maximize_tag,
-                  ine_1::compute_reversing<random_generator_type>>(pb, p, rng);
+        return ine_1::optimize<ine_1::minimize_tag,
+                               ine_1::compute_none<random_generator_type>,
+                               random_generator_type>(pb, p, rng);
+    case ine_1::constraint_order::reversing:
+        if (pb.type == lp::objective_function_type::maximize)
             return ine_1::optimize<
-              ine_1::minimize_tag,
+              ine_1::maximize_tag,
               ine_1::compute_reversing<random_generator_type>>(pb, p, rng);
-        case ine_1::constraint_order::random_sorting:
-            if (pb.type == lp::objective_function_type::maximize)
-                return ine_1::optimize<
-                  ine_1::maximize_tag,
-                  ine_1::compute_random<random_generator_type>>(pb, p, rng);
+        return ine_1::optimize<
+          ine_1::minimize_tag,
+          ine_1::compute_reversing<random_generator_type>>(pb, p, rng);
+    case ine_1::constraint_order::random_sorting:
+        if (pb.type == lp::objective_function_type::maximize)
             return ine_1::optimize<
-              ine_1::minimize_tag,
+              ine_1::maximize_tag,
               ine_1::compute_random<random_generator_type>>(pb, p, rng);
-        case ine_1::constraint_order::infeasibility_decr:
-            if (pb.type == lp::objective_function_type::maximize)
-                return ine_1::optimize<ine_1::maximize_tag,
-                                       ine_1::compute_infeasibility<
-                                         random_generator_type,
-                                         ine_1::compute_infeasibility_decr>>(
-                  pb, p, rng);
+        return ine_1::optimize<ine_1::minimize_tag,
+                               ine_1::compute_random<random_generator_type>>(
+          pb, p, rng);
+    case ine_1::constraint_order::infeasibility_decr:
+        if (pb.type == lp::objective_function_type::maximize)
             return ine_1::optimize<
-              ine_1::minimize_tag,
+              ine_1::maximize_tag,
               ine_1::compute_infeasibility<random_generator_type,
                                            ine_1::compute_infeasibility_decr>>(
               pb, p, rng);
-        case ine_1::constraint_order::infeasibility_incr:
-            if (pb.type == lp::objective_function_type::maximize)
-                return ine_1::optimize<ine_1::maximize_tag,
-                                       ine_1::compute_infeasibility<
-                                         random_generator_type,
-                                         ine_1::compute_infeasibility_incr>>(
-                  pb, p, rng);
+        return ine_1::optimize<
+          ine_1::minimize_tag,
+          ine_1::compute_infeasibility<random_generator_type,
+                                       ine_1::compute_infeasibility_decr>>(
+          pb, p, rng);
+    case ine_1::constraint_order::infeasibility_incr:
+        if (pb.type == lp::objective_function_type::maximize)
             return ine_1::optimize<
-              ine_1::minimize_tag,
+              ine_1::maximize_tag,
               ine_1::compute_infeasibility<random_generator_type,
                                            ine_1::compute_infeasibility_incr>>(
               pb, p, rng);
-        case ine_1::constraint_order::adaptative:
-            if (pb.type == lp::objective_function_type::maximize)
-                return ine_1::optimize<
-                  ine_1::maximize_tag,
-                  ine_1::compute_adaptative<random_generator_type>>(
-                  pb, p, rng);
+        return ine_1::optimize<
+          ine_1::minimize_tag,
+          ine_1::compute_infeasibility<random_generator_type,
+                                       ine_1::compute_infeasibility_incr>>(
+          pb, p, rng);
+    case ine_1::constraint_order::adaptative:
+        if (pb.type == lp::objective_function_type::maximize)
             return ine_1::optimize<
-              ine_1::minimize_tag,
+              ine_1::maximize_tag,
               ine_1::compute_adaptative<random_generator_type>>(pb, p, rng);
+        return ine_1::optimize<
+          ine_1::minimize_tag,
+          ine_1::compute_adaptative<random_generator_type>>(pb, p, rng);
     }
 
     throw "TODO internal error";
