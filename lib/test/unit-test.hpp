@@ -23,11 +23,40 @@
 #ifndef ORG_VLEPROJECT_UNIT_TEST_HPP
 #define ORG_VLEPROJECT_UNIT_TEST_HPP
 
-#include <iostream>
+#include <cstdio>
 #include <cstdlib>
+
+#ifdef __unix__
+#include <unistd.h>
+#endif
 
 namespace unit_test {
 namespace detail {
+
+#ifdef __unix__
+inline bool
+have_color() noexcept
+{
+    return ::isatty(::fileno(stderr));
+}
+#else
+inline bool
+have_color()
+{
+    noexcept return false;
+}
+#endif
+
+#define COLOR_RESET "\033[0m"
+#define BOLD "\033[1m"
+#define BLACK_TEXT "\033[30;1m"
+#define RED_TEXT "\033[31;1m"
+#define GREEN_TEXT "\033[32;1m"
+#define YELLOW_TEXT "\033[33;1m"
+#define BLUE_TEXT "\033[34;1m"
+#define MAGENTA_TEXT "\033[35;1m"
+#define CYAN_TEXT "\033[36;1m"
+#define WHITE_TEXT "\033[37;1m"
 
 struct tester
 {
@@ -44,12 +73,25 @@ struct tester
     ~tester() noexcept
     {
         if (called_report_function == false) {
-            std::cerr << "unit_test::report_errors() not called.\n\nUsage:\n"
-                      << "int main(int argc, char*[] argc)\n"
-                      << "{\n"
-                      << "    [...]\n"
-                      << "    return unit_test::report_errors();\n"
-                      << "}\n";
+            if (have_color()) {
+                fprintf(stderr,
+                        RED_TEXT
+                        "unit_test::report_errors() not called.\n\nUsage:\n"
+                        "int main(int argc, char*[] argc)\n"
+                        "{\n"
+                        "    [...]\n"
+                        "    return unit_test::report_errors();\n"
+                        "}\n" COLOR_RESET);
+            } else {
+                fprintf(stderr,
+                        "unit_test::report_errors() not called.\n\nUsage:\n"
+                        "int main(int argc, char*[] argc)\n"
+                        "{\n"
+                        "    [...]\n"
+                        "    return unit_test::report_errors();\n"
+                        "}\n");
+            }
+
             std::abort();
         }
     }
@@ -69,9 +111,22 @@ ensures_impl(const char* expr,
              int line,
              const char* function)
 {
-    std::cerr << file << "(" << line << "): test '" << expr
-              << "' failed in function '"
-              << function << "'\n";
+    if (have_color()) {
+        fprintf(stderr,
+                RED_TEXT
+                "%s (%d): test '%s' failed in function '%s'\n" COLOR_RESET,
+                file,
+                line,
+                expr,
+                function);
+    } else {
+        fprintf(stderr,
+                "%s (%d): test '%s' failed in function '%s'\n",
+                file,
+                line,
+                expr,
+                function);
+    }
 
     ++test_errors();
 }
@@ -83,9 +138,25 @@ ensures_equal_impl(const char* expr1,
                    int line,
                    const char* function)
 {
-    std::cerr << file << "(" << line << "): test '" << expr1
-              << " == " << expr2 << "' failed in function '"
-              << function << "'\n";
+    if (have_color()) {
+        fprintf(
+          stderr,
+          RED_TEXT
+          "%s (%d): test '%s == %s' failed in function '%s'\n" COLOR_RESET,
+          file,
+          line,
+          expr1,
+          expr2,
+          function);
+    } else {
+        fprintf(stderr,
+                "%s (%d): test '%s == %s' failed in function '%s'\n",
+                file,
+                line,
+                expr1,
+                expr2,
+                function);
+    }
 
     ++test_errors();
 }
@@ -97,9 +168,25 @@ ensures_not_equal_impl(const char* expr1,
                        int line,
                        const char* function)
 {
-    std::cerr << file << "(" << line << "): test '" << expr1
-              << " != " << expr2 << "' failed in function '"
-              << function << "'\n";
+    if (have_color()) {
+        fprintf(
+          stderr,
+          RED_TEXT
+          "%s (%d): test '%s != %s' failed in function '%s'\n" COLOR_RESET,
+          file,
+          line,
+          expr1,
+          expr2,
+          function);
+    } else {
+        fprintf(stderr,
+                "%s (%d): test '%s != %s' failed in function '%s'\n",
+                file,
+                line,
+                expr1,
+                expr2,
+                function);
+    }
 
     ++test_errors();
 }
@@ -110,9 +197,22 @@ ensures_throw_impl(const char* excep,
                    int line,
                    const char* function)
 {
-    std::cerr << file << "(" << line << "): exception '"
-              << excep << "' throw failed in function '"
-              << function << "'\n";
+    if (have_color()) {
+        fprintf(stderr,
+                RED_TEXT "%s (%d): exception '%s' throw failed in function "
+                         "'%s'\n" COLOR_RESET,
+                file,
+                line,
+                excep,
+                function);
+    } else {
+        fprintf(stderr,
+                "%s (%d): exception '%s' throw failed in function '%s'\n",
+                file,
+                line,
+                excep,
+                function);
+    }
 
     ++test_errors();
 }
@@ -123,9 +223,22 @@ ensures_not_throw_impl(const char* excep,
                        int line,
                        const char* function)
 {
-    std::cerr << file << "(" << line << "): exception '"
-              << excep << "' not throw failed in function '"
-              << function << "'\n";
+    if (have_color()) {
+        fprintf(stderr,
+                RED_TEXT "%s (%d): exception '%s' not throw failed in "
+                         "function '%s'\n" COLOR_RESET,
+                file,
+                line,
+                excep,
+                function);
+    } else {
+        fprintf(stderr,
+                "%s (%d): exception '%s' not throw failed in function '%s'\n",
+                file,
+                line,
+                excep,
+                function);
+    }
 
     ++test_errors();
 }
@@ -140,67 +253,72 @@ report_errors()
     int errors = tester.errors;
 
     if (errors == 0)
-        std::cerr << "No errors detected.\n";
-    else
-        std::cerr << errors << " error" << (errors == 1 ? "": "s")
-                  << " detected.\n";
+        fprintf(stderr, "No errors detected.\n");
+    else {
+        if (unit_test::detail::have_color()) {
+            fprintf(stderr,
+                    RED_TEXT "%d error%s detected.\n" COLOR_RESET,
+                    errors,
+                    (errors == 1 ? "" : "s"));
+        } else {
+            fprintf(stderr,
+                    "%d error%s detected.\n",
+                    errors,
+                    (errors == 1 ? "" : "s"));
+        }
+    }
 
     return errors;
 }
 
 } // namespace unit_test
 
-#define Ensures(expr)                                                   \
-    do {                                                                \
-        if (not (expr)) {                                               \
-            unit_test::detail::ensures_impl(#expr, __FILE__,            \
-                                            __LINE__, __func__);        \
-        }                                                               \
+#define Ensures(expr)                                                         \
+    do {                                                                      \
+        if (not(expr)) {                                                      \
+            unit_test::detail::ensures_impl(                                  \
+              #expr, __FILE__, __LINE__, __func__);                           \
+        }                                                                     \
     } while (0)
 
-#define EnsuresEqual(expr1, expr2)                                      \
-    do {                                                                \
-        if (not ((expr1) == (expr2))) {                                 \
-            unit_test::detail::ensures_equal_impl(#expr1, #expr2,       \
-                                                  __FILE__, __LINE__,   \
-                                                  __func__);            \
-        }                                                               \
+#define EnsuresEqual(expr1, expr2)                                            \
+    do {                                                                      \
+        if (not((expr1) == (expr2))) {                                        \
+            unit_test::detail::ensures_equal_impl(                            \
+              #expr1, #expr2, __FILE__, __LINE__, __func__);                  \
+        }                                                                     \
     } while (0)
 
-#define EnsuresNotEqual(expr1, expr2)                                   \
-    do {                                                                \
-        if (not ((expr1) != (expr2))) {                                 \
-            unit_test::detail::ensures_not_equal_impl(#expr1, #expr2,   \
-                                                      __FILE__,         \
-                                                      __LINE__,         \
-                                                      __func__);        \
-        }                                                               \
+#define EnsuresNotEqual(expr1, expr2)                                         \
+    do {                                                                      \
+        if (not((expr1) != (expr2))) {                                        \
+            unit_test::detail::ensures_not_equal_impl(                        \
+              #expr1, #expr2, __FILE__, __LINE__, __func__);                  \
+        }                                                                     \
     } while (0)
 
-#define EnsuresThrow(expr, Excep)                                       \
-    do {                                                                \
-        try {                                                           \
-            expr;                                                       \
-            unit_test::detail::ensures_throw_impl(#Excep,  __FILE__,    \
-                                                  __LINE__, __func__);  \
-        } catch (const Excep&) {                                        \
-        } catch (...) {                                                 \
-            unit_test::detail::ensures_throw_impl(#Excep, __FILE__,     \
-                                                  __LINE__, __func__);  \
-        }                                                               \
+#define EnsuresThrow(expr, Excep)                                             \
+    do {                                                                      \
+        try {                                                                 \
+            expr;                                                             \
+            unit_test::detail::ensures_throw_impl(                            \
+              #Excep, __FILE__, __LINE__, __func__);                          \
+        } catch (const Excep&) {                                              \
+        } catch (...) {                                                       \
+            unit_test::detail::ensures_throw_impl(                            \
+              #Excep, __FILE__, __LINE__, __func__);                          \
+        }                                                                     \
     } while (0)
 
-#define EnsuresNotThrow(expr, Excep)                                    \
-    do {                                                                \
-        try {                                                           \
-            expr;                                                       \
-        } catch (const Excep&) {                                        \
-            unit_test::detail::ensures_not_throw_impl(#Excep, __FILE__, \
-                                                      __LINE__,         \
-                                                      __func__);        \
-        } catch (...) {                                                 \
-        }                                                               \
+#define EnsuresNotThrow(expr, Excep)                                          \
+    do {                                                                      \
+        try {                                                                 \
+            expr;                                                             \
+        } catch (const Excep&) {                                              \
+            unit_test::detail::ensures_not_throw_impl(                        \
+              #Excep, __FILE__, __LINE__, __func__);                          \
+        } catch (...) {                                                       \
+        }                                                                     \
     } while (0)
-
 
 #endif // #ifndef ORG_VLEPROJECT_UNIT_TEST_HPP
