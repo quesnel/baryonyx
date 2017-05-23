@@ -236,10 +236,13 @@ test_8_queens_puzzle_fixed_cost()
     auto pb = lp::make_problem(EXAMPLES_DIR "/8_queens_puzzle.lp");
 
     std::map<std::string, lp::parameter> params;
-    params["kappa"] = 0.1;
+    params["limit"] = 10'000'000l;
     params["theta"] = 0.5;
-    params["delta"] = 0.5;
-    params["limit"] = 100l;
+    params["delta"] = 0.02;
+    params["kappa-step"] = 0.01;
+    params["kappa-max"] = 60.0;
+    params["alpha"] = 1.0;
+    params["w"] = 40l;
 
     std::vector<int> cost{ 25, 89, 12, 22, 84, 3,  61, 14, 93, 97, 68, 5,  51,
                            72, 96, 80, 13, 38, 81, 48, 70, 50, 66, 68, 30, 97,
