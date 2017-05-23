@@ -26,6 +26,7 @@
 #include <lpcore-compare>
 #include <lpcore-out>
 #include <lpcore>
+#include <lptest>
 #include <map>
 #include <numeric>
 #include <random>
@@ -51,14 +52,49 @@ test_qap()
     params["pushing-iteration-limit"] = 50l;
 
     auto result = lp::optimize(pb, params);
+
     Ensures(lp::is_valid_solution(pb, result.variable_value) == true);
     Ensures(lp::compute_solution(pb, result.variable_value) == 790.0);
+}
+
+void
+test_n_queens_problem()
+{
+    std::stringstream ss;
+    ss << lp::example::n_queens(40);
+
+    auto pb = lp::make_problem(ss);
+
+    std::mt19937 gen(123456789l);
+    std::uniform_int_distribution<> dis(1, 100);
+
+    for (auto& elem : pb.objective.elements)
+        elem.factor = dis(gen);
+
+    std::cout << pb << '\n';
+
+    std::map<std::string, lp::parameter> params;
+    params["limit"] = 10'000'000l;
+    params["theta"] = 0.5;
+    params["delta"] = 0.2;
+    params["kappa-step"] = 10e-4;
+    params["kappa-max"] = 10.0;
+    params["alpha"] = 0.0;
+    params["w"] = 20l;
+    params["pushing-k-factor"] = 0.9;
+    params["pushes-limit"] = 1000l;
+    params["pushing-objective-amplifier"] = 10l;
+    params["pushing-iteration-limit"] = 50l;
+
+    auto result = lp::optimize(pb, params);
+    Ensures(lp::is_valid_solution(pb, result.variable_value) == true);
 }
 
 int
 main(int /* argc */, char* /* argv */ [])
 {
     test_qap();
+    test_n_queens_problem();
 
     return unit_test::report_errors();
 }

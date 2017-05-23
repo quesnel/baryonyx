@@ -1,0 +1,122 @@
+/* Copyright (C) 2015-2017 INRA
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a
+ * copy of this software and associated documentation files (the
+ * "Software"), to deal in the Software without restriction, including
+ * without limitation the rights to use, copy, modify, merge, publish,
+ * distribute, sublicense, and/or sell copies of the Software, and to
+ * permit persons to whom the Software is furnished to do so, subject to
+ * the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included
+ * in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+ * OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+ * LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+ * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+ * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
+
+#ifndef ORG_VLEPROJECT_LP_EXAMPLE_HPP
+#define ORG_VLEPROJECT_LP_EXAMPLE_HPP
+
+#include <ostream>
+
+namespace lp {
+namespace example {
+
+struct n_queens
+{
+    long problem_size;
+
+    n_queens(long problem_size_)
+      : problem_size(problem_size_)
+    {
+        if (problem_size < 3)
+            throw std::invalid_argument("n_queens_problem");
+    }
+};
+
+inline std::ostream&
+operator<<(std::ostream& os, const n_queens& pb)
+{
+    os << "minimize\n";
+
+    for (long i = 0; i != pb.problem_size; ++i) {
+        for (long j = 0; j != pb.problem_size; ++j)
+            os << " + x_" << i << '_' << j;
+        os << '\n';
+    }
+
+    os << "\nsubject to\n";
+
+    for (long i = 0; i != pb.problem_size; ++i) {
+        for (long j = 0; j != pb.problem_size; ++j)
+            os << "+ x_" << i << '_' << j << ' ';
+
+        os << " = 1\n";
+    }
+
+    for (long j = 0; j != pb.problem_size; ++j) {
+        for (long i = 0; i != pb.problem_size; ++i)
+            os << "+ x_" << i << '_' << j << ' ';
+
+        os << " = 1\n";
+    }
+
+    os << '\n';
+    for (long diag = 1; diag != pb.problem_size - 1; ++diag) {
+        long i = diag;
+        long j = 0;
+        while (i < pb.problem_size and j < pb.problem_size)
+            os << "+ x_" << i++ << '_' << j++ << ' ';
+
+        os << " <= 1\n";
+    }
+
+    for (long diag = 0; diag != pb.problem_size - 1; ++diag) {
+        long i = 0;
+        long j = diag;
+        while (i >= 0 and j < pb.problem_size)
+            os << "+ x_" << i++ << '_' << j++ << ' ';
+
+        os << " <= 1\n";
+    }
+
+    os << '\n';
+    for (long diag = 1; diag != pb.problem_size; ++diag) {
+        long i = diag;
+        long j = 0;
+        while (i >= 0 and j < pb.problem_size)
+            os << "+ x_" << i-- << '_' << j++ << ' ';
+
+        os << " <= 1\n";
+    }
+
+    for (long diag = 1; diag != pb.problem_size - 1; ++diag) {
+        long i = pb.problem_size - 1;
+        long j = diag;
+        while (i >= 0 and j < pb.problem_size)
+            os << "+ x_" << i-- << '_' << j++ << ' ';
+
+        os << " <= 1\n";
+    }
+
+    os << "\nbinary\n";
+    for (long i = 0; i != pb.problem_size; ++i) {
+        for (long j = 0; j != pb.problem_size; ++j)
+            os << "  x_" << i << '_' << j;
+
+        os << '\n';
+    }
+
+    return os << "\nend\n";
+}
+
+} // namespace problem
+} // namespace lp
+
+#endif
