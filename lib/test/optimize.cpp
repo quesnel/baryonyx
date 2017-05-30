@@ -40,14 +40,14 @@ test_qap()
     std::map<std::string, lp::parameter> params;
     params["limit"] = 10'000'000l;
     params["theta"] = 0.5;
-    params["delta"] = 0.2;
-    params["kappa-step"] = 10e-4;
+    params["delta"] = 0.1;
+    params["kappa-step"] = 1e-3;
     params["kappa-max"] = 10.0;
-    params["alpha"] = 0.0;
+    params["alpha"] = 1.0;
     params["w"] = 20l;
 
     params["pushing-k-factor"] = 0.9;
-    params["pushes-limit"] = 100l;
+    params["pushes-limit"] = 1000l;
     params["pushing-objective-amplifier"] = 10l;
     params["pushing-iteration-limit"] = 50l;
 
@@ -85,23 +85,23 @@ test_n_queens_problem()
     std::map<std::string, lp::parameter> params;
     params["limit"] = 10'000'000l;
     params["theta"] = 0.5;
-    params["delta"] = 0.001;
-    params["kappa-min"] = 0.0;
-    params["kappa-step"] = 1e-4;
-    params["kappa-max"] = 1e2;
+    params["delta"] = 0.000001;
+    params["kappa-min"] = 0.30;
+    params["kappa-step"] = 0.1;
+    params["kappa-max"] = 100.0;
     params["alpha"] = 1.0;
-    params["w"] = 100l;
-    params["constraint-order"] = std::string("infeasibility-incr");
+    params["w"] = 60l;
+    // params["constraint-order"] = std::string("infeasibility-incr");
     // params["constraint-order"] = std::string("adaptative");
     // params["constraint-order"] = std::string("infeasibility-decr");
     // params["constraint-order"] = std::string("none");
     // params["constraint-order"] = std::string("reversing");
     // params["constraint-order"] = std::string("random-sorting");
-    params["time-limit"] = 10.0;
+    params["time-limit"] = 20.0;
     params["pushing-k-factor"] = 0.9;
     params["pushes-limit"] = 1000l;
     params["pushing-objective-amplifier"] = 10l;
-    params["pushing-iteration-limit"] = 50l;
+    params["pushing-iteration-limit"] = 100l;
 
     for (std::size_t i{ 0 }; i != valid_solutions.size(); ++i) {
         std::string filepath{ EXAMPLES_DIR "/n-queens/n-queens-problem-" };
@@ -114,7 +114,7 @@ test_n_queens_problem()
             return;
 
         auto pb = lp::make_problem(ifs);
-        auto result = lp::solve(pb, params);
+        auto result = lp::optimize(pb, params);
 
         valid_solutions[i] = lp::is_valid_solution(pb, result.variable_value);
         if (valid_solutions[i])
@@ -122,19 +122,27 @@ test_n_queens_problem()
     }
 
     auto all_found = std::accumulate(
-        valid_solutions.cbegin(),
-        valid_solutions.cend(),
-        std::size_t{ 0 },
-        [](int cumul, const auto& elem) { return elem ? cumul + 1 : cumul; });
+      valid_solutions.cbegin(),
+      valid_solutions.cend(),
+      std::size_t{ 0 },
+      [](int cumul, const auto& elem) { return elem ? cumul + 1 : cumul; });
 
-    for (std::size_t i{ 0 }, e{ solutions.size() }; i != e; ++i)
+    double mean_distance{ 0 };
+
+    for (std::size_t i{ 0 }, e{ solutions.size() }; i != e; ++i) {
+        double distance =
+          ((cplex_solutions[i] - solutions[i]) / cplex_solutions[i]) * 100.0;
         printf("%zu: %s %f %f %f\n",
                i,
                (valid_solutions[i] ? "true" : "false"),
                solutions[i],
                cplex_solutions[i],
-               ((cplex_solutions[i] - solutions[i]) / cplex_solutions[i]) *
-                 100.0);
+               distance);
+
+        mean_distance += distance;
+    }
+
+    printf("Optimum means: %f\n", mean_distance / solutions.size());
 
     Ensures(all_found == valid_solutions.size());
 }
@@ -142,7 +150,7 @@ test_n_queens_problem()
 int
 main(int /* argc */, char* /* argv */ [])
 {
-    // test_qap();
+    test_qap();
     test_n_queens_problem();
 
     return unit_test::report_errors();

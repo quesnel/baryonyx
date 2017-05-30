@@ -51,7 +51,13 @@ test_assignment_problem_random_coast()
     auto pb = lp::make_problem(EXAMPLES_DIR "/assignment_problem_1.lp");
 
     std::map<std::string, lp::parameter> params;
-    params["limit"] = 50l;
+    params["limit"] = 1000l;
+    params["theta"] = 0.5;
+    params["delta"] = 0.2;
+    params["kappa-step"] = 10e-4;
+    params["kappa-max"] = 10.0;
+    params["alpha"] = 0.0;
+    params["w"] = 20l;
 
     for (int i{ 0 }, e{ 10 }; i != e; ++i) {
         std::random_device rd;
@@ -331,10 +337,10 @@ test_verger_5_5()
     params["alpha"] = 1.0;
     params["w"] = 40l;
     // params["constraint-order"] = std::string("infeasibility-incr");
-    params["constraint-order"] = std::string("infeasibility-decr");
+    // params["constraint-order"] = std::string("infeasibility-decr");
     // params["constraint-order"] = std::string("random-sorting");
     // params["constraint-order"] = std::string("reversing");
-    // params["constraint-order"] = std::string("none");
+    params["constraint-order"] = std::string("none");
 
     // params["limit"] = 10'000'000l;
     // params["theta"] = 0.5;
