@@ -276,37 +276,50 @@ calculator_sort(iteratorT begin, iteratorT end, randomT& rng, maximize_tag)
 }
 
 bool
-stop_iterating(double value, minimize_tag)
+stop_iterating(double value, minimize_tag) noexcept
 {
     return value > 0;
 }
 
 bool
-stop_iterating(double value, maximize_tag)
+stop_iterating(double value, maximize_tag) noexcept
 {
     return value < 0;
 }
 
-double default_solution_value(minimize_tag)
+double default_solution_value(minimize_tag) noexcept
 {
     return std::numeric_limits<double>::infinity();
 }
 
-double default_solution_value(maximize_tag)
+double default_solution_value(maximize_tag) noexcept
 {
     return -std::numeric_limits<double>::infinity();
 }
 
 bool
-is_better_solution(double current, double old, minimize_tag)
+is_better_solution(double lhs, double rhs, minimize_tag) noexcept
 {
-    return current < old;
+    return lhs < rhs;
 }
 
 bool
-is_better_solution(double current, double old, maximize_tag)
+is_better_solution(double lhs, double rhs, maximize_tag) noexcept
 {
-    return current > old;
+    return lhs > rhs;
+}
+
+bool
+is_time_limit(double limit,
+              std::chrono::steady_clock::time_point begin,
+              std::chrono::steady_clock::time_point end) noexcept
+{
+    if (limit <= 0)
+        return false;
+
+    return std::chrono::duration_cast<std::chrono::duration<double>>(end -
+                                                                     begin)
+             .count() > limit;
 }
 
 template <typename modeT, typename randomT>
@@ -1612,8 +1625,12 @@ solve(const problem& pb, const parameters& p, randomT& rng)
 
     solver<mode_type, random_generator_type> slv(
       rng, pb, make_merged_constraints(pb));
+
+    index best_remaining {-1};
     result best;
-    best.remaining_constraints = std::numeric_limits<index>::max();
+    best.solution_found = false;
+    best.value = default_solution_value(mode_type());
+
     constraint_order_type compute(rng);
 
     for (long int i{ 0 }; i < p.limit; ++i) {
@@ -1625,26 +1642,24 @@ solve(const problem& pb, const parameters& p, randomT& rng)
         current.begin = begin;
         current.end = std::chrono::steady_clock::now();
 
-        if (remaining < best.remaining_constraints) {
+        if (best_remaining == -1 or remaining < best_remaining) {
+            best_remaining = remaining;
+            best = current;
+
             auto t = std::chrono::duration_cast<std::chrono::duration<double>>(
-              current.end - current.begin);
+                current.end - current.begin);
 
             printf("  - constraints remaining: %ld/%ld at %fs\n",
                    remaining,
                    current.constraints,
                    t.count());
-
-            best = current;
-
-            if (p.serialize) {
-                std::ofstream ofs("current-solver.lp.dat");
-                slv.serialize(ofs);
-            }
         }
 
-        if (current.solution_found) {
-            std::cout << '\n' << current << '\n';
-            return current;
+        if (remaining == 0) {
+            current.value = slv.compute_value();
+            std::cout << "  - Solution found: " << current.value << '\n';
+            best = current;
+            return best;
         }
 
         if (i2 <= p.w) {
@@ -1660,21 +1675,13 @@ solve(const problem& pb, const parameters& p, randomT& rng)
             kappa_old = kappa;
         }
 
-        if (kappa > p.kappa_max) {
-            std::cout << "\nFail: kappa-max reached\n";
+        if (kappa > p.kappa_max)
             return best;
-        }
 
-        if (p.time_limit > 0 and
-            std::chrono::duration_cast<std::chrono::duration<double>>(
-              current.end - current.begin)
-                .count() > p.time_limit) {
-            std::cout << "\nFail: time limit\n";
+        if (is_time_limit(p.time_limit, current.begin, current.end))
             return best;
-        }
     }
 
-    std::cout << "\nFail: limit reached\n";
     return best;
 }
 
@@ -1691,14 +1698,17 @@ optimize(const problem& pb, const parameters& p, randomT& rng)
     double kappa_old{ 0 };
     double kappa = p.kappa_min;
 
-    long int pushed{ -1 };
+    long int pushed{ 0 };
     long int pushing_iteration{ 0 };
 
     solver<mode_type, random_generator_type> slv(
       rng, pb, make_merged_constraints(pb));
+
+    index best_remaining{-1};
     result best;
-    best.remaining_constraints = std::numeric_limits<index>::max();
+    best.solution_found = false;
     best.value = default_solution_value(mode_type());
+
     constraint_order_type compute(rng);
 
     for (long int i{ 0 }; i < p.limit; ++i) {
@@ -1709,25 +1719,26 @@ optimize(const problem& pb, const parameters& p, randomT& rng)
         current.remaining_constraints = remaining;
         current.begin = begin;
         current.end = std::chrono::steady_clock::now();
-        current.value = slv.compute_value();
 
-        if (remaining < best.remaining_constraints) {
+        if (best_remaining == -1 or remaining < best_remaining) {
+            best_remaining = remaining;
+
             auto t = std::chrono::duration_cast<std::chrono::duration<double>>(
               current.end - current.begin);
-
-            best = current;
 
             printf("  - constraints remaining: %ld/%ld at %fs\n",
                    remaining,
                    current.constraints,
                    t.count());
+        }
 
-            if (best.solution_found)
-                std::cout << "  - Solution value: " << current.value << '\n';
+        if (remaining == 0) {
+            current.value = slv.compute_value();
 
-            if (p.serialize) {
-                std::ofstream ofs("current-solver.lp.dat");
-                slv.serialize(ofs);
+            if (not best.solution_found or
+                is_better_solution(current.value, best.value, mode_type())) {
+                std::cout << "  - Solution found: " << current.value << '\n';
+                best = current;
             }
         }
 
@@ -1749,51 +1760,49 @@ optimize(const problem& pb, const parameters& p, randomT& rng)
         // If kappa greater than kappa_max, optimization finished.
         //
 
-        if (kappa > p.kappa_max) {
+        if (kappa > p.kappa_max)
             return best;
-        }
 
         //
-        // If time greater thant time_limit, optimization is finish.
+        // If time greater than time_limit, optimization is finish.
         //
 
-        if (p.time_limit > 0 and
-            std::chrono::duration_cast<std::chrono::duration<double>>(
-              current.end - current.begin)
-                .count() > p.time_limit) {
+        if (is_time_limit(p.time_limit, current.begin, current.end))
             return best;
-        }
 
-        if (pushed >= 0) {
-            if (current.solution_found) {
-                if (is_better_solution(
-                      current.value, best.value, mode_type())) {
-                    std::cout << "  - Solution value: " << current.value
-                              << '\n';
-                    best = current;
+        if (best.solution_found) {
+            if (pushed >= 0)
+                ++pushing_iteration;
+
+            if (pushed >= 0 and
+                pushing_iteration >= p.pushing_iteration_limit) {
+                pushed++;
+                pushing_iteration = 0;
+
+                if (pushed > p.pushes_limit)
+                    return best;
+
+                auto c_copy = slv.c;
+                for (index i{ 0 }; i != slv.n; ++i)
+                    slv.c += slv.c * p.pushing_objective_amplifier;
+
+                remaining = compute.run_all(
+                  slv, p.pushing_k_factor * kappa, p.delta, p.theta);
+
+                slv.c = c_copy;
+
+                if (remaining == 0) {
+                    current = slv.results();
+                    current.value = slv.compute_value();
+
+                    if (is_better_solution(
+                          current.value, best.value, mode_type())) {
+                        std::cout << "  - Solution found: " << current.value
+                                  << '\n';
+                        best = current;
+                    }
                 }
             }
-            ++pushing_iteration;
-        } else if (current.solution_found) {
-            pushed = 0;
-            pushing_iteration = 0;
-        }
-
-        if (pushed >= 0 and pushing_iteration >= p.pushing_iteration_limit) {
-            pushed++;
-            pushing_iteration = 0;
-
-            if (pushed > p.pushes_limit)
-                return best;
-
-            auto c_copy = slv.c;
-            for (index i{ 0 }; i != slv.n; ++i)
-                slv.c += slv.c * p.pushing_objective_amplifier;
-
-            remaining = compute.run_all(
-              slv, p.pushing_k_factor * kappa, p.delta, p.theta);
-
-            slv.c = c_copy;
         }
     }
 
