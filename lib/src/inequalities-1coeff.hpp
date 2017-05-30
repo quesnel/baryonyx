@@ -902,11 +902,11 @@ struct solver
     const lp::problem& pb;
 
     solver(random_generator_type& rng_,
-           const lp::problem& pb,
+           const lp::problem& pb_,
            const std::vector<merged_constraint>& csts)
       : rng(rng_)
       , m(csts.size())
-      , n(pb.vars.values.size())
+      , n(pb_.vars.values.size())
       , A(m, n)
       , b(b_type::Zero(2, m))
       , c(c_type::Zero(n))
@@ -914,7 +914,28 @@ struct solver
       , P(m, n)
       , pi(pi_type::Zero(m))
       , u(u_type::Zero(n))
-      , pb(pb)
+      , pb(pb_)
+    {
+        init(rng_, csts);
+    }
+
+    void reinit(random_generator_type& rng_,
+                const std::vector<merged_constraint>& csts)
+    {
+        A.clear();
+        b = b_type::Zero(2, m);
+        c = c_type::Zero(n);
+        x = x_type::Zero(n);
+        P.clear();
+        pi = pi_type::Zero(m);
+        u = u_type::Zero(n);
+
+        row_updaters.clear();
+        init(rng_, csts);
+    }
+    
+    void init(random_generator_type& rng_,
+              const std::vector<merged_constraint>& csts)
     {
         for (std::size_t i{ 0 }, e = pb.vars.values.size(); i != e; ++i)
             u(i) = pb.vars.values[i].max;
@@ -957,7 +978,7 @@ struct solver
         }
 
         for (index k = 0; k != m; ++k)
-            row_updaters.emplace_back(rng, k, m, n, A, b, c, x, P, pi);
+            row_updaters.emplace_back(rng_, k, m, n, A, b, c, x, P, pi);
     }
 
     void serialize(std::ostream& os) const
@@ -1624,8 +1645,7 @@ solve(const problem& pb, const parameters& p, randomT& rng)
     double kappa = p.kappa_min;
 
     solver<mode_type, random_generator_type> slv(
-      rng, pb, make_merged_constraints(pb));
-
+      rng, pb, make_merged_constraints(pb));    
     index best_remaining {-1};
     result best;
     best.solution_found = false;
@@ -1698,11 +1718,12 @@ optimize(const problem& pb, const parameters& p, randomT& rng)
     double kappa_old{ 0 };
     double kappa = p.kappa_min;
 
-    long int pushed{ 0 };
+    long int pushed{ -1 };
     long int pushing_iteration{ 0 };
 
+    auto merged_constraints{make_merged_constraints(pb)};
     solver<mode_type, random_generator_type> slv(
-      rng, pb, make_merged_constraints(pb));
+        rng, pb, merged_constraints);
 
     index best_remaining{-1};
     result best;
@@ -1739,6 +1760,7 @@ optimize(const problem& pb, const parameters& p, randomT& rng)
                 is_better_solution(current.value, best.value, mode_type())) {
                 std::cout << "  - Solution found: " << current.value << '\n';
                 best = current;
+                pushed = 0;
             }
         }
 
@@ -1770,7 +1792,27 @@ optimize(const problem& pb, const parameters& p, randomT& rng)
         if (is_time_limit(p.time_limit, current.begin, current.end))
             return best;
 
-        if (best.solution_found) {
+        // if (pushed >= 0)
+        //     std::cout << "pushed: " << pushed << ' ' << " sol: " << best.solution_found
+        //               << " interation: " << pushing_iteration << '\n';
+
+        if (i + 1 == p.limit) {
+            std::cout << "  - Reinit\n";
+            slv.reinit(rng, merged_constraints);
+
+            i = 0;
+                    
+            best_remaining = -1;
+            i2 = 0;
+            kappa_old = 0.0;
+            kappa = p.kappa_min;
+            pushed = -1;
+            pushing_iteration = 0;
+
+            continue;
+        }
+        
+        if (pushed >= 0 and best.solution_found) {
             if (pushed >= 0)
                 ++pushing_iteration;
 
@@ -1779,8 +1821,21 @@ optimize(const problem& pb, const parameters& p, randomT& rng)
                 pushed++;
                 pushing_iteration = 0;
 
-                if (pushed > p.pushes_limit)
-                    return best;
+                if (pushed > p.pushes_limit) {
+                    std::cout << "  - Reinit\n";
+                    slv.reinit(rng, merged_constraints);
+
+                    i = 0;
+                    
+                    best_remaining = -1;
+                    i2 = 0;
+                    kappa_old = 0.0;
+                    kappa = p.kappa_min;
+                    pushed = -1;
+                    pushing_iteration = 0;
+
+                    continue;
+                }
 
                 auto c_copy = slv.c;
                 for (index i{ 0 }; i != slv.n; ++i)
@@ -1794,6 +1849,10 @@ optimize(const problem& pb, const parameters& p, randomT& rng)
                 if (remaining == 0) {
                     current = slv.results();
                     current.value = slv.compute_value();
+                    current.loop = i;
+                    current.remaining_constraints = remaining;
+                    current.begin = begin;
+                    current.end = std::chrono::steady_clock::now();
 
                     if (is_better_solution(
                           current.value, best.value, mode_type())) {

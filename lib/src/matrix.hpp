@@ -92,6 +92,8 @@ public:
     bool empty() const noexcept;
     size_type size() const noexcept;
 
+    void clear() noexcept;
+
     size_type rows() const noexcept;
     size_type columns() const noexcept;
 
@@ -142,6 +144,19 @@ SparseArray<T>::resize(index_type rows, index_type cols)
 
     m_rows.clear();
     m_rows.resize(rows);
+
+    m_values.clear();
+}
+
+template <typename T>
+void
+SparseArray<T>::clear() noexcept
+{
+    for (auto& elem : m_cols)
+        elem.clear();
+
+    for (auto& elem : m_rows)
+        elem.clear();
 
     m_values.clear();
 }

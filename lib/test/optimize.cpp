@@ -38,7 +38,7 @@ test_qap()
     auto pb = lp::make_problem(EXAMPLES_DIR "/small4.lp");
 
     std::map<std::string, lp::parameter> params;
-    params["limit"] = 10'000'000l;
+    params["limit"] = 1000000l;
     params["theta"] = 0.5;
     params["delta"] = 0.1;
     params["kappa-step"] = 1e-3;
@@ -46,15 +46,20 @@ test_qap()
     params["alpha"] = 1.0;
     params["w"] = 20l;
 
+    params["time-limit"] = 10.0;
     params["pushing-k-factor"] = 0.9;
-    params["pushes-limit"] = 1000l;
+    params["pushes-limit"] = 50l;
     params["pushing-objective-amplifier"] = 10l;
     params["pushing-iteration-limit"] = 50l;
 
     auto result = lp::optimize(pb, params);
 
-    Ensures(lp::is_valid_solution(pb, result.variable_value) == true);
-    Ensures(lp::compute_solution(pb, result.variable_value) == 790.0);
+    Ensures(result.solution_found);
+
+    if (result.solution_found) {
+        Ensures(lp::is_valid_solution(pb, result.variable_value) == true);
+        Ensures(lp::compute_solution(pb, result.variable_value) == 790.0);
+    }
 }
 
 void
@@ -83,7 +88,7 @@ test_n_queens_problem()
     }
 
     std::map<std::string, lp::parameter> params;
-    params["limit"] = 10'000'000l;
+    params["limit"] = 100000l;
     params["theta"] = 0.5;
     params["delta"] = 0.000001;
     params["kappa-min"] = 0.30;
@@ -96,12 +101,12 @@ test_n_queens_problem()
     // params["constraint-order"] = std::string("infeasibility-decr");
     // params["constraint-order"] = std::string("none");
     // params["constraint-order"] = std::string("reversing");
-    // params["constraint-order"] = std::string("random-sorting");
+    params["constraint-order"] = std::string("random-sorting");
     params["time-limit"] = 20.0;
     params["pushing-k-factor"] = 0.9;
-    params["pushes-limit"] = 1000l;
+    params["pushes-limit"] = 50l;
     params["pushing-objective-amplifier"] = 10l;
-    params["pushing-iteration-limit"] = 100l;
+    params["pushing-iteration-limit"] = 10l;
 
     for (std::size_t i{ 0 }; i != valid_solutions.size(); ++i) {
         std::string filepath{ EXAMPLES_DIR "/n-queens/n-queens-problem-" };
