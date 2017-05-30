@@ -1,0 +1,3 @@
+read pb.lp
+optimize
+quit

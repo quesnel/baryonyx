@@ -60,40 +60,89 @@ test_qap()
 void
 test_n_queens_problem()
 {
-    std::stringstream ss;
-    ss << lp::example::n_queens(40);
+    std::vector<bool> valid_solutions(30, false);
+    std::vector<double> solutions(30, 0.0);
+    std::vector<double> cplex_solutions(30, 0.0);
 
-    auto pb = lp::make_problem(ss);
+    { /* Tries to read the cplex solution files produced by CPLEX 12.7.0.0
+         and the `script.sh' `n-queens-problem.commands' files. If an
+         error occured, the test fails and returns. */
 
-    std::mt19937 gen(123456789l);
-    std::uniform_int_distribution<> dis(1, 100);
+        std::ifstream ifs{ EXAMPLES_DIR "/n-queens/solutions.txt" };
 
-    for (auto& elem : pb.objective.elements)
-        elem.factor = dis(gen);
+        Ensures(ifs.is_open());
+        if (not ifs.is_open())
+            return;
 
-    std::cout << pb << '\n';
+        for (auto& elem : cplex_solutions)
+            ifs >> elem;
+
+        Ensures(ifs.good());
+        if (not ifs.good())
+            return;
+    }
 
     std::map<std::string, lp::parameter> params;
     params["limit"] = 10'000'000l;
     params["theta"] = 0.5;
-    params["delta"] = 0.2;
-    params["kappa-step"] = 10e-4;
-    params["kappa-max"] = 10.0;
-    params["alpha"] = 0.0;
-    params["w"] = 20l;
+    params["delta"] = 0.001;
+    params["kappa-min"] = 0.0;
+    params["kappa-step"] = 1e-4;
+    params["kappa-max"] = 1e2;
+    params["alpha"] = 1.0;
+    params["w"] = 100l;
+    params["constraint-order"] = std::string("infeasibility-incr");
+    // params["constraint-order"] = std::string("adaptative");
+    // params["constraint-order"] = std::string("infeasibility-decr");
+    // params["constraint-order"] = std::string("none");
+    // params["constraint-order"] = std::string("reversing");
+    // params["constraint-order"] = std::string("random-sorting");
+    params["time-limit"] = 10.0;
     params["pushing-k-factor"] = 0.9;
     params["pushes-limit"] = 1000l;
     params["pushing-objective-amplifier"] = 10l;
     params["pushing-iteration-limit"] = 50l;
 
-    auto result = lp::optimize(pb, params);
-    Ensures(lp::is_valid_solution(pb, result.variable_value) == true);
+    for (std::size_t i{ 0 }; i != valid_solutions.size(); ++i) {
+        std::string filepath{ EXAMPLES_DIR "/n-queens/n-queens-problem-" };
+        filepath += std::to_string(i);
+        filepath += ".lp";
+
+        std::ifstream ifs(filepath);
+        Ensures(ifs.is_open());
+        if (not ifs.is_open())
+            return;
+
+        auto pb = lp::make_problem(ifs);
+        auto result = lp::solve(pb, params);
+
+        valid_solutions[i] = lp::is_valid_solution(pb, result.variable_value);
+        if (valid_solutions[i])
+            solutions[i] = lp::compute_solution(pb, result.variable_value);
+    }
+
+    auto all_found = std::accumulate(
+        valid_solutions.cbegin(),
+        valid_solutions.cend(),
+        std::size_t{ 0 },
+        [](int cumul, const auto& elem) { return elem ? cumul + 1 : cumul; });
+
+    for (std::size_t i{ 0 }, e{ solutions.size() }; i != e; ++i)
+        printf("%zu: %s %f %f %f\n",
+               i,
+               (valid_solutions[i] ? "true" : "false"),
+               solutions[i],
+               cplex_solutions[i],
+               ((cplex_solutions[i] - solutions[i]) / cplex_solutions[i]) *
+                 100.0);
+
+    Ensures(all_found == valid_solutions.size());
 }
 
 int
 main(int /* argc */, char* /* argv */ [])
 {
-    test_qap();
+    // test_qap();
     test_n_queens_problem();
 
     return unit_test::report_errors();

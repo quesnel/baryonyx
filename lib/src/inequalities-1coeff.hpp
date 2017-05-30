@@ -666,8 +666,7 @@ make_merged_constraints(const lp::problem& pb)
     };
 
     //
-    // Merge less and greater equal constraints if function elements are
-    // the
+    // Merge less and greater equal constraints if function elements are the
     // same.
     //
 
@@ -726,14 +725,18 @@ make_merged_constraints(const lp::problem& pb)
     }
 
     printf("  - constraints stored in: constraints.tmp.lp\n");
-    std::ofstream ofs("constraints.tmp.lp");
-    for (auto& elem : ret) {
-        ofs << elem.min << " <= ";
 
-        for (auto& f : elem.elements)
-            ofs << ((f.factor < 0) ? "- " : "+ ") << f.variable_index << ' ';
+    {
+        std::ofstream ofs("constraints.tmp.lp");
+        for (auto& elem : ret) {
+            ofs << elem.min << " <= ";
 
-        ofs << " <= " << elem.max << '\n';
+            for (auto& f : elem.elements)
+                ofs << ((f.factor < 0) ? "- " : "+ ") << f.variable_index
+                    << ' ';
+
+            ofs << " <= " << elem.max << '\n';
+        }
     }
 
     // We sort constraints according to the maximum presence of variables in
@@ -763,63 +766,60 @@ make_merged_constraints(const lp::problem& pb)
         }
     }
 
-    // {
-    //     auto it = vars.begin(), end = vars.end();
+    {
+        std::ofstream ofs("vars-1.txt");
 
-    //     int moy{ 0 };
-    //     for (it = vars.begin(); it != end; ++it)
-    //         moy += *it;
-    //     moy = moy / vars.size();
+        ofs << "name used linkvars linkscst\n";
 
-    //     // auto it = std::min_element(vars.begin(), vars.end());
-    //     // int min{ *it };
-
-    //     for (it = vars.begin(); it != end; ++it)
-    //         *it = std::max(0, *it - moy);
-    // }
-
-    // std::cout << "linkvars:\n";
-    // for (std::size_t i{ 0 }, e{ linkvars.size() }; i != e; ++i) {
-    //     std::cout << i << '=';
-    //     for (auto elem : linkvars[i])
-    //         std::cout << elem << ' ';
-    //     std::cout << '\n';
-    // }
-
-    // std::cout << "linkcst:\n";
-    // for (std::size_t i{ 0 }, e{ linkcst.size() }; i != e; ++i) {
-    //     std::cout << i << '=';
-    //     for (auto elem : linkcst[i])
-    //         std::cout << elem << ' ';
-    //     std::cout << '\n';
-    // }
-
-    // std::cout << "variable:\n";
-    // for (auto elem : vars)
-    //     std::cout << elem << ' ';
-    // std::cout << '\n';
+        for (std::size_t i = 0; i < vars.size(); ++i)
+            ofs << pb.vars.names[i] << ' ' << vars[i] << ' '
+                << linkvars[i].size() << ' ' << linkcst[i].size() << '\n';
+    }
 
     std::vector<std::pair<merged_constraint, long>> tosort;
 
-    for (auto& cst : ret) {
-        tosort.emplace_back(cst, 0);
-        for (auto& elem : cst.elements) {
-            for (auto& s : linkcst[elem.variable_index])
-                tosort.back().second += linkvars[s].size();
-        }
-    }
+    // Algorithm to build a tosort vector according to the number variables
+    // used in every constraints.
 
-    std::sort(
-      tosort.begin(), tosort.end(), [](const auto& lhs, const auto& rhs) {
-          return rhs.second < lhs.second;
-      });
+    // for (auto& cst : ret) {
+    //     tosort.emplace_back(cst, 0);
+    //     for (auto& elem : cst.elements) {
+    //         for (auto& s : linkcst[elem.variable_index])
+    //             tosort.back().second += linkvars[s].size();
+    //     }
+    // }
 
-    ret.clear();
-    // for (auto it = tosort.rbegin(), et = tosort.rend(); it != et; ++it)
-    //     ret.emplace_back(it->first);
+    // Algorithm to build a tosort vector according to constraints of type:
+    // -x1 -x2 -x3 +x4 <= 0
 
-    for (auto& elem : tosort)
-        ret.emplace_back(elem.first);
+    // for (auto& cst : ret) {
+    //     tosort.emplace_back(cst, 0);
+
+    //     int nbneg{ 0 }, nbpos{ 0 };
+
+    //     for (auto& elem : cst.elements)
+    //         if (elem.factor < 0)
+    //             nbneg++;
+    //         else
+    //             nbpos++;
+
+    //     if (((nbneg > 1 and nbpos == 1) or (nbpos > 1 and nbneg == 1)) and
+    //         cst.min == cst.max) {
+    //         // printf("Cool, found!\n");
+    //         tosort.back().second = 1;
+    //     }
+    // }
+
+    // std::sort(
+    //   tosort.begin(), tosort.end(), [](const auto& lhs, const auto& rhs) {
+    //       return rhs.second < lhs.second;
+    //   });
+
+    // ret.clear();
+    // std::transform(tosort.begin(),
+    //                tosort.end(),
+    //                std::back_inserter(ret),
+    //                [](const auto& elem) { return elem.first; });
 
     // std::sort(ret.begin(),
     //           ret.end(),
@@ -850,6 +850,21 @@ make_merged_constraints(const lp::problem& pb)
 
     //       return sumlhs < sumrhs;
     //   });
+
+    printf("  - sorted constraints stored in: constraints.new.lp\n");
+
+    {
+        std::ofstream ofs("constraints.new.lp");
+        for (auto& elem : ret) {
+            ofs << elem.min << " <= ";
+
+            for (auto& f : elem.elements)
+                ofs << ((f.factor < 0) ? "- " : "+ ") << f.variable_index
+                    << ' ';
+
+            ofs << " <= " << elem.max << '\n';
+        }
+    }
 
     return ret;
 }
