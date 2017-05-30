@@ -523,16 +523,18 @@ struct problem
 struct result
 {
     std::string method;
+
     std::vector<std::string> variable_name;
     std::vector<int> variable_value;
     std::chrono::steady_clock::time_point begin;
     std::chrono::steady_clock::time_point end;
-    double value;
-    index loop;
-    index variables;
-    index constraints;
-    index remaining_constraints;
-    bool solution_found;
+
+    double value = 0.0;
+    index loop = 0;
+    index variables = 0;
+    index constraints = 0;
+    index remaining_constraints = std::numeric_limits<index>::max();
+    bool solution_found = false;
 };
 
 /**
