@@ -106,6 +106,9 @@ bool
 is_valid_solution(const problem& pb,
                   const std::vector<int>& variable_value) noexcept
 {
+    if (variable_value.empty())
+        return false;
+
     for (auto& cst : pb.equal_constraints) {
         if (compute_function(cst.elements, variable_value) != cst.value) {
             printf("constraint %s (=) fails\n", cst.label.c_str());
