@@ -54,9 +54,9 @@ test_qap()
 
     auto result = lp::optimize(pb, params);
 
-    Ensures(result.solution_found);
+    Ensures(result.status == lp::result_status::success);
 
-    if (result.solution_found) {
+    if (result.status == lp::result_status::success) {
         Ensures(lp::is_valid_solution(pb, result.variable_value) == true);
         Ensures(lp::compute_solution(pb, result.variable_value) == 790.0);
     }

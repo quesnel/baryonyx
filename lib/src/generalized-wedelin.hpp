@@ -96,7 +96,9 @@ struct constraint_calculator
                             double delta,
                             double theta) = 0;
 
-    virtual ~constraint_calculator() {}
+    virtual ~constraint_calculator()
+    {
+    }
 };
 
 template <typename modeT>
@@ -156,10 +158,7 @@ struct simple_constraint_calculator : public constraint_calculator<modeT>
         }
     }
 
-    void update_row(index k,
-                            double kappa,
-                            double delta,
-                            double theta) override
+    void update_row(index k, double kappa, double delta, double theta) override
     {
         for (auto i : I)
             P(k, i) *= theta;
@@ -267,9 +266,9 @@ struct advanded_constraint_calculator : public constraint_calculator<modeT>
     }
 
     void update_row(index k,
-                            double /*kappa*/,
-                            double /*delta*/,
-                            double theta) override
+                    double /*kappa*/,
+                    double /*delta*/,
+                    double theta) override
     {
         for (auto i : I)
             P(k, i) *= theta;
@@ -482,7 +481,7 @@ public:
     result results() const
     {
         result ret;
-        ret.solution_found = false;
+        ret.status = result_status::success;
 
         return ret;
     }

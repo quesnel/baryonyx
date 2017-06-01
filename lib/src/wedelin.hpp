@@ -262,7 +262,9 @@ public:
         result ret;
         ret.method = "wedelin";
         ret.loop = loop;
-        ret.solution_found = solution_found;
+
+        if (solution_found)
+            ret.status = result_status::success;
         ret.value = compute_value();
         ret.variable_name.resize(n);
         ret.variable_value.resize(n, 0);

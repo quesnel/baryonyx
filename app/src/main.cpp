@@ -75,28 +75,28 @@ main(int argc, char* argv[])
             break;
 
         switch (opt) {
-            case 0:
-                break;
-            case 'O':
-                optimize = true;
-                break;
-            case 'l':
-                parameters["limit"] = to_long(::optarg, 1000l);
-                break;
-            case 'h':
-                help();
-                return EXIT_SUCCESS;
-            case 'p': {
-                std::string name;
-                lp::parameter value;
-                std::tie(name, value) = split_param(::optarg);
-                parameters[name] = value;
-            } break;
-            case '?':
-            default:
-                fail = true;
-                std::fprintf(stderr, "Unknown command line option\n");
-                break;
+        case 0:
+            break;
+        case 'O':
+            optimize = true;
+            break;
+        case 'l':
+            parameters["limit"] = to_long(::optarg, 1000l);
+            break;
+        case 'h':
+            help();
+            return EXIT_SUCCESS;
+        case 'p': {
+            std::string name;
+            lp::parameter value;
+            std::tie(name, value) = split_param(::optarg);
+            parameters[name] = value;
+        } break;
+        case '?':
+        default:
+            fail = true;
+            std::fprintf(stderr, "Unknown command line option\n");
+            break;
         };
     }
 
@@ -133,7 +133,7 @@ main(int argc, char* argv[])
 
             auto ret = solve(pb, parameters, optimize);
 
-            if (ret.solution_found) {
+            if (ret.status == lp::result_status::success) {
                 ofs << "Solution found: " << ret.value << '\n'
                     << "Solution confirmed: "
                     << lp::is_valid_solution(pb, ret.variable_value) << '\n';
@@ -210,28 +210,28 @@ file_format_error_format(lp::file_format_error::tag failure) noexcept
     };
 
     switch (failure) {
-        case lp::file_format_error::tag::end_of_file:
-            return tag[0];
-        case lp::file_format_error::tag::unknown:
-            return tag[1];
-        case lp::file_format_error::tag::already_defined:
-            return tag[2];
-        case lp::file_format_error::tag::incomplete:
-            return tag[3];
-        case lp::file_format_error::tag::bad_name:
-            return tag[4];
-        case lp::file_format_error::tag::bad_operator:
-            return tag[5];
-        case lp::file_format_error::tag::bad_integer:
-            return tag[6];
-        case lp::file_format_error::tag::bad_objective_function_type:
-            return tag[7];
-        case lp::file_format_error::tag::bad_bound:
-            return tag[8];
-        case lp::file_format_error::tag::bad_function_element:
-            return tag[9];
-        case lp::file_format_error::tag::bad_constraint:
-            return tag[10];
+    case lp::file_format_error::tag::end_of_file:
+        return tag[0];
+    case lp::file_format_error::tag::unknown:
+        return tag[1];
+    case lp::file_format_error::tag::already_defined:
+        return tag[2];
+    case lp::file_format_error::tag::incomplete:
+        return tag[3];
+    case lp::file_format_error::tag::bad_name:
+        return tag[4];
+    case lp::file_format_error::tag::bad_operator:
+        return tag[5];
+    case lp::file_format_error::tag::bad_integer:
+        return tag[6];
+    case lp::file_format_error::tag::bad_objective_function_type:
+        return tag[7];
+    case lp::file_format_error::tag::bad_bound:
+        return tag[8];
+    case lp::file_format_error::tag::bad_function_element:
+        return tag[9];
+    case lp::file_format_error::tag::bad_constraint:
+        return tag[10];
     }
 
     return nullptr;
@@ -250,16 +250,16 @@ problem_definition_error_format(
     };
 
     switch (failure) {
-        case lp::problem_definition_error::tag::empty_variables:
-            return tag[0];
-        case lp::problem_definition_error::tag::empty_objective_function:
-            return tag[1];
-        case lp::problem_definition_error::tag::variable_not_used:
-            return tag[2];
-        case lp::problem_definition_error::tag::bad_bound:
-            return tag[3];
-        case lp::problem_definition_error::tag::multiple_constraint:
-            return tag[4];
+    case lp::problem_definition_error::tag::empty_variables:
+        return tag[0];
+    case lp::problem_definition_error::tag::empty_objective_function:
+        return tag[1];
+    case lp::problem_definition_error::tag::variable_not_used:
+        return tag[2];
+    case lp::problem_definition_error::tag::bad_bound:
+        return tag[3];
+    case lp::problem_definition_error::tag::multiple_constraint:
+        return tag[4];
     }
 
     return nullptr;
@@ -273,12 +273,12 @@ solver_error_format(lp::solver_error::tag failure) noexcept
                                        "not enough memory" };
 
     switch (failure) {
-        case lp::solver_error::tag::no_solver_available:
-            return tag[0];
-        case lp::solver_error::tag::unrealisable_constraint:
-            return tag[1];
-        case lp::solver_error::tag::not_enough_memory:
-            return tag[2];
+    case lp::solver_error::tag::no_solver_available:
+        return tag[0];
+    case lp::solver_error::tag::unrealisable_constraint:
+        return tag[1];
+    case lp::solver_error::tag::not_enough_memory:
+        return tag[2];
     }
 
     return nullptr;

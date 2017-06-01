@@ -41,26 +41,40 @@ operator<<(std::ostream& os, const result& result)
       result.end - result.begin);
 
     os.flags(store | os.boolalpha);
-    os << "solver................: " << result.method << '\n'
-       << "solution found........: " << result.solution_found << '\n'
-       << "value.................: " << result.value << '\n'
-       << "loop..................: " << result.loop << '\n'
-       << "constraints...........: " << result.constraints << '\n'
-       << "remaining constraints.: " << result.remaining_constraints << '\n'
-       << "variables.............: " << result.variables << '\n'
-       << "duration..............: " << time_span.count() << "s\n"
-       << "vars..................: ";
+    os << "solver................: " << result.method << '\n';
 
-    for (std::size_t i{ 0 }, e{ result.variable_name.size() }; i != e; ++i) {
-        os << '[' << result.variable_name[i] << ',' << result.variable_value[i]
-           << ']';
-        if (((i + 1) % 7) == 0 and i + 1 != e)
-            os << "\n......................: ";
+    switch (result.status) {
+    case result_status::uninitialized:
+        os << "status................: uninitialized\n";
+        break;
+    case result_status::success:
+        os << "value.................: " << result.value << '\n'
+           << "loop..................: " << result.loop << '\n'
+           << "constraints...........: " << result.constraints << '\n'
+           << "remaining constraints.: " << result.remaining_constraints
+           << '\n'
+           << "variables.............: " << result.variables << '\n'
+           << "duration..............: " << time_span.count() << "s\n"
+           << "vars..................: ";
+
+        for (std::size_t i{ 0 }, e{ result.variable_name.size() }; i != e;
+             ++i) {
+            os << '[' << result.variable_name[i] << ','
+               << result.variable_value[i] << ']';
+            if (((i + 1) % 7) == 0 and i + 1 != e)
+                os << "\n......................: ";
+        }
+
+        os << '\n';
+        os.flags(store);
+        break;
+    case result_status::time_limit_reached:
+        os << "status................: time limit reached\n";
+        break;
+    case result_status::kappa_max_reached:
+        os << "status................: kappa max reached\n";
+        break;
     }
-
-    os << '\n';
-
-    os.flags(store);
 
     return os;
 }
@@ -77,15 +91,15 @@ struct resume
                           variables,
                           [](std::array<long int, 3>& value, auto vv) {
                               switch (vv.type) {
-                                  case lp::variable_type::real:
-                                      value[0]++;
-                                      break;
-                                  case lp::variable_type::binary:
-                                      value[1]++;
-                                      break;
-                                  case lp::variable_type::general:
-                                      value[2]++;
-                                      break;
+                              case lp::variable_type::real:
+                                  value[0]++;
+                                  break;
+                              case lp::variable_type::binary:
+                                  value[1]++;
+                                  break;
+                              case lp::variable_type::general:
+                                  value[2]++;
+                                  break;
                               }
 
                               return value;

@@ -41,7 +41,7 @@ test_assignment_problem()
 
     auto result = lp::solve(pb, params);
 
-    Ensures(result.solution_found == true);
+    Ensures(result.status == lp::result_status::success);
     Ensures(lp::is_valid_solution(pb, result.variable_value) == true);
 }
 
@@ -69,7 +69,7 @@ test_assignment_problem_random_coast()
 
         auto result = lp::solve(pb, params);
 
-        Ensures(result.solution_found == true);
+        Ensures(result.status == lp::result_status::success);
         Ensures(lp::is_valid_solution(pb, result.variable_value) == true);
     }
 }
@@ -84,7 +84,7 @@ test_negative_coeff()
 
     auto result = lp::solve(pb, params);
 
-    Ensures(result.solution_found == true);
+    Ensures(result.status == lp::result_status::success);
     Ensures(lp::is_valid_solution(pb, result.variable_value) == true);
 }
 
@@ -110,7 +110,7 @@ test_negative_coeff2()
         std::cout << elen << ' ';
     std::cout << '\n';
 
-    Ensures(result.solution_found == true);
+    Ensures(result.status == lp::result_status::success);
     Ensures(result.variable_value[0] == 1);
     Ensures(result.variable_value[1] == 0);
     Ensures(result.variable_value[2] == 0);
@@ -129,7 +129,7 @@ test_negative_coeff3()
 
     auto result = lp::solve(pb, params);
 
-    Ensures(result.solution_found == true);
+    Ensures(result.status == lp::result_status::success);
     Ensures(lp::is_valid_solution(pb, result.variable_value) == true);
 }
 
@@ -143,7 +143,7 @@ test_negative_coeff4()
 
     auto result = lp::solve(pb, params);
 
-    Ensures(result.solution_found == true);
+    Ensures(result.status == lp::result_status::success);
     Ensures(lp::is_valid_solution(pb, result.variable_value) == true);
 }
 
@@ -163,7 +163,7 @@ test_flat30_7()
 
     auto result = lp::solve(pb, params);
 
-    Ensures(result.solution_found == true);
+    Ensures(result.status == lp::result_status::success);
     Ensures(lp::is_valid_solution(pb, result.variable_value) == true);
 }
 
@@ -185,7 +185,7 @@ test_uf50_0448()
 
     auto result = lp::solve(pb, params);
 
-    Ensures(result.solution_found == true);
+    Ensures(result.status == lp::result_status::success);
     Ensures(lp::is_valid_solution(pb, result.variable_value) == true);
 }
 
@@ -205,7 +205,7 @@ test_aim_50_1_6_yes1_2()
 
     auto result = lp::solve(pb, params);
 
-    Ensures(result.solution_found == true);
+    Ensures(result.status == lp::result_status::success);
     Ensures(lp::is_valid_solution(pb, result.variable_value) == true);
 }
 
@@ -232,7 +232,7 @@ test_bibd1n()
 
     auto result = lp::solve(pb, params);
 
-    Ensures(result.solution_found == true);
+    Ensures(result.status == lp::result_status::success);
     Ensures(lp::is_valid_solution(pb, result.variable_value) == true);
 }
 
@@ -270,7 +270,7 @@ test_8_queens_puzzle_fixed_cost()
         std::cout << '\n';
     }
 
-    Ensures(result.solution_found == true);
+    Ensures(result.status == lp::result_status::success);
     Ensures(lp::is_valid_solution(pb, result.variable_value) == true);
 }
 
@@ -299,7 +299,7 @@ test_8_queens_puzzle_random_cost()
 
         auto result = lp::solve(pb, params);
 
-        Ensures(result.solution_found == true);
+        Ensures(result.status == lp::result_status::success);
         Ensures(lp::is_valid_solution(pb, result.variable_value) == true);
     }
 }

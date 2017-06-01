@@ -1050,7 +1050,10 @@ struct solver
         ret.variables = n;
         ret.constraints = m;
         ret.value = compute_value();
-        ret.solution_found = is_valid_solution();
+
+        if (is_valid_solution())
+            ret.status = result_status::success;
+
         ret.variable_name.resize(n);
         ret.variable_value.resize(n, 0);
 
@@ -1656,7 +1659,6 @@ solve(const problem& pb, const parameters& p, randomT& rng)
       rng, pb, make_merged_constraints(pb));
     index best_remaining{ -1 };
     result best;
-    best.solution_found = false;
     best.value = default_solution_value(mode_type());
 
     constraint_order_type compute(rng);
@@ -1736,7 +1738,6 @@ optimize(const problem& pb, const parameters& p, randomT& rng)
 
     index best_remaining{ -1 };
     result best;
-    best.solution_found = false;
     best.value = default_solution_value(mode_type());
 
     constraint_order_type compute(rng);
@@ -1768,7 +1769,7 @@ optimize(const problem& pb, const parameters& p, randomT& rng)
         if (remaining == 0) {
             current.value = slv.compute_value();
 
-            if (not best.solution_found or
+            if (best.status != result_status::success or
                 is_better_solution(current.value, best.value, mode_type())) {
                 printf("  - Solution found: %f (i=%ld)\n", current.value, i);
                 best = current;
@@ -1821,7 +1822,7 @@ optimize(const problem& pb, const parameters& p, randomT& rng)
             continue;
         }
 
-        if (pushed >= 0 and best.solution_found) {
+        if (pushed >= 0 and best.status == result_status::success) {
             if (pushed >= 0)
                 ++pushing_iteration;
 

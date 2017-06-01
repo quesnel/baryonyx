@@ -133,8 +133,15 @@ struct file_access_error : std::runtime_error
     {
     }
 
-    std::string file() const { return m_file; }
-    int error() const { return m_error; }
+    std::string file() const
+    {
+        return m_file;
+    }
+    int error() const
+    {
+        return m_error;
+    }
+
 private:
     std::string m_file;
     int m_error;
@@ -174,10 +181,22 @@ struct file_format_error : std::runtime_error
     {
     }
 
-    std::string element() const { return m_element; }
-    int line() const { return m_line; }
-    int column() const { return m_column; }
-    tag failure() const { return m_failure; }
+    std::string element() const
+    {
+        return m_element;
+    }
+    int line() const
+    {
+        return m_line;
+    }
+    int column() const
+    {
+        return m_column;
+    }
+    tag failure() const
+    {
+        return m_failure;
+    }
 
 private:
     std::string m_element;
@@ -204,8 +223,14 @@ struct problem_definition_error : std::runtime_error
     {
     }
 
-    std::string element() const { return m_element; }
-    tag failure() const { return m_failure; }
+    std::string element() const
+    {
+        return m_element;
+    }
+    tag failure() const
+    {
+        return m_failure;
+    }
 
 private:
     std::string m_element;
@@ -227,7 +252,10 @@ struct solver_error : std::runtime_error
     {
     }
 
-    tag failure() const { return m_failure; }
+    tag failure() const
+    {
+        return m_failure;
+    }
 
 private:
     tag m_failure;
@@ -270,15 +298,15 @@ struct parameter
       : type(w.type)
     {
         switch (w.type) {
-            case tag::integer:
-                l = w.l;
-                break;
-            case tag::real:
-                d = w.d;
-                break;
-            case tag::string:
-                new (&s) std::string(w.s);
-                break;
+        case tag::integer:
+            l = w.l;
+            break;
+        case tag::real:
+            d = w.d;
+            break;
+        case tag::string:
+            new (&s) std::string(w.s);
+            break;
         }
     }
 
@@ -286,15 +314,15 @@ struct parameter
       : type(w.type)
     {
         switch (w.type) {
-            case tag::integer:
-                l = w.l;
-                break;
-            case tag::real:
-                d = w.d;
-                break;
-            case tag::string:
-                new (&s) std::string(w.s);
-                break;
+        case tag::integer:
+            l = w.l;
+            break;
+        case tag::real:
+            d = w.d;
+            break;
+        case tag::string:
+            new (&s) std::string(w.s);
+            break;
         }
 
         w.type = tag::integer;
@@ -314,15 +342,15 @@ struct parameter
         }
 
         switch (w.type) {
-            case tag::integer:
-                l = w.l;
-                break;
-            case tag::real:
-                d = w.d;
-                break;
-            case tag::string:
-                new (&s) std::string(w.s);
-                break;
+        case tag::integer:
+            l = w.l;
+            break;
+        case tag::real:
+            d = w.d;
+            break;
+        case tag::string:
+            new (&s) std::string(w.s);
+            break;
         }
 
         type = w.type;
@@ -344,15 +372,15 @@ struct parameter
         }
 
         switch (w.type) {
-            case tag::integer:
-                l = w.l;
-                break;
-            case tag::real:
-                d = w.d;
-                break;
-            case tag::string:
-                new (&s) std::string(w.s);
-                break;
+        case tag::integer:
+            l = w.l;
+            break;
+        case tag::real:
+            d = w.d;
+            break;
+        case tag::string:
+            new (&s) std::string(w.s);
+            break;
         }
 
         type = w.type;
@@ -520,6 +548,14 @@ struct problem
     objective_function_type type = { objective_function_type::maximize };
 };
 
+enum class result_status
+{
+    uninitialized,
+    success,
+    time_limit_reached,
+    kappa_max_reached,
+};
+
 struct result
 {
     std::string method;
@@ -534,7 +570,8 @@ struct result
     index variables = 0;
     index constraints = 0;
     index remaining_constraints = std::numeric_limits<index>::max();
-    bool solution_found = false;
+
+    result_status status = result_status::uninitialized;
 };
 
 /**
