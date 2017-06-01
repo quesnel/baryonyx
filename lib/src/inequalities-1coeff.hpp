@@ -184,18 +184,22 @@ struct parameters
 
     void print() const noexcept
     {
-        printf("* solver inequalities_1coeff_wedelin\n"
+        printf("solver: inequalities_1coeff_wedelin\n"
+               "solver parameters:\n"
                "  - constraint-order: %s\n"
                "  - time_limit: %.10g\n"
                "  - theta: %.10g\n"
                "  - delta: %.10g\n"
                "  - limit: %ld\n"
-               "  - kappa-min: %.10g\n"
-               "  - kappa-step: %.10g\n"
-               "  - kappa-max: %.10g\n"
+               "  - kappa: %.10g %.10g %.10g\n"
                "  - alpha: %.10g\n"
                "  - w: %ld\n"
-               "  - serialise: %d\n",
+               "  - serialise: %d\n"
+               "optimizer parameters:\n"
+               "  - pushed limit: %ld\n"
+               "  - pushing objective amplifier: %ld\n"
+               "  - pushing iteration limit: %ld\n"
+               "  - pushing k factor: %.10g\n",
                constraint_order_to_string(order),
                time_limit,
                theta,
@@ -206,7 +210,11 @@ struct parameters
                kappa_max,
                alpha,
                w,
-               serialize);
+               serialize,
+               pushes_limit,
+               pushing_objective_amplifier,
+               pushing_iteration_limit,
+               pushing_k_factor);
     }
 
     double time_limit;
@@ -933,7 +941,7 @@ struct solver
         row_updaters.clear();
         init(rng_, csts);
     }
-    
+
     void init(random_generator_type& rng_,
               const std::vector<merged_constraint>& csts)
     {
@@ -1645,13 +1653,15 @@ solve(const problem& pb, const parameters& p, randomT& rng)
     double kappa = p.kappa_min;
 
     solver<mode_type, random_generator_type> slv(
-      rng, pb, make_merged_constraints(pb));    
-    index best_remaining {-1};
+      rng, pb, make_merged_constraints(pb));
+    index best_remaining{ -1 };
     result best;
     best.solution_found = false;
     best.value = default_solution_value(mode_type());
 
     constraint_order_type compute(rng);
+
+    printf("* solver starts:\n");
 
     for (long int i{ 0 }; i < p.limit; ++i) {
         index remaining = compute.run(slv, kappa, p.delta, p.theta);
@@ -1667,7 +1677,7 @@ solve(const problem& pb, const parameters& p, randomT& rng)
             best = current;
 
             auto t = std::chrono::duration_cast<std::chrono::duration<double>>(
-                current.end - current.begin);
+              current.end - current.begin);
 
             printf("  - constraints remaining: %ld/%ld at %fs\n",
                    remaining,
@@ -1677,7 +1687,7 @@ solve(const problem& pb, const parameters& p, randomT& rng)
 
         if (remaining == 0) {
             current.value = slv.compute_value();
-            std::cout << "  - Solution found: " << current.value << '\n';
+            printf("  - Solution found: %f\n", current.value);
             best = current;
             return best;
         }
@@ -1721,16 +1731,17 @@ optimize(const problem& pb, const parameters& p, randomT& rng)
     long int pushed{ -1 };
     long int pushing_iteration{ 0 };
 
-    auto merged_constraints{make_merged_constraints(pb)};
-    solver<mode_type, random_generator_type> slv(
-        rng, pb, merged_constraints);
+    auto merged_constraints{ make_merged_constraints(pb) };
+    solver<mode_type, random_generator_type> slv(rng, pb, merged_constraints);
 
-    index best_remaining{-1};
+    index best_remaining{ -1 };
     result best;
     best.solution_found = false;
     best.value = default_solution_value(mode_type());
 
     constraint_order_type compute(rng);
+
+    printf("* solver starts:\n");
 
     for (long int i{ 0 }; i < p.limit; ++i) {
         index remaining = compute.run(slv, kappa, p.delta, p.theta);
@@ -1747,10 +1758,11 @@ optimize(const problem& pb, const parameters& p, randomT& rng)
             auto t = std::chrono::duration_cast<std::chrono::duration<double>>(
               current.end - current.begin);
 
-            printf("  - constraints remaining: %ld/%ld at %fs\n",
+            printf("  - constraints remaining: %ld/%ld at %fs (%ld)\n",
                    remaining,
                    current.constraints,
-                   t.count());
+                   t.count(),
+                   i);
         }
 
         if (remaining == 0) {
@@ -1758,7 +1770,7 @@ optimize(const problem& pb, const parameters& p, randomT& rng)
 
             if (not best.solution_found or
                 is_better_solution(current.value, best.value, mode_type())) {
-                std::cout << "  - Solution found: " << current.value << '\n';
+                printf("  - Solution found: %f (i=%ld)\n", current.value, i);
                 best = current;
                 pushed = 0;
             }
@@ -1792,16 +1804,13 @@ optimize(const problem& pb, const parameters& p, randomT& rng)
         if (is_time_limit(p.time_limit, current.begin, current.end))
             return best;
 
-        // if (pushed >= 0)
-        //     std::cout << "pushed: " << pushed << ' ' << " sol: " << best.solution_found
-        //               << " interation: " << pushing_iteration << '\n';
-
         if (i + 1 == p.limit) {
-            std::cout << "  - Reinit\n";
+            printf("- Max loop reachs. Restart solver\n");
             slv.reinit(rng, merged_constraints);
 
-            i = 0;
-                    
+            i = 0; // Restart the for_each loop. TODO
+                   // provide a best solution.
+
             best_remaining = -1;
             i2 = 0;
             kappa_old = 0.0;
@@ -1811,7 +1820,7 @@ optimize(const problem& pb, const parameters& p, randomT& rng)
 
             continue;
         }
-        
+
         if (pushed >= 0 and best.solution_found) {
             if (pushed >= 0)
                 ++pushing_iteration;
@@ -1822,11 +1831,11 @@ optimize(const problem& pb, const parameters& p, randomT& rng)
                 pushing_iteration = 0;
 
                 if (pushed > p.pushes_limit) {
-                    std::cout << "  - Reinit\n";
+                    printf("- Pushed finish. Restart solver\n");
                     slv.reinit(rng, merged_constraints);
 
                     i = 0;
-                    
+
                     best_remaining = -1;
                     i2 = 0;
                     kappa_old = 0.0;
@@ -1856,8 +1865,8 @@ optimize(const problem& pb, const parameters& p, randomT& rng)
 
                     if (is_better_solution(
                           current.value, best.value, mode_type())) {
-                        std::cout << "  - Solution found: " << current.value
-                                  << '\n';
+                        printf(
+                          "  - Solution found: %f (%ld)\n", current.value, i);
                         best = current;
                     }
                 }
