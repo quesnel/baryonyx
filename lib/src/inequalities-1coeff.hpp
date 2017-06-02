@@ -47,7 +47,6 @@ using c_type = Eigen::VectorXf;
 using x_type = Eigen::VectorXi;
 using P_type = lp::SparseArray<double>;
 using pi_type = Eigen::VectorXf;
-using u_type = Eigen::VectorXi;
 
 enum class constraint_order
 {
@@ -351,7 +350,7 @@ struct constraint_calculator
     random_generator_type& rng;
     A_type& A;
     b_type& b;
-    c_type& cost;
+    const c_type& cost;
     x_type& x;
     P_type& P;
     pi_type& pi;
@@ -367,7 +366,7 @@ struct constraint_calculator
                           index n_,
                           A_type& A_,
                           b_type& b_,
-                          c_type& c_,
+                          const c_type& c_,
                           x_type& x_,
                           P_type& P_,
                           pi_type& pi_)
@@ -574,6 +573,17 @@ struct constraint_calculator
         }
     }
 };
+
+c_type
+make_objective_function(const lp::objective_function& obj, index n)
+{
+    c_type ret = c_type::Zero(n);
+
+    for (const auto& elem : obj.elements)
+        ret(elem.variable_index) += elem.factor;
+
+    return ret;
+}
 
 struct merged_constraint
 {
@@ -903,11 +913,10 @@ struct solver
     A_type A;
     b_type b;
     c_type c;
+    const double cost_constant;
     x_type x;
     P_type P;
     pi_type pi;
-    u_type u;
-    const lp::problem& pb;
 
     solver(random_generator_type& rng_,
            const lp::problem& pb_,
@@ -917,12 +926,11 @@ struct solver
       , n(pb_.vars.values.size())
       , A(m, n)
       , b(b_type::Zero(2, m))
-      , c(c_type::Zero(n))
+      , c(make_objective_function(pb_.objective, n))
+      , cost_constant(pb_.objective.constant)
       , x(x_type::Zero(n))
       , P(m, n)
       , pi(pi_type::Zero(m))
-      , u(u_type::Zero(n))
-      , pb(pb_)
     {
         init(rng_, csts);
     }
@@ -932,11 +940,9 @@ struct solver
     {
         A.clear();
         b = b_type::Zero(2, m);
-        c = c_type::Zero(n);
         x = x_type::Zero(n);
         P.clear();
         pi = pi_type::Zero(m);
-        u = u_type::Zero(n);
 
         row_updaters.clear();
         init(rng_, csts);
@@ -945,9 +951,6 @@ struct solver
     void init(random_generator_type& rng_,
               const std::vector<merged_constraint>& csts)
     {
-        for (std::size_t i{ 0 }, e = pb.vars.values.size(); i != e; ++i)
-            u(i) = pb.vars.values[i].max;
-
         for (std::size_t i{ 0 }, e{ csts.size() }; i != e; ++i) {
             int lower{ 0 }, upper{ 0 };
 
@@ -980,10 +983,8 @@ struct solver
             }
         }
 
-        for (const auto& elem : pb.objective.elements) {
-            c(elem.variable_index) += elem.factor;
-            x(elem.variable_index) = c(elem.variable_index) <= 0 ? 1 : 0;
-        }
+        for (index i = 0; i != n; ++i)
+            x(i) = c(i) <= 0 ? 1 : 0;
 
         for (index k = 0; k != m; ++k)
             row_updaters.emplace_back(rng_, k, m, n, A, b, c, x, P, pi);
@@ -1002,9 +1003,6 @@ struct solver
             for (std::size_t i{ 0 }, e{ ak.size() }; i != e; ++i)
                 v += values[ak[i].value] * x(ak[i].position);
 
-            // for (index i{ 0 }; i != n; ++i)
-            //     v += A(k, i) * x(i);
-
             if (not(b(0, k) <= v and v <= b(1, k)))
                 vec.push_back(k);
         }
@@ -1015,10 +1013,10 @@ struct solver
 
     double compute_value() const noexcept
     {
-        double ret = pb.objective.constant;
+        double ret{ cost_constant };
 
-        for (auto& elem : pb.objective.elements)
-            ret += elem.factor * x(elem.variable_index);
+        for (index i = 0; i != n; ++i)
+            ret += c[i] * x[i];
 
         return ret;
     }
@@ -1046,21 +1044,20 @@ struct solver
     result results() const
     {
         result ret;
+
         ret.method = "inequalities_101coeff_wedelin";
         ret.variables = n;
         ret.constraints = m;
-        ret.value = compute_value();
 
-        if (is_valid_solution())
+        if (is_valid_solution()) {
             ret.status = result_status::success;
+            ret.value = compute_value();
+        }
 
-        ret.variable_name.resize(n);
         ret.variable_value.resize(n, 0);
 
-        for (index i = 0; i != n; ++i) {
-            ret.variable_name[i] = pb.vars.names[i];
+        for (index i = 0; i != n; ++i)
             ret.variable_value[i] = x(i);
-        }
 
         return ret;
     }
@@ -1717,15 +1714,37 @@ solve(const problem& pb, const parameters& p, randomT& rng)
     return best;
 }
 
+// template <typename modeT, typename constraintOrderT, typename randomT>
+// struct optimizer
+// {
+//     using mode_type = modeT;
+//     using constraint_order_type = constraintOrderT;
+//     using random_generator_type = randomT;
+
+//     optimizer(const problem& pb, const parameters& p, randomT& rng)
+//     {
+//     }
+
+//     result run(
+//       std::vector<inequalities_1coeff::merged_constraint> constraints;)
+//     {
+//     }
+// };
+
 template <typename modeT, typename constraintOrderT, typename randomT>
 inline result
-optimize(const problem& pb, const parameters& p, randomT& rng)
+optimize(problem& pb, const parameters& p, randomT& rng)
 {
     using mode_type = modeT;
     using constraint_order_type = constraintOrderT;
     using random_generator_type = randomT;
 
+    auto names = pb.vars.names;
+
     auto begin = std::chrono::steady_clock::now();
+    auto end = begin;
+
+    long int i{ 0 };
     long int i2{ 0 };
     double kappa_old{ 0 };
     double kappa = p.kappa_min;
@@ -1735,29 +1754,29 @@ optimize(const problem& pb, const parameters& p, randomT& rng)
 
     auto merged_constraints{ make_merged_constraints(pb) };
     solver<mode_type, random_generator_type> slv(rng, pb, merged_constraints);
+    pb.clear();
 
     index best_remaining{ -1 };
     result best;
-    best.value = default_solution_value(mode_type());
 
     constraint_order_type compute(rng);
 
     printf("* solver starts:\n");
 
-    for (long int i{ 0 }; i < p.limit; ++i) {
+    for (; not is_time_limit(p.time_limit, begin, end);
+         end = std::chrono::steady_clock::now(), ++i) {
+
         index remaining = compute.run(slv, kappa, p.delta, p.theta);
 
         auto current = slv.results();
         current.loop = i;
         current.remaining_constraints = remaining;
-        current.begin = begin;
-        current.end = std::chrono::steady_clock::now();
 
         if (best_remaining == -1 or remaining < best_remaining) {
             best_remaining = remaining;
 
             auto t = std::chrono::duration_cast<std::chrono::duration<double>>(
-              current.end - current.begin);
+              end - begin);
 
             printf("  - constraints remaining: %ld/%ld at %fs (%ld)\n",
                    remaining,
@@ -1766,12 +1785,11 @@ optimize(const problem& pb, const parameters& p, randomT& rng)
                    i);
         }
 
-        if (remaining == 0) {
-            current.value = slv.compute_value();
-
+        if (current.status == result_status::success) {
             if (best.status != result_status::success or
                 is_better_solution(current.value, best.value, mode_type())) {
                 printf("  - Solution found: %f (i=%ld)\n", current.value, i);
+
                 best = current;
                 pushed = 0;
             }
@@ -1791,26 +1809,12 @@ optimize(const problem& pb, const parameters& p, randomT& rng)
             kappa_old = kappa;
         }
 
-        //
-        // If kappa greater than kappa_max, optimization finished.
-        //
-
-        if (kappa > p.kappa_max)
-            return best;
-
-        //
-        // If time greater than time_limit, optimization is finish.
-        //
-
-        if (is_time_limit(p.time_limit, current.begin, current.end))
-            return best;
-
-        if (i + 1 == p.limit) {
+        if (i + 1 == p.limit or kappa > p.kappa_max or
+            pushed > p.pushes_limit) {
             printf("- Max loop reachs. Restart solver\n");
             slv.reinit(rng, merged_constraints);
 
-            i = 0; // Restart the for_each loop. TODO
-                   // provide a best solution.
+            i = 0; // Restart the for_each loop.
 
             best_remaining = -1;
             i2 = 0;
@@ -1822,30 +1826,12 @@ optimize(const problem& pb, const parameters& p, randomT& rng)
             continue;
         }
 
-        if (pushed >= 0 and best.status == result_status::success) {
-            if (pushed >= 0)
-                ++pushing_iteration;
+        if (pushed >= 0) {
+            ++pushing_iteration;
 
-            if (pushed >= 0 and
-                pushing_iteration >= p.pushing_iteration_limit) {
+            if (pushing_iteration >= p.pushing_iteration_limit) {
                 pushed++;
                 pushing_iteration = 0;
-
-                if (pushed > p.pushes_limit) {
-                    printf("- Pushed finish. Restart solver\n");
-                    slv.reinit(rng, merged_constraints);
-
-                    i = 0;
-
-                    best_remaining = -1;
-                    i2 = 0;
-                    kappa_old = 0.0;
-                    kappa = p.kappa_min;
-                    pushed = -1;
-                    pushing_iteration = 0;
-
-                    continue;
-                }
 
                 auto c_copy = slv.c;
                 for (index i{ 0 }; i != slv.n; ++i)
@@ -1858,11 +1844,8 @@ optimize(const problem& pb, const parameters& p, randomT& rng)
 
                 if (remaining == 0) {
                     current = slv.results();
-                    current.value = slv.compute_value();
                     current.loop = i;
                     current.remaining_constraints = remaining;
-                    current.begin = begin;
-                    current.end = std::chrono::steady_clock::now();
 
                     if (is_better_solution(
                           current.value, best.value, mode_type())) {
@@ -1874,6 +1857,11 @@ optimize(const problem& pb, const parameters& p, randomT& rng)
             }
         }
     }
+
+    best.method = "inequalities_1coeff";
+    best.variable_name = names;
+    best.begin = begin;
+    best.end = end;
 
     return best;
 }
@@ -1963,7 +1951,7 @@ inequalities_1coeff_wedelin_solve(
 
 inline result
 inequalities_1coeff_wedelin_optimize(
-  const problem& pb,
+  problem& pb,
   const std::map<std::string, parameter>& params)
 {
     namespace ine_1 = lp::inequalities_1coeff;
