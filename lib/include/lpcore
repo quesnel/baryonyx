@@ -507,6 +507,12 @@ struct variables
 {
     std::vector<std::string> names;
     std::vector<variable_value> values;
+
+    void clear()
+    {
+        std::vector<std::string>().swap(names);
+        std::vector<variable_value>().swap(values);
+    }
 };
 
 struct function_element
@@ -532,6 +538,11 @@ struct objective_function
 {
     std::vector<function_element> elements;
     int constant = { 0 };
+
+    void clear()
+    {
+        std::vector<function_element>().swap(elements);
+    }
 };
 
 struct problem
@@ -546,6 +557,19 @@ struct problem
     variables vars;
 
     objective_function_type type = { objective_function_type::maximize };
+
+    void clear()
+    {
+        objective.clear();
+
+        std::vector<constraint>().swap(equal_constraints);
+        std::vector<constraint>().swap(greater_constraints);
+        std::vector<constraint>().swap(greater_equal_constraints);
+        std::vector<constraint>().swap(less_constraints);
+        std::vector<constraint>().swap(less_equal_constraints);
+
+        vars.clear();
+    }
 };
 
 enum class result_status
