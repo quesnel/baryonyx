@@ -55,18 +55,18 @@ enum class constraint_order
     random_sorting,
     infeasibility_decr,
     infeasibility_incr,
-    adaptative
 };
 
 const char*
 constraint_order_to_string(constraint_order type)
 {
-    static const char* ret[] = { "none",
-                                 "reversing",
-                                 "random-sorting",
-                                 "infeasibility-decr",
-                                 "infeasibility-incr",
-                                 "adaptative" };
+    static const char* ret[] = {
+        "none",
+        "reversing",
+        "random-sorting",
+        "infeasibility-decr",
+        "infeasibility-incr",
+    };
 
     switch (type) {
     case inequalities_1coeff::constraint_order::none:
@@ -79,8 +79,6 @@ constraint_order_to_string(constraint_order type)
         return ret[3];
     case inequalities_1coeff::constraint_order::infeasibility_incr:
         return ret[4];
-    case inequalities_1coeff::constraint_order::adaptative:
-        return ret[5];
     }
 
     return nullptr;
@@ -150,8 +148,6 @@ get_constraint_order(const std::map<std::string, parameter>& params,
         return inequalities_1coeff::constraint_order::infeasibility_decr;
     if (it->second.s == "infeasibility-incr")
         return inequalities_1coeff::constraint_order::infeasibility_incr;
-    if (it->second.s == "adaptative")
-        return inequalities_1coeff::constraint_order::adaptative;
 
     return def;
 }
@@ -1488,157 +1484,6 @@ struct compute_infeasibility
     }
 };
 
-template <typename randomT>
-struct compute_adaptative
-{
-    using random_generator_type = randomT;
-
-    random_generator_type& rng;
-
-    std::chrono::time_point<std::chrono::steady_clock> begin;
-    constraint_order constraint;
-    std::size_t best;
-    bool have_switch;
-
-    compute_none<random_generator_type> cpt_none;
-    compute_random<random_generator_type> cpt_random;
-    compute_reversing<random_generator_type> cpt_reversing;
-    compute_infeasibility<random_generator_type, compute_infeasibility_incr>
-      cpt_inf_incr;
-    compute_infeasibility<random_generator_type, compute_infeasibility_decr>
-      cpt_inf_decr;
-
-    compute_adaptative(random_generator_type& rng_)
-      : rng(rng_)
-      , begin(std::chrono::steady_clock::now())
-      , constraint(constraint_order::reversing)
-      , best(std::numeric_limits<std::size_t>::max())
-      , have_switch(false)
-      , cpt_none(rng)
-      , cpt_random(rng)
-      , cpt_reversing(rng)
-      , cpt_inf_incr(rng)
-      , cpt_inf_decr(rng)
-    {
-    }
-
-    template <typename solverT>
-    std::size_t run_all(solverT& solver,
-                        double kappa,
-                        double delta,
-                        double theta)
-    {
-        switch (constraint) {
-        case constraint_order::none:
-            return cpt_none.run_all(solver, kappa, delta, theta);
-            break;
-        case constraint_order::reversing:
-            return cpt_reversing.run_all(solver, kappa, delta, theta);
-            break;
-        case constraint_order::random_sorting:
-            return cpt_random.run_all(solver, kappa, delta, theta);
-            break;
-        case constraint_order::infeasibility_decr:
-            return cpt_inf_incr.run_all(solver, kappa, delta, theta);
-            break;
-        case constraint_order::infeasibility_incr:
-            return cpt_inf_decr.run_all(solver, kappa, delta, theta);
-            break;
-        default:
-            return cpt_none.run_all(solver, kappa, delta, theta);
-            break;
-        }
-    }
-
-    template <typename solverT>
-    std::size_t run(solverT& solver, double kappa, double delta, double theta)
-    {
-        std::size_t ret;
-
-        if (not have_switch) {
-            switch (constraint) {
-            case constraint_order::none:
-                ret = cpt_none.run(solver, kappa, delta, theta);
-                break;
-            case constraint_order::reversing:
-                ret = cpt_reversing.run(solver, kappa, delta, theta);
-                break;
-            case constraint_order::random_sorting:
-                ret = cpt_random.run(solver, kappa, delta, theta);
-                break;
-            case constraint_order::infeasibility_decr:
-                ret = cpt_inf_incr.run(solver, kappa, delta, theta);
-                break;
-            case constraint_order::infeasibility_incr:
-                ret = cpt_inf_decr.run(solver, kappa, delta, theta);
-                break;
-            default:
-                ret = cpt_none.run(solver, kappa, delta, theta);
-                break;
-            }
-        } else {
-            have_switch = false;
-            switch (constraint) {
-            case constraint_order::none:
-                ret = cpt_none.run_all(solver, kappa, delta, theta);
-                break;
-            case constraint_order::reversing:
-                ret = cpt_reversing.run_all(solver, kappa, delta, theta);
-                break;
-            case constraint_order::random_sorting:
-                ret = cpt_random.run_all(solver, kappa, delta, theta);
-                break;
-            case constraint_order::infeasibility_decr:
-                ret = cpt_inf_incr.run_all(solver, kappa, delta, theta);
-                break;
-            case constraint_order::infeasibility_incr:
-                ret = cpt_inf_decr.run_all(solver, kappa, delta, theta);
-                break;
-            default:
-                ret = cpt_none.run_all(solver, kappa, delta, theta);
-                break;
-            }
-        }
-
-        if (ret < best) {
-            begin = std::chrono::steady_clock::now();
-            best = ret;
-        } else {
-            if (std::chrono::duration_cast<std::chrono::seconds>(
-                  std::chrono::steady_clock::now() - begin)
-                  .count() > 30) {
-                switch (constraint) {
-                case constraint_order::none:
-                    constraint = constraint_order::reversing;
-                    break;
-                case constraint_order::reversing:
-                    constraint = constraint_order::random_sorting;
-                    break;
-                case constraint_order::random_sorting:
-                    constraint = constraint_order::infeasibility_decr;
-                    break;
-                case constraint_order::infeasibility_decr:
-                    constraint = constraint_order::reversing;
-                    break;
-                case constraint_order::infeasibility_incr:
-                    constraint = constraint_order::reversing;
-                    break;
-                default:
-                    constraint = constraint_order::random_sorting;
-                    break;
-                };
-                printf("     * Switch to %s\n",
-                       constraint_order_to_string(constraint));
-                begin = std::chrono::steady_clock::now();
-                best = std::numeric_limits<std::size_t>::max();
-                have_switch = true;
-            }
-        }
-
-        return ret;
-    }
-};
-
 template <typename modeT, typename constraintOrderT, typename randomT>
 inline result
 solve(const problem& pb, const parameters& p, randomT& rng)
@@ -1936,14 +1781,6 @@ inequalities_1coeff_wedelin_solve(
           ine_1::compute_infeasibility<random_generator_type,
                                        ine_1::compute_infeasibility_incr>>(
           pb, p, rng);
-    case ine_1::constraint_order::adaptative:
-        if (pb.type == lp::objective_function_type::maximize)
-            return ine_1::solve<
-              ine_1::maximize_tag,
-              ine_1::compute_adaptative<random_generator_type>>(pb, p, rng);
-        return ine_1::solve<ine_1::minimize_tag,
-                            ine_1::compute_adaptative<random_generator_type>>(
-          pb, p, rng);
     }
 
     throw "TODO internal error";
@@ -2021,14 +1858,6 @@ inequalities_1coeff_wedelin_optimize(
           ine_1::compute_infeasibility<random_generator_type,
                                        ine_1::compute_infeasibility_incr>>(
           pb, p, rng);
-    case ine_1::constraint_order::adaptative:
-        if (pb.type == lp::objective_function_type::maximize)
-            return ine_1::optimize<
-              ine_1::maximize_tag,
-              ine_1::compute_adaptative<random_generator_type>>(pb, p, rng);
-        return ine_1::optimize<
-          ine_1::minimize_tag,
-          ine_1::compute_adaptative<random_generator_type>>(pb, p, rng);
     }
 
     throw "TODO internal error";

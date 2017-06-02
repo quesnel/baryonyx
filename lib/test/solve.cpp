@@ -181,7 +181,7 @@ test_uf50_0448()
     params["kappa-max"] = 60.0;
     params["alpha"] = 1.0;
     params["w"] = 60l;
-    params["constraint-order"] = std::string("adaptative");
+    params["constraint-order"] = std::string("none");
 
     auto result = lp::solve(pb, params);
 
