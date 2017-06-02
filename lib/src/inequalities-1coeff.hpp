@@ -152,6 +152,17 @@ get_constraint_order(const std::map<std::string, parameter>& params,
     return def;
 }
 
+std::string
+get_pre_constraint_order(const std::map<std::string, parameter>& params,
+                         std::string param)
+{
+    auto it = params.find(param);
+    if (it == params.cend())
+        return std::string();
+
+    return it->second.s;
+}
+
 struct parameters
 {
     parameters(const std::map<std::string, parameter>& params)
@@ -163,16 +174,17 @@ struct parameters
       , kappa_max(get_real(params, "kappa-max", 0.6))
       , alpha(get_real(params, "alpha", 1.0))
       , pushing_k_factor(get_real(params, "pushing-k-factor", 0.9))
-      , pushes_limit(get_integer(params, "pushes-limit", 100l))
+      , pushes_limit(get_integer(params, "pushes-limit", 10l))
       , pushing_objective_amplifier(
           get_integer(params, "pushing-objective-amplifier", 5l))
       , pushing_iteration_limit(
-          get_integer(params, "pushing-iteration-limit", 50l))
+          get_integer(params, "pushing-iteration-limit", 20l))
       , limit(get_integer(params, "limit", 1000l))
       , w(get_integer(params, "w", 20l))
       , order(get_constraint_order(params,
                                    "constraint-order",
                                    constraint_order::none))
+      , preprocessing(get_pre_constraint_order(params, "preprocessing"))
       , serialize(get_integer(params, "serialize", 0l))
     {
     }
@@ -181,6 +193,7 @@ struct parameters
     {
         printf("solver: inequalities_1coeff_wedelin\n"
                "solver parameters:\n"
+               "  - preprocessing: %s\n"
                "  - constraint-order: %s\n"
                "  - time_limit: %.10g\n"
                "  - theta: %.10g\n"
@@ -195,6 +208,7 @@ struct parameters
                "  - pushing objective amplifier: %ld\n"
                "  - pushing iteration limit: %ld\n"
                "  - pushing k factor: %.10g\n",
+               preprocessing.c_str(),
                constraint_order_to_string(order),
                time_limit,
                theta,
@@ -226,6 +240,7 @@ struct parameters
     long int limit;
     long int w;
     constraint_order order;
+    std::string preprocessing;
     bool serialize;
 };
 
@@ -679,7 +694,7 @@ remove_element_with_factor_0(constraintsT& csts) noexcept
 }
 
 std::vector<merged_constraint>
-make_merged_constraints(const lp::problem& pb)
+make_merged_constraints(const lp::problem& pb, const parameters& params)
 {
     std::vector<merged_constraint> ret;
     std::unordered_map<std::vector<lp::function_element>,
@@ -766,10 +781,10 @@ make_merged_constraints(const lp::problem& pb)
         }
     }
 
-    // We sort constraints according to the maximum presence of variables in
-    // the constraints.
-    // - vars counts the number of use of the variables
-    // - link the link between vars
+    /* Compute metrics from constraints and variables uses.
+       - vars counts the number of use of the variables
+       - linkvars the link between vars
+       - linkcst ?? */
 
     std::vector<int> vars(pb.vars.values.size(), 0);
     std::vector<std::set<int>> linkvars(pb.vars.values.size());
@@ -793,107 +808,120 @@ make_merged_constraints(const lp::problem& pb)
         }
     }
 
-    {
-        std::ofstream ofs("vars-1.txt");
+    // {
+    //     std::ofstream ofs("vars-1.txt");
 
-        ofs << "name used linkvars linkscst\n";
+    //     ofs << "name used linkvars linkscst\n";
 
-        for (std::size_t i = 0; i < vars.size(); ++i)
-            ofs << pb.vars.names[i] << ' ' << vars[i] << ' '
-                << linkvars[i].size() << ' ' << linkcst[i].size() << '\n';
-    }
+    //     for (std::size_t i = 0; i < vars.size(); ++i)
+    //         ofs << pb.vars.names[i] << ' ' << vars[i] << ' '
+    //             << linkvars[i].size() << ' ' << linkcst[i].size() << '\n';
+    // }
 
     std::vector<std::pair<merged_constraint, long>> tosort;
 
-    // Algorithm to build a tosort vector according to the number variables
-    // used in every constraints.
+    if (params.preprocessing == "variables-number") {
+        // Algorithm to a tosort vector according to the number variables
+        // used by each constraints.
 
-    // for (auto& cst : ret) {
-    //     tosort.emplace_back(cst, 0);
-    //     for (auto& elem : cst.elements) {
-    //         for (auto& s : linkcst[elem.variable_index])
-    //             tosort.back().second += linkvars[s].size();
-    //     }
-    // }
-
-    // Algorithm to build a tosort vector according to constraints of type:
-    // -x1 -x2 -x3 +x4 <= 0
-
-    // for (auto& cst : ret) {
-    //     tosort.emplace_back(cst, 0);
-
-    //     int nbneg{ 0 }, nbpos{ 0 };
-
-    //     for (auto& elem : cst.elements)
-    //         if (elem.factor < 0)
-    //             nbneg++;
-    //         else
-    //             nbpos++;
-
-    //     if (((nbneg > 1 and nbpos == 1) or (nbpos > 1 and nbneg == 1)) and
-    //         cst.min == cst.max) {
-    //         // printf("Cool, found!\n");
-    //         tosort.back().second = 1;
-    //     }
-    // }
-
-    // std::sort(
-    //   tosort.begin(), tosort.end(), [](const auto& lhs, const auto& rhs) {
-    //       return rhs.second < lhs.second;
-    //   });
-
-    // ret.clear();
-    // std::transform(tosort.begin(),
-    //                tosort.end(),
-    //                std::back_inserter(ret),
-    //                [](const auto& elem) { return elem.first; });
-
-    // std::sort(ret.begin(),
-    //           ret.end(),
-    //           [linkvars, linkcst](const auto& lhs, const auto& rhs) {
-    //               long sumlhs{ 1 };
-    //               long sumrhs{ 1 };
-    //               // std::size_t i, e;
-
-    //               for (auto& f : lhs.elements)
-    //                   sumlhs *= linkcst[f.variable_index].size();
-
-    //               for (auto& f : rhs.elements)
-    //                   sumrhs *= linkcst[f.variable_index].size();
-
-    //               return sumrhs > sumlhs;
-    //           });
-
-    // std::sort(
-    //   ret.begin(), ret.end(), [vars](const auto& lhs, const auto& rhs) {
-    //       long sumlhs{ 0 };
-    //       long sumrhs{ 0 };
-
-    //       for (auto& f : lhs.elements)
-    //           sumlhs += vars[f.variable_index];
-
-    //       for (auto& f : rhs.elements)
-    //           sumrhs += vars[f.variable_index];
-
-    //       return sumlhs < sumrhs;
-    //   });
-
-    printf("  - sorted constraints stored in: constraints.new.lp\n");
-
-    {
-        std::ofstream ofs("constraints.new.lp");
-        for (auto& elem : ret) {
-            ofs << elem.min << " <= ";
-
-            for (auto& f : elem.elements)
-                ofs << ((f.factor < 0) ? "- " : "+ ") << f.variable_index
-                    << ' ';
-
-            ofs << " <= " << elem.max << '\n';
+        for (auto& cst : ret) {
+            tosort.emplace_back(cst, 0);
+            for (auto& elem : cst.elements) {
+                for (auto& s : linkcst[elem.variable_index])
+                    tosort.back().second += linkvars[s].size();
+            }
         }
+
+        std::sort(
+          tosort.begin(), tosort.end(), [](const auto& lhs, const auto& rhs) {
+              return rhs.second < lhs.second;
+          });
+
+        ret.clear();
+        std::transform(tosort.begin(),
+                       tosort.end(),
+                       std::back_inserter(ret),
+                       [](const auto& elem) { return elem.first; });
+
+        return ret;
+    } else if (params.preprocessing == "variables-weight") {
+        std::sort(
+          ret.begin(), ret.end(), [vars](const auto& lhs, const auto& rhs) {
+              long sumlhs{ 0 };
+              long sumrhs{ 0 };
+
+              for (auto& f : lhs.elements)
+                  sumlhs += vars[f.variable_index];
+
+              for (auto& f : rhs.elements)
+                  sumrhs += vars[f.variable_index];
+
+              return sumlhs < sumrhs;
+          });
+
+        return ret;
+    } else if (params.preprocessing == "constraints-weight") {
+        std::sort(ret.begin(),
+                  ret.end(),
+                  [linkvars, linkcst](const auto& lhs, const auto& rhs) {
+                      long sumlhs{ 1 };
+                      long sumrhs{ 1 };
+                      // std::size_t i, e;
+
+                      for (auto& f : lhs.elements)
+                          sumlhs *= linkcst[f.variable_index].size();
+
+                      for (auto& f : rhs.elements)
+                          sumrhs *= linkcst[f.variable_index].size();
+
+                      return sumrhs > sumlhs;
+                  });
+
+        return ret;
+    } else if (params.preprocessing == "implied") {
+        // Algorithm to build a tosort vector according to constraints of type:
+        // -x1 -x2 -x3 +x4 <= 0
+
+        for (auto& cst : ret) {
+            tosort.emplace_back(cst, 0);
+
+            int nbneg{ 0 }, nbpos{ 0 };
+
+            for (auto& elem : cst.elements)
+                if (elem.factor < 0)
+                    nbneg++;
+                else
+                    nbpos++;
+
+            if (((nbneg > 1 and nbpos == 1) or (nbpos > 1 and nbneg == 1)) and
+                cst.min == cst.max) {
+                tosort.back().second = 1;
+            }
+        }
+
+        std::sort(
+          tosort.begin(), tosort.end(), [](const auto& lhs, const auto& rhs) {
+              return rhs.second < lhs.second;
+          });
+
+        ret.clear();
+        std::transform(tosort.begin(),
+                       tosort.end(),
+                       std::back_inserter(ret),
+                       [](const auto& elem) { return elem.first; });
+
+        return ret;
+    } else {
+        if (not params.preprocessing.empty()) {
+            fprintf(stderr,
+                    "[WARNING] Unknown preprocessing `%s'\n",
+                    params.preprocessing.c_str());
+        }
+
+        return ret;
     }
 
-    return ret;
+    // return ret;
 }
 
 template <typename modeT, typename randomT>
@@ -1041,15 +1069,13 @@ struct solver
     {
         result ret;
 
-        ret.method = "inequalities_101coeff_wedelin";
-        ret.variables = n;
-        ret.constraints = m;
-
         if (is_valid_solution()) {
             ret.status = result_status::success;
             ret.value = compute_value();
         }
 
+        ret.variables = n;
+        ret.constraints = m;
         ret.variable_value.resize(n, 0);
 
         for (index i = 0; i != n; ++i)
@@ -1107,10 +1133,12 @@ struct no_cycle_avoidance
     {
         return false;
     }
+
     bool have_cycle(const std::vector<T>&) const noexcept
     {
         return false;
     }
+
     bool have_cycle(const std::vector<std::pair<index, index>>&) const noexcept
     {
         return false;
@@ -1204,9 +1232,6 @@ compute_missing_constraint(solverT& solver, std::vector<index>& R)
 
         for (std::size_t i{ 0 }, e{ ak.size() }; i != e; ++i)
             v += values[ak[i].value] * solver.x(ak[i].position);
-
-        // for (index i{ 0 }; i != solver.n; ++i)
-        //     v += solver.A(k, i) * solver.x(i);
 
         if (not(solver.b(0, k) <= v and v <= solver.b(1, k)))
             R.push_back(k);
@@ -1394,9 +1419,6 @@ struct compute_infeasibility
             for (std::size_t i{ 0 }, e{ ak.size() }; i != e; ++i)
                 v += values[ak[i].value] * solver.x(ak[i].position);
 
-            // for (index i{ 0 }; i != solver.n; ++i)
-            //     v += solver.A(k, i) * solver.x(i);
-
             if (solver.b(0, k) > v)
                 R.emplace_back(k, solver.b(0, k) - v);
 
@@ -1423,9 +1445,6 @@ struct compute_infeasibility
 
             for (std::size_t i{ 0 }, e{ ak.size() }; i != e; ++i)
                 v += values[ak[i].value] * solver.x(ak[i].position);
-
-            // for (index i{ 0 }; i != solver.n; ++i)
-            //     v += solver.A(k, i) * solver.x(i);
 
             if (solver.b(0, k) > v)
                 R.emplace_back(k, solver.b(0, k) - v);
@@ -1498,7 +1517,7 @@ solve(const problem& pb, const parameters& p, randomT& rng)
     double kappa = p.kappa_min;
 
     solver<mode_type, random_generator_type> slv(
-      rng, pb, make_merged_constraints(pb));
+      rng, pb, make_merged_constraints(pb, p));
     index best_remaining{ -1 };
     result best;
     best.value = default_solution_value(mode_type());
@@ -1559,23 +1578,6 @@ solve(const problem& pb, const parameters& p, randomT& rng)
     return best;
 }
 
-// template <typename modeT, typename constraintOrderT, typename randomT>
-// struct optimizer
-// {
-//     using mode_type = modeT;
-//     using constraint_order_type = constraintOrderT;
-//     using random_generator_type = randomT;
-
-//     optimizer(const problem& pb, const parameters& p, randomT& rng)
-//     {
-//     }
-
-//     result run(
-//       std::vector<inequalities_1coeff::merged_constraint> constraints;)
-//     {
-//     }
-// };
-
 template <typename modeT, typename constraintOrderT, typename randomT>
 inline result
 optimize(problem& pb, const parameters& p, randomT& rng)
@@ -1597,7 +1599,7 @@ optimize(problem& pb, const parameters& p, randomT& rng)
     long int pushed{ -1 };
     long int pushing_iteration{ 0 };
 
-    auto merged_constraints{ make_merged_constraints(pb) };
+    auto merged_constraints{ make_merged_constraints(pb, p) };
     solver<mode_type, random_generator_type> slv(rng, pb, merged_constraints);
     pb.clear();
 
@@ -1654,8 +1656,7 @@ optimize(problem& pb, const parameters& p, randomT& rng)
             kappa_old = kappa;
         }
 
-        if (i + 1 == p.limit or kappa > p.kappa_max or
-            pushed > p.pushes_limit) {
+        if (i >= p.limit or kappa > p.kappa_max or pushed > p.pushes_limit) {
             printf("- Max loop reachs. Restart solver\n");
             slv.reinit(rng, merged_constraints);
 
@@ -1690,7 +1691,6 @@ optimize(problem& pb, const parameters& p, randomT& rng)
                 if (remaining == 0) {
                     current = slv.results();
                     current.loop = i;
-                    current.remaining_constraints = remaining;
 
                     if (is_better_solution(
                           current.value, best.value, mode_type())) {
