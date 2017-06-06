@@ -35,28 +35,38 @@
 void
 test_qap()
 {
-    auto pb = lp::make_problem(EXAMPLES_DIR "/small4.lp");
+    lp::result result;
 
-    std::map<std::string, lp::parameter> params;
-    params["limit"] = 1000000l;
-    params["theta"] = 0.5;
-    params["delta"] = 0.1;
-    params["kappa-step"] = 1e-3;
-    params["kappa-max"] = 10.0;
-    params["alpha"] = 1.0;
-    params["w"] = 20l;
+    {
+        auto pb = lp::make_problem(EXAMPLES_DIR "/small4.lp");
 
-    params["time-limit"] = 10.0;
-    params["pushing-k-factor"] = 0.9;
-    params["pushes-limit"] = 50l;
-    params["pushing-objective-amplifier"] = 10l;
-    params["pushing-iteration-limit"] = 50l;
+        std::map<std::string, lp::parameter> params;
+        params["limit"] = 1000000l;
+        params["theta"] = 0.5;
+        params["delta"] = 0.1;
+        params["kappa-step"] = 1e-3;
+        params["kappa-max"] = 10.0;
+        params["alpha"] = 1.0;
+        params["w"] = 20l;
 
-    auto result = lp::optimize(pb, params);
+        params["time-limit"] = 20.0;
+        params["pushing-k-factor"] = 0.9;
+        params["pushes-limit"] = 50l;
+        params["pushing-objective-amplifier"] = 10l;
+        params["pushing-iteration-limit"] = 50l;
 
-    Ensures(result.status == lp::result_status::success);
+        params["thread"] = 2l;
 
-    if (result.status == lp::result_status::success) {
+        result = lp::optimize(pb, params);
+
+        Ensures(result.status == lp::result_status::success);
+        if (result.status == lp::result_status::success)
+            Ensures(result.value == 790.0);
+    }
+
+    {
+        auto pb = lp::make_problem(EXAMPLES_DIR "/small4.lp");
+
         Ensures(lp::is_valid_solution(pb, result.variable_value) == true);
         Ensures(lp::compute_solution(pb, result.variable_value) == 790.0);
     }
@@ -121,9 +131,9 @@ test_n_queens_problem()
         auto pb = lp::make_problem(ifs);
         auto result = lp::optimize(pb, params);
 
-        valid_solutions[i] = lp::is_valid_solution(pb, result.variable_value);
+        valid_solutions[i] = (result.remaining_constraints == 0);
         if (valid_solutions[i])
-            solutions[i] = lp::compute_solution(pb, result.variable_value);
+            solutions[i] = result.value;
     }
 
     auto all_found = std::accumulate(

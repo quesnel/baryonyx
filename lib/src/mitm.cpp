@@ -31,6 +31,37 @@
 
 namespace lp {
 
+/**
+ * Get number of thread to use in optimizer from parameters list. If an
+ * error occured, this function returns 1.
+ *
+ * @param params From this list of parameters, try to convert the @e
+ * thread parameter to integer.
+ *
+ * @return An integer >= 1 if the value exist and can be convert to
+ * positive integer or 1 if an error occurred.
+ */
+inline long int
+get_thread_number(const std::map<std::string, parameter>& params) noexcept
+{
+    auto it = params.find("thread");
+    if (it == params.cend())
+        return 1;
+
+    if (it->second.type != parameter::tag::integer)
+        return 1;
+
+    if (it->second.l <= 0) {
+        auto thread_number = std::thread::hardware_concurrency();
+        if (thread_number <= 0)
+            return 1;
+
+        return lp::numeric_cast<long int>(thread_number);
+    }
+
+    return it->second.l;
+}
+
 std::tuple<double, double, double, long>
 get_parameters(const std::map<std::string, parameter>& params)
 {
@@ -243,6 +274,7 @@ mitm_solve(problem& pb, const std::map<std::string, parameter>& params)
 result
 mitm_optimize(problem& pb, const std::map<std::string, parameter>& params)
 {
+    auto thread = get_thread_number(params);
     cleanup_problem(pb);
 
     if (pb.greater_constraints.empty() and
@@ -261,7 +293,11 @@ mitm_optimize(problem& pb, const std::map<std::string, parameter>& params)
         // return simple_wedelin(kappa, delta, theta, limit, pb);
         //
 
-        return lp::inequalities_1coeff_wedelin_optimize(pb, params);
+        if (thread > 1)
+            return lp::inequalities_1coeff_wedelin_optimize(
+              pb, params, thread);
+        else
+            return lp::inequalities_1coeff_wedelin_optimize(pb, params);
     }
 
     if ((not pb.equal_constraints.empty() or
@@ -282,7 +318,11 @@ mitm_optimize(problem& pb, const std::map<std::string, parameter>& params)
             is_101_coefficient(pb.less_equal_constraints) and
             is_boolean_variable(pb.vars.values)) {
 
-            return lp::inequalities_1coeff_wedelin_optimize(pb, params);
+            if (thread > 1)
+                return lp::inequalities_1coeff_wedelin_optimize(
+                  pb, params, thread);
+            else
+                return lp::inequalities_1coeff_wedelin_optimize(pb, params);
         }
     }
 

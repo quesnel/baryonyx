@@ -32,10 +32,13 @@
 #include <algorithm>
 #include <chrono>
 #include <fstream>
+#include <functional>
+#include <future>
 #include <iostream>
 #include <iterator>
 #include <random>
 #include <set>
+#include <thread>
 #include <unordered_map>
 
 namespace lp {
@@ -943,15 +946,17 @@ struct solver
     pi_type pi;
 
     solver(random_generator_type& rng_,
-           const lp::problem& pb_,
+           index n_,
+           const c_type& c_,
+           double cost_constant_,
            const std::vector<merged_constraint>& csts)
       : rng(rng_)
       , m(csts.size())
-      , n(pb_.vars.values.size())
+      , n(n_)
       , A(m, n)
       , b(b_type::Zero(2, m))
-      , c(make_objective_function(pb_.objective, n))
-      , cost_constant(pb_.objective.constant)
+      , c(c_)
+      , cost_constant(cost_constant_)
       , x(x_type::Zero(n))
       , P(m, n)
       , pi(pi_type::Zero(m))
@@ -1505,22 +1510,29 @@ struct compute_infeasibility
 
 template <typename modeT, typename constraintOrderT, typename randomT>
 inline result
-solve(const problem& pb, const parameters& p, randomT& rng)
+solve(problem& pb, const parameters& p, randomT& rng)
 {
     using mode_type = modeT;
     using constraint_order_type = constraintOrderT;
     using random_generator_type = randomT;
+
+    auto names = pb.vars.names;
+    auto constraints{ make_merged_constraints(pb, p) };
+    auto variables = lp::numeric_cast<index>(pb.vars.values.size());
+    auto cost = make_objective_function(pb.objective, variables);
+    auto cost_constant = pb.objective.constant;
+    pb.clear();
 
     auto begin = std::chrono::steady_clock::now();
     long int i2{ 0 };
     double kappa_old{ 0 };
     double kappa = p.kappa_min;
 
-    solver<mode_type, random_generator_type> slv(
-      rng, pb, make_merged_constraints(pb, p));
     index best_remaining{ -1 };
     result best;
-    best.value = default_solution_value(mode_type());
+
+    solver<mode_type, random_generator_type> slv(
+      rng, variables, cost, cost_constant, constraints);
 
     constraint_order_type compute(rng);
 
@@ -1548,10 +1560,11 @@ solve(const problem& pb, const parameters& p, randomT& rng)
                    t.count());
         }
 
-        if (remaining == 0) {
-            current.value = slv.compute_value();
+        if (current.status == result_status::success) {
             printf("  - Solution found: %f\n", current.value);
             best = current;
+            best.method = "inequalities_1coeff";
+            best.variable_name = names;
             return best;
         }
 
@@ -1587,6 +1600,11 @@ optimize(problem& pb, const parameters& p, randomT& rng)
     using random_generator_type = randomT;
 
     auto names = pb.vars.names;
+    auto constraints{ make_merged_constraints(pb, p) };
+    auto variables = lp::numeric_cast<index>(pb.vars.values.size());
+    auto cost = make_objective_function(pb.objective, variables);
+    auto cost_constant = pb.objective.constant;
+    pb.clear();
 
     auto begin = std::chrono::steady_clock::now();
     auto end = begin;
@@ -1599,9 +1617,8 @@ optimize(problem& pb, const parameters& p, randomT& rng)
     long int pushed{ -1 };
     long int pushing_iteration{ 0 };
 
-    auto merged_constraints{ make_merged_constraints(pb, p) };
-    solver<mode_type, random_generator_type> slv(rng, pb, merged_constraints);
-    pb.clear();
+    solver<mode_type, random_generator_type> slv(
+      rng, variables, cost, cost_constant, constraints);
 
     index best_remaining{ -1 };
     result best;
@@ -1658,7 +1675,7 @@ optimize(problem& pb, const parameters& p, randomT& rng)
 
         if (i >= p.limit or kappa > p.kappa_max or pushed > p.pushes_limit) {
             printf("- Max loop reachs. Restart solver\n");
-            slv.reinit(rng, merged_constraints);
+            slv.reinit(rng, constraints);
 
             i = 0; // Restart the for_each loop.
 
@@ -1711,26 +1728,208 @@ optimize(problem& pb, const parameters& p, randomT& rng)
     return best;
 }
 
+template <typename modeT, typename constraintOrderT, typename randomT>
+struct optimize_functor
+{
+    using mode_type = modeT;
+    using constraint_order_type = constraintOrderT;
+    using random_generator_type = randomT;
+
+    result operator()(const std::vector<merged_constraint>& constraints,
+                      index variables,
+                      const c_type& cost,
+                      double cost_constant,
+                      const parameters& p,
+                      randomT& rng)
+    {
+        auto begin = std::chrono::steady_clock::now();
+        auto end = begin;
+
+        long int i{ 0 };
+        long int i2{ 0 };
+        double kappa_old{ 0 };
+        double kappa = p.kappa_min;
+
+        long int pushed{ -1 };
+        long int pushing_iteration{ 0 };
+
+        solver<mode_type, random_generator_type> slv(
+          rng, variables, cost, cost_constant, constraints);
+
+        constraint_order_type compute(rng);
+
+        result best;
+
+        for (; not is_time_limit(p.time_limit, begin, end);
+             end = std::chrono::steady_clock::now(), ++i) {
+
+            index remaining = compute.run(slv, kappa, p.delta, p.theta);
+
+            auto current = slv.results();
+            current.loop = i;
+            current.remaining_constraints = remaining;
+
+            if (current.status == result_status::success) {
+                if (best.status != result_status::success or
+                    is_better_solution(
+                      current.value, best.value, mode_type())) {
+                    printf(
+                      "  - Solution found: %f (i=%ld)\n", current.value, i);
+
+                    best = current;
+                    pushed = 0;
+                }
+            }
+
+            if (i2 <= p.w) {
+                kappa = p.kappa_min;
+                i2++;
+            } else {
+                i2 = 0;
+                kappa = kappa_old +
+                        p.kappa_step *
+                          std::pow(static_cast<double>(remaining) /
+                                     static_cast<double>(current.constraints),
+                                   p.alpha);
+
+                kappa_old = kappa;
+            }
+
+            if (i >= p.limit or kappa > p.kappa_max or
+                pushed > p.pushes_limit) {
+                slv.reinit(rng, constraints);
+                i = 0;
+                i2 = 0;
+                kappa_old = 0.0;
+                kappa = p.kappa_min;
+                pushed = -1;
+                pushing_iteration = 0;
+
+                continue;
+            }
+
+            if (pushed >= 0) {
+                ++pushing_iteration;
+
+                if (pushing_iteration >= p.pushing_iteration_limit) {
+                    pushed++;
+                    pushing_iteration = 0;
+
+                    auto c_copy = slv.c;
+                    for (index i{ 0 }; i != slv.n; ++i)
+                        slv.c += slv.c * p.pushing_objective_amplifier;
+
+                    remaining = compute.run_all(
+                      slv, p.pushing_k_factor * kappa, p.delta, p.theta);
+
+                    slv.c = c_copy;
+
+                    if (remaining == 0) {
+                        current = slv.results();
+                        current.loop = i;
+
+                        if (is_better_solution(
+                              current.value, best.value, mode_type())) {
+                            printf("  - Solution found: %f (%ld)\n",
+                                   current.value,
+                                   i);
+                            best = current;
+                        }
+                    }
+                }
+            }
+        }
+
+        best.method = "inequalities_1coeff";
+        best.begin = begin;
+        best.end = end;
+
+        return best;
+    }
+};
+
+template <typename modeT, typename constraintOrderT, typename randomT>
+inline result
+optimize_thread(problem& pb,
+                const parameters& p,
+                randomT& rng,
+                long int thread)
+{
+    Ensures(thread > 1, "optimize_thread: bad thread");
+
+    printf("Optimizer initializing\n");
+
+    auto names = pb.vars.names;
+    auto constraints{ make_merged_constraints(pb, p) };
+    auto variables = lp::numeric_cast<index>(pb.vars.values.size());
+    auto cost = make_objective_function(pb.objective, variables);
+    auto cost_constant = pb.objective.constant;
+    pb.clear();
+
+    std::vector<std::thread> pool(thread);
+    pool.clear();
+    std::vector<std::future<result>> results(thread);
+    results.clear();
+
+    printf("Optimizer starts with %ld threads\n", thread);
+
+    for (long int i{ 0 }; i != thread; ++i) {
+        std::packaged_task<result()> task(
+          std::bind(optimize_functor<modeT, constraintOrderT, randomT>(),
+                    std::ref(constraints),
+                    variables,
+                    std::ref(cost),
+                    cost_constant,
+                    std::ref(p),
+                    std::ref(rng)));
+
+        results.emplace_back(task.get_future());
+
+        pool.emplace_back(std::thread(std::move(task)));
+    }
+
+    for (auto& t : pool)
+        t.join();
+
+    result best;
+    for (long int i{ 0 }; i != thread; ++i) {
+        auto current = results[i].get();
+        if (current.status == lp::result_status::success) {
+            if (best.status != lp::result_status::success or
+                is_better_solution(current.value, best.value, modeT()))
+                best = current;
+        }
+    }
+
+    best.variable_name = names;
+
+    return best;
+}
+
 } // inequalities_1coeff
 
 inline result
 inequalities_1coeff_wedelin_solve(
-  const problem& pb,
+  problem& pb,
   const std::map<std::string, parameter>& params)
 {
+    namespace ine_1 = lp::inequalities_1coeff;
+    ine_1::parameters p(params);
+    p.print();
+
     using random_generator_type = std::default_random_engine;
 
     //
     // TODO we need to add parameters to select the type of the generator to
-    // use several type of PRNG and perhaps the seed too.
+    // use several type of PRNG.
     //
 
-    random_generator_type rng(
+    random_generator_type::result_type seed = ine_1::get_integer(
+      params,
+      "seed",
       std::chrono::system_clock::now().time_since_epoch().count());
 
-    namespace ine_1 = lp::inequalities_1coeff;
-    ine_1::parameters p(params);
-    p.print();
+    random_generator_type rng(seed);
 
     switch (p.order) {
     case ine_1::constraint_order::none:
@@ -1809,6 +2008,8 @@ inequalities_1coeff_wedelin_optimize(
 
     random_generator_type rng(seed);
 
+    printf("inequalities_1coeff no thread\n");
+
     switch (p.order) {
     case ine_1::constraint_order::none:
         if (pb.type == lp::objective_function_type::maximize)
@@ -1858,6 +2059,91 @@ inequalities_1coeff_wedelin_optimize(
           ine_1::compute_infeasibility<random_generator_type,
                                        ine_1::compute_infeasibility_incr>>(
           pb, p, rng);
+    }
+
+    throw "TODO internal error";
+}
+
+inline result
+inequalities_1coeff_wedelin_optimize(
+  problem& pb,
+  const std::map<std::string, parameter>& params,
+  long int thread)
+{
+
+    namespace ine_1 = lp::inequalities_1coeff;
+    ine_1::parameters p(params);
+    p.print();
+
+    using random_generator_type = std::default_random_engine;
+
+    printf("inequalities_1coeff thread\n");
+
+    //
+    // TODO we need to add parameters to select the type of the generator to
+    // use several type of PRNG.
+    //
+
+    random_generator_type::result_type seed = ine_1::get_integer(
+      params,
+      "seed",
+      std::chrono::system_clock::now().time_since_epoch().count());
+
+    random_generator_type rng(seed);
+
+    switch (p.order) {
+    case ine_1::constraint_order::none:
+        if (pb.type == lp::objective_function_type::maximize)
+            return ine_1::optimize_thread<
+              ine_1::maximize_tag,
+              ine_1::compute_none<random_generator_type>,
+              random_generator_type>(pb, p, rng, thread);
+        return ine_1::optimize_thread<
+          ine_1::minimize_tag,
+          ine_1::compute_none<random_generator_type>,
+          random_generator_type>(pb, p, rng, thread);
+    case ine_1::constraint_order::reversing:
+        if (pb.type == lp::objective_function_type::maximize)
+            return ine_1::optimize_thread<
+              ine_1::maximize_tag,
+              ine_1::compute_reversing<random_generator_type>>(
+              pb, p, rng, thread);
+        return ine_1::optimize_thread<
+          ine_1::minimize_tag,
+          ine_1::compute_reversing<random_generator_type>>(pb, p, rng, thread);
+    case ine_1::constraint_order::random_sorting:
+        if (pb.type == lp::objective_function_type::maximize)
+            return ine_1::optimize_thread<
+              ine_1::maximize_tag,
+              ine_1::compute_random<random_generator_type>>(
+              pb, p, rng, thread);
+        return ine_1::optimize_thread<
+          ine_1::minimize_tag,
+          ine_1::compute_random<random_generator_type>>(pb, p, rng, thread);
+    case ine_1::constraint_order::infeasibility_decr:
+        if (pb.type == lp::objective_function_type::maximize)
+            return ine_1::optimize_thread<
+              ine_1::maximize_tag,
+              ine_1::compute_infeasibility<random_generator_type,
+                                           ine_1::compute_infeasibility_decr>>(
+              pb, p, rng, thread);
+        return ine_1::optimize_thread<
+          ine_1::minimize_tag,
+          ine_1::compute_infeasibility<random_generator_type,
+                                       ine_1::compute_infeasibility_decr>>(
+          pb, p, rng, thread);
+    case ine_1::constraint_order::infeasibility_incr:
+        if (pb.type == lp::objective_function_type::maximize)
+            return ine_1::optimize_thread<
+              ine_1::maximize_tag,
+              ine_1::compute_infeasibility<random_generator_type,
+                                           ine_1::compute_infeasibility_incr>>(
+              pb, p, rng, thread);
+        return ine_1::optimize_thread<
+          ine_1::minimize_tag,
+          ine_1::compute_infeasibility<random_generator_type,
+                                       ine_1::compute_infeasibility_incr>>(
+          pb, p, rng, thread);
     }
 
     throw "TODO internal error";
