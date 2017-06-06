@@ -48,10 +48,8 @@ test_assignment_problem()
 void
 test_assignment_problem_random_coast()
 {
-    auto pb = lp::make_problem(EXAMPLES_DIR "/assignment_problem_1.lp");
-
     std::map<std::string, lp::parameter> params;
-    params["limit"] = 1000l;
+    params["limit"] = 1000000l;
     params["theta"] = 0.5;
     params["delta"] = 0.2;
     params["kappa-step"] = 10e-4;
@@ -60,6 +58,8 @@ test_assignment_problem_random_coast()
     params["w"] = 20l;
 
     for (int i{ 0 }, e{ 10 }; i != e; ++i) {
+        auto pb = lp::make_problem(EXAMPLES_DIR "/assignment_problem_1.lp");
+
         std::random_device rd;
         std::mt19937 gen(rd());
         std::uniform_int_distribution<> dis(1, 100);
@@ -277,8 +277,6 @@ test_8_queens_puzzle_fixed_cost()
 void
 test_8_queens_puzzle_random_cost()
 {
-    auto pb = lp::make_problem(EXAMPLES_DIR "/8_queens_puzzle.lp");
-
     std::map<std::string, lp::parameter> params;
     params["limit"] = 10'000'000l;
     params["theta"] = 0.5;
@@ -288,8 +286,11 @@ test_8_queens_puzzle_random_cost()
     params["alpha"] = 1.0;
     params["w"] = 40l;
     params["constraint-order"] = std::string("infeasibility-decr");
+    params["preprocessing"] = std::string("variables-weight");
 
     for (int i{ 0 }, e{ 10 }; i != e; ++i) {
+        auto pb = lp::make_problem(EXAMPLES_DIR "/8_queens_puzzle.lp");
+
         std::random_device rd;
         std::mt19937 gen(rd());
         std::uniform_int_distribution<> dis(1, 100);
@@ -322,38 +323,6 @@ test_qap()
     Ensures(lp::is_valid_solution(pb, result.variable_value) == true);
 }
 
-void
-test_verger_5_5()
-{
-    auto pb = lp::make_problem(EXAMPLES_DIR "/verger_5_5.lp");
-
-    std::map<std::string, lp::parameter> params;
-    params["limit"] = 10'000'000l;
-    params["theta"] = 0.2;
-    params["delta"] = 0.001; // 0.05; // 0.2; // 0.01
-    params["kappa-min"] = 0.05;
-    params["kappa-step"] = 0.003;
-    params["kappa-max"] = 60.0;
-    params["alpha"] = 1.0;
-    params["w"] = 40l;
-    // params["constraint-order"] = std::string("infeasibility-incr");
-    // params["constraint-order"] = std::string("infeasibility-decr");
-    // params["constraint-order"] = std::string("random-sorting");
-    // params["constraint-order"] = std::string("reversing");
-    params["constraint-order"] = std::string("none");
-
-    // params["limit"] = 10'000'000l;
-    // params["theta"] = 0.5;
-    // params["delta"] = 0.2;
-    // params["kappa-step"] = 10e-7;
-    // params["kappa-max"] = 60.0;
-    // params["alpha"] = 1.0;
-    // params["w"] = 20l;
-
-    auto result = lp::solve(pb, params);
-    Ensures(lp::is_valid_solution(pb, result.variable_value) == true);
-}
-
 int
 main(int /* argc */, char* /* argv */ [])
 {
@@ -371,7 +340,6 @@ main(int /* argc */, char* /* argv */ [])
     test_aim_50_1_6_yes1_2();
 
     // test_bibd1n();
-    // test_verger_5_5();
 
     return unit_test::report_errors();
 }
