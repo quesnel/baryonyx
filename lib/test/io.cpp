@@ -34,7 +34,7 @@ void
 test_examples_1()
 {
     const char* example_1 = "maximize\n"
-                            "x1 + 2x2 + 3x3\n"
+                            "obj: x1 + 2x2 + 3x3 - 100\n"
                             "st\n"
                             "time:  -x1 + x2 + x3 <= 20\n"
                             "labor:  x1 - 3x2 + x3 <= 30\n"
@@ -56,6 +56,7 @@ test_examples_1()
     Ensures(pb.objective.elements[1].variable_index == 1);
     Ensures(pb.objective.elements[2].factor == 3);
     Ensures(pb.objective.elements[2].variable_index == 2);
+    Ensures(pb.objective.constant == -100);
 
     Ensures(pb.vars.names.size() == 3);
     Ensures(pb.vars.values.size() == 3);

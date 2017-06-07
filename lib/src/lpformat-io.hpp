@@ -61,26 +61,26 @@ is_valid_character(int c) noexcept
         return true;
 
     switch (c) {
-        case '!':
-        case '"':
-        case '#':
-        case '$':
-        case '%':
-        case '&':
-        case '(':
-        case ')':
-        case ',':
-        case '.':
-        case ';':
-        case '?':
-        case '@':
-        case '_':
-        case '{':
-        case '}':
-        case '~':
-            return true;
-        default:
-            return false;
+    case '!':
+    case '"':
+    case '#':
+    case '$':
+    case '%':
+    case '&':
+    case '(':
+    case ')':
+    case ',':
+    case '.':
+    case ';':
+    case '?':
+    case '@':
+    case '_':
+    case '{':
+    case '}':
+    case '~':
+        return true;
+    default:
+        return false;
     }
 }
 
@@ -298,11 +298,23 @@ struct parser_stack
 
     std::deque<std::string> stack;
 
-    bool empty() const { return stack.empty(); }
-    int line() const { return m_line; }
-    int column() const { return m_column; }
+    bool empty() const
+    {
+        return stack.empty();
+    }
+    int line() const
+    {
+        return m_line;
+    }
+    int column() const
+    {
+        return m_column;
+    }
 
-    std::unordered_map<std::string, long>& cache() { return m_variable_cache; }
+    std::unordered_map<std::string, long>& cache()
+    {
+        return m_variable_cache;
+    }
 
 private:
     std::deque<std::tuple<int, int>> m_position_stack;
@@ -516,14 +528,15 @@ read_function_element(parser_stack& stack)
         }
     }
 
+    if (stack.is_topic())
+        return ret;
+
     str = stack.top();
 
     if (std::isalpha(str[0])) {
         std::get<0>(ret) = read_name(stack);
         return ret;
     }
-
-    printf("l:%d c:%d\n", stack.line(), stack.column());
 
     throw file_format_error(file_format_error::tag::bad_function_element,
                             stack.line(),
@@ -565,6 +578,23 @@ objective_function
 read_objective_function(parser_stack& stack, problem& p)
 {
     objective_function ret;
+
+    if (stack.is_topic())
+        return ret;
+
+    //
+    // Forget the `obj:' string append by cplex.
+    //
+
+    if (std::isalpha(stack.peek())) {
+        auto tmp = read_name(stack);
+
+        if (iequals(tmp, "obj") and stack.peek() == ':') {
+            stack.substr_front(1);
+        } else {
+            stack.push_front(tmp);
+        }
+    }
 
     while (not stack.is_topic()) {
         auto elem = read_function_element(stack);
@@ -636,25 +666,24 @@ read_constraints(parser_stack& stack, problem& p)
         auto cst = read_constraint(stack, p);
 
         switch (std::get<1>(cst)) {
-            case operator_type::equal:
-                p.equal_constraints.emplace_back(std::get<0>(cst));
-                break;
-            case operator_type::greater:
-                p.greater_constraints.emplace_back(std::get<0>(cst));
-                break;
-            case operator_type::greater_equal:
-                p.greater_equal_constraints.emplace_back(std::get<0>(cst));
-                break;
-            case operator_type::less:
-                p.less_constraints.emplace_back(std::get<0>(cst));
-                break;
-            case operator_type::less_equal:
-                p.less_equal_constraints.emplace_back(std::get<0>(cst));
-                break;
-            default:
-                throw file_format_error(file_format_error::tag::unknown,
-                                        stack.line(),
-                                        stack.column());
+        case operator_type::equal:
+            p.equal_constraints.emplace_back(std::get<0>(cst));
+            break;
+        case operator_type::greater:
+            p.greater_constraints.emplace_back(std::get<0>(cst));
+            break;
+        case operator_type::greater_equal:
+            p.greater_equal_constraints.emplace_back(std::get<0>(cst));
+            break;
+        case operator_type::less:
+            p.less_constraints.emplace_back(std::get<0>(cst));
+            break;
+        case operator_type::less_equal:
+            p.less_equal_constraints.emplace_back(std::get<0>(cst));
+            break;
+        default:
+            throw file_format_error(
+              file_format_error::tag::unknown, stack.line(), stack.column());
         }
 
         if (std::get<0>(cst).label.empty())
@@ -668,30 +697,30 @@ void
 apply_bound(int value, operator_type type, variable_value& variable)
 {
     switch (type) {
-        case operator_type::greater:
-            variable.max = value;
-            variable.max_equal = false;
-            break;
-        case operator_type::greater_equal:
-            variable.max = value;
-            variable.max_equal = true;
-            break;
-        case operator_type::less:
-            variable.min = value;
-            variable.min_equal = false;
-            break;
-        case operator_type::less_equal:
-            variable.min = value;
-            variable.min_equal = true;
-            break;
-        case operator_type::equal:
-            variable.min = value;
-            variable.max_equal = true;
-            variable.max = value;
-            variable.max_equal = true;
-            break;
-        case operator_type::undefined:
-            break;
+    case operator_type::greater:
+        variable.max = value;
+        variable.max_equal = false;
+        break;
+    case operator_type::greater_equal:
+        variable.max = value;
+        variable.max_equal = true;
+        break;
+    case operator_type::less:
+        variable.min = value;
+        variable.min_equal = false;
+        break;
+    case operator_type::less_equal:
+        variable.min = value;
+        variable.min_equal = true;
+        break;
+    case operator_type::equal:
+        variable.min = value;
+        variable.max_equal = true;
+        variable.max = value;
+        variable.max_equal = true;
+        break;
+    case operator_type::undefined:
+        break;
     }
 }
 
@@ -699,30 +728,30 @@ void
 apply_bound(variable_value& variable, operator_type type, int value)
 {
     switch (type) {
-        case operator_type::greater:
-            variable.min = value;
-            variable.min_equal = false;
-            break;
-        case operator_type::greater_equal:
-            variable.min = value;
-            variable.min_equal = true;
-            break;
-        case operator_type::less:
-            variable.max = value;
-            variable.max_equal = false;
-            break;
-        case operator_type::less_equal:
-            variable.max = value;
-            variable.max_equal = true;
-            break;
-        case operator_type::equal:
-            variable.min = value;
-            variable.max_equal = true;
-            variable.max = value;
-            variable.max_equal = true;
-            break;
-        case operator_type::undefined:
-            break;
+    case operator_type::greater:
+        variable.min = value;
+        variable.min_equal = false;
+        break;
+    case operator_type::greater_equal:
+        variable.min = value;
+        variable.min_equal = true;
+        break;
+    case operator_type::less:
+        variable.max = value;
+        variable.max_equal = false;
+        break;
+    case operator_type::less_equal:
+        variable.max = value;
+        variable.max_equal = true;
+        break;
+    case operator_type::equal:
+        variable.min = value;
+        variable.max_equal = true;
+        variable.max = value;
+        variable.max_equal = true;
+        break;
+    case operator_type::undefined:
+        break;
     }
 }
 
@@ -918,7 +947,10 @@ struct problem_writer
         os << "end\n";
     }
 
-    operator bool() const { return error == 0; }
+    operator bool() const
+    {
+        return error == 0;
+    }
 
 private:
     void write_bounds() const
