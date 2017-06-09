@@ -675,11 +675,11 @@ result optimize(problem& pb);
 
 LP_API
 bool is_valid_solution(const problem& pb,
-                       const std::vector<int>& variable_value) noexcept;
+                       const std::vector<int>& variable_value);
 
 LP_API
 double compute_solution(const problem& pb,
-                        const std::vector<int>& variable_value) noexcept;
+                        const std::vector<int>& variable_value);
 }
 
 #endif

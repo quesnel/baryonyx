@@ -104,10 +104,9 @@ compute_function(const functionT& fct, const variablesT& vars) noexcept
 
 bool
 is_valid_solution(const problem& pb,
-                  const std::vector<int>& variable_value) noexcept
+                  const std::vector<int>& variable_value)
 {
-    if (variable_value.empty())
-        return false;
+    Expects(not variable_value.empty(), "variables vector empty");
 
     for (auto& cst : pb.equal_constraints) {
         if (compute_function(cst.elements, variable_value) != cst.value) {
@@ -149,8 +148,10 @@ is_valid_solution(const problem& pb,
 
 double
 compute_solution(const problem& pb,
-                 const std::vector<int>& variable_value) noexcept
+                 const std::vector<int>& variable_value)
 {
+    Expects(not variable_value.empty(), "variables vector empty");
+
     double ret = pb.objective.constant;
 
     for (auto& elem : pb.objective.elements)
@@ -158,4 +159,5 @@ compute_solution(const problem& pb,
 
     return ret;
 }
+
 }
