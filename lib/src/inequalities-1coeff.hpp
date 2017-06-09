@@ -275,7 +275,8 @@ void
 calculator_sort(iteratorT begin, iteratorT end, randomT& rng, minimize_tag)
 {
     if (std::distance(begin, end) > 1) {
-        std::stable_sort(begin, end, [](const auto& lhs, const auto& rhs) {
+        // std::stable_sort(begin, end, [](const auto& lhs, const auto& rhs) {
+        std::sort(begin, end, [](const auto& lhs, const auto& rhs) {
             return lhs.value < rhs.value;
         });
 
@@ -288,7 +289,8 @@ void
 calculator_sort(iteratorT begin, iteratorT end, randomT& rng, maximize_tag)
 {
     if (std::distance(begin, end) > 1) {
-        std::stable_sort(begin, end, [](const auto& lhs, const auto& rhs) {
+        // std::stable_sort(begin, end, [](const auto& lhs, const auto& rhs) {
+        std::sort(begin, end, [](const auto& lhs, const auto& rhs) {
             return rhs.value < lhs.value;
         });
 
@@ -322,6 +324,18 @@ bool
 is_better_solution(double lhs, double rhs, minimize_tag) noexcept
 {
     return lhs < rhs;
+}
+
+bool
+init_x(double v, minimize_tag) noexcept
+{
+    return v <= 0;
+}
+
+bool
+init_x(double v, maximize_tag) noexcept
+{
+    return v >= 0;
 }
 
 bool
@@ -394,16 +408,6 @@ struct constraint_calculator
       , m(m_)
       , n(n_)
     {
-        // for (index i = 0; i != n; ++i) {
-        //     if (A(k, i)) {
-        //         I.emplace_back(i);
-        //         r.emplace_back(0.0, i);
-        //     }
-
-        //     if (A(k, i) < 0)
-        //         C.emplace_back(i);
-        // }
-
         const auto& ak{ A.row(k) };
         const auto& values{ A.values() };
 
@@ -459,16 +463,6 @@ struct constraint_calculator
                 sum_a_pi += values[ai[h].value] * pi(ai[h].position);
                 sum_a_p += values[ai[h].value] * P(ai[h].position, I[i]);
             }
-
-            // for (index h = 0; h != m; ++h) {
-            //     if (A(h, I[i])) {
-            //         sum_a_pi += A(h, I[i]) * pi(h);
-            //         sum_a_p += A(h, I[i]) * P(h, I[i]);
-
-            //         // sum_a_pi += pi(h);
-            //         // sum_a_p += P(h, I[i]);
-            //     }
-            // }
 
             r[i].value = cost(I[i]) - sum_a_pi - sum_a_p;
             if (is_essentially_equal(r[i].value, 0.0, 1e-7))
@@ -969,12 +963,37 @@ struct solver
     {
         A.clear();
         b = b_type::Zero(2, m);
-        x = x_type::Zero(n);
+
         P.clear();
         pi = pi_type::Zero(m);
 
         row_updaters.clear();
         init(rng_, csts);
+
+        std::bernoulli_distribution d(0.5);
+
+        for (index i = 0; i != n; ++i)
+            x(i) = d(rng_);
+    }
+
+    void reinit(random_generator_type& rng_,
+                const x_type& /*best_previous*/,
+                const std::vector<merged_constraint>& csts)
+    {
+        A.clear();
+        b = b_type::Zero(2, m);
+
+        P.clear();
+        pi = pi_type::Zero(m);
+
+        row_updaters.clear();
+        init(rng_, csts);
+
+        // x = best_previous;
+        // std::bernoulli_distribution d(0.5);
+
+        // for (index i = 0; i != n; ++i)
+        //     x(i) = d(rng_);
     }
 
     void init(random_generator_type& rng_,
@@ -1013,7 +1032,7 @@ struct solver
         }
 
         for (index i = 0; i != n; ++i)
-            x(i) = c(i) <= 0 ? 1 : 0;
+            x(i) = init_x(c(i), mode_type());
 
         for (index k = 0; k != m; ++k)
             row_updaters.emplace_back(rng_, k, m, n, A, b, c, x, P, pi);
@@ -1060,9 +1079,6 @@ struct solver
             for (std::size_t i{ 0 }, e{ ak.size() }; i != e; ++i)
                 v += values[ak[i].value] * x(ak[i].position);
 
-            // for (index i{ 0 }; i != n; ++i)
-            //     v += A(k, i) * x(i);
-
             if (not(b(0, k) <= v and v <= b(1, k)))
                 return false;
         }
@@ -1077,14 +1093,14 @@ struct solver
         if (is_valid_solution()) {
             ret.status = result_status::success;
             ret.value = compute_value();
+            ret.variable_value.resize(n, 0);
+
+            for (index i = 0; i != n; ++i)
+                ret.variable_value[i] = x(i);
         }
 
         ret.variables = n;
         ret.constraints = m;
-        ret.variable_value.resize(n, 0);
-
-        for (index i = 0; i != n; ++i)
-            ret.variable_value[i] = x(i);
 
         return ret;
     }
@@ -1249,7 +1265,7 @@ template <typename randomT>
 struct compute_reversing
 {
     std::vector<index> R;
-    cycle_avoidance<index> detect_infeasability_cycle;
+    no_cycle_avoidance<index> detect_infeasability_cycle;
 
     compute_reversing(randomT&)
     {
@@ -1288,7 +1304,7 @@ template <typename randomT>
 struct compute_none
 {
     std::vector<index> R;
-    cycle_avoidance<index> detect_infeasability_cycle;
+    no_cycle_avoidance<index> detect_infeasability_cycle;
 
     compute_none(randomT&)
     {
@@ -1328,7 +1344,7 @@ struct compute_random
 {
     using random_generator_type = randomT;
 
-    cycle_avoidance<index> detect_infeasability_cycle;
+    no_cycle_avoidance<index> detect_infeasability_cycle;
     random_generator_type& rng;
     std::vector<index> R;
 
@@ -1387,7 +1403,7 @@ struct compute_infeasibility
 
     random_generator_type& rng;
     std::vector<std::pair<index, index>> R;
-    cycle_avoidance<index> detect_infeasability_cycle;
+    no_cycle_avoidance<index> detect_infeasability_cycle;
 
     template <typename iteratorT>
     void sort(iteratorT begin, iteratorT end, compute_infeasibility_incr) const
@@ -1592,148 +1608,17 @@ solve(problem& pb, const parameters& p, randomT& rng)
 }
 
 template <typename modeT, typename constraintOrderT, typename randomT>
-inline result
-optimize(problem& pb, const parameters& p, randomT& rng)
-{
-    using mode_type = modeT;
-    using constraint_order_type = constraintOrderT;
-    using random_generator_type = randomT;
-
-    auto names = pb.vars.names;
-    auto constraints{ make_merged_constraints(pb, p) };
-    auto variables = lp::numeric_cast<index>(pb.vars.values.size());
-    auto cost = make_objective_function(pb.objective, variables);
-    auto cost_constant = pb.objective.constant;
-    pb.clear();
-
-    auto begin = std::chrono::steady_clock::now();
-    auto end = begin;
-
-    long int i{ 0 };
-    long int i2{ 0 };
-    double kappa_old{ 0 };
-    double kappa = p.kappa_min;
-
-    long int pushed{ -1 };
-    long int pushing_iteration{ 0 };
-
-    solver<mode_type, random_generator_type> slv(
-      rng, variables, cost, cost_constant, constraints);
-
-    index best_remaining{ -1 };
-    result best;
-
-    constraint_order_type compute(rng);
-
-    printf("* solver starts:\n");
-
-    for (; not is_time_limit(p.time_limit, begin, end);
-         end = std::chrono::steady_clock::now(), ++i) {
-
-        index remaining = compute.run(slv, kappa, p.delta, p.theta);
-
-        auto current = slv.results();
-        current.loop = i;
-        current.remaining_constraints = remaining;
-
-        if (best_remaining == -1 or remaining < best_remaining) {
-            best_remaining = remaining;
-
-            auto t = std::chrono::duration_cast<std::chrono::duration<double>>(
-              end - begin);
-
-            printf("  - constraints remaining: %ld/%ld at %fs (%ld)\n",
-                   remaining,
-                   current.constraints,
-                   t.count(),
-                   i);
-        }
-
-        if (current.status == result_status::success) {
-            if (best.status != result_status::success or
-                is_better_solution(current.value, best.value, mode_type())) {
-                printf("  - Solution found: %f (i=%ld)\n", current.value, i);
-
-                best = current;
-                pushed = 0;
-            }
-        }
-
-        if (i2 <= p.w) {
-            kappa = p.kappa_min;
-            i2++;
-        } else {
-            i2 = 0;
-            kappa = kappa_old +
-                    p.kappa_step *
-                      std::pow(static_cast<double>(remaining) /
-                                 static_cast<double>(current.constraints),
-                               p.alpha);
-
-            kappa_old = kappa;
-        }
-
-        if (i >= p.limit or kappa > p.kappa_max or pushed > p.pushes_limit) {
-            printf("- Max loop reachs. Restart solver\n");
-            slv.reinit(rng, constraints);
-
-            i = 0; // Restart the for_each loop.
-
-            best_remaining = -1;
-            i2 = 0;
-            kappa_old = 0.0;
-            kappa = p.kappa_min;
-            pushed = -1;
-            pushing_iteration = 0;
-
-            continue;
-        }
-
-        if (pushed >= 0) {
-            ++pushing_iteration;
-
-            if (pushing_iteration >= p.pushing_iteration_limit) {
-                pushed++;
-                pushing_iteration = 0;
-
-                auto c_copy = slv.c;
-                for (index i{ 0 }; i != slv.n; ++i)
-                    slv.c += slv.c * p.pushing_objective_amplifier;
-
-                remaining = compute.run_all(
-                  slv, p.pushing_k_factor * kappa, p.delta, p.theta);
-
-                slv.c = c_copy;
-
-                if (remaining == 0) {
-                    current = slv.results();
-                    current.loop = i;
-
-                    if (is_better_solution(
-                          current.value, best.value, mode_type())) {
-                        printf(
-                          "  - Solution found: %f (%ld)\n", current.value, i);
-                        best = current;
-                    }
-                }
-            }
-        }
-    }
-
-    best.method = "inequalities_1coeff";
-    best.variable_name = names;
-    best.begin = begin;
-    best.end = end;
-
-    return best;
-}
-
-template <typename modeT, typename constraintOrderT, typename randomT>
 struct optimize_functor
 {
     using mode_type = modeT;
     using constraint_order_type = constraintOrderT;
     using random_generator_type = randomT;
+
+    std::chrono::time_point<std::chrono::steady_clock> m_begin;
+    std::chrono::time_point<std::chrono::steady_clock> m_end;
+
+    x_type m_best_x;
+    result m_best;
 
     result operator()(const std::vector<merged_constraint>& constraints,
                       index variables,
@@ -1742,8 +1627,8 @@ struct optimize_functor
                       const parameters& p,
                       randomT& rng)
     {
-        auto begin = std::chrono::steady_clock::now();
-        auto end = begin;
+        m_begin = std::chrono::steady_clock::now();
+        m_end = m_begin;
 
         long int i{ 0 };
         long int i2{ 0 };
@@ -1758,10 +1643,8 @@ struct optimize_functor
 
         constraint_order_type compute(rng);
 
-        result best;
-
-        for (; not is_time_limit(p.time_limit, begin, end);
-             end = std::chrono::steady_clock::now(), ++i) {
+        for (; not is_time_limit(p.time_limit, m_begin, m_end);
+             m_end = std::chrono::steady_clock::now(), ++i) {
 
             index remaining = compute.run(slv, kappa, p.delta, p.theta);
 
@@ -1769,16 +1652,9 @@ struct optimize_functor
             current.loop = i;
             current.remaining_constraints = remaining;
 
-            if (current.status == result_status::success) {
-                if (best.status != result_status::success or
-                    is_better_solution(
-                      current.value, best.value, mode_type())) {
-                    printf(
-                      "  - Solution found: %f (i=%ld)\n", current.value, i);
-
-                    best = current;
-                    pushed = 0;
-                }
+            if (store_if_better(current)) {
+                m_best_x = slv.x;
+                pushed = 0;
             }
 
             if (i2 <= p.w) {
@@ -1797,7 +1673,12 @@ struct optimize_functor
 
             if (i >= p.limit or kappa > p.kappa_max or
                 pushed > p.pushes_limit) {
-                slv.reinit(rng, constraints);
+                if (m_best.status == result_status::success) {
+                    slv.reinit(rng, m_best_x, constraints);
+                } else {
+                    slv.reinit(rng, constraints);
+                }
+
                 i = 0;
                 i2 = 0;
                 kappa_old = 0.0;
@@ -1817,7 +1698,7 @@ struct optimize_functor
 
                     auto c_copy = slv.c;
                     for (index i{ 0 }; i != slv.n; ++i)
-                        slv.c += slv.c * p.pushing_objective_amplifier;
+                        slv.c(i) += slv.c(i) * p.pushing_objective_amplifier;
 
                     remaining = compute.run_all(
                       slv, p.pushing_k_factor * kappa, p.delta, p.theta);
@@ -1827,35 +1708,51 @@ struct optimize_functor
                     if (remaining == 0) {
                         current = slv.results();
                         current.loop = i;
-
-                        if (is_better_solution(
-                              current.value, best.value, mode_type())) {
-                            printf("  - Solution found: %f (%ld)\n",
-                                   current.value,
-                                   i);
-                            best = current;
-                        }
+                        if (store_if_better(current))
+                            m_best_x = slv.x;
                     }
                 }
             }
         }
 
-        best.method = "inequalities_1coeff";
-        best.begin = begin;
-        best.end = end;
+        m_best.method = "inequalities_1coeff";
 
-        return best;
+        return m_best;
+    }
+
+private:
+    bool store_if_better(const result& current) noexcept
+    {
+        if (current.status != result_status::success)
+            return false;
+
+        if (m_best.status != result_status::success or
+            is_better_solution(current.value, m_best.value, mode_type())) {
+
+            auto t = std::chrono::duration_cast<std::chrono::duration<double>>(
+              m_end - m_begin);
+
+            printf("  - Solution found: %f (i=%ld t=%fs)\n",
+                   current.value,
+                   current.loop,
+                   t.count());
+
+            m_best = current;
+            m_best.begin = m_begin;
+            m_best.end = m_end;
+
+            return true;
+        }
+
+        return false;
     }
 };
 
 template <typename modeT, typename constraintOrderT, typename randomT>
 inline result
-optimize_thread(problem& pb,
-                const parameters& p,
-                randomT& rng,
-                long int thread)
+optimize(problem& pb, const parameters& p, randomT& rng, long int thread)
 {
-    Ensures(thread > 1, "optimize_thread: bad thread");
+    Expects(thread >= 1, "optimize: bad thread number");
 
     printf("Optimizer initializing\n");
 
@@ -1871,7 +1768,10 @@ optimize_thread(problem& pb,
     std::vector<std::future<result>> results(thread);
     results.clear();
 
-    printf("Optimizer starts with %ld threads\n", thread);
+    if (thread == 1)
+        printf("optimizer starts with on thread\n");
+    else
+        printf("Optimizer starts with %ld threads\n", thread);
 
     for (long int i{ 0 }; i != thread; ++i) {
         std::packaged_task<result()> task(
@@ -1984,86 +1884,6 @@ inequalities_1coeff_wedelin_solve(
 
     throw "TODO internal error";
 }
-
-inline result
-inequalities_1coeff_wedelin_optimize(
-  problem& pb,
-  const std::map<std::string, parameter>& params)
-{
-    namespace ine_1 = lp::inequalities_1coeff;
-    ine_1::parameters p(params);
-    p.print();
-
-    using random_generator_type = std::default_random_engine;
-
-    //
-    // TODO we need to add parameters to select the type of the generator to
-    // use several type of PRNG.
-    //
-
-    random_generator_type::result_type seed = ine_1::get_integer(
-      params,
-      "seed",
-      std::chrono::system_clock::now().time_since_epoch().count());
-
-    random_generator_type rng(seed);
-
-    printf("inequalities_1coeff no thread\n");
-
-    switch (p.order) {
-    case ine_1::constraint_order::none:
-        if (pb.type == lp::objective_function_type::maximize)
-            return ine_1::optimize<ine_1::maximize_tag,
-                                   ine_1::compute_none<random_generator_type>,
-                                   random_generator_type>(pb, p, rng);
-        return ine_1::optimize<ine_1::minimize_tag,
-                               ine_1::compute_none<random_generator_type>,
-                               random_generator_type>(pb, p, rng);
-    case ine_1::constraint_order::reversing:
-        if (pb.type == lp::objective_function_type::maximize)
-            return ine_1::optimize<
-              ine_1::maximize_tag,
-              ine_1::compute_reversing<random_generator_type>>(pb, p, rng);
-        return ine_1::optimize<
-          ine_1::minimize_tag,
-          ine_1::compute_reversing<random_generator_type>>(pb, p, rng);
-    case ine_1::constraint_order::random_sorting:
-        if (pb.type == lp::objective_function_type::maximize)
-            return ine_1::optimize<
-              ine_1::maximize_tag,
-              ine_1::compute_random<random_generator_type>>(pb, p, rng);
-        return ine_1::optimize<ine_1::minimize_tag,
-                               ine_1::compute_random<random_generator_type>>(
-          pb, p, rng);
-    case ine_1::constraint_order::infeasibility_decr:
-        if (pb.type == lp::objective_function_type::maximize)
-            return ine_1::optimize<
-              ine_1::maximize_tag,
-              ine_1::compute_infeasibility<random_generator_type,
-                                           ine_1::compute_infeasibility_decr>>(
-              pb, p, rng);
-        return ine_1::optimize<
-          ine_1::minimize_tag,
-          ine_1::compute_infeasibility<random_generator_type,
-                                       ine_1::compute_infeasibility_decr>>(
-          pb, p, rng);
-    case ine_1::constraint_order::infeasibility_incr:
-        if (pb.type == lp::objective_function_type::maximize)
-            return ine_1::optimize<
-              ine_1::maximize_tag,
-              ine_1::compute_infeasibility<random_generator_type,
-                                           ine_1::compute_infeasibility_incr>>(
-              pb, p, rng);
-        return ine_1::optimize<
-          ine_1::minimize_tag,
-          ine_1::compute_infeasibility<random_generator_type,
-                                       ine_1::compute_infeasibility_incr>>(
-          pb, p, rng);
-    }
-
-    throw "TODO internal error";
-}
-
 inline result
 inequalities_1coeff_wedelin_optimize(
   problem& pb,
@@ -2094,52 +1914,50 @@ inequalities_1coeff_wedelin_optimize(
     switch (p.order) {
     case ine_1::constraint_order::none:
         if (pb.type == lp::objective_function_type::maximize)
-            return ine_1::optimize_thread<
-              ine_1::maximize_tag,
-              ine_1::compute_none<random_generator_type>,
-              random_generator_type>(pb, p, rng, thread);
-        return ine_1::optimize_thread<
-          ine_1::minimize_tag,
-          ine_1::compute_none<random_generator_type>,
-          random_generator_type>(pb, p, rng, thread);
+            return ine_1::optimize<ine_1::maximize_tag,
+                                   ine_1::compute_none<random_generator_type>,
+                                   random_generator_type>(pb, p, rng, thread);
+        return ine_1::optimize<ine_1::minimize_tag,
+                               ine_1::compute_none<random_generator_type>,
+                               random_generator_type>(pb, p, rng, thread);
     case ine_1::constraint_order::reversing:
         if (pb.type == lp::objective_function_type::maximize)
-            return ine_1::optimize_thread<
+            return ine_1::optimize<
               ine_1::maximize_tag,
               ine_1::compute_reversing<random_generator_type>>(
               pb, p, rng, thread);
-        return ine_1::optimize_thread<
+        return ine_1::optimize<
           ine_1::minimize_tag,
           ine_1::compute_reversing<random_generator_type>>(pb, p, rng, thread);
     case ine_1::constraint_order::random_sorting:
         if (pb.type == lp::objective_function_type::maximize)
-            return ine_1::optimize_thread<
+            return ine_1::optimize<
               ine_1::maximize_tag,
               ine_1::compute_random<random_generator_type>>(
               pb, p, rng, thread);
-        return ine_1::optimize_thread<
-          ine_1::minimize_tag,
-          ine_1::compute_random<random_generator_type>>(pb, p, rng, thread);
+        return ine_1::optimize<ine_1::minimize_tag,
+                               ine_1::compute_random<random_generator_type>>(
+          pb, p, rng, thread);
     case ine_1::constraint_order::infeasibility_decr:
         if (pb.type == lp::objective_function_type::maximize)
-            return ine_1::optimize_thread<
+            return ine_1::optimize<
               ine_1::maximize_tag,
               ine_1::compute_infeasibility<random_generator_type,
                                            ine_1::compute_infeasibility_decr>>(
               pb, p, rng, thread);
-        return ine_1::optimize_thread<
+        return ine_1::optimize<
           ine_1::minimize_tag,
           ine_1::compute_infeasibility<random_generator_type,
                                        ine_1::compute_infeasibility_decr>>(
           pb, p, rng, thread);
     case ine_1::constraint_order::infeasibility_incr:
         if (pb.type == lp::objective_function_type::maximize)
-            return ine_1::optimize_thread<
+            return ine_1::optimize<
               ine_1::maximize_tag,
               ine_1::compute_infeasibility<random_generator_type,
                                            ine_1::compute_infeasibility_incr>>(
               pb, p, rng, thread);
-        return ine_1::optimize_thread<
+        return ine_1::optimize<
           ine_1::minimize_tag,
           ine_1::compute_infeasibility<random_generator_type,
                                        ine_1::compute_infeasibility_incr>>(

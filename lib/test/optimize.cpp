@@ -65,10 +65,12 @@ test_qap()
     }
 
     {
-        auto pb = lp::make_problem(EXAMPLES_DIR "/small4.lp");
+        if (result.status == lp::result_status::success) {
+            auto pb = lp::make_problem(EXAMPLES_DIR "/small4.lp");
 
-        Ensures(lp::is_valid_solution(pb, result.variable_value) == true);
-        Ensures(lp::compute_solution(pb, result.variable_value) == 790.0);
+            Ensures(lp::is_valid_solution(pb, result.variable_value) == true);
+            Ensures(lp::compute_solution(pb, result.variable_value) == 790.0);
+        }
     }
 }
 

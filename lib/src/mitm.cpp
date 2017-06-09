@@ -293,11 +293,7 @@ mitm_optimize(problem& pb, const std::map<std::string, parameter>& params)
         // return simple_wedelin(kappa, delta, theta, limit, pb);
         //
 
-        if (thread > 1)
-            return lp::inequalities_1coeff_wedelin_optimize(
-              pb, params, thread);
-        else
-            return lp::inequalities_1coeff_wedelin_optimize(pb, params);
+        return lp::inequalities_1coeff_wedelin_optimize(pb, params, thread);
     }
 
     if ((not pb.equal_constraints.empty() or
@@ -318,11 +314,8 @@ mitm_optimize(problem& pb, const std::map<std::string, parameter>& params)
             is_101_coefficient(pb.less_equal_constraints) and
             is_boolean_variable(pb.vars.values)) {
 
-            if (thread > 1)
-                return lp::inequalities_1coeff_wedelin_optimize(
-                  pb, params, thread);
-            else
-                return lp::inequalities_1coeff_wedelin_optimize(pb, params);
+            return lp::inequalities_1coeff_wedelin_optimize(
+              pb, params, thread);
         }
     }
 
