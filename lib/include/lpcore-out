@@ -24,6 +24,7 @@
 #define ORG_VLEPROJECT_LP_LPCORE_OUT
 
 #include <array>
+#include <chrono>
 #include <iomanip>
 #include <iterator>
 #include <lpcore>
@@ -37,44 +38,43 @@ operator<<(std::ostream& os, const result& result)
 {
     auto store = os.flags();
 
-    auto time_span = std::chrono::duration_cast<std::chrono::duration<double>>(
+    auto duration = std::chrono::duration_cast<std::chrono::duration<double>>(
       result.end - result.begin);
 
     os.flags(store | os.boolalpha);
-    os << "solver................: " << result.method << '\n';
+    os << "solver................: " << result.method << '\n'
+       << "constraints...........: " << result.constraints << '\n'
+       << "variables.............: " << result.variables << '\n'
+       << "duration..............: " << duration.count() << "s\n"
+       << "loop..................: " << result.loop << '\n'
+       << "status................: uninitialized\n";
 
     switch (result.status) {
     case result_status::uninitialized:
-        os << "status................: uninitialized\n";
+        os << "uninitialized\n";
         break;
     case result_status::success:
-        os << "value.................: " << result.value << '\n'
-           << "loop..................: " << result.loop << '\n'
-           << "constraints...........: " << result.constraints << '\n'
-           << "remaining constraints.: " << result.remaining_constraints
-           << '\n'
-           << "variables.............: " << result.variables << '\n'
-           << "duration..............: " << time_span.count() << "s\n"
-           << "vars..................: ";
+        os << "solution found\n"
+           << "value.................: " << result.value << '\n'
+           << "variables.............: \n";
 
-        for (std::size_t i{ 0 }, e{ result.variable_name.size() }; i != e;
-             ++i) {
-            os << '[' << result.variable_name[i] << ','
-               << result.variable_value[i] << ']';
-            if (((i + 1) % 7) == 0 and i + 1 != e)
-                os << "\n......................: ";
-        }
-
-        os << '\n';
-        os.flags(store);
+        for (std::size_t i{ 0 }, e{ result.variable_name.size() }; i != e; ++i)
+            os << result.variable_name[i] << ':' << result.variable_value[i]
+               << '\n';
         break;
     case result_status::time_limit_reached:
-        os << "status................: time limit reached\n";
+        os << "time limit reached\n"
+           << "remaining constraints.: " << result.remaining_constraints
+           << '\n';
         break;
     case result_status::kappa_max_reached:
-        os << "status................: kappa max reached\n";
+        os << "kappa max reached\n"
+           << "remaining constraints.: " << result.remaining_constraints
+           << '\n';
         break;
     }
+
+    os.flags(store);
 
     return os;
 }

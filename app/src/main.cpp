@@ -25,6 +25,7 @@
 #include <iostream>
 #include <limits>
 #include <lpcore>
+#include <lpcore-out>
 #include <sstream>
 
 #include <cerrno>
@@ -135,14 +136,7 @@ main(int argc, char* argv[])
 
             if (ret.status == lp::result_status::success) {
                 ofs << "Solution found: " << ret.value << '\n'
-                    << "Solution confirmed: "
-                    << lp::is_valid_solution(pb, ret.variable_value) << '\n';
-
-                for (std::size_t i{ 0 }, e{ ret.variable_name.size() }; i != e;
-                     ++i)
-                    ofs << ret.variable_name[i] << " = "
-                        << ret.variable_value[i] << '\n';
-
+                    << ret;
             } else {
                 ofs << "Solution not found. Missing constraints: "
                     << ret.remaining_constraints << '\n';
