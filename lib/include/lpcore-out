@@ -38,16 +38,13 @@ operator<<(std::ostream& os, const result& result)
 {
     auto store = os.flags();
 
-    auto duration = std::chrono::duration_cast<std::chrono::duration<double>>(
-      result.end - result.begin);
-
     os.flags(store | os.boolalpha);
     os << "solver................: " << result.method << '\n'
        << "constraints...........: " << result.constraints << '\n'
        << "variables.............: " << result.variables << '\n'
-       << "duration..............: " << duration.count() << "s\n"
+       << "duration..............: " << result.duration << "s\n"
        << "loop..................: " << result.loop << '\n'
-       << "status................: uninitialized\n";
+       << "status................: \n";
 
     switch (result.status) {
     case result_status::uninitialized:
@@ -69,6 +66,11 @@ operator<<(std::ostream& os, const result& result)
         break;
     case result_status::kappa_max_reached:
         os << "kappa max reached\n"
+           << "remaining constraints.: " << result.remaining_constraints
+           << '\n';
+        break;
+    case result_status::limit_reached:
+        os << "limit reached\n"
            << "remaining constraints.: " << result.remaining_constraints
            << '\n';
         break;

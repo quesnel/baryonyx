@@ -970,10 +970,10 @@ struct solver
         row_updaters.clear();
         init(rng_, csts);
 
-        std::bernoulli_distribution d(0.5);
+        // std::bernoulli_distribution d(0.5);
 
-        for (index i = 0; i != n; ++i)
-            x(i) = d(rng_);
+        // for (index i = 0; i != n; ++i)
+        //     x(i) = d(rng_);
     }
 
     void reinit(random_generator_type& rng_,
@@ -1525,87 +1525,101 @@ struct compute_infeasibility
 };
 
 template <typename modeT, typename constraintOrderT, typename randomT>
-inline result
-solve(problem& pb, const parameters& p, randomT& rng)
+struct solver_functor
 {
     using mode_type = modeT;
     using constraint_order_type = constraintOrderT;
     using random_generator_type = randomT;
 
-    auto names = pb.vars.names;
-    auto constraints{ make_merged_constraints(pb, p) };
-    auto variables = lp::numeric_cast<index>(pb.vars.values.size());
-    auto cost = make_objective_function(pb.objective, variables);
-    auto cost_constant = pb.objective.constant;
-    pb.clear();
+    std::chrono::time_point<std::chrono::steady_clock> m_begin;
+    std::chrono::time_point<std::chrono::steady_clock> m_end;
 
-    auto begin = std::chrono::steady_clock::now();
-    long int i2{ 0 };
-    double kappa_old{ 0 };
-    double kappa = p.kappa_min;
+    x_type m_best_x;
+    result m_best;
 
-    index best_remaining{ -1 };
-    result best;
+    result operator()(const std::vector<merged_constraint>& constraints,
+                      index variables,
+                      const c_type& cost,
+                      double cost_constant,
+                      const parameters& p,
+                      randomT& rng)
+    {
+        m_begin = std::chrono::steady_clock::now();
+        m_end = m_begin;
 
-    solver<mode_type, random_generator_type> slv(
-      rng, variables, cost, cost_constant, constraints);
+        long int i{ 0 };
+        long int i2{ 0 };
+        double kappa_old{ 0 };
+        double kappa = p.kappa_min;
+        index best_remaining{ -1 };
 
-    constraint_order_type compute(rng);
+        solver<mode_type, random_generator_type> slv(
+          rng, variables, cost, cost_constant, constraints);
 
-    printf("* solver starts:\n");
+        constraint_order_type compute(rng);
 
-    for (long int i{ 0 }; i < p.limit; ++i) {
-        index remaining = compute.run(slv, kappa, p.delta, p.theta);
+        printf("* solver starts:\n");
 
-        auto current = slv.results();
-        current.loop = i;
-        current.remaining_constraints = remaining;
-        current.begin = begin;
-        current.end = std::chrono::steady_clock::now();
+        for (;;) {
+            index remaining = compute.run(slv, kappa, p.delta, p.theta);
+            auto current = slv.results();
+            current.loop = i;
+            current.remaining_constraints = remaining;
+            current.duration =
+              std::chrono::duration_cast<std::chrono::duration<double>>(
+                m_end - m_begin)
+                .count();
 
-        if (best_remaining == -1 or remaining < best_remaining) {
-            best_remaining = remaining;
-            best = current;
+            if (best_remaining == -1 or remaining < best_remaining) {
+                best_remaining = remaining;
+                m_best = current;
 
-            auto t = std::chrono::duration_cast<std::chrono::duration<double>>(
-              current.end - current.begin);
+                printf("  - constraints remaining: %ld/%ld at %fs\n",
+                       remaining,
+                       current.constraints,
+                       current.duration);
+            }
 
-            printf("  - constraints remaining: %ld/%ld at %fs\n",
-                   remaining,
-                   current.constraints,
-                   t.count());
+            if (current.status == result_status::success) {
+                printf("  - Solution found: %f\n", current.value);
+                m_best = current;
+                return m_best;
+            }
+
+            if (i2 <= p.w) {
+                kappa = p.kappa_min;
+                i2++;
+            } else {
+                i2 = 0;
+                kappa = kappa_old +
+                        p.kappa_step *
+                          std::pow(static_cast<double>(remaining) /
+                                     static_cast<double>(current.constraints),
+                                   p.alpha);
+                kappa_old = kappa;
+            }
+
+            if (++i > p.limit) {
+                printf("  - Loop reached: %f\n", kappa);
+                m_best.status = result_status::limit_reached;
+                return m_best;
+            }
+
+            if (kappa > p.kappa_max) {
+                printf("  - Kappa reached: %f\n", kappa);
+                m_best.status = result_status::kappa_max_reached;
+                return m_best;
+            }
+
+            m_end = std::chrono::steady_clock::now();
+            if (is_time_limit(p.time_limit, m_begin, m_end)) {
+                printf("  - Time limit reached\n");
+                m_best.status = result_status::time_limit_reached;
+                return m_best;
+            }
         }
-
-        if (current.status == result_status::success) {
-            printf("  - Solution found: %f\n", current.value);
-            best = current;
-            best.method = "inequalities_1coeff";
-            best.variable_name = names;
-            return best;
-        }
-
-        if (i2 <= p.w) {
-            kappa = p.kappa_min;
-            i2++;
-        } else {
-            i2 = 0;
-            kappa = kappa_old +
-                    p.kappa_step *
-                      std::pow(static_cast<double>(remaining) /
-                                 static_cast<double>(current.constraints),
-                               p.alpha);
-            kappa_old = kappa;
-        }
-
-        if (kappa > p.kappa_max)
-            return best;
-
-        if (is_time_limit(p.time_limit, current.begin, current.end))
-            return best;
     }
-
-    return best;
-}
+};
 
 template <typename modeT, typename constraintOrderT, typename randomT>
 struct optimize_functor
@@ -1715,8 +1729,6 @@ struct optimize_functor
             }
         }
 
-        m_best.method = "inequalities_1coeff";
-
         return m_best;
     }
 
@@ -1729,17 +1741,18 @@ private:
         if (m_best.status != result_status::success or
             is_better_solution(current.value, m_best.value, mode_type())) {
 
-            auto t = std::chrono::duration_cast<std::chrono::duration<double>>(
-              m_end - m_begin);
+            double t =
+              std::chrono::duration_cast<std::chrono::duration<double>>(
+                m_end - m_begin)
+                .count();
 
             printf("  - Solution found: %f (i=%ld t=%fs)\n",
                    current.value,
                    current.loop,
-                   t.count());
+                   t);
 
             m_best = current;
-            m_best.begin = m_begin;
-            m_best.end = m_end;
+            m_best.duration = t;
 
             return true;
         }
@@ -1747,6 +1760,29 @@ private:
         return false;
     }
 };
+
+template <typename modeT, typename constraintOrderT, typename randomT>
+inline result
+solve(problem& pb, const parameters& p, randomT& rng)
+{
+    printf("Solver initializing\n");
+
+    auto names = pb.vars.names;
+    auto constraints{ make_merged_constraints(pb, p) };
+    auto variables = lp::numeric_cast<index>(pb.vars.values.size());
+    auto cost = make_objective_function(pb.objective, variables);
+    auto cost_constant = pb.objective.constant;
+    pb.clear();
+
+    solver_functor<modeT, constraintOrderT, randomT> slv;
+
+    auto result = slv(constraints, variables, cost, cost_constant, p, rng);
+
+    result.method = "inequalities_1coeff solver";
+    result.variable_name = names;
+
+    return result;
+}
 
 template <typename modeT, typename constraintOrderT, typename randomT>
 inline result
@@ -1791,8 +1827,8 @@ optimize(problem& pb, const parameters& p, randomT& rng, long int thread)
     for (auto& t : pool)
         t.join();
 
-    result best;
-    for (long int i{ 0 }; i != thread; ++i) {
+    result best = results[0].get();
+    for (long int i{ 1 }; i != thread; ++i) {
         auto current = results[i].get();
         if (current.status == lp::result_status::success) {
             if (best.status != lp::result_status::success or
@@ -1801,6 +1837,7 @@ optimize(problem& pb, const parameters& p, randomT& rng, long int thread)
         }
     }
 
+    best.method = "inequalities_1coeff optimizer";
     best.variable_name = names;
 
     return best;

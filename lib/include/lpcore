@@ -578,6 +578,7 @@ enum class result_status
     success,
     time_limit_reached,
     kappa_max_reached,
+    limit_reached
 };
 
 struct result
@@ -586,9 +587,7 @@ struct result
 
     std::vector<std::string> variable_name;
     std::vector<int> variable_value;
-    std::chrono::steady_clock::time_point begin;
-    std::chrono::steady_clock::time_point end;
-
+    double duration = 0.0;
     double value = 0.0;
     index loop = 0;
     index variables = 0;

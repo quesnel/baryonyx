@@ -44,6 +44,7 @@ test_qap()
         params["limit"] = 1000000l;
         params["theta"] = 0.5;
         params["delta"] = 0.1;
+        params["kappa-min"] = .3;
         params["kappa-step"] = 1e-3;
         params["kappa-max"] = 10.0;
         params["alpha"] = 1.0;
