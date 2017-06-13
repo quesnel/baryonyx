@@ -49,7 +49,7 @@
 #endif
 
 #ifdef LP_DLL
-#ifdef libmitm_EXPORTS
+#ifdef liblp_EXPORTS
 #define LP_API LP_HELPER_DLL_EXPORT
 #else
 #define LP_API LP_HELPER_DLL_IMPORT
@@ -679,6 +679,7 @@ bool is_valid_solution(const problem& pb,
 LP_API
 double compute_solution(const problem& pb,
                         const std::vector<int>& variable_value);
+
 }
 
 #endif
