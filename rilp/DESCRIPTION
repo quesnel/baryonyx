@@ -1,0 +1,15 @@
+Package: rilp
+Type: Package
+Title: Integer Linear Programming with Wedelin method
+Version: 1.0
+Date: 2017-05-18
+Author: Gauthier Quesnel <gauthier.quesnel@inra.fr>
+Maintainer: Gauthier Quesnel <gauthier.quesnel@inra.fr>
+Description: This package provides function to solve and to optimize
+        01 linear programming in LP (IBM) file format using the
+        Wedelin heuristic.
+License: MIT + file LICENSE
+Imports: Rcpp (>= 0.12.10)
+LinkingTo: Rcpp
+RoxygenNote: 6.0.1
+LazyLoad: yes
