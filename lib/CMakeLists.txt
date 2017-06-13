@@ -1,13 +1,36 @@
 project(liblp VERSION 0.1.0.0 LANGUAGES CXX C)
 
-#configure_file(src/config.hpp.in ${CMAKE_BINARY_DIR}/config.hpp)
-
 add_library(liblp SHARED src/lpcore.cpp src/mitm.cpp)
-
 target_include_directories(liblp PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>
   PRIVATE src ${CMAKE_BINARY_DIR})
+target_link_libraries(liblp boost eigen3 threads)
+set_target_properties(liblp PROPERTIES
+  OUTPUT_NAME "lp-${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}"
+  COMPILE_DEFINITIONS "LP_DLL"
+  COMPILE_FLAGS "-fvisibility=hidden -fvisibility-inlines-hidden")
+install(TARGETS liblp
+  ARCHIVE DESTINATION lib
+  LIBRARY DESTINATION lib
+  RUNTIME DESTINATION bin)
+
+add_library(liblp-static STATIC src/lpcore.cpp src/mitm.cpp)
+target_include_directories(liblp-static PRIVATE
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>
+  src ${CMAKE_BINARY_DIR})
+target_link_libraries(liblp-static boost eigen3 threads)
+set_target_properties(liblp-static PROPERTIES
+  POSITION_INDEPENDENT_CODE true
+  OUTPUT_NAME "lp-${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}"
+  DEFINE_SYMBOL "liblp_EXPORTS"
+  COMPILE_FLAGS "-fvisibility=hidden -fvisibility-inlines-hidden")
+install(TARGETS liblp-static
+  ARCHIVE DESTINATION lib
+  LIBRARY DESTINATION lib
+  RUNTIME DESTINATION bin)
+
 
 # If we have compiler requirements for this library, list them
 # here
@@ -29,24 +52,25 @@ else()
     "spport. Please use a different C++ compiler.")
 endif()
 
+configure_file(lp.pc.in
+  "${CMAKE_BINARY_DIR}/lp-${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.pc"
+  @ONLY)
+
+install(FILES
+  "${CMAKE_BINARY_DIR}/lp-${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.pc"
+  DESTINATION "lib/pkgconfig")
+
 # target_compile_features(lib
 #  PUBLIC cxx_constexpr cxx_auto_type cxx_variadic_templates)
 
-target_link_libraries(liblp boost eigen3 threads)
 
-set_target_properties(liblp PROPERTIES
-  OUTPUT_NAME "lp-${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}")
-
-install(TARGETS liblp
-  ARCHIVE DESTINATION lib
-  LIBRARY DESTINATION lib
-  RUNTIME DESTINATION bin)
-
-install(DIRECTORY include/ DESTINATION include/lp)
+install(DIRECTORY include/ DESTINATION
+  include/lp-${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR})
 
 install(FILES test/sudoku.lp test/assignment_problem_1.lp
-              test/assignment_problem_2.lp test/assignment_problem_3.lp
-        DESTINATION share/doc/lp)
+  test/assignment_problem_2.lp test/assignment_problem_3.lp
+  DESTINATION
+  share/doc/lp-${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR})
 
 # This makes the project importable from the build directory
 export(TARGETS liblp FILE LiblpConfig.cmake)
