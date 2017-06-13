@@ -1,0 +1,11 @@
+build*
+rilp.Rcheck/
+rilp/R/
+rilp/man/
+rilp/src/RcppExports.cpp
+rilp/src/RcppExports.o
+rilp/src/rilp.o
+rilp/src/rilp.so
+rilp/src/symbols.rds
+rilp_*.tar.gz
+
