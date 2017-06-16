@@ -32,21 +32,21 @@
 #include <sstream>
 
 void
-test_assignment_problem()
+test_assignment_problem(std::shared_ptr<lp::context> ctx)
 {
-    auto pb = lp::make_problem(EXAMPLES_DIR "/assignment_problem_1.lp");
+    auto pb = lp::make_problem(ctx, EXAMPLES_DIR "/assignment_problem_1.lp");
 
     std::map<std::string, lp::parameter> params;
     params["limit"] = 50l;
 
-    auto result = lp::solve(pb, params);
+    auto result = lp::solve(ctx, pb, params);
 
     Ensures(result.status == lp::result_status::success);
     Ensures(lp::is_valid_solution(pb, result.variable_value) == true);
 }
 
 void
-test_assignment_problem_random_coast()
+test_assignment_problem_random_coast(std::shared_ptr<lp::context> ctx)
 {
     std::map<std::string, lp::parameter> params;
     params["limit"] = 1000000l;
@@ -58,7 +58,8 @@ test_assignment_problem_random_coast()
     params["w"] = 20l;
 
     for (int i{ 0 }, e{ 10 }; i != e; ++i) {
-        auto pb = lp::make_problem(EXAMPLES_DIR "/assignment_problem_1.lp");
+        auto pb =
+          lp::make_problem(ctx, EXAMPLES_DIR "/assignment_problem_1.lp");
 
         std::random_device rd;
         std::mt19937 gen(rd());
@@ -67,7 +68,7 @@ test_assignment_problem_random_coast()
         for (auto& elem : pb.objective.elements)
             elem.factor = dis(gen);
 
-        auto result = lp::solve(pb, params);
+        auto result = lp::solve(ctx, pb, params);
 
         Ensures(result.status == lp::result_status::success);
         Ensures(lp::is_valid_solution(pb, result.variable_value) == true);
@@ -75,23 +76,23 @@ test_assignment_problem_random_coast()
 }
 
 void
-test_negative_coeff()
+test_negative_coeff(std::shared_ptr<lp::context> ctx)
 {
-    auto pb = lp::make_problem(EXAMPLES_DIR "/negative-coeff.lp");
+    auto pb = lp::make_problem(ctx, EXAMPLES_DIR "/negative-coeff.lp");
 
     std::map<std::string, lp::parameter> params;
     params["limit"] = 50l;
 
-    auto result = lp::solve(pb, params);
+    auto result = lp::solve(ctx, pb, params);
 
     Ensures(result.status == lp::result_status::success);
     Ensures(lp::is_valid_solution(pb, result.variable_value) == true);
 }
 
 void
-test_negative_coeff2()
+test_negative_coeff2(std::shared_ptr<lp::context> ctx)
 {
-    auto pb = lp::make_problem(EXAMPLES_DIR "/negative-coeff2.lp");
+    auto pb = lp::make_problem(ctx, EXAMPLES_DIR "/negative-coeff2.lp");
 
     std::map<std::string, lp::parameter> params;
     // params["constraint-order"] = std::string("random");
@@ -104,7 +105,7 @@ test_negative_coeff2()
     // params["w"] = 60l;
     params["serialize"] = 1l;
 
-    auto result = lp::solve(pb, params);
+    auto result = lp::solve(ctx, pb, params);
 
     for (auto elen : result.variable_value)
         std::cout << elen << ' ';
@@ -120,37 +121,37 @@ test_negative_coeff2()
 }
 
 void
-test_negative_coeff3()
+test_negative_coeff3(std::shared_ptr<lp::context> ctx)
 {
-    auto pb = lp::make_problem(EXAMPLES_DIR "/negative-coeff3.lp");
+    auto pb = lp::make_problem(ctx, EXAMPLES_DIR "/negative-coeff3.lp");
 
     std::map<std::string, lp::parameter> params;
     params["limit"] = 50l;
 
-    auto result = lp::solve(pb, params);
+    auto result = lp::solve(ctx, pb, params);
 
     Ensures(result.status == lp::result_status::success);
     Ensures(lp::is_valid_solution(pb, result.variable_value) == true);
 }
 
 void
-test_negative_coeff4()
+test_negative_coeff4(std::shared_ptr<lp::context> ctx)
 {
-    auto pb = lp::make_problem(EXAMPLES_DIR "/negative-coeff4.lp");
+    auto pb = lp::make_problem(ctx, EXAMPLES_DIR "/negative-coeff4.lp");
 
     std::map<std::string, lp::parameter> params;
     params["limit"] = 50l;
 
-    auto result = lp::solve(pb, params);
+    auto result = lp::solve(ctx, pb, params);
 
     Ensures(result.status == lp::result_status::success);
     Ensures(lp::is_valid_solution(pb, result.variable_value) == true);
 }
 
 void
-test_flat30_7()
+test_flat30_7(std::shared_ptr<lp::context> ctx)
 {
-    auto pb = lp::make_problem(EXAMPLES_DIR "/flat30-7.lp");
+    auto pb = lp::make_problem(ctx, EXAMPLES_DIR "/flat30-7.lp");
 
     std::map<std::string, lp::parameter> params;
     params["limit"] = 10'000'000l;
@@ -161,16 +162,16 @@ test_flat30_7()
     // params["alpha"] = 1.0;
     params["w"] = 60l;
 
-    auto result = lp::solve(pb, params);
+    auto result = lp::solve(ctx, pb, params);
 
     Ensures(result.status == lp::result_status::success);
     Ensures(lp::is_valid_solution(pb, result.variable_value) == true);
 }
 
 void
-test_uf50_0448()
+test_uf50_0448(std::shared_ptr<lp::context> ctx)
 {
-    auto pb = lp::make_problem(EXAMPLES_DIR "/uf50-0448.lp");
+    auto pb = lp::make_problem(ctx, EXAMPLES_DIR "/uf50-0448.lp");
 
     std::map<std::string, lp::parameter> params;
     params["limit"] = 10'000'000'000l;
@@ -183,16 +184,16 @@ test_uf50_0448()
     params["w"] = 60l;
     params["constraint-order"] = std::string("none");
 
-    auto result = lp::solve(pb, params);
+    auto result = lp::solve(ctx, pb, params);
 
     Ensures(result.status == lp::result_status::success);
     Ensures(lp::is_valid_solution(pb, result.variable_value) == true);
 }
 
 void
-test_aim_50_1_6_yes1_2()
+test_aim_50_1_6_yes1_2(std::shared_ptr<lp::context> ctx)
 {
-    auto pb = lp::make_problem(EXAMPLES_DIR "/aim-50-1_6-yes1-2.lp");
+    auto pb = lp::make_problem(ctx, EXAMPLES_DIR "/aim-50-1_6-yes1-2.lp");
 
     std::map<std::string, lp::parameter> params;
     params["limit"] = 10'000'000'000l;
@@ -203,16 +204,16 @@ test_aim_50_1_6_yes1_2()
     params["alpha"] = 1.0;
     params["w"] = 20l;
 
-    auto result = lp::solve(pb, params);
+    auto result = lp::solve(ctx, pb, params);
 
     Ensures(result.status == lp::result_status::success);
     Ensures(lp::is_valid_solution(pb, result.variable_value) == true);
 }
 
 void
-test_bibd1n()
+test_bibd1n(std::shared_ptr<lp::context> ctx)
 {
-    auto pb = lp::make_problem(EXAMPLES_DIR "/bibd1n.lp");
+    auto pb = lp::make_problem(ctx, EXAMPLES_DIR "/bibd1n.lp");
 
     std::map<std::string, lp::parameter> params;
     params["limit"] = 10'000'000'000l;
@@ -230,16 +231,16 @@ test_bibd1n()
     // params["constraint-order"] = std::string("");
     params["time-limit"] = -100.0;
 
-    auto result = lp::solve(pb, params);
+    auto result = lp::solve(ctx, pb, params);
 
     Ensures(result.status == lp::result_status::success);
     Ensures(lp::is_valid_solution(pb, result.variable_value) == true);
 }
 
 void
-test_8_queens_puzzle_fixed_cost()
+test_8_queens_puzzle_fixed_cost(std::shared_ptr<lp::context> ctx)
 {
-    auto pb = lp::make_problem(EXAMPLES_DIR "/8_queens_puzzle.lp");
+    auto pb = lp::make_problem(ctx, EXAMPLES_DIR "/8_queens_puzzle.lp");
 
     std::map<std::string, lp::parameter> params;
     params["limit"] = 10'000'000l;
@@ -261,7 +262,7 @@ test_8_queens_puzzle_fixed_cost()
     for (auto& elem : pb.objective.elements)
         elem.factor = cost[i++];
 
-    auto result = lp::solve(pb, params);
+    auto result = lp::solve(ctx, pb, params);
 
     for (int i = 0; i != 8; ++i) {
         for (int j = 0; j != 8; ++j) {
@@ -275,7 +276,7 @@ test_8_queens_puzzle_fixed_cost()
 }
 
 void
-test_8_queens_puzzle_random_cost()
+test_8_queens_puzzle_random_cost(std::shared_ptr<lp::context> ctx)
 {
     std::map<std::string, lp::parameter> params;
     params["limit"] = 10'000'000l;
@@ -289,7 +290,7 @@ test_8_queens_puzzle_random_cost()
     params["preprocessing"] = std::string("variables-weight");
 
     for (int i{ 0 }, e{ 10 }; i != e; ++i) {
-        auto pb = lp::make_problem(EXAMPLES_DIR "/8_queens_puzzle.lp");
+        auto pb = lp::make_problem(ctx, EXAMPLES_DIR "/8_queens_puzzle.lp");
 
         std::random_device rd;
         std::mt19937 gen(rd());
@@ -298,7 +299,7 @@ test_8_queens_puzzle_random_cost()
         for (auto& elem : pb.objective.elements)
             elem.factor = dis(gen);
 
-        auto result = lp::solve(pb, params);
+        auto result = lp::solve(ctx, pb, params);
 
         Ensures(result.status == lp::result_status::success);
         Ensures(lp::is_valid_solution(pb, result.variable_value) == true);
@@ -306,9 +307,9 @@ test_8_queens_puzzle_random_cost()
 }
 
 void
-test_qap()
+test_qap(std::shared_ptr<lp::context> ctx)
 {
-    auto pb = lp::make_problem(EXAMPLES_DIR "/small4.lp");
+    auto pb = lp::make_problem(ctx, EXAMPLES_DIR "/small4.lp");
 
     std::map<std::string, lp::parameter> params;
     params["limit"] = 10'000'000l;
@@ -319,27 +320,30 @@ test_qap()
     params["alpha"] = 0.0;
     params["w"] = 20l;
 
-    auto result = lp::solve(pb, params);
+    auto result = lp::solve(ctx, pb, params);
     Ensures(lp::is_valid_solution(pb, result.variable_value) == true);
 }
 
 int
 main(int /* argc */, char* /* argv */ [])
 {
-    test_assignment_problem();
-    test_assignment_problem_random_coast();
-    test_negative_coeff();
-    test_negative_coeff2();
-    test_negative_coeff3();
-    test_negative_coeff4();
-    test_8_queens_puzzle_fixed_cost();
-    test_8_queens_puzzle_random_cost();
-    test_qap();
-    test_uf50_0448();
-    test_flat30_7();
-    test_aim_50_1_6_yes1_2();
+    auto ctx = std::make_shared<lp::context>();
+    ctx->set_standard_stream_logger();
 
-    // test_bibd1n();
+    test_assignment_problem(ctx);
+    test_assignment_problem_random_coast(ctx);
+    test_negative_coeff(ctx);
+    test_negative_coeff2(ctx);
+    test_negative_coeff3(ctx);
+    test_negative_coeff4(ctx);
+    test_8_queens_puzzle_fixed_cost(ctx);
+    test_8_queens_puzzle_random_cost(ctx);
+    test_qap(ctx);
+    test_uf50_0448(ctx);
+    test_flat30_7(ctx);
+    test_aim_50_1_6_yes1_2(ctx);
+
+    // test_bibd1n(ctx);
 
     return unit_test::report_errors();
 }

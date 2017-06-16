@@ -31,7 +31,7 @@
 #include <sstream>
 
 void
-test_examples_1()
+test_examples_1(std::shared_ptr<lp::context> ctx)
 {
     const char* example_1 = "maximize\n"
                             "obj: x1 + 2x2 + 3x3 - 100\n"
@@ -45,7 +45,7 @@ test_examples_1()
 
     std::istringstream iss(example_1);
 
-    auto pb = lp::make_problem(iss);
+    auto pb = lp::make_problem(ctx, iss);
     std::cout << __func__ << '\n' << lp::resume(pb) << '\n';
 
     Ensures(pb.type == lp::objective_function_type::maximize);
@@ -103,7 +103,7 @@ test_examples_1()
 }
 
 void
-test_examples_2()
+test_examples_2(std::shared_ptr<lp::context> ctx)
 {
     std::ifstream ifs;
 
@@ -118,7 +118,7 @@ test_examples_2()
         filepath += std::to_string(i);
         filepath += ".lp";
 
-        auto pb = lp::make_problem(filepath);
+        auto pb = lp::make_problem(ctx, filepath);
         std::cout << __func__ << '\n' << lp::resume(pb) << '\n';
 
         Ensures(pb.vars.names.size() == 16);
@@ -127,15 +127,16 @@ test_examples_2()
         std::stringstream ss;
         ss << pb;
 
-        auto pb2 = lp::make_problem(ss);
+        auto pb2 = lp::make_problem(ctx, ss);
         Ensures(pb == pb2);
     }
 }
 
 void
-test_examples_3()
+test_examples_3(std::shared_ptr<lp::context> ctx)
 {
-    auto pb = lp::make_problem(EXAMPLES_DIR "/geom-30a-3-ext_1000_support.lp");
+    auto pb =
+      lp::make_problem(ctx, EXAMPLES_DIR "/geom-30a-3-ext_1000_support.lp");
     std::cout << __func__ << '\n' << lp::resume(pb) << '\n';
 
     Ensures(pb.type == lp::objective_function_type::minimize);
@@ -151,9 +152,9 @@ test_examples_3()
 }
 
 void
-test_examples_4()
+test_examples_4(std::shared_ptr<lp::context> ctx)
 {
-    auto pb = lp::make_problem(EXAMPLES_DIR "/general.lp");
+    auto pb = lp::make_problem(ctx, EXAMPLES_DIR "/general.lp");
     std::cout << __func__ << '\n' << lp::resume(pb) << '\n';
 
     Ensures(pb.type == lp::objective_function_type::minimize);
@@ -169,9 +170,9 @@ test_examples_4()
 }
 
 void
-test_examples_sudoku()
+test_examples_sudoku(std::shared_ptr<lp::context> ctx)
 {
-    auto pb = lp::make_problem(EXAMPLES_DIR "/sudoku.lp");
+    auto pb = lp::make_problem(ctx, EXAMPLES_DIR "/sudoku.lp");
 
     Ensures(pb.vars.names.size() == 81);
     Ensures(pb.vars.values.size() == 81);
@@ -188,9 +189,9 @@ test_examples_sudoku()
 }
 
 void
-test_examples_8_queens_puzzle()
+test_examples_8_queens_puzzle(std::shared_ptr<lp::context> ctx)
 {
-    auto pb = lp::make_problem(EXAMPLES_DIR "/8_queens_puzzle.lp");
+    auto pb = lp::make_problem(ctx, EXAMPLES_DIR "/8_queens_puzzle.lp");
 
     Ensures(pb.vars.names.size() == 64);
     Ensures(pb.vars.values.size() == 64);
@@ -207,17 +208,17 @@ test_examples_8_queens_puzzle()
 }
 
 void
-test_examples_vm()
+test_examples_vm(std::shared_ptr<lp::context> ctx)
 {
-    auto pb = lp::make_problem(EXAMPLES_DIR "/vm.lp");
+    auto pb = lp::make_problem(ctx, EXAMPLES_DIR "/vm.lp");
 
     std::cout << __func__ << '\n' << lp::resume(pb) << '\n';
 }
 
 void
-test_verger_5_5()
+test_verger_5_5(std::shared_ptr<lp::context> ctx)
 {
-    auto pb = lp::make_problem(EXAMPLES_DIR "/verger_5_5.lp");
+    auto pb = lp::make_problem(ctx, EXAMPLES_DIR "/verger_5_5.lp");
 
     std::cout << __func__ << '\n' << lp::resume(pb) << '\n';
 }
@@ -225,14 +226,17 @@ test_verger_5_5()
 int
 main(int /* argc */, char* /* argv */ [])
 {
-    test_examples_1();
-    test_examples_2();
-    test_examples_3();
-    test_examples_4();
-    test_examples_sudoku();
-    test_examples_8_queens_puzzle();
-    test_examples_vm();
-    test_verger_5_5();
+    auto ctx = std::make_shared<lp::context>();
+    ctx->set_standard_stream_logger();
+
+    test_examples_1(ctx);
+    test_examples_2(ctx);
+    test_examples_3(ctx);
+    test_examples_4(ctx);
+    test_examples_sudoku(ctx);
+    test_examples_8_queens_puzzle(ctx);
+    test_examples_vm(ctx);
+    test_verger_5_5(ctx);
 
     return unit_test::report_errors();
 }

@@ -25,8 +25,11 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cstdarg>
+#include <cstdio>
 #include <limits>
 #include <map>
+#include <memory>
 #include <stdexcept>
 #include <string>
 #include <tuple>
@@ -60,6 +63,13 @@
 #define LP_API
 #define LP_LOCAL
 #define LP_MODULE LP_HELPER_DLL_EXPORT
+#endif
+
+#if defined(__GNUC__)
+#define LP_FORMAT(idformat, idarg)                                            \
+    __attribute__((format(printf, (idformat), (idarg))))
+#else
+#define LP_FORMAT(idformat, idarg)
 #endif
 
 namespace lp {
@@ -137,6 +147,7 @@ struct file_access_error : std::runtime_error
     {
         return m_file;
     }
+
     int error() const
     {
         return m_error;
@@ -185,14 +196,17 @@ struct file_format_error : std::runtime_error
     {
         return m_element;
     }
+
     int line() const
     {
         return m_line;
     }
+
     int column() const
     {
         return m_column;
     }
+
     tag failure() const
     {
         return m_failure;
@@ -227,6 +241,7 @@ struct problem_definition_error : std::runtime_error
     {
         return m_element;
     }
+
     tag failure() const
     {
         return m_failure;
@@ -470,6 +485,106 @@ struct parameter
     tag type;
 };
 
+class LP_API context
+{
+
+public:
+    enum class message_type
+    {
+        emerg,   ///< system is unusable
+        alert,   ///< action must be taken immediately
+        crit,    ///< critical conditions
+        err,     ///< error conditions
+        warning, ///< warning conditions
+        notice,  ///< normal, but significant, condition
+        info,    ///< informational message
+        debug,   ///< debug-level message
+    };
+
+    class logger
+    {
+    public:
+        logger() = default;
+        virtual ~logger() = default;
+
+        virtual void write(int priority,
+                           const char* file,
+                           int line,
+                           const char* fn,
+                           const char* fornmat,
+                           va_list args) noexcept = 0;
+
+        virtual void write(context::message_type type,
+                           const char* format,
+                           va_list args) noexcept = 0;
+    };
+
+    context() = default;
+
+    context(const context&) = delete;
+    context& operator=(const context&) = delete;
+
+    void set_log_priority(int priority) noexcept;
+    int get_log_priority() const noexcept;
+
+    void set_standard_stream_logger() noexcept;
+    void set_logger(std::unique_ptr<logger> function) noexcept;
+
+    void info(const char* format, ...) noexcept LP_FORMAT(2, 3);
+    void debug(const char* format, ...) noexcept LP_FORMAT(2, 3);
+    void warning(const char* format, ...) noexcept LP_FORMAT(2, 3);
+    void error(const char* format, ...) noexcept LP_FORMAT(2, 3);
+
+    void log(message_type, const char* format, ...) noexcept LP_FORMAT(3, 4);
+    void log(int priority,
+             const char* file,
+             int line,
+             const char* fn,
+             const char* format,
+             ...) noexcept LP_FORMAT(6, 7);
+
+private:
+    int m_log_priority = 7;
+    std::unique_ptr<logger> m_logger;
+};
+
+//
+// Default, the logging system is active and the call to the @c log function
+// are send to the logger functor. Define LP_DISABLE_LOGGING as preprocessor
+// value to hide all logging message..
+//
+#ifdef LP_DISABLE_LOGGING
+void
+context::log(message_type, const char*, va_list)
+{
+}
+
+void
+context::log(int, const char*, int, const char*, const char*, va_list)
+{
+}
+
+void
+context::info(const char*, va_list)
+{
+}
+
+void
+context::warning(const char*, va_list)
+{
+}
+
+void
+context::debug(const char*, va_list)
+{
+}
+
+void
+context::error(const char*, va_list)
+{
+}
+#endif
+
 enum class variable_type
 {
     real,
@@ -604,7 +719,8 @@ struct result
  *  std::system_error.
  */
 LP_API
-problem make_problem(const std::string& filename);
+problem make_problem(std::shared_ptr<lp::context> ctx,
+                     const std::string& filename);
 
 /**
  * Read a \e lp file from the \e is stream.
@@ -613,7 +729,7 @@ problem make_problem(const std::string& filename);
  *  std::system_error.
  */
 LP_API
-problem make_problem(std::istream& is);
+problem make_problem(std::shared_ptr<lp::context> ctx, std::istream& is);
 
 /**
  * Write \e lp problem into a stream.
@@ -623,7 +739,8 @@ LP_API
 std::ostream& operator<<(std::ostream& os, const problem& p);
 
 /**
- * Try to solve or find a feasible solution for the \c lp::problem using with a
+ * Try to solve or find a feasible solution for the \c lp::problem using
+ * with a
  * set of parameters.
  *
  * \param pb Problem definition.
@@ -633,7 +750,9 @@ std::ostream& operator<<(std::ostream& os, const problem& p);
  * \exception lp::problem_definition
  */
 LP_API
-result solve(problem& pb, const std::map<std::string, parameter>& params);
+result solve(std::shared_ptr<lp::context> ctx,
+             problem& pb,
+             const std::map<std::string, parameter>& params);
 
 /**
  * Try to optimize the \c lp::problem with a set of parameters.
@@ -646,10 +765,13 @@ result solve(problem& pb, const std::map<std::string, parameter>& params);
  * @throw \c lp::solver_error.
  */
 LP_API
-result optimize(problem& pb, const std::map<std::string, parameter>& params);
+result optimize(std::shared_ptr<lp::context> ctx,
+                problem& pb,
+                const std::map<std::string, parameter>& params);
 
 /**
- * Try to solve or find a feasible solution for the \c lp::problem using a set
+ * Try to solve or find a feasible solution for the \c lp::problem using a
+ * set
  * of default parameters.
  *
  * \param pb Problem definition.
@@ -658,7 +780,7 @@ result optimize(problem& pb, const std::map<std::string, parameter>& params);
  * \exception lp::problem_definition
  */
 LP_API
-result solve(problem& pb);
+result solve(std::shared_ptr<lp::context> ctx, problem& pb);
 
 /**
  * Try to optimize the \c lp::problem using a set of default parameters.
@@ -679,7 +801,6 @@ bool is_valid_solution(const problem& pb,
 LP_API
 double compute_solution(const problem& pb,
                         const std::vector<int>& variable_value);
-
 }
 
 #endif

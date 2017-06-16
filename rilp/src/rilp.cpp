@@ -26,6 +26,103 @@
 
 using namespace Rcpp;
 
+class Rcontext : public lp::context::logger
+{
+public:
+    Rcontext() = default;
+    ~Rcontext() noexcept override = default;
+
+    void write(int priority,
+               const char* file,
+               int line,
+               const char* fn,
+               const char* format,
+               va_list args) noexcept override
+    {
+        if (priority <= 3) {
+            Rprintf("lp: %d at %d in function %s form file %s: ",
+                    priority,
+                    line,
+                    fn,
+                    file);
+
+            try {
+                std::string buffer(256, '\0');
+                int sz;
+
+                for (;;) {
+                    sz =
+                      std::vsnprintf(&buffer[0], buffer.size(), format, args);
+
+                    if (sz < 0)
+                        return;
+
+                    if (static_cast<std::size_t>(sz) < buffer.size()) {
+                        Rprintf("%s", buffer.c_str());
+                        return;
+                    }
+
+                    buffer.resize(sz + 1);
+                }
+            } catch (const std::exception& /*e*/) {
+            }
+        }
+    }
+
+    void write(lp::context::message_type m,
+               const char* format,
+               va_list args) noexcept override
+    {
+
+        switch (m) {
+        case lp::context::message_type::emerg:
+            Rprintf("lp: system is unusable\n");
+            break;
+        case lp::context::message_type::alert:
+            Rprintf("lp: action must be taken immediately\n");
+            break;
+        case lp::context::message_type::crit:
+            Rprintf("lp: critical conditions\n");
+            break;
+        case lp::context::message_type::err:
+            Rprintf("lp: error conditions\n");
+            break;
+        case lp::context::message_type::warning:
+            Rprintf("lp: warning conditions\n");
+            break;
+        case lp::context::message_type::notice:
+            Rprintf("lp: normal, but significant, condition\n");
+            break;
+        case lp::context::message_type::info:
+            Rprintf("lp: informational message\n");
+            break;
+        case lp::context::message_type::debug:
+            Rprintf("lp: debug-level message\n");
+            break;
+        }
+
+        try {
+            std::string buffer(256, '\0');
+            int sz;
+
+            for (;;) {
+                sz = std::vsnprintf(&buffer[0], buffer.size(), format, args);
+
+                if (sz < 0)
+                    return;
+
+                if (static_cast<std::size_t>(sz) < buffer.size()) {
+                    Rprintf("%s", buffer.c_str());
+                    return;
+                }
+
+                buffer.resize(sz + 1);
+            }
+        } catch (const std::exception& /*e*/) {
+        }
+    }
+};
+
 //' Tries to solve the 01 linear programming problem.
 //'
 //' @param constraint_order: 0-none, 1-reversing, 2-random-sorting,
@@ -65,7 +162,10 @@ solve_01lp_problem(std::string file_path,
                    long int thread = 1) noexcept
 {
     try {
-        auto pb = lp::make_problem(file_path);
+        auto ctx = std::make_shared<lp::context>();
+        ctx->set_logger(std::make_unique<Rcontext>());
+
+        auto pb = lp::make_problem(ctx, file_path);
 
         std::map<std::string, lp::parameter> params;
         params["limit"] = limit;
@@ -78,8 +178,12 @@ solve_01lp_problem(std::string file_path,
         params["alpha"] = alpha;
         params["w"] = w;
 
-        if (seed > 0)
+        if (seed > 0) {
+            Rprintf("solver uses a PRNG with %ld as seed\n", seed);
             params["seed"] = seed;
+        } else {
+            Rprintf("solver uses a PRNG with a random seed.\n");
+        }
 
         switch (constraint_order) {
         case 1:
@@ -107,18 +211,18 @@ solve_01lp_problem(std::string file_path,
         params["pushing-iteration-limit"] = pushing_iteration_limit;
         params["thread"] = thread;
 
-        auto result = lp::solve(pb, params);
+        auto result = lp::solve(ctx, pb, params);
 
         if (result.status == lp::result_status::success)
             return List::create(result.remaining_constraints, result.value);
 
         return List::create(result.remaining_constraints, NA_REAL);
     } catch (const std::bad_alloc& e) {
-        Rcpp::Rcout << "lp memory error: " << e.what() << '\n';
+        Rprintf("lp memory error: %s\n", e.what());
     } catch (const std::exception& e) {
-        Rcpp::Rcout << "lp error: " << e.what() << '\n';
+        Rprintf("lp error: %s\n", e.what());
     } catch (...) {
-        Rcpp::Rcout << "lp error: unknown error\n";
+        Rprintf("lp error: unknown error\n");
     }
 
     return List::create(NA_INTEGER, NA_REAL);

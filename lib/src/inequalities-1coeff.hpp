@@ -4,7 +4,7 @@
  * copy of this software and associated documentation files (the
  * "Software"), to deal in the Software without restriction, including
  * without limitation the rights to use, copy, modify, merge, publish,
- * distribute, sublicense, and/or sell copies of the Software, and to
+ * distribute, sublipnse, and/or sell copies of the Software, and to
  * permit persons to whom the Software is furnished to do so, subject to
  * the following conditions:
  *
@@ -28,13 +28,13 @@
 #include "matrix.hpp"
 #include "mitm.hpp"
 #include "utils.hpp"
+
 #include <Eigen/Core>
 #include <algorithm>
 #include <chrono>
 #include <fstream>
 #include <functional>
 #include <future>
-#include <iostream>
 #include <iterator>
 #include <random>
 #include <set>
@@ -88,7 +88,8 @@ constraint_order_to_string(constraint_order type)
 }
 
 double
-get_real(const std::map<std::string, parameter>& params,
+get_real(std::shared_ptr<context> ctx,
+         const std::map<std::string, parameter>& params,
          std::string param,
          double def)
 {
@@ -102,14 +103,14 @@ get_real(const std::map<std::string, parameter>& params,
     if (it->second.type == parameter::tag::integer)
         return static_cast<double>(it->second.l);
 
-    std::fprintf(
-      stderr, " [FAIL] fail to convert parameter %s\n", param.c_str());
+    ctx->warning("fail to convert parameter %s\n", param.c_str());
 
     return def;
 }
 
 long int
-get_integer(const std::map<std::string, parameter>& params,
+get_integer(std::shared_ptr<context> ctx,
+            const std::map<std::string, parameter>& params,
             std::string param,
             long int def)
 {
@@ -123,14 +124,14 @@ get_integer(const std::map<std::string, parameter>& params,
     if (it->second.type == parameter::tag::real)
         return static_cast<long>(it->second.d);
 
-    std::fprintf(
-      stderr, " [FAIL] fail to convert parameter %s\n", param.c_str());
+    ctx->warning("fail to convert parameter %s\n", param.c_str());
 
     return def;
 }
 
 inequalities_1coeff::constraint_order
-get_constraint_order(const std::map<std::string, parameter>& params,
+get_constraint_order(std::shared_ptr<context> ctx,
+                     const std::map<std::string, parameter>& params,
                      std::string param,
                      inequalities_1coeff::constraint_order def)
 {
@@ -152,81 +153,84 @@ get_constraint_order(const std::map<std::string, parameter>& params,
     if (it->second.s == "infeasibility-incr")
         return inequalities_1coeff::constraint_order::infeasibility_incr;
 
+    ctx->warning("fail to convert parameter %s\n", param.c_str());
+
     return def;
 }
 
 std::string
-get_pre_constraint_order(const std::map<std::string, parameter>& params,
+get_pre_constraint_order(std::shared_ptr<context> ctx,
+                         const std::map<std::string, parameter>& params,
                          std::string param)
 {
     auto it = params.find(param);
-    if (it == params.cend())
+    if (it == params.cend()) {
+        ctx->warning("fail to convert parameter %s\n", param.c_str());
         return std::string();
+    }
 
     return it->second.s;
 }
 
 struct parameters
 {
-    parameters(const std::map<std::string, parameter>& params)
-      : time_limit(get_real(params, "time-limit", -1.0))
-      , theta(get_real(params, "theta", 0.5))
-      , delta(get_real(params, "delta", 0.01))
-      , kappa_min(get_real(params, "kappa-min", 0.0))
-      , kappa_step(get_real(params, "kappa-step", 1.e-3))
-      , kappa_max(get_real(params, "kappa-max", 0.6))
-      , alpha(get_real(params, "alpha", 1.0))
-      , pushing_k_factor(get_real(params, "pushing-k-factor", 0.9))
-      , pushes_limit(get_integer(params, "pushes-limit", 10l))
+    parameters(std::shared_ptr<context> ctx,
+               const std::map<std::string, parameter>& params)
+      : time_limit(get_real(ctx, params, "time-limit", -1.0))
+      , theta(get_real(ctx, params, "theta", 0.5))
+      , delta(get_real(ctx, params, "delta", 0.01))
+      , kappa_min(get_real(ctx, params, "kappa-min", 0.0))
+      , kappa_step(get_real(ctx, params, "kappa-step", 1.e-3))
+      , kappa_max(get_real(ctx, params, "kappa-max", 0.6))
+      , alpha(get_real(ctx, params, "alpha", 1.0))
+      , pushing_k_factor(get_real(ctx, params, "pushing-k-factor", 0.9))
+      , pushes_limit(get_integer(ctx, params, "pushes-limit", 10l))
       , pushing_objective_amplifier(
-          get_integer(params, "pushing-objective-amplifier", 5l))
+          get_integer(ctx, params, "pushing-objective-amplifier", 5l))
       , pushing_iteration_limit(
-          get_integer(params, "pushing-iteration-limit", 20l))
-      , limit(get_integer(params, "limit", 1000l))
-      , w(get_integer(params, "w", 20l))
-      , order(get_constraint_order(params,
+          get_integer(ctx, params, "pushing-iteration-limit", 20l))
+      , limit(get_integer(ctx, params, "limit", 1000l))
+      , w(get_integer(ctx, params, "w", 20l))
+      , order(get_constraint_order(ctx,
+                                   params,
                                    "constraint-order",
                                    constraint_order::none))
-      , preprocessing(get_pre_constraint_order(params, "preprocessing"))
-      , serialize(get_integer(params, "serialize", 0l))
+      , preprocessing(get_pre_constraint_order(ctx, params, "preprocessing"))
+      , serialize(get_integer(ctx, params, "serialize", 0l))
     {
-    }
-
-    void print() const noexcept
-    {
-        printf("solver: inequalities_1coeff_wedelin\n"
-               "solver parameters:\n"
-               "  - preprocessing: %s\n"
-               "  - constraint-order: %s\n"
-               "  - time_limit: %.10g\n"
-               "  - theta: %.10g\n"
-               "  - delta: %.10g\n"
-               "  - limit: %ld\n"
-               "  - kappa: %.10g %.10g %.10g\n"
-               "  - alpha: %.10g\n"
-               "  - w: %ld\n"
-               "  - serialise: %d\n"
-               "optimizer parameters:\n"
-               "  - pushed limit: %ld\n"
-               "  - pushing objective amplifier: %ld\n"
-               "  - pushing iteration limit: %ld\n"
-               "  - pushing k factor: %.10g\n",
-               preprocessing.c_str(),
-               constraint_order_to_string(order),
-               time_limit,
-               theta,
-               delta,
-               limit,
-               kappa_min,
-               kappa_step,
-               kappa_max,
-               alpha,
-               w,
-               serialize,
-               pushes_limit,
-               pushing_objective_amplifier,
-               pushing_iteration_limit,
-               pushing_k_factor);
+        ctx->info("solver: inequalities_1coeff_wedelin\n"
+                  "solver parameters:\n"
+                  "  - preprocessing: %s\n"
+                  "  - constraint-order: %s\n"
+                  "  - time_limit: %.10g\n"
+                  "  - theta: %.10g\n"
+                  "  - delta: %.10g\n"
+                  "  - limit: %ld\n"
+                  "  - kappa: %.10g %.10g %.10g\n"
+                  "  - alpha: %.10g\n"
+                  "  - w: %ld\n"
+                  "  - serialise: %d\n"
+                  "optimizer parameters:\n"
+                  "  - pushed limit: %ld\n"
+                  "  - pushing objective amplifier: %ld\n"
+                  "  - pushing iteration limit: %ld\n"
+                  "  - pushing k factor: %.10g\n",
+                  preprocessing.c_str(),
+                  constraint_order_to_string(order),
+                  time_limit,
+                  theta,
+                  delta,
+                  limit,
+                  kappa_min,
+                  kappa_step,
+                  kappa_max,
+                  alpha,
+                  w,
+                  serialize,
+                  pushes_limit,
+                  pushing_objective_amplifier,
+                  pushing_iteration_limit,
+                  pushing_k_factor);
     }
 
     double time_limit;
@@ -691,7 +695,9 @@ remove_element_with_factor_0(constraintsT& csts) noexcept
 }
 
 std::vector<merged_constraint>
-make_merged_constraints(const lp::problem& pb, const parameters& params)
+make_merged_constraints(std::shared_ptr<context> ctx,
+                        const lp::problem& pb,
+                        const parameters& params)
 {
     std::vector<merged_constraint> ret;
     std::unordered_map<std::vector<lp::function_element>,
@@ -741,8 +747,9 @@ make_merged_constraints(const lp::problem& pb, const parameters& params)
         }
     }
 
-    printf("  - removed constraints (merged less and greater operator): %ld\n",
-           numeric_cast<long>(origin_constraints_number - ret.size()));
+    ctx->info(
+      "  - removed constraints (merged less and greater operator): %ld\n",
+      numeric_cast<long>(origin_constraints_number - ret.size()));
 
     //
     // Remove element from constraint functions where the factor equal 0.
@@ -751,32 +758,30 @@ make_merged_constraints(const lp::problem& pb, const parameters& params)
     {
         auto removed = remove_element_with_factor_0(ret);
 
-        printf("  - removed elements in constraints: %ld\n"
-               "  - removed empty functions in constraints: %ld\n",
-               std::get<0>(removed),
-               std::get<1>(removed));
+        ctx->info("  - removed elements in constraints: %ld\n"
+                  "  - removed empty functions in constraints: %ld\n",
+                  std::get<0>(removed),
+                  std::get<1>(removed));
     }
 
     {
         auto removed = remove_small_constraints(ret);
 
-        printf("  - removed small constraints: %ld\n", removed);
+        ctx->info("  - removed small constraints: %ld\n", removed);
     }
 
-    printf("  - constraints stored in: constraints.tmp.lp\n");
+    // {
+    //     std::ofstream ofs("constraints.tmp.lp");
+    //     for (auto& elem : ret) {
+    //         ofs << elem.min << " <= ";
 
-    {
-        std::ofstream ofs("constraints.tmp.lp");
-        for (auto& elem : ret) {
-            ofs << elem.min << " <= ";
+    //         for (auto& f : elem.elements)
+    //             ofs << ((f.factor < 0) ? "- " : "+ ") << f.variable_index
+    //                 << ' ';
 
-            for (auto& f : elem.elements)
-                ofs << ((f.factor < 0) ? "- " : "+ ") << f.variable_index
-                    << ' ';
-
-            ofs << " <= " << elem.max << '\n';
-        }
-    }
+    //         ofs << " <= " << elem.max << '\n';
+    //     }
+    // }
 
     /* Compute metrics from constraints and variables uses.
        - vars counts the number of use of the variables
@@ -910,9 +915,8 @@ make_merged_constraints(const lp::problem& pb, const parameters& params)
         return ret;
     } else {
         if (not params.preprocessing.empty()) {
-            fprintf(stderr,
-                    "[WARNING] Unknown preprocessing `%s'\n",
-                    params.preprocessing.c_str());
+            ctx->warning("Unknown preprocessing `%s'\n",
+                         params.preprocessing.c_str());
         }
 
         return ret;
@@ -1185,7 +1189,6 @@ struct cycle_avoidance
 
     ~cycle_avoidance()
     {
-        printf("  - Cycle: %ld\n", nb);
     }
 
     bool have_cycle()
@@ -1534,8 +1537,14 @@ struct solver_functor
     std::chrono::time_point<std::chrono::steady_clock> m_begin;
     std::chrono::time_point<std::chrono::steady_clock> m_end;
 
+    std::shared_ptr<context> m_ctx;
     x_type m_best_x;
     result m_best;
+
+    solver_functor(std::shared_ptr<context> ctx)
+      : m_ctx(ctx)
+    {
+    }
 
     result operator()(const std::vector<merged_constraint>& constraints,
                       index variables,
@@ -1558,7 +1567,7 @@ struct solver_functor
 
         constraint_order_type compute(rng);
 
-        printf("* solver starts:\n");
+        m_ctx->info("* solver starts:\n");
 
         for (;;) {
             index remaining = compute.run(slv, kappa, p.delta, p.theta);
@@ -1574,14 +1583,14 @@ struct solver_functor
                 best_remaining = remaining;
                 m_best = current;
 
-                printf("  - constraints remaining: %ld/%ld at %fs\n",
-                       remaining,
-                       current.constraints,
-                       current.duration);
+                m_ctx->info("  - constraints remaining: %ld/%ld at %fs\n",
+                            remaining,
+                            current.constraints,
+                            current.duration);
             }
 
             if (current.status == result_status::success) {
-                printf("  - Solution found: %f\n", current.value);
+                m_ctx->info("  - Solution found: %f\n", current.value);
                 m_best = current;
                 return m_best;
             }
@@ -1600,20 +1609,20 @@ struct solver_functor
             }
 
             if (++i > p.limit) {
-                printf("  - Loop reached: %f\n", kappa);
+                m_ctx->info("  - Loop reached: %f\n", kappa);
                 m_best.status = result_status::limit_reached;
                 return m_best;
             }
 
             if (kappa > p.kappa_max) {
-                printf("  - Kappa reached: %f\n", kappa);
+                m_ctx->info("  - Kappa reached: %f\n", kappa);
                 m_best.status = result_status::kappa_max_reached;
                 return m_best;
             }
 
             m_end = std::chrono::steady_clock::now();
             if (is_time_limit(p.time_limit, m_begin, m_end)) {
-                printf("  - Time limit reached\n");
+                m_ctx->info("  - Time limit reached\n");
                 m_best.status = result_status::time_limit_reached;
                 return m_best;
             }
@@ -1631,8 +1640,14 @@ struct optimize_functor
     std::chrono::time_point<std::chrono::steady_clock> m_begin;
     std::chrono::time_point<std::chrono::steady_clock> m_end;
 
+    std::shared_ptr<context> m_ctx;
     x_type m_best_x;
     result m_best;
+
+    optimize_functor(std::shared_ptr<context> ctx)
+      : m_ctx(ctx)
+    {
+    }
 
     result operator()(const std::vector<merged_constraint>& constraints,
                       index variables,
@@ -1746,10 +1761,10 @@ private:
                 m_end - m_begin)
                 .count();
 
-            printf("  - Solution found: %f (i=%ld t=%fs)\n",
-                   current.value,
-                   current.loop,
-                   t);
+            m_ctx->info("  - Solution found: %f (i=%ld t=%fs)\n",
+                        current.value,
+                        current.loop,
+                        t);
 
             m_best = current;
             m_best.duration = t;
@@ -1763,18 +1778,21 @@ private:
 
 template <typename modeT, typename constraintOrderT, typename randomT>
 inline result
-solve(problem& pb, const parameters& p, randomT& rng)
+solve(std::shared_ptr<context> ctx,
+      problem& pb,
+      const parameters& p,
+      randomT& rng)
 {
-    printf("Solver initializing\n");
+    ctx->info("Solver initializing\n");
 
     auto names = pb.vars.names;
-    auto constraints{ make_merged_constraints(pb, p) };
+    auto constraints{ make_merged_constraints(ctx, pb, p) };
     auto variables = lp::numeric_cast<index>(pb.vars.values.size());
     auto cost = make_objective_function(pb.objective, variables);
     auto cost_constant = pb.objective.constant;
     pb.clear();
 
-    solver_functor<modeT, constraintOrderT, randomT> slv;
+    solver_functor<modeT, constraintOrderT, randomT> slv(ctx);
 
     auto result = slv(constraints, variables, cost, cost_constant, p, rng);
 
@@ -1786,14 +1804,18 @@ solve(problem& pb, const parameters& p, randomT& rng)
 
 template <typename modeT, typename constraintOrderT, typename randomT>
 inline result
-optimize(problem& pb, const parameters& p, randomT& rng, long int thread)
+optimize(std::shared_ptr<context> ctx,
+         problem& pb,
+         const parameters& p,
+         randomT& rng,
+         long int thread)
 {
     Expects(thread >= 1, "optimize: bad thread number");
 
-    printf("Optimizer initializing\n");
+    ctx->info("Optimizer initializing\n");
 
     auto names = pb.vars.names;
-    auto constraints{ make_merged_constraints(pb, p) };
+    auto constraints{ make_merged_constraints(ctx, pb, p) };
     auto variables = lp::numeric_cast<index>(pb.vars.values.size());
     auto cost = make_objective_function(pb.objective, variables);
     auto cost_constant = pb.objective.constant;
@@ -1805,13 +1827,13 @@ optimize(problem& pb, const parameters& p, randomT& rng, long int thread)
     results.clear();
 
     if (thread == 1)
-        printf("optimizer starts with on thread\n");
+        ctx->info("optimizer starts with on thread\n");
     else
-        printf("Optimizer starts with %ld threads\n", thread);
+        ctx->info("Optimizer starts with %ld threads\n", thread);
 
     for (long int i{ 0 }; i != thread; ++i) {
         std::packaged_task<result()> task(
-          std::bind(optimize_functor<modeT, constraintOrderT, randomT>(),
+          std::bind(optimize_functor<modeT, constraintOrderT, randomT>(ctx),
                     std::ref(constraints),
                     variables,
                     std::ref(cost),
@@ -1847,12 +1869,12 @@ optimize(problem& pb, const parameters& p, randomT& rng, long int thread)
 
 inline result
 inequalities_1coeff_wedelin_solve(
+  std::shared_ptr<lp::context> ctx,
   problem& pb,
   const std::map<std::string, parameter>& params)
 {
     namespace ine_1 = lp::inequalities_1coeff;
-    ine_1::parameters p(params);
-    p.print();
+    ine_1::parameters p(ctx, params);
 
     using random_generator_type = std::default_random_engine;
 
@@ -1862,6 +1884,7 @@ inequalities_1coeff_wedelin_solve(
     //
 
     random_generator_type::result_type seed = ine_1::get_integer(
+      ctx,
       params,
       "seed",
       std::chrono::system_clock::now().time_since_epoch().count());
@@ -1873,68 +1896,70 @@ inequalities_1coeff_wedelin_solve(
         if (pb.type == lp::objective_function_type::maximize)
             return ine_1::solve<ine_1::maximize_tag,
                                 ine_1::compute_none<random_generator_type>,
-                                random_generator_type>(pb, p, rng);
+                                random_generator_type>(ctx, pb, p, rng);
         return ine_1::solve<ine_1::minimize_tag,
                             ine_1::compute_none<random_generator_type>,
-                            random_generator_type>(pb, p, rng);
+                            random_generator_type>(ctx, pb, p, rng);
     case ine_1::constraint_order::reversing:
         if (pb.type == lp::objective_function_type::maximize)
             return ine_1::solve<
               ine_1::maximize_tag,
-              ine_1::compute_reversing<random_generator_type>>(pb, p, rng);
+              ine_1::compute_reversing<random_generator_type>>(
+              ctx, pb, p, rng);
         return ine_1::solve<ine_1::minimize_tag,
                             ine_1::compute_reversing<random_generator_type>>(
-          pb, p, rng);
+          ctx, pb, p, rng);
     case ine_1::constraint_order::random_sorting:
         if (pb.type == lp::objective_function_type::maximize)
             return ine_1::solve<ine_1::maximize_tag,
                                 ine_1::compute_random<random_generator_type>>(
-              pb, p, rng);
+              ctx, pb, p, rng);
         return ine_1::solve<ine_1::minimize_tag,
                             ine_1::compute_random<random_generator_type>>(
-          pb, p, rng);
+          ctx, pb, p, rng);
     case ine_1::constraint_order::infeasibility_decr:
         if (pb.type == lp::objective_function_type::maximize)
             return ine_1::solve<
               ine_1::maximize_tag,
               ine_1::compute_infeasibility<random_generator_type,
                                            ine_1::compute_infeasibility_decr>>(
-              pb, p, rng);
+              ctx, pb, p, rng);
         return ine_1::solve<
           ine_1::minimize_tag,
           ine_1::compute_infeasibility<random_generator_type,
                                        ine_1::compute_infeasibility_decr>>(
-          pb, p, rng);
+          ctx, pb, p, rng);
     case ine_1::constraint_order::infeasibility_incr:
         if (pb.type == lp::objective_function_type::maximize)
             return ine_1::solve<
               ine_1::maximize_tag,
               ine_1::compute_infeasibility<random_generator_type,
                                            ine_1::compute_infeasibility_incr>>(
-              pb, p, rng);
+              ctx, pb, p, rng);
         return ine_1::solve<
           ine_1::minimize_tag,
           ine_1::compute_infeasibility<random_generator_type,
                                        ine_1::compute_infeasibility_incr>>(
-          pb, p, rng);
+          ctx, pb, p, rng);
     }
 
-    throw "TODO internal error";
+    ctx->error("inequalities_1coeff_wedelin_solve: internal error");
+
+    return {};
 }
+
 inline result
 inequalities_1coeff_wedelin_optimize(
+  std::shared_ptr<lp::context> ctx,
   problem& pb,
   const std::map<std::string, parameter>& params,
   long int thread)
 {
 
     namespace ine_1 = lp::inequalities_1coeff;
-    ine_1::parameters p(params);
-    p.print();
+    ine_1::parameters p(ctx, params);
 
     using random_generator_type = std::default_random_engine;
-
-    printf("inequalities_1coeff thread\n");
 
     //
     // TODO we need to add parameters to select the type of the generator to
@@ -1942,6 +1967,7 @@ inequalities_1coeff_wedelin_optimize(
     //
 
     random_generator_type::result_type seed = ine_1::get_integer(
+      ctx,
       params,
       "seed",
       std::chrono::system_clock::now().time_since_epoch().count());
@@ -1953,55 +1979,59 @@ inequalities_1coeff_wedelin_optimize(
         if (pb.type == lp::objective_function_type::maximize)
             return ine_1::optimize<ine_1::maximize_tag,
                                    ine_1::compute_none<random_generator_type>,
-                                   random_generator_type>(pb, p, rng, thread);
+                                   random_generator_type>(
+              ctx, pb, p, rng, thread);
         return ine_1::optimize<ine_1::minimize_tag,
                                ine_1::compute_none<random_generator_type>,
-                               random_generator_type>(pb, p, rng, thread);
+                               random_generator_type>(ctx, pb, p, rng, thread);
     case ine_1::constraint_order::reversing:
         if (pb.type == lp::objective_function_type::maximize)
             return ine_1::optimize<
               ine_1::maximize_tag,
               ine_1::compute_reversing<random_generator_type>>(
-              pb, p, rng, thread);
+              ctx, pb, p, rng, thread);
         return ine_1::optimize<
           ine_1::minimize_tag,
-          ine_1::compute_reversing<random_generator_type>>(pb, p, rng, thread);
+          ine_1::compute_reversing<random_generator_type>>(
+          ctx, pb, p, rng, thread);
     case ine_1::constraint_order::random_sorting:
         if (pb.type == lp::objective_function_type::maximize)
             return ine_1::optimize<
               ine_1::maximize_tag,
               ine_1::compute_random<random_generator_type>>(
-              pb, p, rng, thread);
+              ctx, pb, p, rng, thread);
         return ine_1::optimize<ine_1::minimize_tag,
                                ine_1::compute_random<random_generator_type>>(
-          pb, p, rng, thread);
+          ctx, pb, p, rng, thread);
     case ine_1::constraint_order::infeasibility_decr:
         if (pb.type == lp::objective_function_type::maximize)
             return ine_1::optimize<
               ine_1::maximize_tag,
               ine_1::compute_infeasibility<random_generator_type,
                                            ine_1::compute_infeasibility_decr>>(
-              pb, p, rng, thread);
+              ctx, pb, p, rng, thread);
         return ine_1::optimize<
           ine_1::minimize_tag,
           ine_1::compute_infeasibility<random_generator_type,
                                        ine_1::compute_infeasibility_decr>>(
-          pb, p, rng, thread);
+          ctx, pb, p, rng, thread);
     case ine_1::constraint_order::infeasibility_incr:
         if (pb.type == lp::objective_function_type::maximize)
             return ine_1::optimize<
               ine_1::maximize_tag,
               ine_1::compute_infeasibility<random_generator_type,
                                            ine_1::compute_infeasibility_incr>>(
-              pb, p, rng, thread);
+              ctx, pb, p, rng, thread);
         return ine_1::optimize<
           ine_1::minimize_tag,
           ine_1::compute_infeasibility<random_generator_type,
                                        ine_1::compute_infeasibility_incr>>(
-          pb, p, rng, thread);
+          ctx, pb, p, rng, thread);
     }
 
-    throw "TODO internal error";
+    ctx->error("inequalities_1coeff_wedelin_solve: internal error");
+
+    return {};
 }
 
 } // lp

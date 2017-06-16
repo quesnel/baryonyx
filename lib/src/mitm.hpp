@@ -30,9 +30,12 @@
 
 namespace lp {
 
-result mitm_solve(problem& pb, const std::map<std::string, parameter>& params);
+result mitm_solve(std::shared_ptr<lp::context> ctx,
+                  problem& pb,
+                  const std::map<std::string, parameter>& params);
 
-result mitm_optimize(problem& pb,
+result mitm_optimize(std::shared_ptr<lp::context> ctx,
+                     problem& pb,
                      const std::map<std::string, parameter>& params);
 }
 

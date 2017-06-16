@@ -3,7 +3,7 @@ library(sensitivity)
 
 factors=c("theta", "delta", "constraint_order", "kappa_min",
                    "kappa_step", "kappa_max", "alpha", "w")
-bounds = data.frame(min=c(0,    0, 0, 0.0,   0,  1.0, 0.0,    0),
+bounds = data.frame(min=c(0,    0, 0, 0.0,   0,  1.0, 0.0, 0),        
                     max=c(1, 1e10, 4, 1.0, 0.1, 10.0, 2.0, 1000))
 rownames(bounds) <- factors
 
@@ -25,8 +25,8 @@ f <- function(x, thread=1, limit=1000000, time_limit=1) {
   delta <- x["delta"]
   constraint_order <- x["constraint_order"]
   kappa_min <- x["kappa_min"]
-  kappa_step <- x["kappa_step"]
-  kappa_max <- x["kappa_max"]
+  kappa_step <- x["kappa_step"] 
+  kappa_max <- x["kappa_max"] 
   alpha <- x["alpha"]
   w <- x["w"]
 

@@ -1,6 +1,6 @@
 project(liblp VERSION 0.1.0.0 LANGUAGES CXX C)
 
-add_library(liblp SHARED src/lpcore.cpp src/mitm.cpp)
+add_library(liblp SHARED src/lpcore.cpp src/mitm.cpp src/utils.cpp)
 target_include_directories(liblp PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>
@@ -15,7 +15,7 @@ install(TARGETS liblp
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin)
 
-add_library(liblp-static STATIC src/lpcore.cpp src/mitm.cpp)
+add_library(liblp-static STATIC src/lpcore.cpp src/mitm.cpp src/utils.cpp)
 target_include_directories(liblp-static PRIVATE
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>

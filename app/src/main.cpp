@@ -24,8 +24,8 @@
 #include <iomanip>
 #include <iostream>
 #include <limits>
-#include <lpcore>
 #include <lpcore-out>
+#include <lpcore>
 #include <sstream>
 
 #include <cerrno>
@@ -46,7 +46,8 @@ const char* problem_definition_error_format(
   lp::problem_definition_error::tag) noexcept;
 const char* solver_error_format(lp::solver_error::tag) noexcept;
 
-lp::result solve(lp::problem& pb,
+lp::result solve(std::shared_ptr<lp::context> ctx,
+                 lp::problem& pb,
                  const std::map<std::string, lp::parameter>& params,
                  bool optimize);
 
@@ -107,9 +108,12 @@ main(int argc, char* argv[])
     (void)verbose;
     (void)quiet;
 
+    auto ctx = std::make_shared<lp::context>();
+    ctx->set_standard_stream_logger();
+
     for (int i = ::optind; i < argc; ++i) {
         try {
-            auto pb = lp::make_problem(argv[i]);
+            auto pb = lp::make_problem(ctx, argv[i]);
 
             std::string filename(argv[i]);
             filename += '-';
@@ -118,7 +122,9 @@ main(int argc, char* argv[])
             filename += std::to_string(i);
             filename += ".sol";
 
-            std::cout << "output: " << filename << '\n';
+            ctx->log(lp::context::message_type::info,
+                     "solution: %s\n",
+                     filename.c_str());
 
             std::ofstream ofs(filename);
             ofs << std::boolalpha
@@ -132,11 +138,10 @@ main(int argc, char* argv[])
                 << std::put_time(std::localtime(&in_time_t), "%Y-%m-%d %X")
                 << '\n';
 
-            auto ret = solve(pb, parameters, optimize);
+            auto ret = solve(ctx, pb, parameters, optimize);
 
             if (ret.status == lp::result_status::success) {
-                ofs << "Solution found: " << ret.value << '\n'
-                    << ret;
+                ofs << "Solution found: " << ret.value << '\n' << ret;
             } else {
                 ofs << "Solution not found. Missing constraints: "
                     << ret.remaining_constraints << '\n';
@@ -341,12 +346,13 @@ split_param(const char* param) noexcept
 }
 
 lp::result
-solve(lp::problem& pb,
+solve(std::shared_ptr<lp::context> ctx,
+      lp::problem& pb,
       const std::map<std::string, lp::parameter>& params,
       bool optimize)
 {
     if (optimize)
-        return lp::optimize(pb, params);
+        return lp::optimize(ctx, pb, params);
 
-    return lp::solve(pb, params);
+    return lp::solve(ctx, pb, params);
 }

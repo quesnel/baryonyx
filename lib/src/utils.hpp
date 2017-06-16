@@ -24,6 +24,9 @@
 #define ORG_VLEPROJECT_LP_UTILS_HPP
 
 #include <cmath>
+#include <cstdarg>
+#include <cstdio>
+
 #include <lpcore>
 
 namespace lp {
@@ -67,5 +70,9 @@ is_essentially_equal(const T v1, const T v2, const T epsilon)
     return fabs((v1) - (v2)) <=
            ((fabs(v1) > fabs(v2) ? fabs(v2) : fabs(v1)) * (epsilon));
 }
+
+LP_API std::string stringf(const char* format, ...) noexcept LP_FORMAT(1, 2);
+
+LP_API std::string vstringf(const char* format, va_list ap) noexcept;
 }
 #endif

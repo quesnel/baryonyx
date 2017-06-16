@@ -33,12 +33,12 @@
 #include <sstream>
 
 void
-test_qap()
+test_qap(std::shared_ptr<lp::context> ctx)
 {
     lp::result result;
 
     {
-        auto pb = lp::make_problem(EXAMPLES_DIR "/small4.lp");
+        auto pb = lp::make_problem(ctx, EXAMPLES_DIR "/small4.lp");
 
         std::map<std::string, lp::parameter> params;
         params["limit"] = 1000000l;
@@ -58,7 +58,7 @@ test_qap()
 
         params["thread"] = 2l;
 
-        result = lp::optimize(pb, params);
+        result = lp::optimize(ctx, pb, params);
 
         Ensures(result.status == lp::result_status::success);
         if (result.status == lp::result_status::success)
@@ -67,7 +67,7 @@ test_qap()
 
     {
         if (result.status == lp::result_status::success) {
-            auto pb = lp::make_problem(EXAMPLES_DIR "/small4.lp");
+            auto pb = lp::make_problem(ctx, EXAMPLES_DIR "/small4.lp");
 
             Ensures(lp::is_valid_solution(pb, result.variable_value) == true);
             Ensures(lp::compute_solution(pb, result.variable_value) == 790.0);
@@ -76,15 +76,16 @@ test_qap()
 }
 
 void
-test_n_queens_problem()
+test_n_queens_problem(std::shared_ptr<lp::context> ctx)
 {
     std::vector<bool> valid_solutions(30, false);
     std::vector<double> solutions(30, 0.0);
     std::vector<double> cplex_solutions(30, 0.0);
 
-    { /* Tries to read the cplex solution files produced by CPLEX 12.7.0.0
-         and the `script.sh' `n-queens-problem.commands' files. If an
-         error occured, the test fails and returns. */
+    {
+        // Tries to read the cplex solution files produced by CPLEX 12.7.0.0
+        // and the `script.sh' `n-queens-problem.commands' files. If an error
+        // occured, the test fails and returns.*/
 
         std::ifstream ifs{ EXAMPLES_DIR "/n-queens/solutions.txt" };
 
@@ -131,8 +132,8 @@ test_n_queens_problem()
         if (not ifs.is_open())
             return;
 
-        auto pb = lp::make_problem(ifs);
-        auto result = lp::optimize(pb, params);
+        auto pb = lp::make_problem(ctx, ifs);
+        auto result = lp::optimize(ctx, pb, params);
 
         valid_solutions[i] = (result.remaining_constraints == 0);
         if (valid_solutions[i])
@@ -168,8 +169,11 @@ test_n_queens_problem()
 int
 main(int /* argc */, char* /* argv */ [])
 {
-    test_qap();
-    test_n_queens_problem();
+    auto ctx = std::make_shared<lp::context>();
+    ctx->set_standard_stream_logger();
+
+    test_qap(ctx);
+    test_n_queens_problem(ctx);
 
     return unit_test::report_errors();
 }
