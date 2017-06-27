@@ -83,7 +83,26 @@ public:
             }
 
             vfprintf(stdout, format, args);
-            ::puts("\033[30m\033[0m");
+
+            switch (m) {
+            case context::message_type::emerg:
+            case context::message_type::alert:
+            case context::message_type::crit:
+            case context::message_type::err:
+                ::puts("\033[30m\033[0m");
+                break;
+            case context::message_type::warning:
+                ::puts("\033[30m\033[0m");
+                break;
+            case context::message_type::notice:
+                break;
+            case context::message_type::info:
+                break;
+            case context::message_type::debug:
+                ::puts("\033[30m\033[0m");
+                break;
+            }
+
         } else {
             vfprintf(stdout, format, args);
         }

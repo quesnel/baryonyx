@@ -134,37 +134,44 @@ check_parameter()
 void
 check_matrix()
 {
-    lp::SparseArray<double> m(4, 2);
+    lp::SparseArray<int, double> m(4, 2);
 
-    EnsuresThrow(m(0, 0), std::out_of_range);
-    EnsuresThrow(m(0, 1), std::out_of_range);
-    EnsuresThrow(m(1, 0), std::out_of_range);
-    EnsuresThrow(m(1, 1), std::out_of_range);
-    EnsuresThrow(m(2, 0), std::out_of_range);
-    EnsuresThrow(m(2, 1), std::out_of_range);
-    EnsuresThrow(m(3, 0), std::out_of_range);
-    EnsuresThrow(m(3, 1), std::out_of_range);
+    EnsuresThrow(m.P(0, 0), std::out_of_range);
+    EnsuresThrow(m.P(0, 1), std::out_of_range);
+    EnsuresThrow(m.P(1, 0), std::out_of_range);
+    EnsuresThrow(m.P(1, 1), std::out_of_range);
+    EnsuresThrow(m.P(2, 0), std::out_of_range);
+    EnsuresThrow(m.P(2, 1), std::out_of_range);
+    EnsuresThrow(m.P(3, 0), std::out_of_range);
+    EnsuresThrow(m.P(3, 1), std::out_of_range);
     Ensures(m.size() == 0);
 
-    m.emplace(1, 0, 1.0);
-    m.emplace(0, 1, 2.0);
-    m.emplace(3, 1, 3.0);
-    m.emplace(2, 1, 4.0);
+    m.set(1, 0, 1, 1.0);
+    m.set(0, 1, 2, 2.0);
+    m.set(3, 1, 3, 3.0);
+    m.set(2, 1, 4, 4.0);
+    m.sort();
+
     Ensures(m.size() == 4);
 
-    EnsuresThrow(m(0, 0), std::out_of_range);
-    Ensures(m(0, 1) == 2.0);
-    Ensures(m(1, 0) == 1.0);
-    EnsuresThrow(m(1, 1), std::out_of_range);
-    EnsuresThrow(m(2, 0), std::out_of_range);
-    Ensures(m(2, 1) == 4.0);
-    EnsuresThrow(m(3, 0), std::out_of_range);
-    Ensures(m(3, 1) == 3.0);
+    EnsuresThrow(m.P(0, 0), std::out_of_range);
+    Ensures(m.A(0, 1) == 2);
+    Ensures(m.P(0, 1) == 2.0);
+
+    Ensures(m.A(1, 0) == 1);
+    Ensures(m.P(1, 0) == 1.0);
+    EnsuresThrow(m.A(1, 1), std::out_of_range);
+    EnsuresThrow(m.A(2, 0), std::out_of_range);
+    Ensures(m.A(2, 1) == 4);
+    Ensures(m.P(2, 1) == 4.0);
+    EnsuresThrow(m.A(3, 0), std::out_of_range);
+    Ensures(m.A(3, 1) == 3);
+    Ensures(m.P(3, 1) == 3.0);
     Ensures(m.size() == 4);
 
     Ensures(m.rows() == 4);
     Ensures(m.columns() == 2);
-    
+
     Ensures(m.row(0).size() == 1);
     Ensures(m.row(1).size() == 1);
     Ensures(m.row(2).size() == 1);
@@ -172,11 +179,11 @@ check_matrix()
     Ensures(m.column(0).size() == 1);
     Ensures(m.column(1).size() == 3);
 
-    Ensures(m.values().size() == 4);
-    Ensures(m.values()[0] == 1.0);
-    Ensures(m.values()[1] == 2.0);
-    Ensures(m.values()[2] == 3.0);
-    Ensures(m.values()[3] == 4.0);
+    Ensures(m.A().size() == 4);
+    Ensures(m.P()[0] == 1.0);
+    Ensures(m.P()[1] == 2.0);
+    Ensures(m.P()[2] == 3.0);
+    Ensures(m.P()[3] == 4.0);
 }
 
 int

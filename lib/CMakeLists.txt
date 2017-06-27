@@ -1,5 +1,9 @@
 project(liblp VERSION 0.1.0.0 LANGUAGES CXX C)
 
+option(WITH_FULL_OPTIMIZATION "Disable all logging facilities and active heavy optimization code. [default: off]" OFF)
+
+option(WITH_DEBUG "enable debug log message. [default: ON]" ON)
+
 add_library(liblp SHARED src/lpcore.cpp src/mitm.cpp src/utils.cpp)
 target_include_directories(liblp PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
@@ -10,6 +14,14 @@ set_target_properties(liblp PROPERTIES
   OUTPUT_NAME "lp-${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}"
   COMPILE_DEFINITIONS "LP_DLL"
   COMPILE_FLAGS "-fvisibility=hidden -fvisibility-inlines-hidden")
+target_compile_definitions(liblp
+  PRIVATE
+  $<$<BOOL:${WITH_FULL_OPTIMIZATION}>:LP_FULL_OPTIMIZATION>
+  $<$<BOOL:${WITH_DEBUG}>:LP_DISABLE_DEBUG>
+  VERSION_MAJOR=${PROJECT_VERSION_MAJOR}
+  VERSION_MINOR=${PROJECT_VERSION_MINOR}
+  VERSION_PATCH=${PROJECT_VERSION_PATCH}
+  VERSION_TWEAK=${PROJECT_VERSION_TWEAK})
 install(TARGETS liblp
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
@@ -26,6 +38,14 @@ set_target_properties(liblp-static PROPERTIES
   OUTPUT_NAME "lp-${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}"
   DEFINE_SYMBOL "liblp_EXPORTS"
   COMPILE_FLAGS "-fvisibility=hidden -fvisibility-inlines-hidden")
+target_compile_definitions(liblp-static
+  PRIVATE
+  $<$<BOOL:${WITH_FULL_OPTIMIZATION}>:LP_FULL_OPTIMIZATION>
+  $<$<BOOL:${WITH_DEBUG}>:LP_DISABLE_DEBUG>
+  VERSION_MAJOR=${PROJECT_VERSION_MAJOR}
+  VERSION_MINOR=${PROJECT_VERSION_MINOR}
+  VERSION_PATCH=${PROJECT_VERSION_PATCH}
+  VERSION_TWEAK=${PROJECT_VERSION_TWEAK})
 install(TARGETS liblp-static
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib

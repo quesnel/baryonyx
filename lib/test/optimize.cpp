@@ -41,16 +41,15 @@ test_qap(std::shared_ptr<lp::context> ctx)
         auto pb = lp::make_problem(ctx, EXAMPLES_DIR "/small4.lp");
 
         std::map<std::string, lp::parameter> params;
-        params["limit"] = 1000000l;
+        params["limit"] = 10'000'000l;
         params["theta"] = 0.5;
-        params["delta"] = 0.1;
-        params["kappa-min"] = .3;
-        params["kappa-step"] = 1e-3;
+        params["delta"] = 0.2;
+        params["kappa-step"] = 10e-4;
         params["kappa-max"] = 10.0;
-        params["alpha"] = 1.0;
+        params["alpha"] = 0.0;
         params["w"] = 20l;
 
-        params["time-limit"] = 20.0;
+        params["time-limit"] = 40.0;
         params["pushing-k-factor"] = 0.9;
         params["pushes-limit"] = 50l;
         params["pushing-objective-amplifier"] = 10l;
@@ -104,9 +103,9 @@ test_n_queens_problem(std::shared_ptr<lp::context> ctx)
     std::map<std::string, lp::parameter> params;
     params["limit"] = 100000l;
     params["theta"] = 0.5;
-    params["delta"] = 0.000001;
+    params["delta"] = 1.0;
     params["kappa-min"] = 0.30;
-    params["kappa-step"] = 0.1;
+    params["kappa-step"] = 1e-2;
     params["kappa-max"] = 100.0;
     params["alpha"] = 1.0;
     params["w"] = 60l;
@@ -127,12 +126,7 @@ test_n_queens_problem(std::shared_ptr<lp::context> ctx)
         filepath += std::to_string(i);
         filepath += ".lp";
 
-        std::ifstream ifs(filepath);
-        Ensures(ifs.is_open());
-        if (not ifs.is_open())
-            return;
-
-        auto pb = lp::make_problem(ctx, ifs);
+        auto pb = lp::make_problem(ctx, filepath);
         auto result = lp::optimize(ctx, pb, params);
 
         valid_solutions[i] = (result.remaining_constraints == 0);

@@ -27,6 +27,8 @@
 #include <cstdarg>
 #include <cstdio>
 
+#include <chrono>
+
 #include <lpcore>
 
 namespace lp {
@@ -74,5 +76,42 @@ is_essentially_equal(const T v1, const T v2, const T epsilon)
 LP_API std::string stringf(const char* format, ...) noexcept LP_FORMAT(1, 2);
 
 LP_API std::string vstringf(const char* format, va_list ap) noexcept;
+
+class timer_profiler
+{
+public:
+    timer_profiler(std::shared_ptr<lp::context> ctx)
+      : m_ctx(ctx)
+      , m_s(std::chrono::steady_clock::now())
+    {
+    }
+
+    timer_profiler()
+      : m_s(std::chrono::steady_clock::now())
+    {
+    }
+
+    ~timer_profiler()
+    {
+        auto end = std::chrono::steady_clock::now();
+
+        if (m_ctx.get())
+            m_ctx->info(
+              "%fs\n",
+              std::chrono::duration_cast<std::chrono::duration<double>>(end -
+                                                                        m_s)
+                .count());
+        else
+            fprintf(stderr,
+                    "%fs\n",
+                    std::chrono::duration_cast<std::chrono::duration<double>>(
+                      end - m_s)
+                      .count());
+    }
+
+private:
+    std::shared_ptr<lp::context> m_ctx;
+    std::chrono::time_point<std::chrono::steady_clock> m_s;
+};
 }
 #endif

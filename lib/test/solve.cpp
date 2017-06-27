@@ -176,13 +176,13 @@ test_uf50_0448(std::shared_ptr<lp::context> ctx)
     std::map<std::string, lp::parameter> params;
     params["limit"] = 10'000'000'000l;
     params["theta"] = 0.5;
-    params["delta"] = 0.000125;
+    params["delta"] = 1.0;
     params["kappa-min"] = 0.1;
-    params["kappa-step"] = 1e-4;
-    params["kappa-max"] = 60.0;
-    params["alpha"] = 1.0;
+    params["kappa-step"] = 1e-17;
+    params["kappa-max"] = 1.0;
+    params["alpha"] = 2.0;
     params["w"] = 60l;
-    params["constraint-order"] = std::string("none");
+    params["constraint-order"] = std::string("random-sorting");
 
     auto result = lp::solve(ctx, pb, params);
 
@@ -218,18 +218,19 @@ test_bibd1n(std::shared_ptr<lp::context> ctx)
     std::map<std::string, lp::parameter> params;
     params["limit"] = 10'000'000'000l;
     params["theta"] = 0.5;
-    params["delta"] = 9.5e-3; // 9e-3; //7.e-2;
-    params["kappa-step"] = 1e-2;
-    params["kappa-min"] = 0.65; // 0.7;
-    params["kappa-max"] = 600.0;
-    params["alpha"] = 0.0;
+    params["delta"] = 0.0001;
+    params["kappa-min"] = 0.0005; // 0.7;
+    params["kappa-step"] = 1e-17;
+    params["kappa-max"] = 1.0;
+    params["alpha"] = 2.0;
     params["w"] = 60l;
     params["serialize"] = 1l;
-    params["constraint-order"] = std::string("none");
+    params["constraint-order"] = std::string("reversing");
     // params["constraint-order"] = std::string("infeasibility-incr");
-    // params["constraint-order"] = std::string("adaptative");
-    // params["constraint-order"] = std::string("");
-    params["time-limit"] = -100.0;
+    // params["constraint-order"] = std::string("random-sorting");
+
+    params["time-limit"] = 0.0;
+    params["preprocessing"] = "variables-number";
 
     auto result = lp::solve(ctx, pb, params);
 
@@ -330,18 +331,18 @@ main(int /* argc */, char* /* argv */ [])
     auto ctx = std::make_shared<lp::context>();
     ctx->set_standard_stream_logger();
 
-    test_assignment_problem(ctx);
-    test_assignment_problem_random_coast(ctx);
-    test_negative_coeff(ctx);
-    test_negative_coeff2(ctx);
-    test_negative_coeff3(ctx);
-    test_negative_coeff4(ctx);
-    test_8_queens_puzzle_fixed_cost(ctx);
-    test_8_queens_puzzle_random_cost(ctx);
+    // test_assignment_problem(ctx);
+    // test_assignment_problem_random_coast(ctx);
+    // test_negative_coeff(ctx);
+    // test_negative_coeff2(ctx);
+    // test_negative_coeff3(ctx);
+    // test_negative_coeff4(ctx);
+    // test_8_queens_puzzle_fixed_cost(ctx);
+    // test_8_queens_puzzle_random_cost(ctx);
     test_qap(ctx);
-    test_uf50_0448(ctx);
-    test_flat30_7(ctx);
-    test_aim_50_1_6_yes1_2(ctx);
+    // test_uf50_0448(ctx);
+    // test_flat30_7(ctx);
+    // test_aim_50_1_6_yes1_2(ctx);
 
     // test_bibd1n(ctx);
 

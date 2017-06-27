@@ -30,6 +30,7 @@
 #include "utils.hpp"
 
 #include <Eigen/Core>
+
 #include <algorithm>
 #include <chrono>
 #include <fstream>
@@ -44,11 +45,10 @@
 namespace lp {
 namespace inequalities_1coeff {
 
-using A_type = lp::SparseArray<int>;
+using AP_type = lp::SparseArray<std::int8_t, double>;
 using b_type = Eigen::Matrix<double, 2, Eigen::Dynamic>;
 using c_type = Eigen::VectorXf;
 using x_type = Eigen::VectorXi;
-using P_type = lp::SparseArray<double>;
 using pi_type = Eigen::VectorXf;
 
 enum class constraint_order
@@ -159,15 +159,13 @@ get_constraint_order(std::shared_ptr<context> ctx,
 }
 
 std::string
-get_pre_constraint_order(std::shared_ptr<context> ctx,
+get_pre_constraint_order(std::shared_ptr<context> /*ctx*/,
                          const std::map<std::string, parameter>& params,
                          std::string param)
 {
     auto it = params.find(param);
-    if (it == params.cend()) {
-        ctx->warning("fail to convert parameter %s\n", param.c_str());
-        return std::string();
-    }
+    if (it == params.cend())
+        return {};
 
     return it->second.s;
 }
@@ -279,7 +277,12 @@ void
 calculator_sort(iteratorT begin, iteratorT end, randomT& rng, minimize_tag)
 {
     if (std::distance(begin, end) > 1) {
-        // std::stable_sort(begin, end, [](const auto& lhs, const auto& rhs) {
+
+        //
+        // TODO We can use stable_sort to be sure reproducible run:
+        // std::stable_sort(begin, end, [](const auto& lhs, const auto& rhs)
+        //
+
         std::sort(begin, end, [](const auto& lhs, const auto& rhs) {
             return lhs.value < rhs.value;
         });
@@ -293,7 +296,12 @@ void
 calculator_sort(iteratorT begin, iteratorT end, randomT& rng, maximize_tag)
 {
     if (std::distance(begin, end) > 1) {
-        // std::stable_sort(begin, end, [](const auto& lhs, const auto& rhs) {
+
+        //
+        // TODO We can use stable_sort to be sure reproducible run:
+        // std::stable_sort(begin, end, [](const auto& lhs, const auto& rhs)
+        //
+
         std::sort(begin, end, [](const auto& lhs, const auto& rhs) {
             return rhs.value < lhs.value;
         });
@@ -380,13 +388,11 @@ struct constraint_calculator
     };
 
     random_generator_type& rng;
-    A_type& A;
+    AP_type& ap;
     b_type& b;
     const c_type& cost;
     x_type& x;
-    P_type& P;
     pi_type& pi;
-    std::vector<index> I; // Stores variables with non null coefficient.
     std::vector<r_data> r;
     std::vector<index> C; // Stores variables with negative coefficient.
     index m;
@@ -396,101 +402,97 @@ struct constraint_calculator
                           index k,
                           index m_,
                           index n_,
-                          A_type& A_,
+                          AP_type& ap_,
                           b_type& b_,
                           const c_type& c_,
                           x_type& x_,
-                          P_type& P_,
                           pi_type& pi_)
       : rng(rng_)
-      , A(A_)
+      , ap(ap_)
       , b(b_)
       , cost(c_)
       , x(x_)
-      , P(P_)
       , pi(pi_)
       , m(m_)
       , n(n_)
     {
-        const auto& ak{ A.row(k) };
-        const auto& values{ A.values() };
+        const auto& ak{ ap.row(k) };
+        const auto& va{ ap.A() };
+
+        r.reserve(ak.size());
 
         for (std::size_t i{ 0 }, e{ ak.size() }; i != e; ++i) {
-            if (values[ak[i].value]) {
-                I.emplace_back(ak[i].position);
-                r.emplace_back(0.0, ak[i].position);
-            }
 
-            if (values[ak[i].value] < 0)
+            //
+            // We don't need to represent the I vector since the SparseArray
+            // stores non null coefficient in each row (and column).
+            // I.emplace_back(ak[i].position);
+            //
+
+            if (va[ak[i].value] != 0)
+                r.emplace_back(0, ak[i].position);
+
+            if (va[ak[i].value] < 0)
                 C.emplace_back(ak[i].position);
         }
     }
 
-    void serialize(index k, std::ostream& os) const
-    {
-        os << "[k: " << k << " pi(k): " << pi(k) << " P(k, i): ";
-        for (auto i : I)
-            os << P(k, i) << ' ';
-        os << "] ### ";
-
-        os << b(0, k) << " <= ";
-
-        for (index i = 0, endi = numeric_cast<index>(I.size()); i != endi; ++i)
-            os << A(k, I[i]) << ' ';
-
-        os << " <= " << b(1, k) << '\n';
-    }
-
     void update_row(index k, double kappa, double delta, double theta)
     {
-        for (std::size_t i{ 0 }, endi{ I.size() }; i != endi; ++i)
-            P.mult(k, I[i], theta);
-
         std::uniform_real_distribution<> dst(0.0, 1e-4);
-        for (std::size_t i{ 0 }, endi{ I.size() }; i != endi; ++i) {
+        const auto& ak{ ap.row(k) };
+        const auto& va{ ap.A() };
+
+        //
+        // Decrease influence of local preferences. 0 will completely reset the
+        // preference values for the current row. > 0 will keep former decision
+        // in mind.
+        //
+
+        ap.mult_row_p(k, theta);
+
+        //
+        // Calculate reduced costs
+        //
+
+        for (std::size_t i{ 0 }, e{ ak.size() }; i != e; ++i) {
             double sum_a_pi{ 0 };
             double sum_a_p{ 0 };
 
-            const auto& ai{ A.column(I[i]) };
-            const auto& values{ A.values() };
+            const auto& H{ ap.column(ak[i].position) };
 
-            for (std::size_t h{ 0 }, eh{ ai.size() }; h != eh; ++h) {
-                //
-                // We use std::abs(A(h, I[i])) that is always 1. So we use
-                // only the pi(h) and P(h, I[i]). However. With this behaviour,
-                // solver found less solution? Strange behaviour.
-                //
-
-                // sum_a_pi += pi(ai[h].position);
-                // sum_a_p += P(ai[h].position, I[i]);
-
-                sum_a_pi += values[ai[h].value] * pi(ai[h].position);
-                sum_a_p += values[ai[h].value] * P(ai[h].position, I[i]);
+            for (std::size_t h{ 0 }, eh{ H.size() }; h != eh; ++h) {
+                sum_a_pi +=
+                  ap.A(H[h].position, ak[i].position) * pi(H[h].position);
+                sum_a_p += ap.A(H[h].position, ak[i].position) *
+                           ap.P(H[h].position, ak[i].position);
             }
 
-            r[i].value = cost(I[i]) - sum_a_pi - sum_a_p;
-            if (is_essentially_equal(r[i].value, 0.0, 1e-7))
-                r[i].value += (std::signbit(r[i].value) ? -1. : 1.) * dst(rng);
+            r[i].id = ak[i].position;
+            r[i].value = cost(ak[i].position) - sum_a_pi - sum_a_p;
 
-            r[i].id = I[i];
+            if (is_essentially_equal(r[i].value, 0.0, 1e-10))
+                r[i].value += (std::signbit(r[i].value) ? -1. : 1.) * dst(rng);
         }
 
         //
-        // Negate reduced costs and coefficients of these variables.
+        // Negate reduced costs and coefficients of these variables. We need to
+        // parse the row Ak[i] because we need to use r[i] not available in C.
         //
 
-        for (std::size_t i{ 0 }, endi{ I.size() }; i != endi; ++i) {
-            if (A(k, I[i]) < 0) {
-                r[i].value = -r[i].value;
-                A.mult(k, I[i], -1);
-                P.mult(k, I[i], -1);
+        if (not C.empty()) {
+            for (std::size_t i{ 0 }, e{ ak.size() }; i != e; ++i) {
+                if (va[ak[i].value] < 0) {
+                    r[i].value = -r[i].value;
+                    ap.invert(k, ak[i].position);
+                }
             }
+
+            b(0, k) += C.size();
+            b(1, k) += C.size();
         }
 
         calculator_sort(r.begin(), r.end(), rng, mode_type());
-
-        b(0, k) += C.size();
-        b(1, k) += C.size();
 
         //
         // The bkmin and bkmax constraint bounds are not equal and can be
@@ -503,7 +505,7 @@ struct constraint_calculator
         int sum{ 0 };
 
         for (; i != endi; ++i) {
-            sum += A(k, r[i].id);
+            sum += ap.A(k, r[i].id);
 
             if (b(0, k) <= sum)
                 break;
@@ -525,7 +527,7 @@ struct constraint_calculator
         if (b(0, k) <= sum and sum <= b(1, k)) {
             selected = i;
             for (; i != endi; ++i) {
-                sum += A(k, r[i].id);
+                sum += ap.A(k, r[i].id);
 
                 if (sum <= b(1, k)) {
                     if (stop_iterating(r[i].value, mode_type()))
@@ -545,12 +547,12 @@ struct constraint_calculator
         if (selected < 0) {
             for (index j{ 0 }; j < endi; ++j) {
                 x(r[j].id) = 0;
-                P.add(k, r[j].id, -delta);
+                ap.add_p(k, r[j].id, -delta);
             }
         } else if (second >= endi) {
             for (index j{ 0 }; j < endi; ++j) {
                 x(r[j].id) = 1;
-                P.add(k, r[j].id, +delta);
+                ap.add_p(k, r[j].id, +delta);
             }
         } else {
             pi(k) += ((r[first].value + r[second].value) / 2.0);
@@ -561,27 +563,28 @@ struct constraint_calculator
             index j{ 0 };
             for (; j <= selected; ++j) {
                 x(r[j].id) = 1;
-                P.add(k, r[j].id, +d);
+                ap.add_p(k, r[j].id, +d);
             }
 
             for (; j != endi; ++j) {
                 x(r[j].id) = 0;
-                P.add(k, r[j].id, -d);
+                ap.add_p(k, r[j].id, -d);
             }
         }
-
-        b(0, k) -= C.size();
-        b(1, k) -= C.size();
 
         //
         // Clean up: correct negated costs and adjust value of negated
         // variables.
         //
 
-        for (std::size_t i{ 0 }, e{ C.size() }; i != e; ++i) {
-            A.mult(k, C[i], -1);
-            P.set(k, C[i], -1);
-            x[C[i]] = 1 - x[C[i]];
+        if (not C.empty()) {
+            b(0, k) -= C.size();
+            b(1, k) -= C.size();
+
+            for (std::size_t i{ 0 }, e{ C.size() }; i != e; ++i) {
+                ap.invert(k, C[i]);
+                x[C[i]] = 1 - x[C[i]];
+            }
         }
     }
 };
@@ -630,8 +633,7 @@ struct merged_constraint_hash
 
 /**
  * If a variable is assigned, we remove then from the list of variable, we
- * remove the constraint and we remove all reference to this variable in
- * all
+ * remove the constraint and we remove all reference to this variable in all
  * constraints.
  */
 template <typename constraintsT>
@@ -640,13 +642,6 @@ remove_small_constraints(constraintsT& csts) noexcept
 {
     for (auto& elem : csts) {
         if (elem.elements.size() == 1) {
-
-            // if (elem.max ==)
-
-            //     if (elem.min == elem.max max) {
-            //         remove_variable(ret, elem.elements.variable_index);
-            //         re
-            // }
         }
     }
 
@@ -770,19 +765,6 @@ make_merged_constraints(std::shared_ptr<context> ctx,
         ctx->info("  - removed small constraints: %ld\n", removed);
     }
 
-    // {
-    //     std::ofstream ofs("constraints.tmp.lp");
-    //     for (auto& elem : ret) {
-    //         ofs << elem.min << " <= ";
-
-    //         for (auto& f : elem.elements)
-    //             ofs << ((f.factor < 0) ? "- " : "+ ") << f.variable_index
-    //                 << ' ';
-
-    //         ofs << " <= " << elem.max << '\n';
-    //     }
-    // }
-
     /* Compute metrics from constraints and variables uses.
        - vars counts the number of use of the variables
        - linkvars the link between vars
@@ -810,21 +792,11 @@ make_merged_constraints(std::shared_ptr<context> ctx,
         }
     }
 
-    // {
-    //     std::ofstream ofs("vars-1.txt");
-
-    //     ofs << "name used linkvars linkscst\n";
-
-    //     for (std::size_t i = 0; i < vars.size(); ++i)
-    //         ofs << pb.vars.names[i] << ' ' << vars[i] << ' '
-    //             << linkvars[i].size() << ' ' << linkcst[i].size() << '\n';
-    // }
-
     std::vector<std::pair<merged_constraint, long>> tosort;
 
     if (params.preprocessing == "variables-number") {
-        // Algorithm to a tosort vector according to the number variables
-        // used by each constraints.
+        // Algorithm to a tosort vector according to the number variables used
+        // by each constraints.
 
         for (auto& cst : ret) {
             tosort.emplace_back(cst, 0);
@@ -935,12 +907,11 @@ struct solver
     std::vector<constraint_calculator<modeT, randomT>> row_updaters;
     index m;
     index n;
-    A_type A;
+    AP_type ap;
     b_type b;
     c_type c;
     const double cost_constant;
     x_type x;
-    P_type P;
     pi_type pi;
 
     solver(random_generator_type& rng_,
@@ -951,64 +922,18 @@ struct solver
       : rng(rng_)
       , m(csts.size())
       , n(n_)
-      , A(m, n)
+      , ap(m, n)
       , b(b_type::Zero(2, m))
       , c(c_)
       , cost_constant(cost_constant_)
       , x(x_type::Zero(n))
-      , P(m, n)
       , pi(pi_type::Zero(m))
-    {
-        init(rng_, csts);
-    }
-
-    void reinit(random_generator_type& rng_,
-                const std::vector<merged_constraint>& csts)
-    {
-        A.clear();
-        b = b_type::Zero(2, m);
-
-        P.clear();
-        pi = pi_type::Zero(m);
-
-        row_updaters.clear();
-        init(rng_, csts);
-
-        // std::bernoulli_distribution d(0.5);
-
-        // for (index i = 0; i != n; ++i)
-        //     x(i) = d(rng_);
-    }
-
-    void reinit(random_generator_type& rng_,
-                const x_type& /*best_previous*/,
-                const std::vector<merged_constraint>& csts)
-    {
-        A.clear();
-        b = b_type::Zero(2, m);
-
-        P.clear();
-        pi = pi_type::Zero(m);
-
-        row_updaters.clear();
-        init(rng_, csts);
-
-        // x = best_previous;
-        // std::bernoulli_distribution d(0.5);
-
-        // for (index i = 0; i != n; ++i)
-        //     x(i) = d(rng_);
-    }
-
-    void init(random_generator_type& rng_,
-              const std::vector<merged_constraint>& csts)
     {
         for (std::size_t i{ 0 }, e{ csts.size() }; i != e; ++i) {
             int lower{ 0 }, upper{ 0 };
 
             for (const auto& cst : csts[i].elements) {
-                A.set(i, cst.variable_index, cst.factor);
-                P.set(i, cst.variable_index, 0.0);
+                ap.set(i, cst.variable_index, cst.factor, 0.0);
 
                 if (cst.factor > 0)
                     ++upper;
@@ -1035,11 +960,49 @@ struct solver
             }
         }
 
+        ap.sort();
+
+        init(rng_);
+    }
+
+    void reinit(random_generator_type& rng_)
+    {
+        std::fill(ap.P().begin(), ap.P().end(), 0.0);
+
+        pi = pi_type::Zero(m);
+
+        row_updaters.clear();
+        init(rng_);
+
+        std::bernoulli_distribution d(0.5);
+
+        for (index i = 0; i != n; ++i)
+            x(i) = d(rng_);
+    }
+
+    void reinit(random_generator_type& rng_, const x_type& best_previous)
+    {
+        std::fill(ap.P().begin(), ap.P().end(), 0.0);
+
+        pi = pi_type::Zero(m);
+
+        row_updaters.clear();
+        init(rng_);
+
+        x = best_previous;
+        std::bernoulli_distribution d(0.5);
+
+        for (index i = 0; i != n; ++i)
+            x(i) = d(rng_);
+    }
+
+    void init(random_generator_type& rng_)
+    {
         for (index i = 0; i != n; ++i)
             x(i) = init_x(c(i), mode_type());
 
         for (index k = 0; k != m; ++k)
-            row_updaters.emplace_back(rng_, k, m, n, A, b, c, x, P, pi);
+            row_updaters.emplace_back(rng_, k, m, n, ap, b, c, x, pi);
     }
 
     void serialize(std::ostream& os) const
@@ -1049,8 +1012,8 @@ struct solver
         for (index k{ 0 }; k != m; ++k) {
             int v = 0;
 
-            const auto& ak{ A.row(k) };
-            const auto& values{ A.values() };
+            const auto& ak{ ap.row(k) };
+            const auto& values{ ap.A() };
 
             for (std::size_t i{ 0 }, e{ ak.size() }; i != e; ++i)
                 v += values[ak[i].value] * x(ak[i].position);
@@ -1077,8 +1040,8 @@ struct solver
     {
         for (index k{ 0 }; k != m; ++k) {
             int v{ 0 };
-            const auto& ak{ A.row(k) };
-            const auto& values{ A.values() };
+            const auto& ak{ ap.row(k) };
+            const auto& values{ ap.A() };
 
             for (std::size_t i{ 0 }, e{ ak.size() }; i != e; ++i)
                 v += values[ak[i].value] * x(ak[i].position);
@@ -1251,8 +1214,8 @@ compute_missing_constraint(solverT& solver, std::vector<index>& R)
 
     for (index k{ 0 }; k != solver.m; ++k) {
         int v = 0;
-        const auto& ak{ solver.A.row(k) };
-        const auto& values{ solver.A.values() };
+        const auto& ak{ solver.ap.row(k) };
+        const auto& values{ solver.ap.A() };
 
         for (std::size_t i{ 0 }, e{ ak.size() }; i != e; ++i)
             v += values[ak[i].value] * solver.x(ak[i].position);
@@ -1437,8 +1400,8 @@ struct compute_infeasibility
         for (index k{ 0 }; k != solver.m; ++k) {
             int v = 0;
 
-            const auto& ak{ solver.A.row(k) };
-            const auto& values{ solver.A.values() };
+            const auto& ak{ solver.ap.row(k) };
+            const auto& values{ solver.ap.A() };
 
             for (std::size_t i{ 0 }, e{ ak.size() }; i != e; ++i)
                 v += values[ak[i].value] * solver.x(ak[i].position);
@@ -1464,8 +1427,8 @@ struct compute_infeasibility
         for (index k{ 0 }; k != solver.m; ++k) {
             int v = 0;
 
-            const auto& ak{ solver.A.row(k) };
-            const auto& values{ solver.A.values() };
+            const auto& ak{ solver.ap.row(k) };
+            const auto& values{ solver.ap.A() };
 
             for (std::size_t i{ 0 }, e{ ak.size() }; i != e; ++i)
                 v += values[ak[i].value] * solver.x(ak[i].position);
@@ -1703,9 +1666,9 @@ struct optimize_functor
             if (i >= p.limit or kappa > p.kappa_max or
                 pushed > p.pushes_limit) {
                 if (m_best.status == result_status::success) {
-                    slv.reinit(rng, m_best_x, constraints);
+                    slv.reinit(rng, m_best_x);
                 } else {
-                    slv.reinit(rng, constraints);
+                    slv.reinit(rng);
                 }
 
                 i = 0;
@@ -1827,7 +1790,7 @@ optimize(std::shared_ptr<context> ctx,
     results.clear();
 
     if (thread == 1)
-        ctx->info("optimizer starts with on thread\n");
+        ctx->info("optimizer starts with one thread\n");
     else
         ctx->info("Optimizer starts with %ld threads\n", thread);
 
