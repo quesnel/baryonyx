@@ -218,7 +218,7 @@ test_bibd1n(std::shared_ptr<lp::context> ctx)
     std::map<std::string, lp::parameter> params;
     params["limit"] = 10'000'000'000l;
     params["theta"] = 0.5;
-    params["delta"] = 0.0001;
+    params["delta"] = 0.000001;
     params["kappa-min"] = 0.0005; // 0.7;
     params["kappa-step"] = 1e-17;
     params["kappa-max"] = 1.0;
@@ -315,7 +315,7 @@ test_qap(std::shared_ptr<lp::context> ctx)
     std::map<std::string, lp::parameter> params;
     params["limit"] = 10'000'000l;
     params["theta"] = 0.5;
-    params["delta"] = 0.2;
+    params["delta"] = 0.01;
     params["kappa-step"] = 10e-4;
     params["kappa-max"] = 10.0;
     params["alpha"] = 0.0;
@@ -331,18 +331,18 @@ main(int /* argc */, char* /* argv */ [])
     auto ctx = std::make_shared<lp::context>();
     ctx->set_standard_stream_logger();
 
-    // test_assignment_problem(ctx);
-    // test_assignment_problem_random_coast(ctx);
-    // test_negative_coeff(ctx);
-    // test_negative_coeff2(ctx);
-    // test_negative_coeff3(ctx);
-    // test_negative_coeff4(ctx);
-    // test_8_queens_puzzle_fixed_cost(ctx);
-    // test_8_queens_puzzle_random_cost(ctx);
+    test_assignment_problem(ctx);
+    test_assignment_problem_random_coast(ctx);
+    test_negative_coeff(ctx);
+    test_negative_coeff2(ctx);
+    test_negative_coeff3(ctx);
+    test_negative_coeff4(ctx);
+    test_8_queens_puzzle_fixed_cost(ctx);
+    test_8_queens_puzzle_random_cost(ctx);
     test_qap(ctx);
-    // test_uf50_0448(ctx);
-    // test_flat30_7(ctx);
-    // test_aim_50_1_6_yes1_2(ctx);
+    test_uf50_0448(ctx);
+    test_flat30_7(ctx);
+    test_aim_50_1_6_yes1_2(ctx);
 
     // test_bibd1n(ctx);
 

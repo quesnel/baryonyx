@@ -910,14 +910,12 @@ struct solver
     AP_type ap;
     b_type b;
     c_type c;
-    const double cost_constant;
     x_type x;
     pi_type pi;
 
     solver(random_generator_type& rng_,
            index n_,
            const c_type& c_,
-           double cost_constant_,
            const std::vector<merged_constraint>& csts)
       : rng(rng_)
       , m(csts.size())
@@ -925,7 +923,6 @@ struct solver
       , ap(m, n)
       , b(b_type::Zero(2, m))
       , c(c_)
-      , cost_constant(cost_constant_)
       , x(x_type::Zero(n))
       , pi(pi_type::Zero(m))
     {
@@ -1026,16 +1023,6 @@ struct solver
             row_updaters[*it].serialize(*it, os);
     }
 
-    double compute_value() const noexcept
-    {
-        double ret{ cost_constant };
-
-        for (index i = 0; i != n; ++i)
-            ret += c[i] * x[i];
-
-        return ret;
-    }
-
     bool is_valid_solution() const noexcept
     {
         for (index k{ 0 }; k != m; ++k) {
@@ -1053,13 +1040,17 @@ struct solver
         return true;
     }
 
-    result results() const
+    result results(const c_type& original_costs,
+                   const double cost_constant) const
     {
         result ret;
 
         if (is_valid_solution()) {
             ret.status = result_status::success;
-            ret.value = compute_value();
+            ret.value = cost_constant;
+            for (index i = 0; i != n; ++i)
+                ret.value += original_costs[i] * x[i];
+
             ret.variable_value.resize(n, 0);
 
             for (index i = 0; i != n; ++i)
@@ -1511,7 +1502,8 @@ struct solver_functor
 
     result operator()(const std::vector<merged_constraint>& constraints,
                       index variables,
-                      const c_type& cost,
+                      const c_type& original_costs,
+                      const c_type& norm_costs,
                       double cost_constant,
                       const parameters& p,
                       randomT& rng)
@@ -1526,7 +1518,7 @@ struct solver_functor
         index best_remaining{ -1 };
 
         solver<mode_type, random_generator_type> slv(
-          rng, variables, cost, cost_constant, constraints);
+          rng, variables, norm_costs, constraints);
 
         constraint_order_type compute(rng);
 
@@ -1534,7 +1526,7 @@ struct solver_functor
 
         for (;;) {
             index remaining = compute.run(slv, kappa, p.delta, p.theta);
-            auto current = slv.results();
+            auto current = slv.results(original_costs, cost_constant);
             current.loop = i;
             current.remaining_constraints = remaining;
             current.duration =
@@ -1614,7 +1606,8 @@ struct optimize_functor
 
     result operator()(const std::vector<merged_constraint>& constraints,
                       index variables,
-                      const c_type& cost,
+                      const c_type& original_costs,
+                      const c_type& norm_costs,
                       double cost_constant,
                       const parameters& p,
                       randomT& rng)
@@ -1631,7 +1624,7 @@ struct optimize_functor
         long int pushing_iteration{ 0 };
 
         solver<mode_type, random_generator_type> slv(
-          rng, variables, cost, cost_constant, constraints);
+          rng, variables, norm_costs, constraints);
 
         constraint_order_type compute(rng);
 
@@ -1640,7 +1633,7 @@ struct optimize_functor
 
             index remaining = compute.run(slv, kappa, p.delta, p.theta);
 
-            auto current = slv.results();
+            auto current = slv.results(original_costs, cost_constant);
             current.loop = i;
             current.remaining_constraints = remaining;
 
@@ -1698,7 +1691,7 @@ struct optimize_functor
                     slv.c = c_copy;
 
                     if (remaining == 0) {
-                        current = slv.results();
+                        current = slv.results(original_costs, cost_constant);
                         current.loop = i;
                         if (store_if_better(current))
                             m_best_x = slv.x;
@@ -1739,6 +1732,47 @@ private:
     }
 };
 
+/*
+ * Normalizes the cost vector, i.e. divides it by its l{1,2, +oo}norm. If the
+ * input vector is too small the c is unchanged.
+ */
+inline c_type
+normalize_costs(std::shared_ptr<context> ctx, const c_type& c)
+{
+    c_type ret(c);
+
+    {
+        ctx->info("  -C ompute infinity-norm\n");
+
+        double sum{ c.maxCoeff() };
+
+        if (std::isnormal(sum))
+            return ret /= sum;
+    }
+
+    // {
+    //     ctx->info("Compute l1 norm\n");
+    //     double sum{ 0 };
+    //     for (long i{ 0 }, e{ c.rows() }; i != e; ++i)
+    //         sum += std::abs(c(i));
+
+    //     if (std::isnormal(sum))
+    //         return ret /= sum;
+    // }
+
+    // {
+    //     ctx->info("Compute l2 norm\n");
+    //     double sum{ 0 };
+    //     for (long i{ 0 }, e{ c.rows() }; i != e; ++i)
+    //         sum += c(i) * c(i);
+
+    //     if (std::isnormal(sum))
+    //         return ret /= sum;
+    // }
+
+    return ret;
+}
+
 template <typename modeT, typename constraintOrderT, typename randomT>
 inline result
 solve(std::shared_ptr<context> ctx,
@@ -1752,12 +1786,14 @@ solve(std::shared_ptr<context> ctx,
     auto constraints{ make_merged_constraints(ctx, pb, p) };
     auto variables = lp::numeric_cast<index>(pb.vars.values.size());
     auto cost = make_objective_function(pb.objective, variables);
+    auto norm_costs = normalize_costs(ctx, cost);
     auto cost_constant = pb.objective.constant;
     pb.clear();
 
     solver_functor<modeT, constraintOrderT, randomT> slv(ctx);
 
-    auto result = slv(constraints, variables, cost, cost_constant, p, rng);
+    auto result =
+      slv(constraints, variables, cost, norm_costs, cost_constant, p, rng);
 
     result.method = "inequalities_1coeff solver";
     result.variable_name = names;
@@ -1781,6 +1817,7 @@ optimize(std::shared_ptr<context> ctx,
     auto constraints{ make_merged_constraints(ctx, pb, p) };
     auto variables = lp::numeric_cast<index>(pb.vars.values.size());
     auto cost = make_objective_function(pb.objective, variables);
+    auto norm_costs = normalize_costs(ctx, cost);
     auto cost_constant = pb.objective.constant;
     pb.clear();
 
@@ -1800,6 +1837,7 @@ optimize(std::shared_ptr<context> ctx,
                     std::ref(constraints),
                     variables,
                     std::ref(cost),
+                    std::ref(norm_costs),
                     cost_constant,
                     std::ref(p),
                     std::ref(rng)));
