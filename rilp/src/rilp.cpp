@@ -91,13 +91,8 @@ public:
             Rprintf("lp: warning conditions\n");
             break;
         case lp::context::message_type::notice:
-            Rprintf("lp: normal, but significant, condition\n");
-            break;
         case lp::context::message_type::info:
-            Rprintf("lp: informational message\n");
-            break;
         case lp::context::message_type::debug:
-            Rprintf("lp: debug-level message\n");
             break;
         }
 
