@@ -46,7 +46,7 @@ namespace lp {
 namespace inequalities_1coeff {
 
 using AP_type = lp::SparseArray<std::int8_t, double>;
-using b_type = Eigen::Matrix<double, 2, Eigen::Dynamic>;
+using b_type = Eigen::Matrix<int, 2, Eigen::Dynamic>;
 using c_type = Eigen::VectorXf;
 using x_type = Eigen::VectorXi;
 using pi_type = Eigen::VectorXf;
@@ -322,16 +322,6 @@ stop_iterating(double value, maximize_tag) noexcept
     return value < 0;
 }
 
-double default_solution_value(minimize_tag) noexcept
-{
-    return std::numeric_limits<double>::infinity();
-}
-
-double default_solution_value(maximize_tag) noexcept
-{
-    return -std::numeric_limits<double>::infinity();
-}
-
 bool
 is_better_solution(double lhs, double rhs, minimize_tag) noexcept
 {
@@ -339,13 +329,13 @@ is_better_solution(double lhs, double rhs, minimize_tag) noexcept
 }
 
 bool
-init_x(double v, minimize_tag) noexcept
+init_x(int v, minimize_tag) noexcept
 {
     return v <= 0;
 }
 
 bool
-init_x(double v, maximize_tag) noexcept
+init_x(int v, maximize_tag) noexcept
 {
     return v >= 0;
 }
@@ -1040,16 +1030,17 @@ struct solver
         return true;
     }
 
-    result results(const c_type& original_costs,
-                   const double cost_constant) const
+    result results(const c_type& original_costs, const int cost_constant) const
     {
         result ret;
 
         if (is_valid_solution()) {
             ret.status = result_status::success;
-            ret.value = cost_constant;
+            int value = cost_constant;
             for (index i = 0; i != n; ++i)
-                ret.value += original_costs[i] * x[i];
+                value += original_costs[i] * x[i];
+
+            ret.value = static_cast<double>(value);
 
             ret.variable_value.resize(n, 0);
 
@@ -1504,7 +1495,7 @@ struct solver_functor
                       index variables,
                       const c_type& original_costs,
                       const c_type& norm_costs,
-                      double cost_constant,
+                      int cost_constant,
                       const parameters& p,
                       randomT& rng)
     {
@@ -1608,7 +1599,7 @@ struct optimize_functor
                       index variables,
                       const c_type& original_costs,
                       const c_type& norm_costs,
-                      double cost_constant,
+                      int cost_constant,
                       const parameters& p,
                       randomT& rng)
     {
@@ -1744,7 +1735,7 @@ normalize_costs(std::shared_ptr<context> ctx, const c_type& c)
     {
         ctx->info("  -C ompute infinity-norm\n");
 
-        double sum{ c.maxCoeff() };
+        double sum{ static_cast<double>(c.maxCoeff()) };
 
         if (std::isnormal(sum))
             return ret /= sum;
@@ -1752,7 +1743,7 @@ normalize_costs(std::shared_ptr<context> ctx, const c_type& c)
 
     // {
     //     ctx->info("Compute l1 norm\n");
-    //     double sum{ 0 };
+    //     int sum{ 0 };
     //     for (long i{ 0 }, e{ c.rows() }; i != e; ++i)
     //         sum += std::abs(c(i));
 
@@ -1762,7 +1753,7 @@ normalize_costs(std::shared_ptr<context> ctx, const c_type& c)
 
     // {
     //     ctx->info("Compute l2 norm\n");
-    //     double sum{ 0 };
+    //     int sum{ 0 };
     //     for (long i{ 0 }, e{ c.rows() }; i != e; ++i)
     //         sum += c(i) * c(i);
 
