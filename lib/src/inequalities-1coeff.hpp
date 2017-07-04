@@ -985,10 +985,10 @@ struct solver
 
     void init(random_generator_type& rng_)
     {
-        for (index i = 0; i != n; ++i)
+        for (index i{ 0 }, e{ n }; i != e; ++i)
             x(i) = init_x(c(i), mode_type());
 
-        for (index k = 0; k != m; ++k)
+        for (index k{ 0 }, e{ m }; k != e; ++k)
             row_updaters.emplace_back(rng_, k, m, n, ap, b, c, x, pi);
     }
 
@@ -996,7 +996,7 @@ struct solver
     {
         std::vector<index> vec;
 
-        for (index k{ 0 }; k != m; ++k) {
+        for (index k{ 0 }, ek{ m }; k != ek; ++k) {
             int v = 0;
 
             const auto& ak{ ap.row(k) };
@@ -1015,7 +1015,7 @@ struct solver
 
     bool is_valid_solution() const noexcept
     {
-        for (index k{ 0 }; k != m; ++k) {
+        for (index k{ 0 }, ek{ m }; k != ek; ++k) {
             int v{ 0 };
             const auto& ak{ ap.row(k) };
             const auto& values{ ap.A() };
@@ -1037,14 +1037,15 @@ struct solver
         if (is_valid_solution()) {
             ret.status = result_status::success;
             int value = cost_constant;
-            for (index i = 0; i != n; ++i)
+
+            for (index i{ 0 }, ei{ n }; i != ei; ++i)
                 value += original_costs[i] * x[i];
 
             ret.value = static_cast<double>(value);
 
             ret.variable_value.resize(n, 0);
 
-            for (index i = 0; i != n; ++i)
+            for (index i{ 0 }, ei{ n }; i != ei; ++i)
                 ret.variable_value[i] = x(i);
         }
 
@@ -1138,8 +1139,8 @@ struct cycle_avoidance
 
     bool have_cycle()
     {
-        long distance{ 2 };
-        const long end{ numeric_cast<long>(history.size()) };
+        index distance{ 2 };
+        const index end{ numeric_cast<index>(history.size()) };
 
         if (end < distance)
             return false;
@@ -1194,7 +1195,7 @@ compute_missing_constraint(solverT& solver, std::vector<index>& R)
 {
     R.clear();
 
-    for (index k{ 0 }; k != solver.m; ++k) {
+    for (index k{ 0 }, ek{ solver.m }; k != ek; ++k) {
         int v = 0;
         const auto& ak{ solver.ap.row(k) };
         const auto& values{ solver.ap.A() };
@@ -1379,7 +1380,7 @@ struct compute_infeasibility
     {
         R.clear();
 
-        for (index k{ 0 }; k != solver.m; ++k) {
+        for (index k{ 0 }, ek{ solver.m }; k != ek; ++k) {
             int v = 0;
 
             const auto& ak{ solver.ap.row(k) };
@@ -1406,7 +1407,7 @@ struct compute_infeasibility
     {
         R.clear();
 
-        for (index k{ 0 }; k != solver.m; ++k) {
+        for (index k{ 0 }, ek{ solver.m }; k != ek; ++k) {
             int v = 0;
 
             const auto& ak{ solver.ap.row(k) };
@@ -1529,7 +1530,7 @@ struct solver_functor
                 best_remaining = remaining;
                 m_best = current;
 
-                m_ctx->info("  - constraints remaining: %ld/%ld at %fs\n",
+                m_ctx->info("  - constraints remaining: %d/%d at %fs\n",
                             remaining,
                             current.constraints,
                             current.duration);
@@ -1708,7 +1709,7 @@ private:
                 m_end - m_begin)
                 .count();
 
-            m_ctx->info("  - Solution found: %f (i=%ld t=%fs)\n",
+            m_ctx->info("  - Solution found: %f (i=%d t=%fs)\n",
                         current.value,
                         current.loop,
                         t);
