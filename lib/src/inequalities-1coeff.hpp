@@ -1734,7 +1734,7 @@ normalize_costs(std::shared_ptr<context> ctx, const c_type& c)
     c_type ret(c);
 
     {
-        ctx->info("  -C ompute infinity-norm\n");
+        ctx->info("  - Compute infinity-norm\n");
 
         double sum{ static_cast<double>(c.maxCoeff()) };
 
