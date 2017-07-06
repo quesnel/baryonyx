@@ -86,6 +86,7 @@ struct resume
     resume(const problem& pb)
       : variables({})
       , constraints({})
+      , minmax(lp::compute_min_max_objective_function(pb))
     {
         variables =
           std::accumulate(pb.vars.values.begin(),
@@ -116,11 +117,13 @@ struct resume
 
     std::array<long int, 3> variables;
     std::array<long int, 5> constraints;
+    std::tuple<double, double> minmax;
 };
 
 inline std::ostream&
 operator<<(std::ostream& os, const resume& pb)
 {
+
     return os << "nb variables: "
               << std::accumulate(pb.variables.begin(), pb.variables.end(), 0)
               << '\n'
@@ -135,7 +138,9 @@ operator<<(std::ostream& os, const resume& pb)
               << "  ........ >  : " << pb.constraints[1] << '\n'
               << "  ........ >= : " << pb.constraints[2] << '\n'
               << "  ........ <  : " << pb.constraints[3] << '\n'
-              << "  ........ <= : " << pb.constraints[4] << '\n';
+              << "  ........ <= : " << pb.constraints[4] << '\n'
+              << "minimal value.: " << std::get<0>(pb.minmax) << '\n'
+              << "maximal value.: " << std::get<1>(pb.minmax) << '\n';
 }
 
 } // namespace lp
