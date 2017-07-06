@@ -1,4 +1,4 @@
-/* Copyright (C) 2016 INRA
+/* Copyright (C) 2017 INRA
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the
@@ -712,6 +712,23 @@ struct result
 
     result_status status = result_status::uninitialized;
 };
+
+inline std::tuple<double, double>
+compute_min_max_objective_function(const problem& pb) noexcept
+{
+    std::tuple<double, double> ret{ pb.objective.constant,
+                                    pb.objective.constant };
+
+    for (const auto& elem : pb.objective.elements)
+        if (elem.factor < 0)
+            std::get<0>(ret) += elem.factor;
+        else if (elem.factor > 0)
+            std::get<1>(ret) += elem.factor;
+        else
+            std::get<1>(ret) += 1;
+
+    return ret;
+}
 
 /**
  * Read a \e lp file from the \e file.
