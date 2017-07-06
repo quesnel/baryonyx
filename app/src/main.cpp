@@ -20,12 +20,12 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <fstream>
-#include <iomanip>
-#include <iostream>
-#include <limits>
 #include <lpcore-out>
 #include <lpcore>
+
+#include <fstream>
+#include <iomanip>
+#include <limits>
 #include <sstream>
 
 #include <cerrno>
@@ -33,11 +33,12 @@
 #include <cmath>
 #include <cstdio>
 #include <cstring>
+
 #include <getopt.h>
 #include <sys/types.h>
 #include <unistd.h>
 
-void help() noexcept;
+void help(std::shared_ptr<lp::context> ctx) noexcept;
 double to_double(const char* s, double bad_value) noexcept;
 long to_long(const char* s, long bad_value) noexcept;
 std::tuple<std::string, lp::parameter> split_param(const char* param) noexcept;
@@ -45,7 +46,6 @@ const char* file_format_error_format(lp::file_format_error::tag) noexcept;
 const char* problem_definition_error_format(
   lp::problem_definition_error::tag) noexcept;
 const char* solver_error_format(lp::solver_error::tag) noexcept;
-
 lp::result solve(std::shared_ptr<lp::context> ctx,
                  lp::problem& pb,
                  const std::map<std::string, lp::parameter>& params,
@@ -70,6 +70,9 @@ main(int argc, char* argv[])
     bool quiet = false;
     std::map<std::string, lp::parameter> parameters;
 
+    auto ctx = std::make_shared<lp::context>();
+    ctx->set_standard_stream_logger();
+
     while (not fail) {
         const auto opt =
           getopt_long(argc, argv, short_opts, long_opts, &opt_index);
@@ -86,7 +89,7 @@ main(int argc, char* argv[])
             parameters["limit"] = to_long(::optarg, 1000l);
             break;
         case 'h':
-            help();
+            help(ctx);
             return EXIT_SUCCESS;
         case 'p': {
             std::string name;
@@ -97,7 +100,7 @@ main(int argc, char* argv[])
         case '?':
         default:
             fail = true;
-            std::fprintf(stderr, "Unknown command line option\n");
+            ctx->error("Unknown command line option\n");
             break;
         };
     }
@@ -107,9 +110,6 @@ main(int argc, char* argv[])
 
     (void)verbose;
     (void)quiet;
-
-    auto ctx = std::make_shared<lp::context>();
-    ctx->set_standard_stream_logger();
 
     for (int i = ::optind; i < argc; ++i) {
         try {
@@ -122,9 +122,7 @@ main(int argc, char* argv[])
             filename += std::to_string(i);
             filename += ".sol";
 
-            ctx->log(lp::context::message_type::info,
-                     "solution: %s\n",
-                     filename.c_str());
+            ctx->info("Output file: %s\n", filename.c_str());
 
             std::ofstream ofs(filename);
             ofs << std::boolalpha
@@ -134,9 +132,9 @@ main(int argc, char* argv[])
             auto now = std::chrono::system_clock::now();
             auto in_time_t = std::chrono::system_clock::to_time_t(now);
 
-            ofs << "start: "
+            ofs << lp::resume(pb) << "start: "
                 << std::put_time(std::localtime(&in_time_t), "%Y-%m-%d %X")
-                << '\n';
+                << std::endl;
 
             auto ret = solve(ctx, pb, parameters, optimize);
 
@@ -147,34 +145,30 @@ main(int argc, char* argv[])
                     << ret.remaining_constraints << '\n';
             }
         } catch (const lp::precondition_error& e) {
-            std::fprintf(stderr, "internal failure\n");
+            ctx->error("internal failure\n");
         } catch (const lp::postcondition_error& e) {
-            std::fprintf(stderr, "internal failure\n");
+            ctx->error("internal failure\n");
         } catch (const lp::numeric_cast_error& e) {
-            std::fprintf(stderr, "numeric cast interal failure\n");
+            ctx->error("numeric cast interal failure\n");
         } catch (const lp::file_access_error& e) {
-            std::fprintf(stderr,
-                         "file `%s' fail %d: %s\n",
-                         e.file().c_str(),
-                         e.error(),
-                         std::strerror(e.error()));
+            ctx->error("file `%s' fail %d: %s\n",
+                       e.file().c_str(),
+                       e.error(),
+                       std::strerror(e.error()));
         } catch (const lp::file_format_error& e) {
-            std::fprintf(stderr,
-                         "file format error at line %d column %d "
-                         "%s\n",
-                         e.line(),
-                         e.column(),
-                         file_format_error_format(e.failure()));
+            ctx->error("file format error at line %d column %d "
+                       "%s\n",
+                       e.line(),
+                       e.column(),
+                       file_format_error_format(e.failure()));
         } catch (const lp::problem_definition_error& e) {
-            std::fprintf(stderr,
-                         "definition problem error at %s: %s\n",
-                         e.element().c_str(),
-                         problem_definition_error_format(e.failure()));
+            ctx->error("definition problem error at %s: %s\n",
+                       e.element().c_str(),
+                       problem_definition_error_format(e.failure()));
         } catch (const lp::solver_error& e) {
-            std::fprintf(
-              stderr, "solver error: %s\n", solver_error_format(e.failure()));
+            ctx->error("solver error: %s\n", solver_error_format(e.failure()));
         } catch (const std::exception& e) {
-            std::fprintf(stderr, "failure: %s.\n", e.what());
+            ctx->error("failure: %s.\n", e.what());
         }
     }
 
@@ -182,18 +176,17 @@ main(int argc, char* argv[])
 }
 
 void
-help() noexcept
+help(std::shared_ptr<lp::context> ctx) noexcept
 {
-    std::fprintf(stdout,
-                 "--help|-h                   This help message\n"
-                 "--param|-p [name]:[value]   Add a new parameter (name is"
-                 " [a-z][A-Z]_ value can be a double, an integer otherwise a"
-                 " string.\n"
-                 "--optimize|-O               Optimize model (default "
-                 "feasibility search only)\n"
-                 "--limit int                 Set limit\n"
-                 "--quiet                     Remove any verbose message\n"
-                 "--verbose|-v int            Set verbose level\n");
+    ctx->info("--help|-h                   This help message\n"
+              "--param|-p [name]:[value]   Add a new parameter (name is"
+              " [a-z][A-Z]_ value can be a double, an integer otherwise a"
+              " string.\n"
+              "--optimize|-O               Optimize model (default "
+              "feasibility search only)\n"
+              "--limit int                 Set limit\n"
+              "--quiet                     Remove any verbose message\n"
+              "--verbose|-v int            Set verbose level\n");
 }
 
 const char*
