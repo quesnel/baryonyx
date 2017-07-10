@@ -137,6 +137,11 @@ context::set_logger(std::unique_ptr<logger> function) noexcept
 }
 
 #ifndef LP_DISABLE_LOGGING
+//
+// Default, the logging system is active and the call to the @c log function
+// are send to the logger functor. Define LP_DISABLE_LOGGING as preprocessor
+// value to hide all logging message..
+//
 void
 context::log(message_type type, const char* format, ...) noexcept
 {
@@ -219,7 +224,36 @@ context::error(const char* format, ...) noexcept
     m_logger->write(context::message_type::err, format, args);
     va_end(args);
 }
+#else
+void
+context::log(message_type, const char*, va_list)
+{
+}
 
+void
+context::log(int, const char*, int, const char*, const char*, va_list)
+{
+}
+
+void
+context::info(const char*, va_list)
+{
+}
+
+void
+context::warning(const char*, va_list)
+{
+}
+
+void
+context::debug(const char*, va_list)
+{
+}
+
+void
+context::error(const char*, va_list)
+{
+}
 #endif
 
 problem

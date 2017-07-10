@@ -486,9 +486,12 @@ struct parameter
     tag type;
 };
 
+/* Default, the logging system is active and the call to the @c log
+ * function are send to the logger functor. Define LP_DISABLE_LOGGING as
+ * preprocessor value to hide all logging message..
+ */
 class LP_API context
 {
-
 public:
     enum class message_type
     {
@@ -548,43 +551,6 @@ private:
     int m_log_priority = 7;
     std::unique_ptr<logger> m_logger;
 };
-
-//
-// Default, the logging system is active and the call to the @c log function
-// are send to the logger functor. Define LP_DISABLE_LOGGING as preprocessor
-// value to hide all logging message..
-//
-#ifdef LP_DISABLE_LOGGING
-void
-context::log(message_type, const char*, va_list)
-{
-}
-
-void
-context::log(int, const char*, int, const char*, const char*, va_list)
-{
-}
-
-void
-context::info(const char*, va_list)
-{
-}
-
-void
-context::warning(const char*, va_list)
-{
-}
-
-void
-context::debug(const char*, va_list)
-{
-}
-
-void
-context::error(const char*, va_list)
-{
-}
-#endif
 
 enum class variable_type
 {
