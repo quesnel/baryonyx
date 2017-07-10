@@ -16,11 +16,6 @@ endif()
 
 target_link_libraries(app liblp boost eigen3 threads)
 
-#target_include_directories(app PRIVATE
-#  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-#  $<INSTALL_INTERFACE:include>
-#  ${CMAKE_BINARY_DIR})
-
 set_target_properties(app PROPERTIES
   OUTPUT_NAME "lp-${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}")
 
