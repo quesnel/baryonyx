@@ -1,4 +1,4 @@
-/* Copyright (C) 2016 INRA
+/* Copyright (C) 2017 INRA
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the
@@ -59,15 +59,16 @@ main(int argc, char* argv[])
                                         { "help", 0, nullptr, 'h' },
                                         { "param", 1, nullptr, 'p' },
                                         { "limit", 1, nullptr, 'l' },
-                                        { "quiet", 0, nullptr, 0 },
+                                        { "quiet", 0, nullptr, 'q' },
                                         { "verbose", 1, nullptr, 'v' },
                                         { 0, 0, nullptr, 0 } };
 
     int opt_index;
     int verbose = 1;
+    int quiet = 0;
+
     bool fail = false;
     bool optimize = false;
-    bool quiet = false;
     std::map<std::string, lp::parameter> parameters;
 
     auto ctx = std::make_shared<lp::context>();
@@ -97,6 +98,9 @@ main(int argc, char* argv[])
             std::tie(name, value) = split_param(::optarg);
             parameters[name] = value;
         } break;
+        case 'q':
+            quiet = 1;
+            break;
         case '?':
         default:
             fail = true;
@@ -105,11 +109,13 @@ main(int argc, char* argv[])
         };
     }
 
+    if (quiet)                    // priority to quiet over the
+        ctx->set_log_priority(3); // verbose mode.
+    else if (verbose >= 0 and verbose <= 7)
+        ctx->set_log_priority(verbose);
+
     if (fail)
         return EXIT_FAILURE;
-
-    (void)verbose;
-    (void)quiet;
 
     for (int i = ::optind; i < argc; ++i) {
         try {
@@ -137,6 +143,10 @@ main(int argc, char* argv[])
                 << std::endl;
 
             auto ret = solve(ctx, pb, parameters, optimize);
+
+            in_time_t = std::chrono::system_clock::to_time_t(now);
+            ofs << std::put_time(std::localtime(&in_time_t), "%Y-%m-%d %X")
+                << '\n';
 
             if (ret.status == lp::result_status::success) {
                 ofs << "Solution found: " << ret.value << '\n' << ret;
