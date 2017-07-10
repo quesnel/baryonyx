@@ -3,14 +3,14 @@ library(sensitivity)
 
 factors=c("theta", "delta", "constraint_order", "kappa_min",
                    "kappa_step", "kappa_max", "alpha", "w")
-bounds = data.frame(min=c(0,    0, 0, 0.0,   0,  1.0, 0.0, 0),        
-                    max=c(1, 1e10, 4, 1.0, 0.1, 10.0, 2.0, 1000))
+bounds = data.frame(min=c(0, 0, 0, 0.0,   0,  1.0, 0.0, 0),
+                    max=c(1, 1, 4, 1.0, 0.1, 10.0, 2.0, 1000))
 rownames(bounds) <- factors
 
 morrisDesign <- morris(model = NULL,
                 factors = factors,
                 r = 100,
-                design=list(type="oat", levels=10, grid.jump=5),
+                design=list(type="oat", levels=20, grid.jump=5),
                 binf = bounds$min,
                 bsup = bounds$max,
                 scale=TRUE)
@@ -42,14 +42,15 @@ f <- function(x, thread=1, limit=1000000, time_limit=1) {
            w = w,
            time_limit = time_limit,
            seed = 123654785,
-           thread = 1L)
+           thread = 1L,
+           verbose = TRUE)
 
   return(r)
 }
 
 r = apply(morrisDesign$X, 1, f)
 mr = matrix(unlist(r), ncol=2, byrow = TRUE)
-mr1 <- mr[,-2]
+mr1 <- mr[,-3]
 
 tell(morrisDesign, mr1)
 plot(morrisDesign)
