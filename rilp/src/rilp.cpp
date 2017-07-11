@@ -20,81 +20,18 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+#define R_USE_C99_IN_CXX
 #include <Rcpp.h>
 
 #include <lpcore>
 
 using namespace Rcpp;
 
-class RcontextQuiet : public lp::context::logger
+class Rcontext : public lp::context::logger
 {
 public:
-    RcontextQuiet() = default;
-    ~RcontextQuiet() noexcept override = default;
-
-    void write(int,
-               const char*,
-               int,
-               const char*,
-               const char*,
-               va_list) noexcept override
-    {
-    }
-
-    void write(lp::context::message_type m,
-               const char* format,
-               va_list args) noexcept override
-    {
-
-        switch (m) {
-        case lp::context::message_type::emerg:
-            Rprintf("lp: system is unusable\n");
-            break;
-        case lp::context::message_type::alert:
-            Rprintf("lp: action must be taken immediately\n");
-            break;
-        case lp::context::message_type::crit:
-            Rprintf("lp: critical conditions\n");
-            break;
-        case lp::context::message_type::err:
-            Rprintf("lp: error conditions\n");
-            break;
-        case lp::context::message_type::warning:
-            Rprintf("lp: warning conditions\n");
-            break;
-        case lp::context::message_type::notice:
-        case lp::context::message_type::info:
-        case lp::context::message_type::debug:
-            break;
-        }
-
-        try {
-            std::string buffer(256, '\0');
-            int sz;
-
-            for (;;) {
-                sz = std::vsnprintf(&buffer[0], buffer.size(), format, args);
-
-                if (sz < 0)
-                    return;
-
-                if (static_cast<std::size_t>(sz) < buffer.size()) {
-                    Rprintf("%s", buffer.c_str());
-                    return;
-                }
-
-                buffer.resize(sz + 1);
-            }
-        } catch (const std::exception& /*e*/) {
-        }
-    }
-};
-
-class RcontextVerbose : public lp::context::logger
-{
-public:
-    RcontextVerbose() = default;
-    ~RcontextVerbose() noexcept override = default;
+    Rcontext() = default;
+    ~Rcontext() noexcept override = default;
 
     void write(int priority,
                const char* file,
@@ -103,41 +40,19 @@ public:
                const char* format,
                va_list args) noexcept override
     {
-        if (priority <= 3) {
-            Rprintf("lp: %d at %d in function %s form file %s: ",
-                    priority,
-                    line,
-                    fn,
-                    file);
+        Rprintf("lp: %d at %d in function %s form file %s: ",
+                priority,
+                line,
+                fn,
+                file);
 
-            try {
-                std::string buffer(256, '\0');
-                int sz;
-
-                for (;;) {
-                    sz =
-                      std::vsnprintf(&buffer[0], buffer.size(), format, args);
-
-                    if (sz < 0)
-                        return;
-
-                    if (static_cast<std::size_t>(sz) < buffer.size()) {
-                        Rprintf("%s", buffer.c_str());
-                        return;
-                    }
-
-                    buffer.resize(sz + 1);
-                }
-            } catch (const std::exception& /*e*/) {
-            }
-        }
+        Rvprintf(format, args);
     }
 
     void write(lp::context::message_type m,
                const char* format,
                va_list args) noexcept override
     {
-
         switch (m) {
         case lp::context::message_type::emerg:
             Rprintf("lp: system is unusable\n");
@@ -160,25 +75,7 @@ public:
             break;
         }
 
-        try {
-            std::string buffer(256, '\0');
-            int sz;
-
-            for (;;) {
-                sz = std::vsnprintf(&buffer[0], buffer.size(), format, args);
-
-                if (sz < 0)
-                    return;
-
-                if (static_cast<std::size_t>(sz) < buffer.size()) {
-                    Rprintf("%s", buffer.c_str());
-                    return;
-                }
-
-                buffer.resize(sz + 1);
-            }
-        } catch (const std::exception& /*e*/) {
-        }
+        Rvprintf(format, args);
     }
 };
 
@@ -191,7 +88,7 @@ public:
 //' of the solution (Integer, Real, Real):
 //'   - Integer: The number of remaining constraints. 0 means a solution
 //'      found, greater than 0 means remaining constraints and value is
-//'      0. -1 means an error occured during solving. Use the @c `lp`
+//'      0. -1 means an error occurred during solving. Use the @c `lp`
 //'      program to check out the error.
 //'   - Real: The value of the solution found (if the remaining
 //'     constraint equal 0).
@@ -225,10 +122,8 @@ solve_01lp_problem(std::string file_path,
 {
     try {
         auto ctx = std::make_shared<lp::context>();
-        if (verbose)
-            ctx->set_logger(std::make_unique<RcontextVerbose>());
-        else
-            ctx->set_logger(std::make_unique<RcontextQuiet>());
+        ctx->set_logger(std::make_unique<Rcontext>());
+        ctx->set_log_priority(!verbose ? 6 : 3);
 
         auto pb = lp::make_problem(ctx, file_path);
         auto mm = lp::compute_min_max_objective_function(pb);
@@ -314,9 +209,22 @@ solve_01lp_problem(std::string file_path,
 //' @param constraint_order: 0-none, 1-reversing, 2-random-sorting,
 //' 3-infeasibility-decr, 4- infeasibility-incr
 //'
-//' @return an uniq scalar. The value of the solution found (if the
-//'     remaining constraint equal 0) or maximum objective function value +
-//'     the remaining constraints..
+//' @return an uniq scalar.
+//'   - If a solution is found:
+//'     - if the problem is a minimization: the value of the solution found.
+//'     - if the problem is a maximization: the inverse of the solution
+//'       found.
+//'   - If no solution is found, we use the limits of the objective
+//'     function (minimal and maximal value possible.
+//'     - if the problem is a minimization: the maximal value possible +
+//'       the remaining constraints.
+//'     - if the problem is a maximization: the inverse of the minimal
+//'       value possible + the remaining constraints.
+//'   - If a error occurred (not enough memory, problem error etc.):
+//'     - if the problem is a minimization: the maximal value possible +
+//'       the number of constraints .
+//'     - if the problem is a maximization: the inverse of the minimal
+//'       value possible + the number of constraints.
 //'
 //' @useDynLib rilp
 //' @importFrom Rcpp sourceCpp
@@ -343,15 +251,20 @@ optimize_01lp_problem(std::string file_path,
                       long int thread = 1,
                       bool verbose = true) noexcept
 {
+    double ret{ 0 };
+
     try {
         auto ctx = std::make_shared<lp::context>();
-        if (verbose)
-            ctx->set_logger(std::make_unique<RcontextVerbose>());
-        else
-            ctx->set_logger(std::make_unique<RcontextQuiet>());
+        ctx->set_logger(std::make_unique<Rcontext>());
+        ctx->set_log_priority(verbose ? 6 : 3);
 
         auto pb = lp::make_problem(ctx, file_path);
         auto mm = lp::compute_min_max_objective_function(pb);
+
+        if (pb.type == lp::objective_function_type::maximize)
+            ret = -std::get<0>(mm) + size(pb);
+        else
+            ret = std::get<1>(mm) + size(pb);
 
         if (pb.type == lp::objective_function_type::maximize) {
             std::swap(std::get<0>(mm), std::get<1>(mm));
@@ -363,19 +276,14 @@ optimize_01lp_problem(std::string file_path,
         params["limit"] = limit;
         params["theta"] = theta;
         params["delta"] = delta;
-
         params["kappa-min"] = kappa_min;
         params["kappa-step"] = kappa_step;
         params["kappa-max"] = kappa_max;
         params["alpha"] = alpha;
         params["w"] = w;
 
-        if (seed > 0) {
-            Rprintf("solver uses a PRNG with %ld as seed\n", seed);
+        if (seed > 0)
             params["seed"] = seed;
-        } else {
-            Rprintf("solver uses a PRNG with a random seed.\n");
-        }
 
         switch (constraint_order) {
         case 1:
@@ -407,12 +315,15 @@ optimize_01lp_problem(std::string file_path,
 
         if (result.status == lp::result_status::success) {
             if (pb.type == lp::objective_function_type::maximize)
-                return -result.value;
+                ret = -result.value;
             else
-                return result.value;
+                ret = result.value;
+        } else {
+            if (pb.type == lp::objective_function_type::maximize)
+                ret = -std::get<0>(mm) + result.remaining_constraints;
+            else
+                ret = std::get<1>(mm) + result.remaining_constraints;
         }
-
-        return std::get<1>(mm) + result.remaining_constraints;
     } catch (const std::bad_alloc& e) {
         Rprintf("lp memory error: %s\n", e.what());
     } catch (const std::exception& e) {
@@ -421,5 +332,12 @@ optimize_01lp_problem(std::string file_path,
         Rprintf("lp error: unknown error\n");
     }
 
-    return NA_REAL;
+    Rprintf("optimizer returns: %f (kappa: %f %f %f delta: %f)\n",
+            ret,
+            kappa_min,
+            kappa_step,
+            kappa_max,
+            delta);
+
+    return ret;
 }
