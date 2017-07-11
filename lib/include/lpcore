@@ -589,12 +589,6 @@ struct variables
 {
     std::vector<std::string> names;
     std::vector<variable_value> values;
-
-    void clear()
-    {
-        std::vector<std::string>().swap(names);
-        std::vector<variable_value>().swap(values);
-    }
 };
 
 struct function_element
@@ -620,16 +614,12 @@ struct objective_function
 {
     std::vector<function_element> elements;
     int constant = { 0 };
-
-    void clear()
-    {
-        std::vector<function_element>().swap(elements);
-    }
 };
 
 struct problem
 {
     objective_function objective;
+
     std::vector<constraint> equal_constraints;
     std::vector<constraint> greater_constraints;
     std::vector<constraint> greater_equal_constraints;
@@ -639,20 +629,36 @@ struct problem
     variables vars;
 
     objective_function_type type = { objective_function_type::maximize };
-
-    void clear()
-    {
-        objective.clear();
-
-        std::vector<constraint>().swap(equal_constraints);
-        std::vector<constraint>().swap(greater_constraints);
-        std::vector<constraint>().swap(greater_equal_constraints);
-        std::vector<constraint>().swap(less_constraints);
-        std::vector<constraint>().swap(less_equal_constraints);
-
-        vars.clear();
-    }
 };
+
+inline std::size_t
+size(const lp::problem& pb) noexcept
+{
+    return pb.equal_constraints.size() + pb.greater_constraints.size() +
+           pb.greater_equal_constraints.size() + pb.less_constraints.size() +
+           pb.less_equal_constraints.size();
+}
+
+/** Recover all memory allocated for all container of the @c
+ * lp::problem. After this function, the @c lp::problem is completely
+ * empty of data and can be reuse.
+ *
+ * @param pb The problem to clear.
+ */
+inline void
+clear(lp::problem& pb) noexcept
+{
+    std::vector<function_element>().swap(pb.objective.elements);
+
+    std::vector<constraint>().swap(pb.equal_constraints);
+    std::vector<constraint>().swap(pb.greater_constraints);
+    std::vector<constraint>().swap(pb.greater_equal_constraints);
+    std::vector<constraint>().swap(pb.less_constraints);
+    std::vector<constraint>().swap(pb.less_equal_constraints);
+
+    std::vector<std::string>().swap(pb.vars.names);
+    std::vector<variable_value>().swap(pb.vars.values);
+}
 
 enum class result_status
 {

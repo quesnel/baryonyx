@@ -1780,7 +1780,8 @@ solve(std::shared_ptr<context> ctx,
     auto cost = make_objective_function(pb.objective, variables);
     auto norm_costs = normalize_costs(ctx, cost);
     auto cost_constant = pb.objective.constant;
-    pb.clear();
+
+    lp::clear(pb);
 
     solver_functor<modeT, constraintOrderT, randomT> slv(ctx);
 
@@ -1811,7 +1812,8 @@ optimize(std::shared_ptr<context> ctx,
     auto cost = make_objective_function(pb.objective, variables);
     auto norm_costs = normalize_costs(ctx, cost);
     auto cost_constant = pb.objective.constant;
-    pb.clear();
+
+    lp::clear(pb);
 
     std::vector<std::thread> pool(thread);
     pool.clear();
