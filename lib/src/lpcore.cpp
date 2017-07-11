@@ -1,4 +1,4 @@
-/* Copyright (C) 2016 INRA
+/* Copyright (C) 2017 INRA
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the
@@ -115,7 +115,7 @@ public:
 void
 context::set_log_priority(int priority) noexcept
 {
-    m_log_priority = priority < 0 ? 0 : 7 > priority ? 7 : priority;
+    m_log_priority = priority < 0 ? 0 : 7 < priority ? 7 : priority;
 }
 
 int
@@ -148,6 +148,39 @@ context::log(message_type type, const char* format, ...) noexcept
     if (not m_logger)
         return;
 
+    switch (type) {
+    case lp::context::message_type::emerg:
+        break;
+    case lp::context::message_type::alert:
+        if (m_log_priority < 1)
+            return;
+        break;
+    case lp::context::message_type::crit:
+        if (m_log_priority < 2)
+            return;
+        break;
+    case lp::context::message_type::err:
+        if (m_log_priority < 3)
+            return;
+        break;
+    case lp::context::message_type::warning:
+        if (m_log_priority < 4)
+            return;
+        break;
+    case lp::context::message_type::notice:
+        if (m_log_priority < 5)
+            return;
+        break;
+    case lp::context::message_type::info:
+        if (m_log_priority < 6)
+            return;
+        break;
+    case lp::context::message_type::debug:
+        if (m_log_priority < 7)
+            return;
+        break;
+    }
+
     va_list args;
 
     va_start(args, format);
@@ -163,7 +196,7 @@ context::log(int priority,
              const char* format,
              ...) noexcept
 {
-    if (not m_logger)
+    if (not m_logger and m_log_priority < priority)
         return;
 
     va_list args;
@@ -176,7 +209,7 @@ context::log(int priority,
 void
 context::info(const char* format, ...) noexcept
 {
-    if (not m_logger)
+    if (not m_logger or m_log_priority < 6)
         return;
 
     va_list args;
@@ -189,7 +222,7 @@ context::info(const char* format, ...) noexcept
 void
 context::debug(const char* format, ...) noexcept
 {
-    if (not m_logger)
+    if (not m_logger or m_log_priority < 7)
         return;
 
     va_list args;
@@ -202,7 +235,7 @@ context::debug(const char* format, ...) noexcept
 void
 context::warning(const char* format, ...) noexcept
 {
-    if (not m_logger)
+    if (not m_logger and m_log_priority < 4)
         return;
 
     va_list args;
@@ -215,7 +248,7 @@ context::warning(const char* format, ...) noexcept
 void
 context::error(const char* format, ...) noexcept
 {
-    if (not m_logger)
+    if (not m_logger and m_log_priority < 3)
         return;
 
     va_list args;
