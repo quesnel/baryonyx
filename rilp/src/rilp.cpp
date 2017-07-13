@@ -332,12 +332,13 @@ optimize_01lp_problem(std::string file_path,
         Rprintf("lp error: unknown error\n");
     }
 
-    Rprintf("optimizer returns: %f (kappa: %f %f %f delta: %f)\n",
+    Rprintf("optimizer returns: %f (kappa: %f %f %f delta: %f theta: %f)\n",
             ret,
             kappa_min,
             kappa_step,
             kappa_max,
-            delta);
+            delta,
+            theta);
 
     return ret;
 }
