@@ -631,6 +631,11 @@ struct problem
     objective_function_type type = { objective_function_type::maximize };
 };
 
+/** Compute the number of constaints of the @c lp::problem.
+ *
+ * @param pb An lp::problem.
+ * @return The number of constraints in the @c lp::problem.
+ */
 inline std::size_t
 size(const lp::problem& pb) noexcept
 {
