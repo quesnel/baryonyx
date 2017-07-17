@@ -264,7 +264,7 @@ mitm_solve(std::shared_ptr<lp::context> ctx,
         return lp::generalized_wedelin(kappa, delta, theta, limit, pb);
     }
 
-    throw lp::solver_error(solver_error::tag::no_solver_available);
+    throw lp::solver_failure(solver_error_tag::no_solver_available);
 }
 
 result
@@ -322,7 +322,7 @@ mitm_optimize(std::shared_ptr<lp::context> ctx,
         return lp::generalized_wedelin(kappa, delta, theta, limit, pb);
     }
 
-    throw lp::solver_error(solver_error::tag::no_solver_available);
+    throw lp::solver_failure(solver_error_tag::no_solver_available);
 }
 
 } // namespace lp

@@ -507,7 +507,7 @@ struct constraint_calculator
         //
 
         if (b(0, k) > sum)
-            throw solver_error(solver_error::tag::unrealisable_constraint);
+            throw solver_failure(solver_error_tag::unrealisable_constraint);
 
         //
         // If all variable must be assigned to 0, we let selected assigned to 0
@@ -528,7 +528,8 @@ struct constraint_calculator
             }
 
             if (i == endi)
-                throw solver_error(solver_error::tag::unrealisable_constraint);
+                throw solver_failure(
+                  solver_error_tag::unrealisable_constraint);
 
             first = selected;
             second = selected + 1;

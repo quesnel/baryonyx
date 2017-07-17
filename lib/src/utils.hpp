@@ -37,28 +37,28 @@ inline void
 Expects(bool condition)
 {
     if (not condition)
-        throw precondition_error("precondition failure");
+        throw precondition_failure("precondition failure");
 }
 
 inline void
 Ensures(bool condition)
 {
     if (not condition)
-        throw postcondition_error("postcondition failure");
+        throw postcondition_failure("postcondition failure");
 }
 
 inline void
 Expects(bool condition, const char* s)
 {
     if (not condition)
-        throw precondition_error(s);
+        throw precondition_failure(s);
 }
 
 inline void
 Ensures(bool condition, const char* s)
 {
     if (not condition)
-        throw postcondition_error(s);
+        throw postcondition_failure(s);
 }
 
 template <typename T>

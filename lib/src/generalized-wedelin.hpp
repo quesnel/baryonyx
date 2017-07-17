@@ -443,7 +443,8 @@ public:
                       new advanded_constraint_calculator<mode_type>(
                         pb, k, m, n, A, b, c, x, P, pi, u));
                 } else
-                    throw solver_error(solver_error::tag::no_solver_available);
+                    throw solver_failure(
+                      solver_error_tag::no_solver_available);
             }
         }
     }

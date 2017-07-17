@@ -77,23 +77,23 @@ namespace lp {
 /** @c index is used as accessor for all array. */
 using index = int;
 
-struct precondition_error : std::logic_error
+struct precondition_failure : std::logic_error
 {
-    precondition_error(const char* msg)
+    precondition_failure(const char* msg)
       : std::logic_error(msg)
     {
     }
 };
 
-struct postcondition_error : std::logic_error
+struct postcondition_failure : std::logic_error
 {
-    postcondition_error(const char* msg)
+    postcondition_failure(const char* msg)
       : std::logic_error(msg)
     {
     }
 };
 
-struct numeric_cast_error : public std::exception
+struct numeric_cast_failure : public std::exception
 {
     const char* what() const noexcept override
     {
@@ -130,151 +130,168 @@ inline Target
 numeric_cast(Source s)
 {
     if (not is_numeric_castable<Target>(s))
-        throw lp::numeric_cast_error();
+        throw lp::numeric_cast_failure();
 
     return static_cast<Target>(s);
 }
 
-struct file_access_error : std::runtime_error
+struct file_access_error
 {
-    file_access_error(std::string file, int error)
-      : std::runtime_error("file_access_error")
-      , m_file(file)
-      , m_error(error)
+    std::string file;
+    int error;
+};
+
+struct file_access_failure : std::runtime_error
+{
+    file_access_failure(std::string file, int error)
+      : std::runtime_error("file_access_failure")
+      , m_error{ std::move(file), error }
     {
     }
 
     std::string file() const
     {
-        return m_file;
+        return m_error.file;
     }
 
     int error() const
     {
-        return m_error;
+        return m_error.error;
     }
 
 private:
-    std::string m_file;
-    int m_error;
+    file_access_error m_error;
 };
 
-struct file_format_error : std::runtime_error
+enum class file_format_error_tag
 {
-    enum class tag
-    {
-        end_of_file,
-        unknown,
-        already_defined,
-        incomplete,
-        bad_name,
-        bad_operator,
-        bad_integer,
-        bad_objective_function_type,
-        bad_bound,
-        bad_function_element,
-        bad_constraint
-    };
+    end_of_file,
+    unknown,
+    already_defined,
+    incomplete,
+    bad_name,
+    bad_operator,
+    bad_integer,
+    bad_objective_function_type,
+    bad_bound,
+    bad_function_element,
+    bad_constraint
+};
 
-    file_format_error(std::string element, tag failure, int line, int column)
-      : std::runtime_error("file_format_error")
-      , m_element(std::move(element))
-      , m_line(line)
-      , m_column(column)
-      , m_failure(failure)
+struct file_format_error
+{
+    std::string element;
+    int line;
+    int column;
+    file_format_error_tag tag;
+};
+
+struct file_format_failure : std::runtime_error
+{
+    file_format_failure(std::string element,
+                        file_format_error_tag failure,
+                        int line,
+                        int column)
+      : std::runtime_error("file_format_failure")
+      , m_error{ std::move(element), line, column, failure }
     {
     }
 
-    file_format_error(tag failure, int line, int column)
-      : std::runtime_error("file_format_error")
-      , m_line(line)
-      , m_column(column)
-      , m_failure(failure)
+    file_format_failure(file_format_error_tag failure, int line, int column)
+      : std::runtime_error("file_format_failure")
+      , m_error{ std::string(), line, column, failure }
     {
     }
 
     std::string element() const
     {
-        return m_element;
+        return m_error.element;
     }
 
     int line() const
     {
-        return m_line;
+        return m_error.line;
     }
 
     int column() const
     {
-        return m_column;
+        return m_error.column;
     }
 
-    tag failure() const
+    file_format_error_tag failure() const
     {
-        return m_failure;
+        return m_error.tag;
     }
 
 private:
-    std::string m_element;
-    int m_line;
-    int m_column;
-    tag m_failure;
+    file_format_error m_error;
 };
 
-struct problem_definition_error : std::runtime_error
+enum class problem_definition_error_tag
 {
-    enum class tag
-    {
-        empty_variables,
-        empty_objective_function,
-        variable_not_used,
-        bad_bound,
-        multiple_constraint,
-    };
+    empty_variables,
+    empty_objective_function,
+    variable_not_used,
+    bad_bound,
+    multiple_constraint,
+};
 
-    problem_definition_error(std::string element, tag failure)
-      : std::runtime_error("problem_definition_error")
-      , m_element(element)
-      , m_failure(failure)
+struct problem_definition_error
+{
+    std::string element;
+    problem_definition_error_tag tag;
+};
+
+struct problem_definition_failure : std::runtime_error
+{
+    problem_definition_failure(std::string element,
+                               problem_definition_error_tag failure)
+      : std::runtime_error("problem_definition_failure")
+      , m_error{ element, failure }
     {
     }
 
     std::string element() const
     {
-        return m_element;
+        return m_error.element;
     }
 
-    tag failure() const
+    problem_definition_error_tag failure() const
     {
-        return m_failure;
+        return m_error.tag;
     }
 
 private:
-    std::string m_element;
-    tag m_failure;
+    problem_definition_error m_error;
 };
 
-struct solver_error : std::runtime_error
+enum class solver_error_tag
 {
-    enum class tag
-    {
-        no_solver_available,
-        unrealisable_constraint,
-        not_enough_memory
-    };
+    no_solver_available,
+    unrealisable_constraint,
+    not_enough_memory
+};
 
-    solver_error(tag failure)
-      : std::runtime_error("solver_error")
-      , m_failure(failure)
+struct solver_error
+{
+    solver_error_tag tag;
+};
+
+struct solver_failure : std::runtime_error
+{
+    solver_failure(solver_error_tag failure)
+      : std::runtime_error("solver_failure")
+      , m_error{ failure }
     {
     }
 
-    tag failure() const
+    solver_error_tag failure() const
     {
-        return m_failure;
+        return m_error.tag;
     }
 
 private:
-    tag m_failure;
+    solver_error m_error;
 };
 
 struct parameter

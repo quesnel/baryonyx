@@ -42,10 +42,10 @@ void help(std::shared_ptr<lp::context> ctx) noexcept;
 double to_double(const char* s, double bad_value) noexcept;
 long to_long(const char* s, long bad_value) noexcept;
 std::tuple<std::string, lp::parameter> split_param(const char* param) noexcept;
-const char* file_format_error_format(lp::file_format_error::tag) noexcept;
+const char* file_format_error_format(lp::file_format_error_tag) noexcept;
 const char* problem_definition_error_format(
-  lp::problem_definition_error::tag) noexcept;
-const char* solver_error_format(lp::solver_error::tag) noexcept;
+  lp::problem_definition_error_tag) noexcept;
+const char* solver_error_format(lp::solver_error_tag) noexcept;
 lp::result solve(std::shared_ptr<lp::context> ctx,
                  lp::problem& pb,
                  const std::map<std::string, lp::parameter>& params,
@@ -154,28 +154,28 @@ main(int argc, char* argv[])
                 ofs << "Solution not found. Missing constraints: "
                     << ret.remaining_constraints << '\n';
             }
-        } catch (const lp::precondition_error& e) {
+        } catch (const lp::precondition_failure& e) {
             ctx->error("internal failure\n");
-        } catch (const lp::postcondition_error& e) {
+        } catch (const lp::postcondition_failure& e) {
             ctx->error("internal failure\n");
-        } catch (const lp::numeric_cast_error& e) {
+        } catch (const lp::numeric_cast_failure& e) {
             ctx->error("numeric cast interal failure\n");
-        } catch (const lp::file_access_error& e) {
+        } catch (const lp::file_access_failure& e) {
             ctx->error("file `%s' fail %d: %s\n",
                        e.file().c_str(),
                        e.error(),
                        std::strerror(e.error()));
-        } catch (const lp::file_format_error& e) {
+        } catch (const lp::file_format_failure& e) {
             ctx->error("file format error at line %d column %d "
                        "%s\n",
                        e.line(),
                        e.column(),
                        file_format_error_format(e.failure()));
-        } catch (const lp::problem_definition_error& e) {
+        } catch (const lp::problem_definition_failure& e) {
             ctx->error("definition problem error at %s: %s\n",
                        e.element().c_str(),
                        problem_definition_error_format(e.failure()));
-        } catch (const lp::solver_error& e) {
+        } catch (const lp::solver_failure& e) {
             ctx->error("solver error: %s\n", solver_error_format(e.failure()));
         } catch (const std::exception& e) {
             ctx->error("failure: %s.\n", e.what());
@@ -200,7 +200,7 @@ help(std::shared_ptr<lp::context> ctx) noexcept
 }
 
 const char*
-file_format_error_format(lp::file_format_error::tag failure) noexcept
+file_format_error_format(lp::file_format_error_tag failure) noexcept
 {
     static const char* const tag[] = {
         "end of file",     "unknown",
@@ -212,27 +212,27 @@ file_format_error_format(lp::file_format_error::tag failure) noexcept
     };
 
     switch (failure) {
-    case lp::file_format_error::tag::end_of_file:
+    case lp::file_format_error_tag::end_of_file:
         return tag[0];
-    case lp::file_format_error::tag::unknown:
+    case lp::file_format_error_tag::unknown:
         return tag[1];
-    case lp::file_format_error::tag::already_defined:
+    case lp::file_format_error_tag::already_defined:
         return tag[2];
-    case lp::file_format_error::tag::incomplete:
+    case lp::file_format_error_tag::incomplete:
         return tag[3];
-    case lp::file_format_error::tag::bad_name:
+    case lp::file_format_error_tag::bad_name:
         return tag[4];
-    case lp::file_format_error::tag::bad_operator:
+    case lp::file_format_error_tag::bad_operator:
         return tag[5];
-    case lp::file_format_error::tag::bad_integer:
+    case lp::file_format_error_tag::bad_integer:
         return tag[6];
-    case lp::file_format_error::tag::bad_objective_function_type:
+    case lp::file_format_error_tag::bad_objective_function_type:
         return tag[7];
-    case lp::file_format_error::tag::bad_bound:
+    case lp::file_format_error_tag::bad_bound:
         return tag[8];
-    case lp::file_format_error::tag::bad_function_element:
+    case lp::file_format_error_tag::bad_function_element:
         return tag[9];
-    case lp::file_format_error::tag::bad_constraint:
+    case lp::file_format_error_tag::bad_constraint:
         return tag[10];
     }
 
@@ -241,7 +241,7 @@ file_format_error_format(lp::file_format_error::tag failure) noexcept
 
 const char*
 problem_definition_error_format(
-  lp::problem_definition_error::tag failure) noexcept
+  lp::problem_definition_error_tag failure) noexcept
 {
     static const char* const tag[] = {
         "empty variables",
@@ -252,15 +252,15 @@ problem_definition_error_format(
     };
 
     switch (failure) {
-    case lp::problem_definition_error::tag::empty_variables:
+    case lp::problem_definition_error_tag::empty_variables:
         return tag[0];
-    case lp::problem_definition_error::tag::empty_objective_function:
+    case lp::problem_definition_error_tag::empty_objective_function:
         return tag[1];
-    case lp::problem_definition_error::tag::variable_not_used:
+    case lp::problem_definition_error_tag::variable_not_used:
         return tag[2];
-    case lp::problem_definition_error::tag::bad_bound:
+    case lp::problem_definition_error_tag::bad_bound:
         return tag[3];
-    case lp::problem_definition_error::tag::multiple_constraint:
+    case lp::problem_definition_error_tag::multiple_constraint:
         return tag[4];
     }
 
@@ -268,18 +268,18 @@ problem_definition_error_format(
 }
 
 const char*
-solver_error_format(lp::solver_error::tag failure) noexcept
+solver_error_format(lp::solver_error_tag failure) noexcept
 {
     static const char* const tag[] = { "no solver available",
                                        "unrealisable constraint",
                                        "not enough memory" };
 
     switch (failure) {
-    case lp::solver_error::tag::no_solver_available:
+    case lp::solver_error_tag::no_solver_available:
         return tag[0];
-    case lp::solver_error::tag::unrealisable_constraint:
+    case lp::solver_error_tag::unrealisable_constraint:
         return tag[1];
-    case lp::solver_error::tag::not_enough_memory:
+    case lp::solver_error_tag::not_enough_memory:
         return tag[2];
     }
 

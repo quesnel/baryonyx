@@ -117,8 +117,8 @@ struct parser_stack
             fill();
 
         if (stack.empty())
-            throw file_format_error(
-              file_format_error::tag::end_of_file, m_line, m_column);
+            throw file_format_failure(
+              file_format_error_tag::end_of_file, m_line, m_column);
 
         return stack.front();
     }
@@ -129,8 +129,8 @@ struct parser_stack
             fill();
 
         if (stack.empty())
-            throw file_format_error(
-              file_format_error::tag::end_of_file, m_line, m_column);
+            throw file_format_failure(
+              file_format_error_tag::end_of_file, m_line, m_column);
 
         std::string ret = stack.front();
         std::tie(m_line, m_column) = m_position_stack.front();
@@ -417,8 +417,8 @@ read_name(parser_stack& stack)
         return ret;
     }
 
-    throw file_format_error(
-      file_format_error::tag::bad_name, stack.line(), stack.column());
+    throw file_format_failure(
+      file_format_error_tag::bad_name, stack.line(), stack.column());
 }
 
 operator_type
@@ -451,8 +451,8 @@ read_operator(parser_stack& stack)
         return operator_type::equal;
     }
 
-    throw file_format_error(
-      file_format_error::tag::bad_operator, stack.line(), stack.column());
+    throw file_format_failure(
+      file_format_error_tag::bad_operator, stack.line(), stack.column());
 }
 
 int
@@ -493,8 +493,8 @@ read_integer(parser_stack& stack)
         return negative ? -ret : ret;
     }
 
-    throw file_format_error(
-      file_format_error::tag::bad_integer, stack.line(), stack.column());
+    throw file_format_failure(
+      file_format_error_tag::bad_integer, stack.line(), stack.column());
 }
 
 std::tuple<std::string, int>
@@ -538,9 +538,9 @@ read_function_element(parser_stack& stack)
         return ret;
     }
 
-    throw file_format_error(file_format_error::tag::bad_function_element,
-                            stack.line(),
-                            stack.column());
+    throw file_format_failure(file_format_error_tag::bad_function_element,
+                              stack.line(),
+                              stack.column());
 }
 
 objective_function_type
@@ -568,8 +568,8 @@ read_objective_function_type(parser_stack& stack)
     if (iequals(ret, "minimize"))
         return objective_function_type::minimize;
 
-    throw file_format_error(
-      file_format_error::tag::bad_objective_function_type,
+    throw file_format_failure(
+      file_format_error_tag::bad_objective_function_type,
       stack.line(),
       stack.column());
 }
@@ -649,8 +649,8 @@ read_constraint(parser_stack& stack, problem& p)
         return std::make_tuple(cst, type);
     }
 
-    throw file_format_error(
-      file_format_error::tag::bad_constraint, stack.line(), stack.column());
+    throw file_format_failure(
+      file_format_error_tag::bad_constraint, stack.line(), stack.column());
 }
 
 void
@@ -682,8 +682,8 @@ read_constraints(parser_stack& stack, problem& p)
             p.less_equal_constraints.emplace_back(std::get<0>(cst));
             break;
         default:
-            throw file_format_error(
-              file_format_error::tag::unknown, stack.line(), stack.column());
+            throw file_format_failure(
+              file_format_error_tag::unknown, stack.line(), stack.column());
         }
 
         if (std::get<0>(cst).label.empty())
@@ -817,10 +817,10 @@ read_binary(parser_stack& stack, problem& p)
         auto id = get_variable_only(stack.cache(), name);
 
         if (id < 0 or p.vars.values[id].type != variable_type::real)
-            throw file_format_error(name,
-                                    file_format_error::tag::unknown,
-                                    stack.line(),
-                                    stack.column());
+            throw file_format_failure(name,
+                                      file_format_error_tag::unknown,
+                                      stack.line(),
+                                      stack.column());
 
         p.vars.values[id] = { 0, 1, variable_type::binary, true, true };
 
@@ -838,10 +838,10 @@ read_general(parser_stack& stack, problem& p)
         auto id = get_variable_only(stack.cache(), name);
 
         if (id < 0 or p.vars.values[id].type != variable_type::real)
-            throw file_format_error(name,
-                                    file_format_error::tag::unknown,
-                                    stack.line(),
-                                    stack.column());
+            throw file_format_failure(name,
+                                      file_format_error_tag::unknown,
+                                      stack.line(),
+                                      stack.column());
 
         p.vars.values[id].type = variable_type::general;
 
@@ -876,8 +876,8 @@ read_problem(std::istream& is)
             return p;
     }
 
-    throw file_format_error(
-      "end", file_format_error::tag::incomplete, stack.line(), stack.column());
+    throw file_format_failure(
+      "end", file_format_error_tag::incomplete, stack.line(), stack.column());
 }
 
 struct problem_writer
