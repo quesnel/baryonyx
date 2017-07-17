@@ -28,96 +28,31 @@
 #include <limits>
 #include <sstream>
 
-#include <cerrno>
-#include <climits>
-#include <cmath>
-#include <cstdio>
 #include <cstring>
 
-#include <getopt.h>
-#include <sys/types.h>
+#ifdef __unix__
 #include <unistd.h>
+#endif
 
-void help(std::shared_ptr<lp::context> ctx) noexcept;
-double to_double(const char* s, double bad_value) noexcept;
-long to_long(const char* s, long bad_value) noexcept;
-std::tuple<std::string, lp::parameter> split_param(const char* param) noexcept;
 const char* file_format_error_format(lp::file_format_error_tag) noexcept;
 const char* problem_definition_error_format(
   lp::problem_definition_error_tag) noexcept;
 const char* solver_error_format(lp::solver_error_tag) noexcept;
-lp::result solve(std::shared_ptr<lp::context> ctx,
-                 lp::problem& pb,
-                 const std::map<std::string, lp::parameter>& params,
-                 bool optimize);
+
+lp::result solve_or_optimize(std::shared_ptr<lp::context> ctx,
+                             lp::problem& pb);
 
 int
 main(int argc, char* argv[])
 {
-    const char* const short_opts = "Ohp:l:qv:";
-    const struct option long_opts[] = { { "optimize", 0, nullptr, 'O' },
-                                        { "help", 0, nullptr, 'h' },
-                                        { "param", 1, nullptr, 'p' },
-                                        { "limit", 1, nullptr, 'l' },
-                                        { "quiet", 0, nullptr, 'q' },
-                                        { "verbose", 1, nullptr, 'v' },
-                                        { 0, 0, nullptr, 0 } };
-
-    int opt_index;
-    int verbose = 1;
-    int quiet = 0;
-
-    bool fail = false;
-    bool optimize = false;
-    std::map<std::string, lp::parameter> parameters;
-
     auto ctx = std::make_shared<lp::context>();
     ctx->set_standard_stream_logger();
+    int i = ctx->parse(argc, argv);
 
-    while (not fail) {
-        const auto opt =
-          getopt_long(argc, argv, short_opts, long_opts, &opt_index);
-        if (opt == -1)
-            break;
-
-        switch (opt) {
-        case 0:
-            break;
-        case 'O':
-            optimize = true;
-            break;
-        case 'l':
-            parameters["limit"] = to_long(::optarg, 1000l);
-            break;
-        case 'h':
-            help(ctx);
-            return EXIT_SUCCESS;
-        case 'p': {
-            std::string name;
-            lp::parameter value;
-            std::tie(name, value) = split_param(::optarg);
-            parameters[name] = value;
-        } break;
-        case 'q':
-            quiet = 1;
-            break;
-        case '?':
-        default:
-            fail = true;
-            ctx->error("Unknown command line option\n");
-            break;
-        };
-    }
-
-    if (quiet)                    // priority to quiet over the
-        ctx->set_log_priority(3); // verbose mode.
-    else if (verbose >= 0 and verbose <= 7)
-        ctx->set_log_priority(verbose);
-
-    if (fail)
+    if (i < 0)
         return EXIT_FAILURE;
 
-    for (int i = ::optind; i < argc; ++i) {
+    for (; i < argc; ++i) {
         try {
             auto pb = lp::make_problem(ctx, argv[i]);
 
@@ -142,7 +77,7 @@ main(int argc, char* argv[])
                 << std::put_time(std::localtime(&in_time_t), "%Y-%m-%d %X")
                 << std::endl;
 
-            auto ret = solve(ctx, pb, parameters, optimize);
+            auto ret = solve_or_optimize(ctx, pb);
 
             in_time_t = std::chrono::system_clock::to_time_t(now);
             ofs << std::put_time(std::localtime(&in_time_t), "%Y-%m-%d %X")
@@ -183,20 +118,6 @@ main(int argc, char* argv[])
     }
 
     return EXIT_SUCCESS;
-}
-
-void
-help(std::shared_ptr<lp::context> ctx) noexcept
-{
-    ctx->info("--help|-h                   This help message\n"
-              "--param|-p [name]:[value]   Add a new parameter (name is"
-              " [a-z][A-Z]_ value can be a double, an integer otherwise a"
-              " string.\n"
-              "--optimize|-O               Optimize model (default "
-              "feasibility search only)\n"
-              "--limit int                 Set limit\n"
-              "--quiet                     Remove any verbose message\n"
-              "--verbose|-v int            Set verbose level\n");
 }
 
 const char*
@@ -286,76 +207,11 @@ solver_error_format(lp::solver_error_tag failure) noexcept
     return nullptr;
 }
 
-double
-to_double(const char* s, double bad_value) noexcept
-{
-    char* c;
-    errno = 0;
-    double value = std::strtod(s, &c);
-
-    if ((errno == ERANGE and (value == HUGE_VAL or value == -HUGE_VAL)) or
-        (value == 0.0 and c == s))
-        return bad_value;
-
-    return value;
-}
-
-long
-to_long(const char* s, long bad_value) noexcept
-{
-    char* c;
-    errno = 0;
-    long value = std::strtol(s, &c, 10);
-
-    if ((errno == ERANGE and (value == LONG_MIN or value == LONG_MAX)) or
-        (value == 0 and c == s))
-        return bad_value;
-
-    return value;
-}
-
-std::tuple<std::string, lp::parameter>
-split_param(const char* param) noexcept
-{
-    std::string name, value;
-
-    while (*param) {
-        if (isalpha(*param) or *param == '_' or *param == '-')
-            name += *param;
-        else
-            break;
-
-        param++;
-    }
-
-    if (*param and (*param == ':' or *param == '=')) {
-        param++;
-
-        while (*param)
-            value += *param++;
-    }
-
-    auto valuel = to_long(value.c_str(), LONG_MIN);
-    auto valued = to_double(value.c_str(), -HUGE_VAL);
-
-    double tmp;
-    if (valued != -HUGE_VAL and std::modf(valued, &tmp))
-        return std::make_tuple(name, lp::parameter(valued));
-
-    if (valuel != LONG_MIN)
-        return std::make_tuple(name, lp::parameter(valuel));
-
-    return std::make_tuple(name, lp::parameter(value));
-}
-
 lp::result
-solve(std::shared_ptr<lp::context> ctx,
-      lp::problem& pb,
-      const std::map<std::string, lp::parameter>& params,
-      bool optimize)
+solve_or_optimize(std::shared_ptr<lp::context> ctx, lp::problem& pb)
 {
-    if (optimize)
-        return lp::optimize(ctx, pb, params);
+    if (ctx->optimize())
+        return lp::optimize(ctx, pb);
 
-    return lp::solve(ctx, pb, params);
+    return lp::solve(ctx, pb);
 }

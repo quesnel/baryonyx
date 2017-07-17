@@ -23,14 +23,102 @@
 #include "lpformat-consistency.hpp"
 #include "lpformat-io.hpp"
 #include "mitm.hpp"
+#include "utils.hpp"
 
 #include <algorithm>
 #include <fstream>
 #include <lpcore>
 
+#include <cerrno>
+#include <climits>
+#include <cmath>
+#include <cstdio>
+#include <cstring>
+
 #ifdef __unix__
+#include <getopt.h>
+#include <sys/types.h>
 #include <unistd.h>
 #endif
+
+namespace {
+
+double
+to_double(const char* s, double bad_value) noexcept
+{
+    char* c;
+    errno = 0;
+    double value = std::strtod(s, &c);
+
+    if ((errno == ERANGE and (value == HUGE_VAL or value == -HUGE_VAL)) or
+        (value == 0.0 and c == s))
+        return bad_value;
+
+    return value;
+}
+
+long
+to_long(const char* s, long bad_value) noexcept
+{
+    char* c;
+    errno = 0;
+    long value = std::strtol(s, &c, 10);
+
+    if ((errno == ERANGE and (value == LONG_MIN or value == LONG_MAX)) or
+        (value == 0 and c == s))
+        return bad_value;
+
+    return value;
+}
+
+std::tuple<std::string, lp::parameter>
+split_param(const char* param) noexcept
+{
+    std::string name, value;
+
+    while (*param) {
+        if (isalpha(*param) or *param == '_' or *param == '-')
+            name += *param;
+        else
+            break;
+
+        param++;
+    }
+
+    if (*param and (*param == ':' or *param == '=')) {
+        param++;
+
+        while (*param)
+            value += *param++;
+    }
+
+    auto valuel = to_long(value.c_str(), LONG_MIN);
+    auto valued = to_double(value.c_str(), -HUGE_VAL);
+
+    double tmp;
+    if (valued != -HUGE_VAL and std::modf(valued, &tmp))
+        return std::make_tuple(name, lp::parameter(valued));
+
+    if (valuel != LONG_MIN)
+        return std::make_tuple(name, lp::parameter(valuel));
+
+    return std::make_tuple(name, lp::parameter(value));
+}
+
+void
+help(std::shared_ptr<lp::context> ctx) noexcept
+{
+    ctx->info("--help|-h                   This help message\n"
+              "--param|-p [name]:[value]   Add a new parameter (name is"
+              " [a-z][A-Z]_ value can be a double, an integer otherwise a"
+              " string.\n"
+              "--optimize|-O               Optimize model (default "
+              "feasibility search only)\n"
+              "--limit int                 Set limit\n"
+              "--quiet                     Remove any verbose message\n"
+              "--verbose|-v int            Set verbose level\n");
+}
+}
 
 namespace lp {
 
@@ -112,6 +200,162 @@ public:
     }
 };
 
+int
+context::parse(int argc, char* argv[]) noexcept
+{
+    const char* const short_opts = "Ohp:l:qv:";
+    const struct option long_opts[] = { { "optimize", 0, nullptr, 'O' },
+                                        { "help", 0, nullptr, 'h' },
+                                        { "param", 1, nullptr, 'p' },
+                                        { "limit", 1, nullptr, 'l' },
+                                        { "quiet", 0, nullptr, 'q' },
+                                        { "verbose", 1, nullptr, 'v' },
+                                        { 0, 0, nullptr, 0 } };
+
+    int opt_index;
+    int verbose = 1;
+    int quiet = 0;
+
+    auto ctx = std::make_shared<lp::context>();
+    ctx->set_standard_stream_logger();
+
+    for (;;) {
+        const auto opt =
+          getopt_long(argc, argv, short_opts, long_opts, &opt_index);
+        if (opt == -1)
+            break;
+
+        switch (opt) {
+        case 0:
+            break;
+        case 'O':
+            m_optimize = true;
+            break;
+        case 'l':
+            m_parameters["limit"] = ::to_long(::optarg, 1000l);
+            break;
+        case 'h':
+            ::help(ctx);
+            break;
+        case 'p': {
+            std::string name;
+            lp::parameter value;
+            std::tie(name, value) = ::split_param(::optarg);
+            m_parameters[name] = value;
+        } break;
+        case 'q':
+            quiet = 1;
+            break;
+        case '?':
+        default:
+            ctx->error("Unknown command line option\n");
+            return -1;
+        };
+    }
+
+    if (quiet)                    // priority to quiet over the
+        ctx->set_log_priority(3); // verbose mode.
+    else if (verbose >= 0 and verbose <= 7)
+        ctx->set_log_priority(verbose);
+
+    return ::optind;
+}
+
+void
+context::set_parameter(const std::string& name, double p) noexcept
+{
+    if (name.empty())
+        return;
+
+    if (not std::isalnum(name[0]))
+        return;
+
+    m_parameters[name] = p;
+}
+
+void
+context::set_parameter(const std::string& name, long int p) noexcept
+{
+    if (name.empty())
+        return;
+
+    if (not std::isalnum(name[0]))
+        return;
+
+    m_parameters[name] = p;
+}
+
+void
+context::set_parameter(const std::string& name, std::string p) noexcept
+{
+    if (name.empty())
+        return;
+
+    if (not std::isalnum(name[0]))
+        return;
+
+    m_parameters[name] = std::move(p);
+}
+
+double
+context::get_real_parameter(const std::string& name, double def) const noexcept
+{
+    auto it = m_parameters.find(name);
+    if (it == m_parameters.cend())
+        return def;
+
+    if (it->second.type == parameter::tag::real)
+        return it->second.d;
+
+    if (it->second.type == parameter::tag::integer)
+        return static_cast<double>(it->second.l);
+
+    warning("fail to convert parameter %s\n", name.c_str());
+
+    return def;
+}
+
+long int
+context::get_integer_parameter(const std::string& name, long int def) const
+  noexcept
+{
+    auto it = m_parameters.find(name);
+    if (it == m_parameters.cend())
+        return def;
+
+    if (it->second.type == parameter::tag::integer)
+        return it->second.l;
+
+    if (it->second.type == parameter::tag::real)
+        return static_cast<long>(it->second.d);
+
+    warning("fail to convert parameter %s\n", name.c_str());
+
+    return def;
+}
+
+std::string
+context::get_string_parameter(const std::string& name, std::string def) const
+  noexcept
+{
+    auto it = m_parameters.find(name);
+    if (it == m_parameters.cend())
+        return def;
+
+    if (it->second.type == parameter::tag::string)
+        return it->second.s;
+
+    if (it->second.type == parameter::tag::real)
+        return std::to_string(it->second.d);
+
+    if (it->second.type == parameter::tag::integer)
+        return std::to_string(it->second.l);
+
+    warning("fail to convert parameter %s\n", name.c_str());
+
+    return def;
+}
+
 void
 context::set_log_priority(int priority) noexcept
 {
@@ -122,6 +366,12 @@ int
 context::get_log_priority() const noexcept
 {
     return m_log_priority;
+}
+
+bool
+context::optimize() const noexcept
+{
+    return m_optimize;
 }
 
 void
@@ -143,7 +393,7 @@ context::set_logger(std::unique_ptr<logger> function) noexcept
 // value to hide all logging message..
 //
 void
-context::log(message_type type, const char* format, ...) noexcept
+context::log(message_type type, const char* format, ...) const noexcept
 {
     if (not m_logger)
         return;
@@ -194,7 +444,7 @@ context::log(int priority,
              int line,
              const char* fn,
              const char* format,
-             ...) noexcept
+             ...) const noexcept
 {
     if (not m_logger and m_log_priority < priority)
         return;
@@ -207,7 +457,7 @@ context::log(int priority,
 }
 
 void
-context::info(const char* format, ...) noexcept
+context::info(const char* format, ...) const noexcept
 {
     if (not m_logger or m_log_priority < 6)
         return;
@@ -220,7 +470,7 @@ context::info(const char* format, ...) noexcept
 }
 
 void
-context::debug(const char* format, ...) noexcept
+context::debug(const char* format, ...) const noexcept
 {
     if (not m_logger or m_log_priority < 7)
         return;
@@ -233,7 +483,7 @@ context::debug(const char* format, ...) noexcept
 }
 
 void
-context::warning(const char* format, ...) noexcept
+context::warning(const char* format, ...) const noexcept
 {
     if (not m_logger and m_log_priority < 4)
         return;
@@ -246,7 +496,7 @@ context::warning(const char* format, ...) noexcept
 }
 
 void
-context::error(const char* format, ...) noexcept
+context::error(const char* format, ...) const noexcept
 {
     if (not m_logger and m_log_priority < 3)
         return;
@@ -259,32 +509,33 @@ context::error(const char* format, ...) noexcept
 }
 #else
 void
-context::log(message_type, const char*, va_list)
+context::log(message_type, const char*, va_list) const noexcept
 {
 }
 
 void
-context::log(int, const char*, int, const char*, const char*, va_list)
+context::log(int, const char*, int, const char*, const char*, va_list) const
+  noexcept
 {
 }
 
 void
-context::info(const char*, va_list)
+context::info(const char*, va_list) const noexcept
 {
 }
 
 void
-context::warning(const char*, va_list)
+context::warning(const char*, va_list) const noexcept
 {
 }
 
 void
-context::debug(const char*, va_list)
+context::debug(const char*, va_list) const noexcept
 {
 }
 
 void
-context::error(const char*, va_list)
+context::error(const char*, va_list) const noexcept
 {
 }
 #endif
@@ -324,29 +575,7 @@ solve(std::shared_ptr<lp::context> ctx, problem& pb)
 {
     check(pb);
 
-    std::map<std::string, parameter> params;
-
-    return mitm_solve(ctx, pb, params);
-}
-
-result
-solve(std::shared_ptr<lp::context> ctx,
-      problem& pb,
-      const std::map<std::string, parameter>& params)
-{
-    check(pb);
-
-    return mitm_solve(ctx, pb, params);
-}
-
-result
-optimize(std::shared_ptr<lp::context> ctx,
-         problem& pb,
-         const std::map<std::string, parameter>& params)
-{
-    check(pb);
-
-    return mitm_optimize(ctx, pb, params);
+    return mitm_solve(ctx, pb);
 }
 
 result
@@ -354,9 +583,7 @@ optimize(std::shared_ptr<lp::context> ctx, problem& pb)
 {
     check(pb);
 
-    std::map<std::string, parameter> params;
-
-    return mitm_optimize(ctx, pb, params);
+    return mitm_optimize(ctx, pb);
 }
 
 template <typename functionT, typename variablesT>

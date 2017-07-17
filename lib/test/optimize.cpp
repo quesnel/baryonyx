@@ -40,24 +40,21 @@ test_qap(std::shared_ptr<lp::context> ctx)
     {
         auto pb = lp::make_problem(ctx, EXAMPLES_DIR "/small4.lp");
 
-        std::map<std::string, lp::parameter> params;
-        params["limit"] = 10'000'000l;
-        params["theta"] = 0.5;
-        params["delta"] = 0.2;
-        params["kappa-step"] = 10e-4;
-        params["kappa-max"] = 10.0;
-        params["alpha"] = 0.0;
-        params["w"] = 20l;
+        ctx->set_parameter("limit", 10'000'000l);
+        ctx->set_parameter("theta", 0.5);
+        ctx->set_parameter("delta", 0.2);
+        ctx->set_parameter("kappa-step", 10e-4);
+        ctx->set_parameter("kappa-max", 10.0);
+        ctx->set_parameter("alpha", 0.0);
+        ctx->set_parameter("w", 20l);
+        ctx->set_parameter("time-limit", 40.0);
+        ctx->set_parameter("pushing-k-factor", 0.9);
+        ctx->set_parameter("pushes-limit", 50l);
+        ctx->set_parameter("pushing-objective-amplifier", 10l);
+        ctx->set_parameter("pushing-iteration-limit", 50l);
+        ctx->set_parameter("thread", 2l);
 
-        params["time-limit"] = 40.0;
-        params["pushing-k-factor"] = 0.9;
-        params["pushes-limit"] = 50l;
-        params["pushing-objective-amplifier"] = 10l;
-        params["pushing-iteration-limit"] = 50l;
-
-        params["thread"] = 2l;
-
-        result = lp::optimize(ctx, pb, params);
+        result = lp::optimize(ctx, pb);
 
         Ensures(result.status == lp::result_status::success);
         if (result.status == lp::result_status::success)
@@ -100,26 +97,20 @@ test_n_queens_problem(std::shared_ptr<lp::context> ctx)
             return;
     }
 
-    std::map<std::string, lp::parameter> params;
-    params["limit"] = 100000l;
-    params["theta"] = 0.5;
-    params["delta"] = 1.0;
-    params["kappa-min"] = 0.30;
-    params["kappa-step"] = 1e-2;
-    params["kappa-max"] = 100.0;
-    params["alpha"] = 1.0;
-    params["w"] = 60l;
-    // params["constraint-order"] = std::string("infeasibility-incr");
-    // params["constraint-order"] = std::string("adaptative");
-    // params["constraint-order"] = std::string("infeasibility-decr");
-    // params["constraint-order"] = std::string("none");
-    // params["constraint-order"] = std::string("reversing");
-    params["constraint-order"] = std::string("random-sorting");
-    params["time-limit"] = 20.0;
-    params["pushing-k-factor"] = 0.9;
-    params["pushes-limit"] = 50l;
-    params["pushing-objective-amplifier"] = 10l;
-    params["pushing-iteration-limit"] = 10l;
+    ctx->set_parameter("limit", 100000l);
+    ctx->set_parameter("theta", 0.5);
+    ctx->set_parameter("delta", 1.0);
+    ctx->set_parameter("kappa-min", 0.30);
+    ctx->set_parameter("kappa-step", 1e-2);
+    ctx->set_parameter("kappa-max", 100.0);
+    ctx->set_parameter("alpha", 1.0);
+    ctx->set_parameter("w", 60l);
+    ctx->set_parameter("constraint-order", std::string("random-sorting"));
+    ctx->set_parameter("time-limit", 20.0);
+    ctx->set_parameter("pushing-k-factor", 0.9);
+    ctx->set_parameter("pushes-limit", 50l);
+    ctx->set_parameter("pushing-objective-amplifier", 10l);
+    ctx->set_parameter("pushing-iteration-limit", 10l);
 
     for (std::size_t i{ 0 }; i != valid_solutions.size(); ++i) {
         std::string filepath{ EXAMPLES_DIR "/n-queens/n-queens-problem-" };
@@ -127,7 +118,7 @@ test_n_queens_problem(std::shared_ptr<lp::context> ctx)
         filepath += ".lp";
 
         auto pb = lp::make_problem(ctx, filepath);
-        auto result = lp::optimize(ctx, pb, params);
+        auto result = lp::optimize(ctx, pb);
 
         valid_solutions[i] = (result.remaining_constraints == 0);
         if (valid_solutions[i])

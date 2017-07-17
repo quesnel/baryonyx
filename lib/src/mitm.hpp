@@ -23,20 +23,13 @@
 #ifndef ORG_VLEPROJECT_LP_MITM_HPP
 #define ORG_VLEPROJECT_LP_MITM_HPP
 
-#include "utils.hpp"
-#include <Eigen/Core>
 #include <lpcore>
-#include <type_traits>
 
 namespace lp {
 
-result mitm_solve(std::shared_ptr<lp::context> ctx,
-                  problem& pb,
-                  const std::map<std::string, parameter>& params);
+result mitm_solve(std::shared_ptr<lp::context> ctx, problem& pb);
 
-result mitm_optimize(std::shared_ptr<lp::context> ctx,
-                     problem& pb,
-                     const std::map<std::string, parameter>& params);
+result mitm_optimize(std::shared_ptr<lp::context> ctx, problem& pb);
 }
 
 #endif

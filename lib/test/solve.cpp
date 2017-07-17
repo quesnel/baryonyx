@@ -35,11 +35,9 @@ void
 test_assignment_problem(std::shared_ptr<lp::context> ctx)
 {
     auto pb = lp::make_problem(ctx, EXAMPLES_DIR "/assignment_problem_1.lp");
+    ctx->set_parameter("limit", 50l);
 
-    std::map<std::string, lp::parameter> params;
-    params["limit"] = 50l;
-
-    auto result = lp::solve(ctx, pb, params);
+    auto result = lp::solve(ctx, pb);
 
     Ensures(result.status == lp::result_status::success);
     Ensures(lp::is_valid_solution(pb, result.variable_value) == true);
@@ -48,14 +46,13 @@ test_assignment_problem(std::shared_ptr<lp::context> ctx)
 void
 test_assignment_problem_random_coast(std::shared_ptr<lp::context> ctx)
 {
-    std::map<std::string, lp::parameter> params;
-    params["limit"] = 1000000l;
-    params["theta"] = 0.5;
-    params["delta"] = 0.2;
-    params["kappa-step"] = 10e-4;
-    params["kappa-max"] = 10.0;
-    params["alpha"] = 0.0;
-    params["w"] = 20l;
+    ctx->set_parameter("limit", 1000000l);
+    ctx->set_parameter("theta", 0.5);
+    ctx->set_parameter("delta", 0.2);
+    ctx->set_parameter("kappa-step", 10e-4);
+    ctx->set_parameter("kappa-max", 10.0);
+    ctx->set_parameter("alpha", 0.0);
+    ctx->set_parameter("w", 20l);
 
     for (int i{ 0 }, e{ 10 }; i != e; ++i) {
         auto pb =
@@ -68,7 +65,7 @@ test_assignment_problem_random_coast(std::shared_ptr<lp::context> ctx)
         for (auto& elem : pb.objective.elements)
             elem.factor = dis(gen);
 
-        auto result = lp::solve(ctx, pb, params);
+        auto result = lp::solve(ctx, pb);
 
         Ensures(result.status == lp::result_status::success);
         Ensures(lp::is_valid_solution(pb, result.variable_value) == true);
@@ -80,10 +77,9 @@ test_negative_coeff(std::shared_ptr<lp::context> ctx)
 {
     auto pb = lp::make_problem(ctx, EXAMPLES_DIR "/negative-coeff.lp");
 
-    std::map<std::string, lp::parameter> params;
-    params["limit"] = 50l;
+    ctx->set_parameter("limit", 50l);
 
-    auto result = lp::solve(ctx, pb, params);
+    auto result = lp::solve(ctx, pb);
 
     Ensures(result.status == lp::result_status::success);
     Ensures(lp::is_valid_solution(pb, result.variable_value) == true);
@@ -94,18 +90,9 @@ test_negative_coeff2(std::shared_ptr<lp::context> ctx)
 {
     auto pb = lp::make_problem(ctx, EXAMPLES_DIR "/negative-coeff2.lp");
 
-    std::map<std::string, lp::parameter> params;
-    // params["constraint-order"] = std::string("random");
-    params["limit"] = 2l;
-    // params["theta"] = 0.5;
-    // params["delta"] = 0.05;
-    // params["kappa-step"] = 10e-4;
-    // params["kappa-max"] = 10.0;
-    // params["alpha"] = 0.0;
-    // params["w"] = 60l;
-    params["serialize"] = 1l;
+    ctx->set_parameter("limit", 2l);
 
-    auto result = lp::solve(ctx, pb, params);
+    auto result = lp::solve(ctx, pb);
 
     for (auto elen : result.variable_value)
         std::cout << elen << ' ';
@@ -125,10 +112,9 @@ test_negative_coeff3(std::shared_ptr<lp::context> ctx)
 {
     auto pb = lp::make_problem(ctx, EXAMPLES_DIR "/negative-coeff3.lp");
 
-    std::map<std::string, lp::parameter> params;
-    params["limit"] = 50l;
+    ctx->set_parameter("limit", 50l);
 
-    auto result = lp::solve(ctx, pb, params);
+    auto result = lp::solve(ctx, pb);
 
     Ensures(result.status == lp::result_status::success);
     Ensures(lp::is_valid_solution(pb, result.variable_value) == true);
@@ -139,10 +125,9 @@ test_negative_coeff4(std::shared_ptr<lp::context> ctx)
 {
     auto pb = lp::make_problem(ctx, EXAMPLES_DIR "/negative-coeff4.lp");
 
-    std::map<std::string, lp::parameter> params;
-    params["limit"] = 50l;
+    ctx->set_parameter("limit", 50l);
 
-    auto result = lp::solve(ctx, pb, params);
+    auto result = lp::solve(ctx, pb);
 
     Ensures(result.status == lp::result_status::success);
     Ensures(lp::is_valid_solution(pb, result.variable_value) == true);
@@ -153,16 +138,14 @@ test_flat30_7(std::shared_ptr<lp::context> ctx)
 {
     auto pb = lp::make_problem(ctx, EXAMPLES_DIR "/flat30-7.lp");
 
-    std::map<std::string, lp::parameter> params;
-    params["limit"] = 10'000'000l;
-    params["delta"] = 0.001;
-    params["kappa-min"] = 0.3;
-    params["kappa-step"] = 1e-4;
-    params["kappa-max"] = 10.0;
-    // params["alpha"] = 1.0;
-    params["w"] = 60l;
+    ctx->set_parameter("limit", 10'000'000l);
+    ctx->set_parameter("delta", 0.001);
+    ctx->set_parameter("kappa-min", 0.3);
+    ctx->set_parameter("kappa-step", 1e-4);
+    ctx->set_parameter("kappa-max", 10.0);
+    ctx->set_parameter("w", 60l);
 
-    auto result = lp::solve(ctx, pb, params);
+    auto result = lp::solve(ctx, pb);
 
     Ensures(result.status == lp::result_status::success);
     Ensures(lp::is_valid_solution(pb, result.variable_value) == true);
@@ -174,17 +157,17 @@ test_uf50_0448(std::shared_ptr<lp::context> ctx)
     auto pb = lp::make_problem(ctx, EXAMPLES_DIR "/uf50-0448.lp");
 
     std::map<std::string, lp::parameter> params;
-    params["limit"] = 10'000'000'000l;
-    params["theta"] = 0.5;
-    params["delta"] = 1.0;
-    params["kappa-min"] = 0.1;
-    params["kappa-step"] = 1e-17;
-    params["kappa-max"] = 1.0;
-    params["alpha"] = 2.0;
-    params["w"] = 60l;
-    params["constraint-order"] = std::string("random-sorting");
+    ctx->set_parameter("limit", 10'000'000'000l);
+    ctx->set_parameter("theta", 0.5);
+    ctx->set_parameter("delta", 1.0);
+    ctx->set_parameter("kappa-min", 0.1);
+    ctx->set_parameter("kappa-step", 1e-17);
+    ctx->set_parameter("kappa-max", 1.0);
+    ctx->set_parameter("alpha", 2.0);
+    ctx->set_parameter("w", 60l);
+    ctx->set_parameter("constraint-order", std::string("random-sorting"));
 
-    auto result = lp::solve(ctx, pb, params);
+    auto result = lp::solve(ctx, pb);
 
     Ensures(result.status == lp::result_status::success);
     Ensures(lp::is_valid_solution(pb, result.variable_value) == true);
@@ -195,16 +178,15 @@ test_aim_50_1_6_yes1_2(std::shared_ptr<lp::context> ctx)
 {
     auto pb = lp::make_problem(ctx, EXAMPLES_DIR "/aim-50-1_6-yes1-2.lp");
 
-    std::map<std::string, lp::parameter> params;
-    params["limit"] = 10'000'000'000l;
-    params["theta"] = 0.6;
-    params["delta"] = 0.01;
-    params["kappa-step"] = 2 * 10e-4;
-    params["kappa-max"] = 100.0;
-    params["alpha"] = 1.0;
-    params["w"] = 20l;
+    ctx->set_parameter("limit", 10'000'000'000l);
+    ctx->set_parameter("theta", 0.6);
+    ctx->set_parameter("delta", 0.01);
+    ctx->set_parameter("kappa-step", 2 * 10e-4);
+    ctx->set_parameter("kappa-max", 100.0);
+    ctx->set_parameter("alpha", 1.0);
+    ctx->set_parameter("w", 20l);
 
-    auto result = lp::solve(ctx, pb, params);
+    auto result = lp::solve(ctx, pb);
 
     Ensures(result.status == lp::result_status::success);
     Ensures(lp::is_valid_solution(pb, result.variable_value) == true);
@@ -215,24 +197,20 @@ test_bibd1n(std::shared_ptr<lp::context> ctx)
 {
     auto pb = lp::make_problem(ctx, EXAMPLES_DIR "/bibd1n.lp");
 
-    std::map<std::string, lp::parameter> params;
-    params["limit"] = 10'000'000'000l;
-    params["theta"] = 0.5;
-    params["delta"] = 0.000001;
-    params["kappa-min"] = 0.0005; // 0.7;
-    params["kappa-step"] = 1e-17;
-    params["kappa-max"] = 1.0;
-    params["alpha"] = 2.0;
-    params["w"] = 60l;
-    params["serialize"] = 1l;
-    params["constraint-order"] = std::string("reversing");
-    // params["constraint-order"] = std::string("infeasibility-incr");
-    // params["constraint-order"] = std::string("random-sorting");
+    ctx->set_parameter("limit", 10'000'000'000l);
+    ctx->set_parameter("theta", 0.5);
+    ctx->set_parameter("delta", 0.000001);
+    ctx->set_parameter("kappa-min", 0.0005);
+    ctx->set_parameter("kappa-step", 1e-17);
+    ctx->set_parameter("kappa-max", 1.0);
+    ctx->set_parameter("alpha", 2.0);
+    ctx->set_parameter("w", 60l);
+    ctx->set_parameter("serialize", 1l);
+    ctx->set_parameter("constraint-order", std::string("reversing"));
+    ctx->set_parameter("time-limit", 0.0);
+    ctx->set_parameter("preprocessing", "variables-number");
 
-    params["time-limit"] = 0.0;
-    params["preprocessing"] = "variables-number";
-
-    auto result = lp::solve(ctx, pb, params);
+    auto result = lp::solve(ctx, pb);
 
     Ensures(result.status == lp::result_status::success);
     Ensures(lp::is_valid_solution(pb, result.variable_value) == true);
@@ -243,14 +221,13 @@ test_8_queens_puzzle_fixed_cost(std::shared_ptr<lp::context> ctx)
 {
     auto pb = lp::make_problem(ctx, EXAMPLES_DIR "/8_queens_puzzle.lp");
 
-    std::map<std::string, lp::parameter> params;
-    params["limit"] = 10'000'000l;
-    params["theta"] = 0.5;
-    params["delta"] = 0.02;
-    params["kappa-step"] = 0.01;
-    params["kappa-max"] = 60.0;
-    params["alpha"] = 1.0;
-    params["w"] = 40l;
+    ctx->set_parameter("limit", 10'000'000l);
+    ctx->set_parameter("theta", 0.5);
+    ctx->set_parameter("delta", 0.02);
+    ctx->set_parameter("kappa-step", 0.01);
+    ctx->set_parameter("kappa-max", 60.0);
+    ctx->set_parameter("alpha", 1.0);
+    ctx->set_parameter("w", 40l);
 
     std::vector<int> cost{ 25, 89, 12, 22, 84, 3,  61, 14, 93, 97, 68, 5,  51,
                            72, 96, 80, 13, 38, 81, 48, 70, 50, 66, 68, 30, 97,
@@ -263,7 +240,7 @@ test_8_queens_puzzle_fixed_cost(std::shared_ptr<lp::context> ctx)
     for (auto& elem : pb.objective.elements)
         elem.factor = cost[i++];
 
-    auto result = lp::solve(ctx, pb, params);
+    auto result = lp::solve(ctx, pb);
 
     for (int i = 0; i != 8; ++i) {
         for (int j = 0; j != 8; ++j) {
@@ -280,15 +257,15 @@ void
 test_8_queens_puzzle_random_cost(std::shared_ptr<lp::context> ctx)
 {
     std::map<std::string, lp::parameter> params;
-    params["limit"] = 10'000'000l;
-    params["theta"] = 0.5;
-    params["delta"] = 0.02;
-    params["kappa-step"] = 0.01;
-    params["kappa-max"] = 60.0;
-    params["alpha"] = 1.0;
-    params["w"] = 40l;
-    params["constraint-order"] = std::string("infeasibility-decr");
-    params["preprocessing"] = std::string("variables-weight");
+    ctx->set_parameter("limit", 10'000'000l);
+    ctx->set_parameter("theta", 0.5);
+    ctx->set_parameter("delta", 0.02);
+    ctx->set_parameter("kappa-step", 0.01);
+    ctx->set_parameter("kappa-max", 60.0);
+    ctx->set_parameter("alpha", 1.0);
+    ctx->set_parameter("w", 40l);
+    ctx->set_parameter("constraint-order", std::string("infeasibility-decr"));
+    ctx->set_parameter("preprocessing", std::string("variables-weight"));
 
     for (int i{ 0 }, e{ 10 }; i != e; ++i) {
         auto pb = lp::make_problem(ctx, EXAMPLES_DIR "/8_queens_puzzle.lp");
@@ -300,7 +277,7 @@ test_8_queens_puzzle_random_cost(std::shared_ptr<lp::context> ctx)
         for (auto& elem : pb.objective.elements)
             elem.factor = dis(gen);
 
-        auto result = lp::solve(ctx, pb, params);
+        auto result = lp::solve(ctx, pb);
 
         Ensures(result.status == lp::result_status::success);
         Ensures(lp::is_valid_solution(pb, result.variable_value) == true);
@@ -313,15 +290,15 @@ test_qap(std::shared_ptr<lp::context> ctx)
     auto pb = lp::make_problem(ctx, EXAMPLES_DIR "/small4.lp");
 
     std::map<std::string, lp::parameter> params;
-    params["limit"] = 10'000'000l;
-    params["theta"] = 0.5;
-    params["delta"] = 0.01;
-    params["kappa-step"] = 10e-4;
-    params["kappa-max"] = 10.0;
-    params["alpha"] = 0.0;
-    params["w"] = 20l;
+    ctx->set_parameter("limit", 10'000'000l);
+    ctx->set_parameter("theta", 0.5);
+    ctx->set_parameter("delta", 0.01);
+    ctx->set_parameter("kappa-step", 10e-4);
+    ctx->set_parameter("kappa-max", 10.0);
+    ctx->set_parameter("alpha", 0.0);
+    ctx->set_parameter("w", 20l);
 
-    auto result = lp::solve(ctx, pb, params);
+    auto result = lp::solve(ctx, pb);
     Ensures(lp::is_valid_solution(pb, result.variable_value) == true);
 }
 

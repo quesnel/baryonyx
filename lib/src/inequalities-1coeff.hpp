@@ -87,114 +87,46 @@ constraint_order_to_string(constraint_order type)
     return nullptr;
 }
 
-double
-get_real(std::shared_ptr<context> ctx,
-         const std::map<std::string, parameter>& params,
-         std::string param,
-         double def)
-{
-    auto it = params.find(param);
-    if (it == params.cend())
-        return def;
-
-    if (it->second.type == parameter::tag::real)
-        return it->second.d;
-
-    if (it->second.type == parameter::tag::integer)
-        return static_cast<double>(it->second.l);
-
-    ctx->warning("fail to convert parameter %s\n", param.c_str());
-
-    return def;
-}
-
-long int
-get_integer(std::shared_ptr<context> ctx,
-            const std::map<std::string, parameter>& params,
-            std::string param,
-            long int def)
-{
-    auto it = params.find(param);
-    if (it == params.cend())
-        return def;
-
-    if (it->second.type == parameter::tag::integer)
-        return it->second.l;
-
-    if (it->second.type == parameter::tag::real)
-        return static_cast<long>(it->second.d);
-
-    ctx->warning("fail to convert parameter %s\n", param.c_str());
-
-    return def;
-}
-
 inequalities_1coeff::constraint_order
-get_constraint_order(std::shared_ptr<context> ctx,
-                     const std::map<std::string, parameter>& params,
-                     std::string param,
-                     inequalities_1coeff::constraint_order def)
+get_constraint_order(std::shared_ptr<context> ctx)
 {
-    auto it = params.find(param);
-    if (it == params.cend())
-        return def;
+    auto str = ctx->get_string_parameter("constraint-order", "none");
 
-    if (it->second.type != parameter::tag::string)
-        return def;
-
-    if (it->second.s == "none")
+    if (str == "none")
         return inequalities_1coeff::constraint_order::none;
-    if (it->second.s == "reversing")
+    if (str == "reversing")
         return inequalities_1coeff::constraint_order::reversing;
-    if (it->second.s == "random-sorting")
+    if (str == "random-sorting")
         return inequalities_1coeff::constraint_order::random_sorting;
-    if (it->second.s == "infeasibility-decr")
+    if (str == "infeasibility-decr")
         return inequalities_1coeff::constraint_order::infeasibility_decr;
-    if (it->second.s == "infeasibility-incr")
+    if (str == "infeasibility-incr")
         return inequalities_1coeff::constraint_order::infeasibility_incr;
 
-    ctx->warning("fail to convert parameter %s\n", param.c_str());
-
-    return def;
-}
-
-std::string
-get_pre_constraint_order(std::shared_ptr<context> /*ctx*/,
-                         const std::map<std::string, parameter>& params,
-                         std::string param)
-{
-    auto it = params.find(param);
-    if (it == params.cend())
-        return {};
-
-    return it->second.s;
+    return inequalities_1coeff::constraint_order::none;
 }
 
 struct parameters
 {
-    parameters(std::shared_ptr<context> ctx,
-               const std::map<std::string, parameter>& params)
-      : time_limit(get_real(ctx, params, "time-limit", -1.0))
-      , theta(get_real(ctx, params, "theta", 0.5))
-      , delta(get_real(ctx, params, "delta", 0.01))
-      , kappa_min(get_real(ctx, params, "kappa-min", 0.0))
-      , kappa_step(get_real(ctx, params, "kappa-step", 1.e-3))
-      , kappa_max(get_real(ctx, params, "kappa-max", 0.6))
-      , alpha(get_real(ctx, params, "alpha", 1.0))
-      , pushing_k_factor(get_real(ctx, params, "pushing-k-factor", 0.9))
-      , pushes_limit(get_integer(ctx, params, "pushes-limit", 10l))
+    parameters(std::shared_ptr<context> ctx)
+      : time_limit(ctx->get_real_parameter("time-limit", -1.0))
+      , theta(ctx->get_real_parameter("theta", 0.5))
+      , delta(ctx->get_real_parameter("delta", 0.01))
+      , kappa_min(ctx->get_real_parameter("kappa-min", 0.0))
+      , kappa_step(ctx->get_real_parameter("kappa-step", 1.e-3))
+      , kappa_max(ctx->get_real_parameter("kappa-max", 0.6))
+      , alpha(ctx->get_real_parameter("alpha", 1.0))
+      , pushing_k_factor(ctx->get_real_parameter("pushing-k-factor", 0.9))
+      , pushes_limit(ctx->get_integer_parameter("pushes-limit", 10l))
       , pushing_objective_amplifier(
-          get_integer(ctx, params, "pushing-objective-amplifier", 5l))
+          ctx->get_integer_parameter("pushing-objective-amplifier", 5l))
       , pushing_iteration_limit(
-          get_integer(ctx, params, "pushing-iteration-limit", 20l))
-      , limit(get_integer(ctx, params, "limit", 1000l))
-      , w(get_integer(ctx, params, "w", 20l))
-      , order(get_constraint_order(ctx,
-                                   params,
-                                   "constraint-order",
-                                   constraint_order::none))
-      , preprocessing(get_pre_constraint_order(ctx, params, "preprocessing"))
-      , serialize(get_integer(ctx, params, "serialize", 0l))
+          ctx->get_integer_parameter("pushing-iteration-limit", 20l))
+      , limit(ctx->get_integer_parameter("limit", 1000l))
+      , w(ctx->get_integer_parameter("w", 20l))
+      , order(get_constraint_order(ctx))
+      , preprocessing(ctx->get_string_parameter("preprocessing", "none"))
+      , serialize(ctx->get_integer_parameter("serialize", 0l))
     {
         ctx->info("solver: inequalities_1coeff_wedelin\n"
                   "solver parameters:\n"
@@ -1864,13 +1796,11 @@ optimize(std::shared_ptr<context> ctx,
 } // inequalities_1coeff
 
 inline result
-inequalities_1coeff_wedelin_solve(
-  std::shared_ptr<lp::context> ctx,
-  problem& pb,
-  const std::map<std::string, parameter>& params)
+inequalities_1coeff_wedelin_solve(std::shared_ptr<lp::context> ctx,
+                                  problem& pb)
 {
     namespace ine_1 = lp::inequalities_1coeff;
-    ine_1::parameters p(ctx, params);
+    ine_1::parameters p(ctx);
 
     using random_generator_type = std::default_random_engine;
 
@@ -1879,11 +1809,8 @@ inequalities_1coeff_wedelin_solve(
     // use several type of PRNG.
     //
 
-    random_generator_type::result_type seed = ine_1::get_integer(
-      ctx,
-      params,
-      "seed",
-      std::chrono::system_clock::now().time_since_epoch().count());
+    random_generator_type::result_type seed = ctx->get_integer_parameter(
+      "seed", std::chrono::system_clock::now().time_since_epoch().count());
 
     random_generator_type rng(seed);
 
@@ -1945,15 +1872,13 @@ inequalities_1coeff_wedelin_solve(
 }
 
 inline result
-inequalities_1coeff_wedelin_optimize(
-  std::shared_ptr<lp::context> ctx,
-  problem& pb,
-  const std::map<std::string, parameter>& params,
-  long int thread)
+inequalities_1coeff_wedelin_optimize(std::shared_ptr<lp::context> ctx,
+                                     problem& pb,
+                                     long int thread)
 {
 
     namespace ine_1 = lp::inequalities_1coeff;
-    ine_1::parameters p(ctx, params);
+    ine_1::parameters p(ctx);
 
     using random_generator_type = std::default_random_engine;
 
@@ -1962,11 +1887,8 @@ inequalities_1coeff_wedelin_optimize(
     // use several type of PRNG.
     //
 
-    random_generator_type::result_type seed = ine_1::get_integer(
-      ctx,
-      params,
-      "seed",
-      std::chrono::system_clock::now().time_since_epoch().count());
+    random_generator_type::result_type seed = ctx->get_integer_parameter(
+      "seed", std::chrono::system_clock::now().time_since_epoch().count());
 
     random_generator_type rng(seed);
 

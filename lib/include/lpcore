@@ -25,15 +25,16 @@
 
 #include <algorithm>
 #include <chrono>
-#include <cstdarg>
-#include <cstdio>
 #include <limits>
-#include <map>
 #include <memory>
 #include <stdexcept>
 #include <string>
 #include <tuple>
+#include <unordered_map>
 #include <vector>
+
+#include <cstdarg>
+#include <cstdio>
 
 #if defined _WIN32 || defined __CYGWIN__
 #define LP_HELPER_DLL_IMPORT __declspec(dllimport)
@@ -545,28 +546,68 @@ public:
     context(const context&) = delete;
     context& operator=(const context&) = delete;
 
+    /** Parse the command line argument using `getopt_long` function.
+     *
+     * @example
+     * int main(int argc, char *argv[])
+     * {
+     *     auto ctx = lp::make_context();
+     *     int i = ctx->parse(argc, argv);
+     *     if (i < 0)
+     *         return EXIT_FAILURE;
+     *
+     *     for (; i != argc; ++i) {
+     *         lp::make_problem(argv[i]);
+     *         ...
+     *     }
+     * }
+     * @endexample
+     *
+     * @return -1 if an error occured when parsing command argument or the file
+     * to parse int the `argv`.
+     */
+    int parse(int argc, char* argv[]) noexcept;
+
+    void set_parameter(const std::string& name, double p) noexcept;
+    void set_parameter(const std::string& name, long int p) noexcept;
+    void set_parameter(const std::string& name, std::string p) noexcept;
+
+    double get_real_parameter(const std::string& name, double def) const
+      noexcept;
+
+    long int get_integer_parameter(const std::string& name, long int def) const
+      noexcept;
+
+    std::string get_string_parameter(const std::string& name,
+                                     std::string def) const noexcept;
+
     void set_log_priority(int priority) noexcept;
     int get_log_priority() const noexcept;
+
+    bool optimize() const noexcept;
 
     void set_standard_stream_logger() noexcept;
     void set_logger(std::unique_ptr<logger> function) noexcept;
 
-    void info(const char* format, ...) noexcept LP_FORMAT(2, 3);
-    void debug(const char* format, ...) noexcept LP_FORMAT(2, 3);
-    void warning(const char* format, ...) noexcept LP_FORMAT(2, 3);
-    void error(const char* format, ...) noexcept LP_FORMAT(2, 3);
+    void info(const char* format, ...) const noexcept LP_FORMAT(2, 3);
+    void debug(const char* format, ...) const noexcept LP_FORMAT(2, 3);
+    void warning(const char* format, ...) const noexcept LP_FORMAT(2, 3);
+    void error(const char* format, ...) const noexcept LP_FORMAT(2, 3);
 
-    void log(message_type, const char* format, ...) noexcept LP_FORMAT(3, 4);
+    void log(message_type, const char* format, ...) const
+      noexcept LP_FORMAT(3, 4);
     void log(int priority,
              const char* file,
              int line,
              const char* fn,
              const char* format,
-             ...) noexcept LP_FORMAT(6, 7);
+             ...) const noexcept LP_FORMAT(6, 7);
 
 private:
-    int m_log_priority = 7;
+    std::unordered_map<std::string, parameter> m_parameters;
     std::unique_ptr<logger> m_logger;
+    int m_log_priority = 7;
+    bool m_optimize = false;
 };
 
 enum class variable_type
@@ -756,37 +797,6 @@ std::ostream& operator<<(std::ostream& os, const problem& p);
  * set of parameters.
  *
  * \param pb Problem definition.
- * \param params Parameters for solver.
- *
- * \exception lp::solver_error
- * \exception lp::problem_definition
- */
-LP_API
-result solve(std::shared_ptr<lp::context> ctx,
-             problem& pb,
-             const std::map<std::string, parameter>& params);
-
-/**
- * Try to optimize the \c lp::problem with a set of parameters.
- *
- * @param pb Problem definition.
- * @param params Parameters for the solver.
- *
- * @return A representation of the result.
- *
- * @throw \c lp::solver_error.
- */
-LP_API
-result optimize(std::shared_ptr<lp::context> ctx,
-                problem& pb,
-                const std::map<std::string, parameter>& params);
-
-/**
- * Try to solve or find a feasible solution for the \c lp::problem using a
- * set
- * of default parameters.
- *
- * \param pb Problem definition.
  *
  * \exception lp::solver_error
  * \exception lp::problem_definition
@@ -795,7 +805,7 @@ LP_API
 result solve(std::shared_ptr<lp::context> ctx, problem& pb);
 
 /**
- * Try to optimize the \c lp::problem using a set of default parameters.
+ * Try to optimize the \c lp::problem with a set of parameters.
  *
  * @param pb Problem definition.
  *
@@ -804,7 +814,7 @@ result solve(std::shared_ptr<lp::context> ctx, problem& pb);
  * @throw \c lp::solver_error.
  */
 LP_API
-result optimize(problem& pb);
+result optimize(std::shared_ptr<lp::context> ctx, problem& pb);
 
 LP_API
 bool is_valid_solution(const problem& pb,

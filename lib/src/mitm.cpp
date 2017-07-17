@@ -37,68 +37,27 @@ namespace lp {
  * Get number of thread to use in optimizer from parameters list. If an
  * error occured, this function returns 1.
  *
- * @param params From this list of parameters, try to convert the @e
- * thread parameter to integer.
+ * @param ctx An `lp::context` where parameter "thread" is trying to be read.
  *
  * @return An integer >= 1 if the value exist and can be convert to
  * positive integer or 1 if an error occurred.
  */
 inline long int
-get_thread_number(const std::map<std::string, parameter>& params) noexcept
+get_thread_number(std::shared_ptr<lp::context>& ctx) noexcept
 {
-    auto it = params.find("thread");
-    if (it == params.cend())
-        return 1;
+    auto t = ctx->get_integer_parameter("thread",
+                                        std::thread::hardware_concurrency());
 
-    if (it->second.type != parameter::tag::integer)
-        return 1;
-
-    if (it->second.l <= 0) {
-        auto thread_number = std::thread::hardware_concurrency();
-        if (thread_number <= 0)
-            return 1;
-
-        return lp::numeric_cast<long int>(thread_number);
-    }
-
-    return it->second.l;
+    return t <= 0 ? 1 : lp::numeric_cast<long int>(t);
 }
 
 std::tuple<double, double, double, long>
-get_parameters(const std::map<std::string, parameter>& params)
+get_parameters(std::shared_ptr<lp::context>& ctx) noexcept
 {
-    double kappa{ 0.001 }, delta{ 0.001 }, theta{ 0.0001 };
-    long limit{ 1000 };
-
-    {
-        auto it = params.find("kappa");
-        if (it->second.type == parameter::tag::real)
-            kappa = it->second.d;
-    }
-
-    {
-        auto it = params.find("theta");
-        if (it->second.type == parameter::tag::real)
-            theta = it->second.d;
-    }
-
-    {
-        auto it = params.find("delta");
-        if (it->second.type == parameter::tag::real)
-            delta = it->second.d;
-    }
-
-    {
-        auto it = params.find("limit");
-        if (it->second.type == parameter::tag::integer)
-            limit = it->second.l;
-    }
-
-    std::printf("Solve: kappa(%f) theta(%f) delta(%f) - limit(%ld)\n",
-                kappa,
-                theta,
-                delta,
-                limit);
+    auto kappa = ctx->get_real_parameter("kappa", 0.001);
+    auto theta = ctx->get_real_parameter("theta", 0.001);
+    auto delta = ctx->get_real_parameter("delta", 0.001);
+    auto limit = ctx->get_real_parameter("limit", 1000l);
 
     return std::make_tuple(kappa, delta, theta, limit);
 }
@@ -212,9 +171,7 @@ cleanup_problem(std::shared_ptr<lp::context> ctx, problem& pb)
 }
 
 result
-mitm_solve(std::shared_ptr<lp::context> ctx,
-           problem& pb,
-           const std::map<std::string, parameter>& params)
+mitm_solve(std::shared_ptr<lp::context> ctx, problem& pb)
 {
     cleanup_problem(ctx, pb);
 
@@ -224,7 +181,7 @@ mitm_solve(std::shared_ptr<lp::context> ctx,
         is_boolean_coefficient(pb.equal_constraints) and
         is_boolean_variable(pb.vars.values)) {
 
-        return lp::inequalities_1coeff_wedelin_solve(ctx, pb, params);
+        return lp::inequalities_1coeff_wedelin_solve(ctx, pb);
     }
 
     if ((not pb.equal_constraints.empty() or
@@ -246,7 +203,7 @@ mitm_solve(std::shared_ptr<lp::context> ctx,
             is_101_coefficient(pb.less_equal_constraints) and
             is_boolean_variable(pb.vars.values)) {
 
-            return lp::inequalities_1coeff_wedelin_solve(ctx, pb, params);
+            return lp::inequalities_1coeff_wedelin_solve(ctx, pb);
         }
     }
 
@@ -259,7 +216,7 @@ mitm_solve(std::shared_ptr<lp::context> ctx,
         double kappa, delta, theta;
         long limit;
 
-        std::tie(kappa, delta, theta, limit) = get_parameters(params);
+        std::tie(kappa, delta, theta, limit) = get_parameters(ctx);
 
         return lp::generalized_wedelin(kappa, delta, theta, limit, pb);
     }
@@ -268,11 +225,9 @@ mitm_solve(std::shared_ptr<lp::context> ctx,
 }
 
 result
-mitm_optimize(std::shared_ptr<lp::context> ctx,
-              problem& pb,
-              const std::map<std::string, parameter>& params)
+mitm_optimize(std::shared_ptr<lp::context> ctx, problem& pb)
 {
-    auto thread = get_thread_number(params);
+    auto thread = get_thread_number(ctx);
     cleanup_problem(ctx, pb);
 
     if (pb.greater_constraints.empty() and
@@ -281,8 +236,7 @@ mitm_optimize(std::shared_ptr<lp::context> ctx,
         is_boolean_coefficient(pb.equal_constraints) and
         is_boolean_variable(pb.vars.values)) {
 
-        return lp::inequalities_1coeff_wedelin_optimize(
-          ctx, pb, params, thread);
+        return lp::inequalities_1coeff_wedelin_optimize(ctx, pb, thread);
     }
 
     if ((not pb.equal_constraints.empty() or
@@ -303,8 +257,7 @@ mitm_optimize(std::shared_ptr<lp::context> ctx,
             is_101_coefficient(pb.less_equal_constraints) and
             is_boolean_variable(pb.vars.values)) {
 
-            return lp::inequalities_1coeff_wedelin_optimize(
-              ctx, pb, params, thread);
+            return lp::inequalities_1coeff_wedelin_optimize(ctx, pb, thread);
         }
     }
 
@@ -317,7 +270,7 @@ mitm_optimize(std::shared_ptr<lp::context> ctx,
         double kappa, delta, theta;
         long limit;
 
-        std::tie(kappa, delta, theta, limit) = get_parameters(params);
+        std::tie(kappa, delta, theta, limit) = get_parameters(ctx);
 
         return lp::generalized_wedelin(kappa, delta, theta, limit, pb);
     }
