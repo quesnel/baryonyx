@@ -165,7 +165,7 @@ private:
 
 enum class file_format_error_tag
 {
-    end_of_file,
+    end_of_file = 1,
     unknown,
     already_defined,
     incomplete,
@@ -229,7 +229,7 @@ private:
 
 enum class problem_definition_error_tag
 {
-    empty_variables,
+    empty_variables = 1,
     empty_objective_function,
     variable_not_used,
     bad_bound,
@@ -267,7 +267,7 @@ private:
 
 enum class solver_error_tag
 {
-    no_solver_available,
+    no_solver_available = 1,
     unrealisable_constraint,
     not_enough_memory
 };
