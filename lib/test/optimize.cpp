@@ -35,39 +35,33 @@
 void
 test_qap(std::shared_ptr<lp::context> ctx)
 {
-    lp::result result;
+    auto pb = lp::make_problem(ctx, EXAMPLES_DIR "/small4.lp");
 
-    {
+    ctx->set_parameter("limit", 10'000'000l);
+    ctx->set_parameter("theta", 0.5);
+    ctx->set_parameter("delta", 0.2);
+    ctx->set_parameter("kappa-step", 10e-4);
+    ctx->set_parameter("kappa-max", 10.0);
+    ctx->set_parameter("alpha", 0.0);
+    ctx->set_parameter("w", 20l);
+    ctx->set_parameter("time-limit", 40.0);
+    ctx->set_parameter("pushing-k-factor", 0.9);
+    ctx->set_parameter("pushes-limit", 50l);
+    ctx->set_parameter("pushing-objective-amplifier", 10l);
+    ctx->set_parameter("pushing-iteration-limit", 50l);
+    ctx->set_parameter("thread", 2l);
+
+    auto result = lp::optimize(ctx, pb);
+
+    Ensures(result.status == lp::result_status::success);
+    if (result.status == lp::result_status::success)
+        Ensures(result.value == 790.0);
+
+    if (result.status == lp::result_status::success) {
         auto pb = lp::make_problem(ctx, EXAMPLES_DIR "/small4.lp");
 
-        ctx->set_parameter("limit", 10'000'000l);
-        ctx->set_parameter("theta", 0.5);
-        ctx->set_parameter("delta", 0.2);
-        ctx->set_parameter("kappa-step", 10e-4);
-        ctx->set_parameter("kappa-max", 10.0);
-        ctx->set_parameter("alpha", 0.0);
-        ctx->set_parameter("w", 20l);
-        ctx->set_parameter("time-limit", 40.0);
-        ctx->set_parameter("pushing-k-factor", 0.9);
-        ctx->set_parameter("pushes-limit", 50l);
-        ctx->set_parameter("pushing-objective-amplifier", 10l);
-        ctx->set_parameter("pushing-iteration-limit", 50l);
-        ctx->set_parameter("thread", 2l);
-
-        result = lp::optimize(ctx, pb);
-
-        Ensures(result.status == lp::result_status::success);
-        if (result.status == lp::result_status::success)
-            Ensures(result.value == 790.0);
-    }
-
-    {
-        if (result.status == lp::result_status::success) {
-            auto pb = lp::make_problem(ctx, EXAMPLES_DIR "/small4.lp");
-
-            Ensures(lp::is_valid_solution(pb, result.variable_value) == true);
-            Ensures(lp::compute_solution(pb, result.variable_value) == 790.0);
-        }
+        Ensures(lp::is_valid_solution(pb, result.variable_value) == true);
+        Ensures(lp::compute_solution(pb, result.variable_value) == 790.0);
     }
 }
 
