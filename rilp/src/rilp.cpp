@@ -39,7 +39,7 @@ public:
                int line,
                const char* fn,
                const char* format,
-               va_list args) noexcept override
+               va_list args) noexcept override final
     {
         Rprintf("lp: %d at %d in function %s form file %s: ",
                 priority,
@@ -52,23 +52,23 @@ public:
 
     void write(lp::context::message_type m,
                const char* format,
-               va_list args) noexcept override
+               va_list args) noexcept override final
     {
         switch (m) {
         case lp::context::message_type::emerg:
-            Rprintf("lp: system is unusable\n");
+            Rprintf("lp- System is unusable: ");
             break;
         case lp::context::message_type::alert:
-            Rprintf("lp: action must be taken immediately\n");
+            Rprintf("lp- Action must be taken immediately: ");
             break;
         case lp::context::message_type::crit:
-            Rprintf("lp: critical conditions\n");
+            Rprintf("lp- critical conditions: ");
             break;
         case lp::context::message_type::err:
-            Rprintf("lp: error conditions\n");
+            Rprintf("lp- error conditions: ");
             break;
         case lp::context::message_type::warning:
-            Rprintf("lp: warning conditions\n");
+            Rprintf("lp- warning conditions: ");
             break;
         case lp::context::message_type::notice:
         case lp::context::message_type::info:
@@ -79,6 +79,59 @@ public:
         Rvprintf(format, args);
     }
 };
+
+void
+assign_parameters(std::shared_ptr<lp::context> ctx,
+                  long int limit,
+                  double theta,
+                  double delta,
+                  long int constraint_order,
+                  double kappa_min,
+                  double kappa_step,
+                  double kappa_max,
+                  double alpha,
+                  long int w,
+                  double time_limit,
+                  long int seed,
+                  long int thread)
+{
+    ctx->set_parameter("limit", limit);
+    ctx->set_parameter("theta", theta);
+    ctx->set_parameter("delta", delta);
+
+    switch (constraint_order) {
+    case 1:
+        ctx->set_parameter("constraint-order", std::string("reversing"));
+        break;
+    case 2:
+        ctx->set_parameter("constraint-order", std::string("random-sorting"));
+        break;
+    case 3:
+        ctx->set_parameter("constraint-order",
+                           std::string("infeasibility-decr"));
+        break;
+    case 4:
+        ctx->set_parameter("constraint-order",
+                           std::string("infeasibility-incr"));
+        break;
+    case 0:
+    default:
+        ctx->set_parameter("constraint-order", std::string("none"));
+        break;
+    }
+
+    ctx->set_parameter("kappa-min", kappa_min);
+    ctx->set_parameter("kappa-step", kappa_step);
+    ctx->set_parameter("kappa-max", kappa_max);
+    ctx->set_parameter("alpha", alpha);
+    ctx->set_parameter("w", w);
+    ctx->set_parameter("time-limit", time_limit);
+
+    if (seed > 0)
+        ctx->set_parameter("seed", seed);
+
+    ctx->set_parameter("thread", thread);
+}
 
 //' Tries to solve the 01 linear programming problem.
 //'
@@ -113,10 +166,6 @@ solve_01lp_problem(std::string file_path,
                    double alpha = 1.0,
                    long int w = 60,
                    double time_limit = 10.0,
-                   double pushing_k_factor = 0.9,
-                   long int pushes_limit = 50,
-                   double pushing_objective_amplifier = 10,
-                   long int pushing_iteration_limit = 10,
                    long int seed = -1,
                    long int thread = 1,
                    bool verbose = true) noexcept
@@ -135,49 +184,22 @@ solve_01lp_problem(std::string file_path,
             std::get<1>(mm) = -std::get<1>(mm);
         }
 
-        ctx->set_parameter("limit", limit);
-        ctx->set_parameter("theta", theta);
-        ctx->set_parameter("delta", delta);
-        ctx->set_parameter("kappa-min", kappa_min);
-        ctx->set_parameter("kappa-step", kappa_step);
-        ctx->set_parameter("kappa-max", kappa_max);
-        ctx->set_parameter("alpha", alpha);
-        ctx->set_parameter("w", w);
-
-        if (seed > 0)
-            ctx->set_parameter("seed", seed);
-
-        switch (constraint_order) {
-        case 1:
-            ctx->set_parameter("constraint-order", std::string("reversing"));
-            break;
-        case 2:
-            ctx->set_parameter("constraint-order",
-                               std::string("random-sorting"));
-            break;
-        case 3:
-            ctx->set_parameter("constraint-order",
-                               std::string("infeasibility-decr"));
-            break;
-        case 4:
-            ctx->set_parameter("constraint-order",
-                               std::string("infeasibility-incr"));
-            break;
-        case 0:
-        default:
-            ctx->set_parameter("constraint-order", std::string("none"));
-            break;
-        }
-
-        ctx->set_parameter("time-limit", time_limit);
-        ctx->set_parameter("pushing-k-factor", pushing_k_factor);
-        ctx->set_parameter("pushes-limit", pushes_limit);
-        ctx->set_parameter("pushing-objective-amplifier",
-                           pushing_objective_amplifier);
-        ctx->set_parameter("pushing-iteration-limit", pushing_iteration_limit);
-        ctx->set_parameter("thread", thread);
+        assign_parameters(ctx,
+                          limit,
+                          theta,
+                          delta,
+                          constraint_order,
+                          kappa_min,
+                          kappa_step,
+                          kappa_max,
+                          alpha,
+                          w,
+                          time_limit,
+                          seed,
+                          thread);
 
         auto result = lp::solve(ctx, pb);
+
         if (result.status == lp::result_status::success) {
             if (pb.type == lp::objective_function_type::maximize)
                 return List::create(
@@ -190,7 +212,6 @@ solve_01lp_problem(std::string file_path,
         return List::create(result.remaining_constraints,
                             result.value,
                             std::get<1>(mm) + result.remaining_constraints);
-
     } catch (const std::bad_alloc& e) {
         Rprintf("lp memory error: %s\n", e.what());
     } catch (const std::exception& e) {
@@ -271,47 +292,25 @@ optimize_01lp_problem(std::string file_path,
             std::get<1>(mm) = -std::get<1>(mm);
         }
 
-        ctx->set_parameter("limit", limit);
-        ctx->set_parameter("theta", theta);
-        ctx->set_parameter("delta", delta);
-        ctx->set_parameter("kappa-min", kappa_min);
-        ctx->set_parameter("kappa-step", kappa_step);
-        ctx->set_parameter("kappa-max", kappa_max);
-        ctx->set_parameter("alpha", alpha);
-        ctx->set_parameter("w", w);
+        assign_parameters(ctx,
+                          limit,
+                          theta,
+                          delta,
+                          constraint_order,
+                          kappa_min,
+                          kappa_step,
+                          kappa_max,
+                          alpha,
+                          w,
+                          time_limit,
+                          seed,
+                          thread);
 
-        if (seed > 0)
-            ctx->set_parameter("seed", seed);
-
-        switch (constraint_order) {
-        case 1:
-            ctx->set_parameter("constraint-order", std::string("reversing"));
-            break;
-        case 2:
-            ctx->set_parameter("constraint-order",
-                               std::string("random-sorting"));
-            break;
-        case 3:
-            ctx->set_parameter("constraint-order",
-                               std::string("infeasibility-decr"));
-            break;
-        case 4:
-            ctx->set_parameter("constraint-order",
-                               std::string("infeasibility-incr"));
-            break;
-        case 0:
-        default:
-            ctx->set_parameter("constraint-order", std::string("none"));
-            break;
-        }
-
-        ctx->set_parameter("time-limit", time_limit);
         ctx->set_parameter("pushing-k-factor", pushing_k_factor);
         ctx->set_parameter("pushes-limit", pushes_limit);
         ctx->set_parameter("pushing-objective-amplifier",
                            pushing_objective_amplifier);
         ctx->set_parameter("pushing-iteration-limit", pushing_iteration_limit);
-        ctx->set_parameter("thread", thread);
 
         auto result = lp::optimize(ctx, pb);
 
