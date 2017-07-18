@@ -809,7 +809,8 @@ make_merged_constraints(std::shared_ptr<context> ctx,
 
         return ret;
     } else {
-        if (not params.preprocessing.empty()) {
+        if (not params.preprocessing.empty() and
+            params.preprocessing != "none") {
             ctx->warning("Unknown preprocessing `%s'\n",
                          params.preprocessing.c_str());
         }
