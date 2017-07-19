@@ -21,7 +21,9 @@
  */
 
 #include "matrix.hpp"
+#include "scoped_array.hpp"
 #include "unit-test.hpp"
+
 #include <lpcore>
 
 void
@@ -186,12 +188,52 @@ check_matrix()
     Ensures(m.P()[3] == 4.0);
 }
 
+void
+check_scoped_array()
+{
+    auto* array = new int[10];
+
+    lp::scoped_array<int> a(array);
+
+    Ensures(a.get() == array);
+
+    array[0] = 1;
+    array[1] = 2;
+    array[2] = 3;
+    array[3] = 4;
+    array[4] = 5;
+    array[5] = 6;
+    array[6] = 7;
+    array[7] = 8;
+    array[8] = 9;
+    array[9] = 0;
+
+    Ensures(a[0] == 1);
+    Ensures(a[1] == 2);
+    Ensures(a[2] == 3);
+    Ensures(a[3] == 4);
+    Ensures(a[4] == 5);
+    Ensures(a[5] == 6);
+    Ensures(a[6] == 7);
+    Ensures(a[7] == 8);
+    Ensures(a[8] == 9);
+    Ensures(a[9] == 0);
+
+    lp::scoped_array<int> b;
+
+    b = std::move(a);
+
+    Ensures(b.get() == array);
+    Ensures(a.get() == nullptr);
+}
+
 int
 main(int /* argc */, char* /* argv */ [])
 {
     check_numeric_cast();
     check_parameter();
     check_matrix();
+    check_scoped_array();
 
     return unit_test::report_errors();
 }
