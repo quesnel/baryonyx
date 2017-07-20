@@ -20,11 +20,14 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+#include "fixed_array.hpp"
 #include "matrix.hpp"
 #include "scoped_array.hpp"
 #include "unit-test.hpp"
 
 #include <lpcore>
+
+#include <numeric>
 
 void
 check_numeric_cast()
@@ -152,7 +155,7 @@ check_matrix()
     m.set(0, 1, 2, 2.0);
     m.set(3, 1, 3, 3.0);
     m.set(2, 1, 4, 4.0);
-    m.sort();
+    m.sort(4, 2);
 
     Ensures(m.size() == 4);
 
@@ -170,9 +173,6 @@ check_matrix()
     Ensures(m.A(3, 1) == 3);
     Ensures(m.P(3, 1) == 3.0);
     Ensures(m.size() == 4);
-
-    Ensures(m.rows() == 4);
-    Ensures(m.columns() == 2);
 
     Ensures(m.row(0).size() == 1);
     Ensures(m.row(1).size() == 1);
@@ -227,6 +227,36 @@ check_scoped_array()
     Ensures(a.get() == nullptr);
 }
 
+void
+check_fixed_array()
+{
+    lp::fixed_array<int> a(10);
+
+    Ensures(a.size() == 10);
+
+    std::iota(a.begin(), a.end(), 1);
+
+    Ensures(a[0] == 1);
+    Ensures(a[1] == 2);
+    Ensures(a[2] == 3);
+    Ensures(a[3] == 4);
+    Ensures(a[4] == 5);
+    Ensures(a[5] == 6);
+    Ensures(a[6] == 7);
+    Ensures(a[7] == 8);
+    Ensures(a[8] == 9);
+    Ensures(a[9] == 10);
+
+    lp::fixed_array<int> b(a);
+
+    Ensures(a.data() != b.data());
+
+    lp::fixed_array<int> c(std::move(a));
+
+    Ensures(a.data() == nullptr);
+    Ensures(b.data() != c.data());
+}
+
 int
 main(int /* argc */, char* /* argv */ [])
 {
@@ -234,6 +264,7 @@ main(int /* argc */, char* /* argv */ [])
     check_parameter();
     check_matrix();
     check_scoped_array();
+    check_fixed_array();
 
     return unit_test::report_errors();
 }
