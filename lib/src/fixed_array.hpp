@@ -68,6 +68,17 @@ public:
      */
     explicit fixed_array(std::size_t n);
 
+    /**
+     * Constructs a container with @c n elements.
+     *
+     * @param n Container size (i.e. the number of elements in the
+     * container at construction).
+     * @param def Default value to assign for each elements.
+     *
+     * @exception @c std::bad_alloc.
+     */
+    fixed_array(std::size_t n, const value_type& def);
+
     ~fixed_array() = default;
 
     fixed_array(const fixed_array& o);
@@ -113,6 +124,14 @@ fixed_array<T>::fixed_array(std::size_t n)
   : m_length{ n }
   , m_buffer{ std::make_unique<T[]>(m_length) }
 {
+}
+
+template <typename T>
+fixed_array<T>::fixed_array(std::size_t n, const value_type& def)
+  : m_length{ n }
+  , m_buffer{ std::make_unique<T[]>(m_length) }
+{
+    std::fill(begin(), end(), def);
 }
 
 template <typename T>
