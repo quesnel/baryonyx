@@ -255,6 +255,12 @@ check_fixed_array()
 
     Ensures(a.data() == nullptr);
     Ensures(b.data() != c.data());
+
+    lp::fixed_array<double> d(15, 3.0);
+
+    Ensures(d[0] == 3.0);
+    Ensures(d[7] == 3.0);
+    Ensures(d[14] == 3.0);
 }
 
 int
