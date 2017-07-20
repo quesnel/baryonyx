@@ -881,7 +881,7 @@ struct solver
             }
         }
 
-        ap.sort();
+        ap.sort(m, n);
 
         init(rng_);
     }

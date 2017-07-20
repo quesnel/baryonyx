@@ -24,7 +24,9 @@
 #define ORG_VLEPROJECT_LP_MATRIX_HPP
 
 #include "utils.hpp"
+
 #include <algorithm>
+#include <memory>
 #include <stdexcept>
 #include <vector>
 
@@ -80,15 +82,13 @@ public:
     using size_type = typename accessor_type::size_type;
 
 protected:
-    std::vector<accessor_type> m_rows;
-    std::vector<accessor_type> m_cols;
+    std::unique_ptr<accessor_type[]> m_rows;
+    std::unique_ptr<accessor_type[]> m_cols;
     std::vector<a_type> m_a;
     std::vector<p_type> m_p;
 
-    // container_type m_values;
-
 public:
-    SparseArray();
+    SparseArray() noexcept;
     explicit SparseArray(index_type rows, index_type cols);
 
     ~SparseArray() = default;
@@ -99,13 +99,8 @@ public:
     SparseArray& operator=(const SparseArray& q) = default;
     SparseArray& operator=(SparseArray&& q) = default;
 
-    void resize(index_type rows, index_type cols);
-
     bool empty() const noexcept;
     size_type size() const noexcept;
-
-    size_type rows() const noexcept;
-    size_type columns() const noexcept;
 
     const accessor_type& row(index_type row) const noexcept;
     const accessor_type& column(index_type col) const noexcept;
@@ -121,7 +116,7 @@ public:
 
     void mult_row_p(index_type row, p_type y);
 
-    void sort() noexcept;
+    void sort(index_type rows, index_type cols) noexcept;
 
     a_type A(index_type row, index_type col) const;
     p_type P(index_type row, index_type col) const;
@@ -143,29 +138,15 @@ private:
 };
 
 template <typename A_T, typename P_T>
-SparseArray<A_T, P_T>::SparseArray()
+SparseArray<A_T, P_T>::SparseArray() noexcept
 {
 }
 
 template <typename A_T, typename P_T>
 SparseArray<A_T, P_T>::SparseArray(index_type rows, index_type cols)
-  : m_rows(rows)
-  , m_cols(cols)
+  : m_rows(std::make_unique<accessor_type[]>(rows))
+  , m_cols(std::make_unique<accessor_type[]>(cols))
 {
-}
-
-template <typename A_T, typename P_T>
-void
-SparseArray<A_T, P_T>::resize(index_type rows, index_type cols)
-{
-    m_cols.clear();
-    m_cols.resize(cols);
-
-    m_rows.clear();
-    m_rows.resize(rows);
-
-    m_a.clear();
-    m_p.clear();
 }
 
 template <typename A_T, typename P_T>
@@ -180,20 +161,6 @@ typename SparseArray<A_T, P_T>::size_type
 SparseArray<A_T, P_T>::size() const noexcept
 {
     return m_a.size();
-}
-
-template <typename A_T, typename P_T>
-typename SparseArray<A_T, P_T>::size_type
-SparseArray<A_T, P_T>::rows() const noexcept
-{
-    return m_rows.size();
-}
-
-template <typename A_T, typename P_T>
-typename SparseArray<A_T, P_T>::size_type
-SparseArray<A_T, P_T>::columns() const noexcept
-{
-    return m_cols.size();
 }
 
 template <typename A_T, typename P_T>
@@ -305,19 +272,21 @@ SparseArray<A_T, P_T>::mult_row_p(index_type row, p_type y)
 
 template <typename A_T, typename P_T>
 void
-SparseArray<A_T, P_T>::sort() noexcept
+SparseArray<A_T, P_T>::sort(index_type rows, index_type cols) noexcept
 {
-    for (auto& v : m_rows) {
-        std::sort(v.begin(), v.end(), [](const auto& lhs, const auto& rhs) {
-            return lhs.position < rhs.position;
-        });
-    }
+    for (index_type r{ 0 }; r != rows; ++r)
+        std::sort(m_rows[r].begin(),
+                  m_rows[r].end(),
+                  [](const auto& lhs, const auto& rhs) {
+                      return lhs.position < rhs.position;
+                  });
 
-    for (auto& v : m_cols) {
-        std::sort(v.begin(), v.end(), [](const auto& lhs, const auto& rhs) {
-            return lhs.position < rhs.position;
-        });
-    }
+    for (index_type c{ 0 }; c != cols; ++c)
+        std::sort(m_cols[c].begin(),
+                  m_cols[c].end(),
+                  [](const auto& lhs, const auto& rhs) {
+                      return lhs.position < rhs.position;
+                  });
 }
 
 template <typename A_T, typename P_T>
@@ -389,11 +358,9 @@ void
 SparseArray<A_T, P_T>::m_check_index(index_type row, index_type col) const
   noexcept
 {
-    Expects(col >= 0 and numeric_cast<std::size_t>(col) < m_cols.size(),
-            "SparseArray: bad column access");
+    Expects(col >= 0, "SparseArray: bad column access");
 
-    Expects(row >= 0 and numeric_cast<std::size_t>(row) < m_rows.size(),
-            "SparseArray: bad row access");
+    Expects(row >= 0, "SparseArray: bad row access");
 }
 #else
 template <typename A_T, typename P_T>
