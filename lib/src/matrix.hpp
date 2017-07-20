@@ -116,6 +116,13 @@ public:
 
     void mult_row_p(index_type row, p_type y);
 
+    template <typename InputIterator>
+    void reserve(index_type elem,
+                 InputIterator row_begin,
+                 InputIterator row_end,
+                 InputIterator col_begin,
+                 InputIterator col_end);
+
     void sort(index_type rows, index_type cols) noexcept;
 
     a_type A(index_type row, index_type col) const;
@@ -268,6 +275,25 @@ SparseArray<A_T, P_T>::mult_row_p(index_type row, p_type y)
 
     for (; it != et; ++it)
         m_p[it->value] *= y;
+}
+
+template <typename A_T, typename P_T>
+template <typename InputIterator>
+void
+SparseArray<A_T, P_T>::reserve(index_type elem,
+                               InputIterator row_begin,
+                               InputIterator row_end,
+                               InputIterator col_begin,
+                               InputIterator col_end)
+{
+    m_a.reserve(elem);
+    m_p.reserve(elem);
+
+    for (index i{ 0 }; row_begin != row_end; ++row_begin, ++i)
+        m_rows[i].reserve(*row_begin);
+
+    for (index j{ 0 }; col_begin != col_end; ++col_begin, ++j)
+        m_cols[j].reserve(*col_begin);
 }
 
 template <typename A_T, typename P_T>

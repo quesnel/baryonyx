@@ -23,6 +23,7 @@
 #ifndef ORG_VLEPROJECT_LP_INEQUALITIES_1COEFF_HPP
 #define ORG_VLEPROJECT_LP_INEQUALITIES_1COEFF_HPP
 
+#include "fixed_array.hpp"
 #include "lpcore-compare"
 #include "lpcore-out"
 #include "matrix.hpp"
@@ -850,6 +851,20 @@ struct solver
       , x(x_type::Zero(n))
       , pi(pi_type::Zero(m))
     {
+        {
+            lp::fixed_array<index> r(m, 0), c(n, 0);
+            index elem{ 0 };
+
+            for (std::size_t i{ 0 }, e{ csts.size() }; i != e; ++i) {
+                for (const auto& cst : csts[i].elements) {
+                    r[i]++;
+                    c[cst.variable_index]++;
+                }
+            }
+
+            ap.reserve(elem, r.begin(), r.end(), c.begin(), c.end());
+        }
+
         for (std::size_t i{ 0 }, e{ csts.size() }; i != e; ++i) {
             int lower{ 0 }, upper{ 0 };
 
