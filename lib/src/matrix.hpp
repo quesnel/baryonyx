@@ -53,7 +53,11 @@ public:
 
     struct access
     {
-        access() = default;
+        access()
+          : position(-1)
+          , value(-1)
+        {
+        }
 
         access(index_type position_, index_type value_)
           : position(position_)
@@ -78,17 +82,26 @@ public:
         }
     };
 
-    using accessor_type = std::vector<access>;
-    using size_type = typename accessor_type::size_type;
+    using size_type = std::size_t;
+    using iterator = typename std::vector<access>::iterator;
+    using const_iterator = typename std::vector<access>::const_iterator;
 
 protected:
-    std::unique_ptr<accessor_type[]> m_rows;
-    std::unique_ptr<accessor_type[]> m_cols;
+    std::vector<int> m_rows_access;
+    std::vector<int> m_cols_access;
+    std::vector<access> m_rows;
+    std::vector<access> m_cols;
+
     std::vector<a_type> m_a;
     std::vector<p_type> m_p;
 
 public:
+    /** TODO remove the default constructor. */
     SparseArray() noexcept;
+
+    /** TODO merge this constructor with the reserve function to avoid
+     * reserve() forget.
+     */
     explicit SparseArray(index_type rows, index_type cols);
 
     ~SparseArray() = default;
@@ -102,8 +115,12 @@ public:
     bool empty() const noexcept;
     size_type size() const noexcept;
 
-    const accessor_type& row(index_type row) const noexcept;
-    const accessor_type& column(index_type col) const noexcept;
+    std::tuple<iterator, iterator> row(index_type row) noexcept;
+    std::tuple<iterator, iterator> column(index_type col) noexcept;
+    std::tuple<const_iterator, const_iterator> row(index_type row) const
+      noexcept;
+    std::tuple<const_iterator, const_iterator> column(index_type col) const
+      noexcept;
 
     void set(index_type row, index_type col, a_type x, p_type y);
     void set_p(index_type row, index_type col, p_type y);
@@ -123,7 +140,7 @@ public:
                  InputIterator col_begin,
                  InputIterator col_end);
 
-    void sort(index_type rows, index_type cols) noexcept;
+    void sort() noexcept;
 
     a_type A(index_type row, index_type col) const;
     p_type P(index_type row, index_type col) const;
@@ -133,10 +150,10 @@ public:
     std::vector<p_type>& P();
     const std::vector<p_type>& P() const;
 
-    void swap(SparseArray& c) noexcept(noexcept(swap(m_a, c.m_a)) &&
-                                       noexcept(swap(m_p, c.m_p)) &&
-                                       noexcept(swap(m_cols, c.m_cols)) &&
-                                       noexcept(swap(m_rows, c.m_rows)));
+    void swap(SparseArray& c) noexcept(
+      noexcept(swap(m_a, c.m_a)) && noexcept(swap(m_p, c.m_p)) &&
+      noexcept(swap(m_cols_access, c.m_cols_acces)) &&
+      noexcept(swap(m_rows_access, c.m_rows_acces)));
 
 private:
     void m_check_index(index_type row, index_type col) const noexcept;
@@ -151,8 +168,10 @@ SparseArray<A_T, P_T>::SparseArray() noexcept
 
 template <typename A_T, typename P_T>
 SparseArray<A_T, P_T>::SparseArray(index_type rows, index_type cols)
-  : m_rows(std::make_unique<accessor_type[]>(rows))
-  , m_cols(std::make_unique<accessor_type[]>(cols))
+  : m_rows_access(rows, -1)
+  , m_cols_access(cols, -1)
+  , m_rows(rows)
+  , m_cols(cols)
 {
 }
 
@@ -171,21 +190,67 @@ SparseArray<A_T, P_T>::size() const noexcept
 }
 
 template <typename A_T, typename P_T>
-const typename SparseArray<A_T, P_T>::accessor_type&
+std::tuple<typename SparseArray<A_T, P_T>::iterator,
+           typename SparseArray<A_T, P_T>::iterator>
+SparseArray<A_T, P_T>::row(index_type row) noexcept
+{
+    m_check_index(row, 0);
+
+    iterator begin = m_rows.begin() + m_rows_access[row];
+
+    if (static_cast<std::size_t>(row + 1) < m_rows_access.size())
+        return std::make_tuple(
+          begin, begin + m_rows_access[row + 1] - m_rows_access[row]);
+    else
+        return std::make_tuple(begin, m_rows.end());
+}
+
+template <typename A_T, typename P_T>
+std::tuple<typename SparseArray<A_T, P_T>::iterator,
+           typename SparseArray<A_T, P_T>::iterator>
+SparseArray<A_T, P_T>::column(index_type col) noexcept
+{
+    m_check_index(0, col);
+
+    iterator begin = m_cols.begin() + m_cols_access[col];
+
+    if (static_cast<std::size_t>(col + 1) < m_cols_access.size())
+        return std::make_tuple(
+          begin, begin + m_cols_access[col + 1] - m_cols_access[col]);
+    else
+        return std::make_tuple(begin, m_cols.end());
+}
+
+template <typename A_T, typename P_T>
+std::tuple<typename SparseArray<A_T, P_T>::const_iterator,
+           typename SparseArray<A_T, P_T>::const_iterator>
 SparseArray<A_T, P_T>::row(index_type row) const noexcept
 {
     m_check_index(row, 0);
 
-    return m_rows[row];
+    const_iterator begin = m_rows.begin() + m_rows_access[row];
+
+    if (static_cast<std::size_t>(row + 1) < m_rows_access.size())
+        return std::make_tuple(
+          begin, begin + m_rows_access[row + 1] - m_rows_access[row]);
+    else
+        return std::make_tuple(begin, m_rows.end());
 }
 
 template <typename A_T, typename P_T>
-const typename SparseArray<A_T, P_T>::accessor_type&
+std::tuple<typename SparseArray<A_T, P_T>::const_iterator,
+           typename SparseArray<A_T, P_T>::const_iterator>
 SparseArray<A_T, P_T>::column(index_type col) const noexcept
 {
     m_check_index(0, col);
 
-    return m_cols[col];
+    const_iterator begin = m_cols.begin() + m_cols_access[col];
+
+    if (static_cast<std::size_t>(col + 1) < m_cols_access.size())
+        return std::make_tuple(
+          begin, begin + m_cols_access[col + 1] - m_cols_access[col]);
+    else
+        return std::make_tuple(begin, m_cols.end());
 }
 
 template <typename A_T, typename P_T>
@@ -194,19 +259,28 @@ SparseArray<A_T, P_T>::set(index_type row, index_type col, a_type x, p_type y)
 {
     m_check_index(row, col);
 
-    auto it = std::find_if(
-      m_rows[row].begin(), m_rows[row].end(), [col](const auto& access) {
-          return access.position == col;
-      });
+    auto id = m_a.size();
 
-    if (it == m_rows[row].end()) {
-        m_rows[row].emplace_back(col, m_a.size());
-        m_cols[col].emplace_back(row, m_a.size());
-        m_a.emplace_back(x);
-        m_p.emplace_back(y);
-    } else {
-        m_a[it->value] = x;
-        m_p[it->value] = y;
+    for (auto i = SparseArray<A_T, P_T>::row(row);
+         std::get<0>(i) != std::get<1>(i);
+         ++std::get<0>(i)) {
+        if (std::get<0>(i)->position == -1) {
+            std::get<0>(i)->position = col;
+            std::get<0>(i)->value = id;
+            m_a.emplace_back(x);
+            m_p.emplace_back(y);
+            break;
+        }
+    }
+
+    for (auto i = SparseArray<A_T, P_T>::column(col);
+         std::get<0>(i) != std::get<1>(i);
+         ++std::get<0>(i)) {
+        if (std::get<0>(i)->position == -1) {
+            std::get<0>(i)->position = row;
+            std::get<0>(i)->value = id;
+            break;
+        }
     }
 }
 
@@ -270,11 +344,10 @@ template <typename A_T, typename P_T>
 void
 SparseArray<A_T, P_T>::mult_row_p(index_type row, p_type y)
 {
-    auto it = m_rows[row].cbegin();
-    auto et = m_rows[row].cend();
+    auto i = SparseArray<A_T, P_T>::row(row);
 
-    for (; it != et; ++it)
-        m_p[it->value] *= y;
+    for (; std::get<0>(i) != std::get<1>(i); ++std::get<0>(i))
+        m_p[std::get<0>(i)->value] *= y;
 }
 
 template <typename A_T, typename P_T>
@@ -288,31 +361,47 @@ SparseArray<A_T, P_T>::reserve(index_type elem,
 {
     m_a.reserve(elem);
     m_p.reserve(elem);
+    m_rows.resize(elem);
+    m_cols.resize(elem);
 
-    for (index i{ 0 }; row_begin != row_end; ++row_begin, ++i)
-        m_rows[i].reserve(*row_begin);
+    for (index i{ 0 }, current{ 0 }; row_begin != row_end; ++row_begin, ++i) {
+        m_rows_access[i] = current;
+        current += *row_begin;
+    }
 
-    for (index j{ 0 }; col_begin != col_end; ++col_begin, ++j)
-        m_cols[j].reserve(*col_begin);
+    for (index i{ 0 }, current{ 0 }; col_begin != col_end; ++col_begin, ++i) {
+        m_cols_access[i] = current;
+        current += *col_begin;
+    }
 }
 
 template <typename A_T, typename P_T>
 void
-SparseArray<A_T, P_T>::sort(index_type rows, index_type cols) noexcept
+SparseArray<A_T, P_T>::sort() noexcept
 {
-    for (index_type r{ 0 }; r != rows; ++r)
-        std::sort(m_rows[r].begin(),
-                  m_rows[r].end(),
-                  [](const auto& lhs, const auto& rhs) {
-                      return lhs.position < rhs.position;
-                  });
+    if (m_rows_access.size() <= 1)
+        return;
 
-    for (index_type c{ 0 }; c != cols; ++c)
-        std::sort(m_cols[c].begin(),
-                  m_cols[c].end(),
+    for (index i{ 0 }, e{ static_cast<index>(m_rows_access.size() - 1) };
+         i < e;
+         ++i) {
+        std::sort(&m_rows[m_rows_access[i]],
+                  &m_rows[m_rows_access[i + 1]],
                   [](const auto& lhs, const auto& rhs) {
                       return lhs.position < rhs.position;
                   });
+    }
+
+    if (m_cols_access.size() <= 1)
+        return;
+
+    for (std::size_t i{ 0 }, e{ m_cols_access.size() - 1 }; i != e; ++i) {
+        std::sort(&m_cols[m_cols_access[i]],
+                  &m_cols[m_cols_access[i + 1]],
+                  [](const auto& lhs, const auto& rhs) {
+                      return lhs.position < rhs.position;
+                  });
+    }
 }
 
 template <typename A_T, typename P_T>
@@ -369,13 +458,13 @@ template <typename A_T, typename P_T>
 void
 SparseArray<A_T, P_T>::swap(SparseArray& c) noexcept(
   noexcept(swap(m_a, c.m_a)) && noexcept(swap(m_p, c.m_p)) &&
-  noexcept(swap(m_cols, c.m_cols)) &&
-  noexcept(swap(m_rows, c.m_rows)))
+  noexcept(swap(m_cols_access, c.m_cols_acces)) &&
+  noexcept(swap(m_rows_access, c.m_rows_acces)))
 {
     std::swap(m_a, c.m_a);
     std::swap(m_p, c.m_p);
-    std::swap(m_cols, c.m_cols);
-    std::swap(m_rows, c.m_rows);
+    std::swap(m_cols_access, c.m_cols_access);
+    std::swap(m_rows_access, c.m_rows_access);
 }
 
 #ifndef LP_FULL_OPTIMIZATION
@@ -385,7 +474,6 @@ SparseArray<A_T, P_T>::m_check_index(index_type row, index_type col) const
   noexcept
 {
     Expects(col >= 0, "SparseArray: bad column access");
-
     Expects(row >= 0, "SparseArray: bad row access");
 }
 #else
@@ -402,27 +490,30 @@ SparseArray<A_T, P_T>::binary_find(
   typename SparseArray<A_T, P_T>::index_type row,
   typename SparseArray<A_T, P_T>::index_type col) const
 {
-    if (m_rows[row].size() < m_cols[col].size()) {
-        auto it = std::lower_bound(
-          m_rows[row].begin(), m_rows[row].end(), col, access_compare());
+
+    // if (m_rows[row].size() < m_cols[col].size()) {
+    auto i = SparseArray<A_T, P_T>::row(row);
+    auto ret =
+      std::lower_bound(std::get<0>(i), std::get<1>(i), col, access_compare());
 
 #ifndef LP_FULL_OPTIMIZATION
-        if (!(it != m_rows[row].end() && it->position == col))
-            throw std::out_of_range("SparseArray::binary_find");
+    if (!(ret != std::get<1>(i) && ret->position == col))
+        throw std::out_of_range("SparseArray::binary_find");
 #endif
 
-        return it->value;
-    } else {
-        auto it = std::lower_bound(
-          m_cols[col].begin(), m_cols[col].end(), row, access_compare());
+    return ret->value;
+    //     } else {
+    //         auto i = col(col);
+    //         auto ret = std::lower_bound(
+    //           std::get<0>(i), std::get<1>(i), row, access_compare());
 
-#ifndef LP_FULL_OPTIMIZATION
-        if (!(it != m_cols[col].end() && it->position == row))
-            throw std::out_of_range("SparseArray::binary_find");
-#endif
+    // #ifndef LP_FULL_OPTIMIZATION
+    //         if (!(ret != std::get<1>(i) && ret->position == row))
+    //             throw std::out_of_range("SparseArray::binary_find");
+    // #endif
 
-        return it->value;
-    }
+    //         return ret->value;
+    //     }
 }
 
 } // namespace lp

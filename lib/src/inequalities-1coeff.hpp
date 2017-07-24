@@ -339,12 +339,12 @@ struct constraint_calculator
       , m(m_)
       , n(n_)
     {
-        const auto& ak{ ap.row(k) };
+        auto ak{ ap.row(k) };
         const auto& va{ ap.A() };
 
-        r.reserve(ak.size());
+        r.reserve(std::distance(std::get<0>(ak), std::get<1>(ak)));
 
-        for (std::size_t i{ 0 }, e{ ak.size() }; i != e; ++i) {
+        for (; std::get<0>(ak) != std::get<1>(ak); ++std::get<0>(ak)) {
 
             //
             // We don't need to represent the I vector since the SparseArray
@@ -352,18 +352,18 @@ struct constraint_calculator
             // I.emplace_back(ak[i].position);
             //
 
-            if (va[ak[i].value] != 0)
-                r.emplace_back(0, ak[i].position);
+            if (va[std::get<0>(ak)->value] != 0)
+                r.emplace_back(0, std::get<0>(ak)->position);
 
-            if (va[ak[i].value] < 0)
-                C.emplace_back(ak[i].position);
+            if (va[std::get<0>(ak)->value] < 0)
+                C.emplace_back(std::get<0>(ak)->position);
         }
     }
 
     void update_row(index k, double kappa, double delta, double theta)
     {
         std::uniform_real_distribution<> dst(0.0, 1e-4);
-        const auto& ak{ ap.row(k) };
+        auto ak{ ap.row(k) };
         const auto& va{ ap.A() };
 
         //
@@ -378,21 +378,22 @@ struct constraint_calculator
         // Calculate reduced costs
         //
 
-        for (std::size_t i{ 0 }, e{ ak.size() }; i != e; ++i) {
+        auto it = std::get<0>(ak);
+        for (std::size_t i{ 0 }; it != std::get<1>(ak); ++it, ++i) {
             double sum_a_pi{ 0 };
             double sum_a_p{ 0 };
 
-            const auto& H{ ap.column(ak[i].position) };
+            auto H{ ap.column(it->position) };
 
-            for (std::size_t h{ 0 }, eh{ H.size() }; h != eh; ++h) {
-                sum_a_pi +=
-                  ap.A(H[h].position, ak[i].position) * pi(H[h].position);
-                sum_a_p += ap.A(H[h].position, ak[i].position) *
-                           ap.P(H[h].position, ak[i].position);
+            for (; std::get<0>(H) != std::get<1>(H); ++std::get<0>(H)) {
+                sum_a_pi += ap.A(std::get<0>(H)->position, it->position) *
+                            pi(std::get<0>(H)->position);
+                sum_a_p += ap.A(std::get<0>(H)->position, it->position) *
+                           ap.P(std::get<0>(H)->position, it->position);
             }
 
-            r[i].id = ak[i].position;
-            r[i].value = cost(ak[i].position) - sum_a_pi - sum_a_p;
+            r[i].id = it->position;
+            r[i].value = cost(it->position) - sum_a_pi - sum_a_p;
 
             if (is_essentially_equal(r[i].value, 0.0, 1e-10))
                 r[i].value += (std::signbit(r[i].value) ? -1. : 1.) * dst(rng);
@@ -404,10 +405,11 @@ struct constraint_calculator
         //
 
         if (not C.empty()) {
-            for (std::size_t i{ 0 }, e{ ak.size() }; i != e; ++i) {
-                if (va[ak[i].value] < 0) {
+            auto it = std::get<0>(ak);
+            for (std::size_t i{ 0 }; it != std::get<1>(ak); ++it, ++i) {
+                if (va[it->value] < 0) {
                     r[i].value = -r[i].value;
-                    ap.invert(k, ak[i].position);
+                    ap.invert(k, it->position);
                 }
             }
 
@@ -852,6 +854,10 @@ struct solver
       , pi(pi_type::Zero(m))
     {
         {
+            // Compute the number of elements in the matrix A then compute for
+            // each rows and columns the number of elements to correctly
+            // initialize the @c `matrix` structure.
+
             lp::fixed_array<index> r(m, 0), c(n, 0);
             index elem{ 0 };
 
@@ -859,6 +865,7 @@ struct solver
                 for (const auto& cst : csts[i].elements) {
                     r[i]++;
                     c[cst.variable_index]++;
+                    ++elem;
                 }
             }
 
@@ -896,7 +903,7 @@ struct solver
             }
         }
 
-        ap.sort(m, n);
+        ap.sort();
 
         init(rng_);
     }
@@ -948,11 +955,12 @@ struct solver
         for (index k{ 0 }, ek{ m }; k != ek; ++k) {
             int v = 0;
 
-            const auto& ak{ ap.row(k) };
+            auto ak{ ap.row(k) };
             const auto& values{ ap.A() };
 
-            for (std::size_t i{ 0 }, e{ ak.size() }; i != e; ++i)
-                v += values[ak[i].value] * x(ak[i].position);
+            for (; std::get<0>(ak) != std::get<1>(ak); ++std::get<0>(ak))
+                v += values[std::get<0>(ak)->value] *
+                     x(std::get<0>(ak)->position);
 
             if (not(b(0, k) <= v and v <= b(1, k)))
                 vec.push_back(k);
@@ -966,11 +974,12 @@ struct solver
     {
         for (index k{ 0 }, ek{ m }; k != ek; ++k) {
             int v{ 0 };
-            const auto& ak{ ap.row(k) };
+            auto ak{ ap.row(k) };
             const auto& values{ ap.A() };
 
-            for (std::size_t i{ 0 }, e{ ak.size() }; i != e; ++i)
-                v += values[ak[i].value] * x(ak[i].position);
+            for (; std::get<0>(ak) != std::get<1>(ak); ++std::get<0>(ak))
+                v += values[std::get<0>(ak)->value] *
+                     x(std::get<0>(ak)->position);
 
             if (not(b(0, k) <= v and v <= b(1, k)))
                 return false;
@@ -1146,11 +1155,12 @@ compute_missing_constraint(solverT& solver, std::vector<index>& R)
 
     for (index k{ 0 }, ek{ solver.m }; k != ek; ++k) {
         int v = 0;
-        const auto& ak{ solver.ap.row(k) };
+        auto ak{ solver.ap.row(k) };
         const auto& values{ solver.ap.A() };
 
-        for (std::size_t i{ 0 }, e{ ak.size() }; i != e; ++i)
-            v += values[ak[i].value] * solver.x(ak[i].position);
+        for (; std::get<0>(ak) != std::get<1>(ak); ++std::get<0>(ak))
+            v += values[std::get<0>(ak)->value] *
+                 solver.x(std::get<0>(ak)->position);
 
         if (not(solver.b(0, k) <= v and v <= solver.b(1, k)))
             R.push_back(k);
@@ -1332,11 +1342,12 @@ struct compute_infeasibility
         for (index k{ 0 }, ek{ solver.m }; k != ek; ++k) {
             int v = 0;
 
-            const auto& ak{ solver.ap.row(k) };
+            auto ak{ solver.ap.row(k) };
             const auto& values{ solver.ap.A() };
 
-            for (std::size_t i{ 0 }, e{ ak.size() }; i != e; ++i)
-                v += values[ak[i].value] * solver.x(ak[i].position);
+            for (; std::get<0>(ak) != std::get<1>(ak); ++std::get<0>(ak))
+                v += values[std::get<0>(ak)->value] *
+                     solver.x(std::get<0>(ak)->position);
 
             if (solver.b(0, k) > v)
                 R.emplace_back(k, solver.b(0, k) - v);
@@ -1359,11 +1370,12 @@ struct compute_infeasibility
         for (index k{ 0 }, ek{ solver.m }; k != ek; ++k) {
             int v = 0;
 
-            const auto& ak{ solver.ap.row(k) };
+            auto ak{ solver.ap.row(k) };
             const auto& values{ solver.ap.A() };
 
-            for (std::size_t i{ 0 }, e{ ak.size() }; i != e; ++i)
-                v += values[ak[i].value] * solver.x(ak[i].position);
+            for (; std::get<0>(ak) != std::get<1>(ak); ++std::get<0>(ak))
+                v += values[std::get<0>(ak)->value] *
+                     solver.x(std::get<1>(ak)->position);
 
             if (solver.b(0, k) > v)
                 R.emplace_back(k, solver.b(0, k) - v);
