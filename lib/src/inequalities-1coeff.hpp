@@ -393,6 +393,16 @@ struct constraint_calculator
         }
     }
 
+    /**
+     * @brief Reinit the @c constraint_calculator.
+     * @details Reinitialize the @c constaint_calculator: reset the @c r array.
+     */
+    void reinit()
+    {
+        for (auto& elem : r)
+            elem.value = 0.0;
+    }
+
     void update_row(index k, double kappa, double delta, double theta)
     {
         std::uniform_real_distribution<> dst(0.0, 1e-4);
@@ -938,7 +948,10 @@ struct solver
 
         ap.sort();
 
-        init(rng_);
+        for (index k{ 0 }, e{ m }; k != e; ++k)
+            row_updaters.emplace_back(rng_, k, m, n, ap, b, c, x, pi);
+
+        init();
     }
 
     void reinit(random_generator_type& rng_)
@@ -947,8 +960,7 @@ struct solver
 
         pi = pi_type::Zero(m);
 
-        row_updaters.clear();
-        init(rng_);
+        init();
 
         std::bernoulli_distribution d(0.5);
 
@@ -962,8 +974,7 @@ struct solver
 
         pi = pi_type::Zero(m);
 
-        row_updaters.clear();
-        init(rng_);
+        init();
 
         x = best_previous;
         std::bernoulli_distribution d(0.5);
@@ -972,13 +983,13 @@ struct solver
             x(i) = d(rng_);
     }
 
-    void init(random_generator_type& rng_)
+    void init()
     {
         for (index i{ 0 }, e{ n }; i != e; ++i)
             x(i) = init_x(c(i), mode_type());
 
         for (index k{ 0 }, e{ m }; k != e; ++k)
-            row_updaters.emplace_back(rng_, k, m, n, ap, b, c, x, pi);
+            row_updaters[k].reinit();
     }
 
     void serialize(std::ostream& os) const
