@@ -30,9 +30,10 @@
 namespace lp {
 
 /**
- * @c fixed_array stores a pointer to a dynamically allocated array (with @c
- *     new[]) and stored into an @c std::unique_ptr<T[]>. @c fixed_array
- *     garantes to delete the pointer on destruction of the @c fixed_array.
+ * @c fixed_array stores a smart pointer to a dynamically allocated array (with
+ *     @c std::make_unique<T[]>). @c fixed_array garantes to delete the pointer
+ *         on destruction of the @c fixed_array. The length is stored into this
+ *         container so, @c fixed_array provides a std::vector's like API.
  */
 template <typename T>
 class fixed_array
@@ -45,8 +46,8 @@ public:
     typedef const T* const_iterator;
     typedef std::reverse_iterator<iterator> reverse_iterator;
     typedef std::reverse_iterator<const_iterator> const_reverse_iterator;
-    typedef size_t size_type;
-    typedef ptrdiff_t difference_type;
+    typedef std::size_t size_type;
+    typedef std::ptrdiff_t difference_type;
 
 private:
     std::size_t m_length;
@@ -69,7 +70,7 @@ public:
     explicit fixed_array(std::size_t n);
 
     /**
-     * Constructs a container with @c n elements.
+     * Constructs a container with @c n elements initialized to @c def.
      *
      * @param n Container size (i.e. the number of elements in the
      * container at construction).
@@ -79,13 +80,14 @@ public:
      */
     fixed_array(std::size_t n, const value_type& def);
 
-    ~fixed_array() = default;
-
+    fixed_array(fixed_array&&) = default;
+    fixed_array& operator=(fixed_array&&) = default;
     fixed_array(const fixed_array& o);
     fixed_array& operator=(fixed_array const& o);
 
-    fixed_array(fixed_array&&) = default;
-    fixed_array& operator=(fixed_array&&) = default;
+    ~fixed_array() noexcept = default;
+
+    explicit operator bool() const noexcept;
 
     std::size_t size() const noexcept;
 
@@ -112,6 +114,8 @@ public:
 
     T& operator[](std::size_t i) noexcept;
     const T& operator[](std::size_t i) const noexcept;
+
+    void swap(fixed_array& other) noexcept;
 };
 
 template <typename T>
@@ -154,6 +158,12 @@ fixed_array<T>::operator=(const fixed_array& o)
     m_buffer = std::move(tmp);
 
     return *this;
+}
+
+template <class T>
+fixed_array<T>::operator bool() const noexcept
+{
+    return m_buffer.get() != nullptr;
 }
 
 template <typename T>
@@ -299,6 +309,22 @@ template <typename T>
 const T& fixed_array<T>::operator[](std::size_t i) const noexcept
 {
     return data()[i];
+}
+
+template <class T>
+void
+fixed_array<T>::swap(fixed_array& other) noexcept
+{
+    auto tmp = other.m_buffer;
+    other.m_buffer = tmp;
+    m_buffer = tmp;
+}
+
+template <class T>
+constexpr inline void
+swap(fixed_array<T>& lhs, fixed_array<T>& rhs) noexcept
+{
+    lhs.swap(rhs);
 }
 
 } // namespace lp

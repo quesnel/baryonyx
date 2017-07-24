@@ -136,10 +136,21 @@ check_parameter()
     Ensures(x[3].s == "hello world!");
 }
 
+std::ptrdiff_t
+size(std::tuple<lp::SparseArray<int, double>::const_iterator,
+                lp::SparseArray<int, double>::const_iterator> elem)
+{
+    return std::distance(std::get<0>(elem), std::get<1>(elem));
+}
+
 void
 check_matrix()
 {
+    std::vector<int> row{ 1, 1, 1, 1 };
+    std::vector<int> col{ 1, 3 };
+
     lp::SparseArray<int, double> m(4, 2);
+    m.reserve(4, row.begin(), row.end(), col.begin(), col.end());
 
     EnsuresThrow(m.P(0, 0), std::out_of_range);
     EnsuresThrow(m.P(0, 1), std::out_of_range);
@@ -155,7 +166,9 @@ check_matrix()
     m.set(0, 1, 2, 2.0);
     m.set(3, 1, 3, 3.0);
     m.set(2, 1, 4, 4.0);
-    m.sort(4, 2);
+    m.sort();
+
+    printf("m.size()= %zu\n", m.size());
 
     Ensures(m.size() == 4);
 
@@ -174,12 +187,16 @@ check_matrix()
     Ensures(m.P(3, 1) == 3.0);
     Ensures(m.size() == 4);
 
-    Ensures(m.row(0).size() == 1);
-    Ensures(m.row(1).size() == 1);
-    Ensures(m.row(2).size() == 1);
-    Ensures(m.row(3).size() == 1);
-    Ensures(m.column(0).size() == 1);
-    Ensures(m.column(1).size() == 3);
+    Ensures(size(m.row(0)) == 1);
+    Ensures(size(m.row(1)) == 1);
+    Ensures(size(m.row(2)) == 1);
+    Ensures(size(m.row(3)) == 1);
+    Ensures(size(m.column(0)) == 1);
+
+    printf("%ld\n", size(m.column(1)));
+    printf("%ld\n", size(m.column(2)));
+
+    Ensures(size(m.column(1)) == 3);
 
     Ensures(m.A().size() == 4);
     Ensures(m.P()[0] == 1.0);
@@ -191,11 +208,15 @@ check_matrix()
 void
 check_scoped_array()
 {
-    auto* array = new int[10];
+    lp::scoped_array<int> a(10);
+    if (not a) {
+        Ensures(a);
+        return;
+    }
 
-    lp::scoped_array<int> a(array);
+    int* array = a.data();
 
-    Ensures(a.get() == array);
+    Ensures(a.data() == array);
 
     array[0] = 1;
     array[1] = 2;
@@ -219,12 +240,15 @@ check_scoped_array()
     Ensures(a[8] == 9);
     Ensures(a[9] == 0);
 
-    lp::scoped_array<int> b;
+    lp::scoped_array<int> b(std::move(a));
 
-    b = std::move(a);
+    Ensures(b.data() == array);
+    Ensures(a.data() == nullptr);
 
-    Ensures(b.get() == array);
-    Ensures(a.get() == nullptr);
+    std::swap(a, b);
+
+    Ensures(a.data() == array);
+    Ensures(b.data() == nullptr);
 }
 
 void
@@ -261,6 +285,15 @@ check_fixed_array()
     Ensures(d[0] == 3.0);
     Ensures(d[7] == 3.0);
     Ensures(d[14] == 3.0);
+
+    lp::fixed_array<double> e;
+
+    std::swap(d, e);
+
+    Ensures(not d);
+    Ensures(e[0] == 3.0);
+    Ensures(e[7] == 3.0);
+    Ensures(e[14] == 3.0);
 }
 
 int

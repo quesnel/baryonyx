@@ -23,122 +23,118 @@
 #ifndef ORG_VLEPROJECT_LP_SCOPED_ARRAY_HPP
 #define ORG_VLEPROJECT_LP_SCOPED_ARRAY_HPP
 
+#include <memory>
+
 namespace lp {
 
-/** \c scoped_array stores a pointer to a dynamically allocated array
- * (with \c new[]). \c scoped_array guarantes to delete the pointer on
- * destruction of the \c scoped_array or via the \c reset function.
+/**
+ * @c scoped_array stores a smart pointer to a dynamically allocated array
+ *      (with @c std::make_unique<T[]>().  @c scoped_array garantes to delete
+ *      the pointer on destruction of the @c scoped_array
  *
  * @note The length is not stored into this containter.
- *
- * @todo Perhaps use std::unique_ptr<T[]>.
  */
-template <class T>
+template <typename T>
 class scoped_array
 {
 public:
-    using value_type = T;
+    typedef T value_type;
 
-    explicit scoped_array(T* p = nullptr) noexcept;
-    scoped_array(scoped_array&& other) noexcept;
-    scoped_array& operator=(scoped_array&& other) noexcept;
+private:
+    std::unique_ptr<T[]> m_buffer;
 
+public:
+    /**
+     * Constructs a container with @c n elements.
+     *
+     * @param n Container size (i.e the number of elemens in the container at
+     * construction).
+     *
+     * @exception @c std::bad_alloc.
+     */
+    explicit scoped_array(std::size_t n);
+
+    /**
+     * Constructs a container with @c n elements initialized to @c def.
+     *
+     * @param n Container size (i.e the number of elemens in the container at
+     * construction).
+     * @param def Default value to assign for each elements.
+     *
+     * @exception @c std::bad_alloc.
+     */
+    scoped_array(std::size_t n, const value_type& def);
+
+    scoped_array(scoped_array&& other) = default;
+    scoped_array& operator=(scoped_array&& other) = default;
     scoped_array(const scoped_array&) = delete;
     scoped_array& operator=(const scoped_array&) = delete;
 
-    ~scoped_array() noexcept;
-
-    T& operator[](std::ptrdiff_t i) const noexcept;
-
-    T* get() const noexcept;
-
-    void reset(T* p = nullptr) noexcept;
+    ~scoped_array() noexcept = default;
 
     explicit operator bool() const noexcept;
-    bool operator!() const noexcept;
+
+    T* data() noexcept;
+    const T* data() const noexcept;
+
+    T& operator[](std::ptrdiff_t i) noexcept;
+    const T& operator[](std::ptrdiff_t i) const noexcept;
 
     void swap(scoped_array& other) noexcept;
-
-private:
-    T* m_p;
 };
 
 template <class T>
-scoped_array<T>::scoped_array(T* p) noexcept : m_p(p)
+scoped_array<T>::scoped_array(std::size_t n)
+  : m_buffer{ std::make_unique<T[]>(n) }
 {
 }
 
 template <class T>
-scoped_array<T>::scoped_array(scoped_array<T>&& other) noexcept
-  : m_p(other.m_p)
+scoped_array<T>::scoped_array(std::size_t n, const value_type& def)
+  : m_buffer{ std::make_unique<T[]>(n) }
 {
-    other.m_p = nullptr;
+    std::fill(m_buffer.get(), m_buffer.get() + n, def);
 }
 
 template <class T>
-scoped_array<T>&
-scoped_array<T>::operator=(scoped_array<T>&& other) noexcept
+T& scoped_array<T>::operator[](std::ptrdiff_t i) noexcept
 {
-    if (other.m_p == m_p)
-        return *this;
-
-    if (m_p)
-        delete[] m_p;
-
-    m_p = other.m_p;
-    other.m_p = nullptr;
-
-    return *this;
+    return m_buffer[i];
 }
 
 template <class T>
-scoped_array<T>::~scoped_array() noexcept
+const T& scoped_array<T>::operator[](std::ptrdiff_t i) const noexcept
 {
-    delete[] m_p;
-}
-
-template <class T>
-T& scoped_array<T>::operator[](std::ptrdiff_t i) const noexcept
-{
-    return m_p[i];
+    return m_buffer[i];
 }
 
 template <class T>
 T*
-scoped_array<T>::get() const noexcept
+scoped_array<T>::data() noexcept
 {
-    return m_p;
+    return m_buffer.get();
 }
 
 template <class T>
-void
-scoped_array<T>::reset(T* p) noexcept
+const T*
+scoped_array<T>::data() const noexcept
 {
-    using this_type = scoped_array<T>;
-
-    if (p == nullptr or p != m_p)
-        this_type(p).swap(*this);
+    return m_buffer.get();
 }
 
 template <class T>
 scoped_array<T>::operator bool() const noexcept
 {
-    return m_p != nullptr;
-}
-
-template <class T>
-bool scoped_array<T>::operator!() const noexcept
-{
-    return m_p == nullptr;
+    return m_buffer.get() != nullptr;
 }
 
 template <class T>
 void
 scoped_array<T>::swap(scoped_array& other) noexcept
 {
-    auto tmp = other.m_p;
-    other.m_p = tmp;
-    m_p = tmp;
+    auto tmp = other.m_buffer;
+    other.m_buffer = tmp;
+    m_buffer = tmp;
 }
 
 template <class T>
@@ -146,18 +142,6 @@ constexpr inline void
 swap(scoped_array<T>& lhs, scoped_array<T>& rhs) noexcept
 {
     lhs.swap(rhs);
-}
-
-template <class T>
-inline scoped_array<T>
-make_scoped_array(int size) noexcept
-{
-    try {
-        T* p = new T[size];
-        return scoped_array<T>(p);
-    } catch (const std::bad_alloc&) {
-        return scoped_array<T>();
-    }
 }
 
 } // namespace lp
