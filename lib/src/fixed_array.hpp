@@ -91,6 +91,8 @@ public:
 
     std::size_t size() const noexcept;
 
+    bool empty() const noexcept;
+
     iterator begin() noexcept;
     const_iterator begin() const noexcept;
     const_iterator cbegin() const noexcept;
@@ -126,7 +128,7 @@ fixed_array<T>::fixed_array() noexcept : m_length{ 0 }
 template <typename T>
 fixed_array<T>::fixed_array(std::size_t n)
   : m_length{ n }
-  , m_buffer{ std::make_unique<T[]>(m_length) }
+  , m_buffer{ std::make_unique<T[]>(n) }
 {
 }
 
@@ -171,6 +173,13 @@ std::size_t
 fixed_array<T>::size() const noexcept
 {
     return m_length;
+}
+
+template <typename T>
+bool
+fixed_array<T>::empty() const noexcept
+{
+    return m_length == 0;
 }
 
 template <typename T>

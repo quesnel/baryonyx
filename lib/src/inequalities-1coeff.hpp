@@ -292,6 +292,36 @@ is_time_limit(double limit,
              .count() > limit;
 }
 
+std::size_t
+compute_r_size(const AP_type& ap, index k) noexcept
+{
+    auto ak{ ap.row(k) };
+    const auto& va{ ap.A() };
+
+    std::size_t r_size{ 0 };
+
+    for (auto it = std::get<0>(ak); it != std::get<1>(ak); ++it)
+        if (va[it->value] != 0)
+            r_size++;
+
+    return r_size;
+}
+
+std::size_t
+compute_C_size(const AP_type& ap, index k) noexcept
+{
+    auto ak{ ap.row(k) };
+    const auto& va{ ap.A() };
+
+    std::size_t C_size{ 0 };
+
+    for (auto it = std::get<0>(ak); it != std::get<1>(ak); ++it)
+        if (va[it->value] < 0)
+            C_size++;
+
+    return C_size;
+}
+
 template <typename modeT, typename randomT>
 struct constraint_calculator
 {
@@ -300,6 +330,8 @@ struct constraint_calculator
 
     struct r_data
     {
+        r_data() = default;
+
         r_data(double value_, index index_)
           : value(value_)
           , id(index_)
@@ -316,8 +348,8 @@ struct constraint_calculator
     const c_type& cost;
     x_type& x;
     pi_type& pi;
-    std::vector<r_data> r;
-    std::vector<index> C; // Stores variables with negative coefficient.
+    fixed_array<r_data> r;
+    fixed_array<index> C; // Stores variables with negative coefficient.
     index m;
     index n;
 
@@ -336,15 +368,16 @@ struct constraint_calculator
       , cost(c_)
       , x(x_)
       , pi(pi_)
+      , r(compute_r_size(ap_, k))
+      , C(compute_C_size(ap_, k))
       , m(m_)
       , n(n_)
     {
         auto ak{ ap.row(k) };
         const auto& va{ ap.A() };
 
-        r.reserve(std::distance(std::get<0>(ak), std::get<1>(ak)));
-
-        for (; std::get<0>(ak) != std::get<1>(ak); ++std::get<0>(ak)) {
+        std::size_t r_idx{ 0 }, C_idx{ 0 };
+        for (auto it = std::get<0>(ak); it != std::get<1>(ak); ++it) {
 
             //
             // We don't need to represent the I vector since the SparseArray
@@ -352,11 +385,11 @@ struct constraint_calculator
             // I.emplace_back(ak[i].position);
             //
 
-            if (va[std::get<0>(ak)->value] != 0)
-                r.emplace_back(0, std::get<0>(ak)->position);
+            if (va[it->value] != 0)
+                r[r_idx++] = { 0, it->position };
 
-            if (va[std::get<0>(ak)->value] < 0)
-                C.emplace_back(std::get<0>(ak)->position);
+            if (va[it->value] < 0)
+                C[C_idx++] = it->position;
         }
     }
 
