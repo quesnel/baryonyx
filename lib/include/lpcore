@@ -295,8 +295,20 @@ private:
     solver_error m_error;
 };
 
-struct parameter
+/**
+ * @brief @c lp::paramter is a simple class to represent a union between an
+ *     integer, a real and a string (resp. @c long, @c double and @c
+ *     std::string).
+ * @details Waiting for a compiler with the @c std::optional class, @c
+ *     lp::parameter implements an union between a @c long, a @c double and a
+ *     @c std::string. @c lp::parameter, by default, defines a @c long with the
+ *     value of @c 0. Use the @c lp::parameter::type function to get the
+ *     current type stored into the @c lp::parameter.
+ *
+ */
+class parameter
 {
+public:
     enum class tag
     {
         integer,
@@ -504,9 +516,14 @@ struct parameter
     tag type;
 };
 
-/* Default, the logging system is active and the call to the @c log
- * function are send to the logger functor. Define LP_DISABLE_LOGGING as
- * preprocessor value to hide all logging message..
+/**
+ * @brief @c lp::context stores logging system and all parameters.
+ * @details @c lp::context manages the logging system via a subclass @c
+ *     lp::context::logger which writes logs to the user defined storage. @c
+ *     lp::context stores a set of parameters for solvers. Default, the logging
+ *     system is active and the call to the @c log function are send to the
+ *     logger functor. Define LP_DISABLE_LOGGING as preprocessor value to hide
+ *     all logging message..
  */
 class LP_API context
 {
@@ -546,7 +563,11 @@ public:
     context(const context&) = delete;
     context& operator=(const context&) = delete;
 
-    /** Parse the command line argument using `getopt_long` function.
+    /**
+     * @brief Parse the command line argument using the `getopt_long` function.
+     * @details Parse the command line and search for strings "-p [str:value]"
+     *     and store @c str as argument's name and tries to convert the @c
+     *     value in @c lp::parameter.
      *
      * @example
      * int main(int argc, char *argv[])
@@ -555,6 +576,11 @@ public:
      *     int i = ctx->parse(argc, argv);
      *     if (i < 0)
      *         return EXIT_FAILURE;
+     *
+     *     if (ctx->get_integer_parameter("limit", 1000l) <= 0) {
+     *         printf("negative limit parameters, assume 1000.\n");
+     *         ctx->set_parameter("limit", 1000l);
+     *     }
      *
      *     for (; i != argc; ++i) {
      *         lp::make_problem(argv[i]);
@@ -689,7 +715,8 @@ struct problem
     objective_function_type type = { objective_function_type::maximize };
 };
 
-/** Compute the number of constaints of the @c lp::problem.
+/**
+ * @details Compute the number of constaints of the @c lp::problem.
  *
  * @param pb An lp::problem.
  * @return The number of constraints in the @c lp::problem.
@@ -702,9 +729,10 @@ size(const lp::problem& pb) noexcept
            pb.less_equal_constraints.size();
 }
 
-/** Recover all memory allocated for all container of the @c
- * lp::problem. After this function, the @c lp::problem is completely
- * empty of data and can be reuse.
+/**
+ * @details Recover all memory allocated for all container of the @c
+ *     lp::problem. After this function, the @c lp::problem is completely empty
+ *     of data and can be reuse.
  *
  * @param pb The problem to clear.
  */
