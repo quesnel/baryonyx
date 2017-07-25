@@ -168,8 +168,6 @@ check_matrix()
     m.set(2, 1, 4, 4.0);
     m.sort();
 
-    printf("m.size()= %zu\n", m.size());
-
     Ensures(m.size() == 4);
 
     EnsuresThrow(m.P(0, 0), std::out_of_range);
@@ -192,9 +190,6 @@ check_matrix()
     Ensures(size(m.row(2)) == 1);
     Ensures(size(m.row(3)) == 1);
     Ensures(size(m.column(0)) == 1);
-
-    printf("%ld\n", size(m.column(1)));
-    printf("%ld\n", size(m.column(2)));
 
     Ensures(size(m.column(1)) == 3);
 
@@ -249,6 +244,12 @@ check_scoped_array()
 
     Ensures(a.data() == array);
     Ensures(b.data() == nullptr);
+
+    lp::scoped_array<double> x(1000, 123.0);
+    if (x) {
+        for (int i{ 0 }; i < 1000; ++i)
+            Ensures(x[i] == 123.0);
+    }
 }
 
 void
@@ -294,6 +295,19 @@ check_fixed_array()
     Ensures(e[0] == 3.0);
     Ensures(e[7] == 3.0);
     Ensures(e[14] == 3.0);
+
+    lp::fixed_array<double> x(1000, 123.0);
+    if (x) {
+        for (int i{ 0 }; i < 1000; ++i)
+            Ensures(x[i] == 123.0);
+
+        auto it = std::find_if_not(
+          x.begin(),
+          x.end(),
+          std::bind(std::equal_to<double>(), 123.0, std::placeholders::_1));
+
+        Ensures(it == x.end());
+    }
 }
 
 int
