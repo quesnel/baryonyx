@@ -734,10 +734,16 @@ make_merged_constraints(std::shared_ptr<context> ctx,
         ctx->info("  - removed small constraints: %ld\n", removed);
     }
 
-    /* Compute metrics from constraints and variables uses.
-       - vars counts the number of use of the variables
-       - linkvars the link between vars
-       - linkcst ?? */
+    //
+    // Compute the preprocessing step baed on constraints and variables
+    // uses.
+    //
+    // If no preprocessing is used, vars, linkvars and linkcst vectors are
+    // not necessary.
+    //
+
+    if (params.preprocessing.empty() or params.preprocessing == "none")
+        return ret;
 
     std::vector<int> vars(pb.vars.values.size(), 0);
     std::vector<std::set<int>> linkvars(pb.vars.values.size());
