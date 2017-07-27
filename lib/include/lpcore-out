@@ -27,9 +27,10 @@
 #include <chrono>
 #include <iomanip>
 #include <iterator>
-#include <lpcore>
 #include <numeric>
 #include <ostream>
+
+#include <lpcore>
 
 namespace lp {
 
@@ -123,7 +124,6 @@ struct resume
 inline std::ostream&
 operator<<(std::ostream& os, const resume& pb)
 {
-
     return os << "nb variables: "
               << std::accumulate(pb.variables.begin(), pb.variables.end(), 0)
               << '\n'
