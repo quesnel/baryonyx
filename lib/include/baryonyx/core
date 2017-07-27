@@ -67,7 +67,7 @@
 #endif
 
 #if defined(__GNUC__)
-#define BARYONYX_FORMAT(idformat, idarg)                                            \
+#define BARYONYX_FORMAT(idformat, idarg)                                      \
     __attribute__((format(printf, (idformat), (idarg))))
 #else
 #define BARYONYX_FORMAT(idformat, idarg)
@@ -102,9 +102,27 @@ struct numeric_cast_failure : public std::exception
     }
 };
 
+/**
+ * @brief @c is_numeric_castable checks if two integer are castable.
+ *
+ * @details Checks if the @c arg Source integer is castable into @c Target
+ *     template. @c Source and @c Target must be integer. The test
+ *     includes the limit of @c Target.
+ *
+ * @param arg The integer to test.
+ * @return true if @c arg is castable to @c Target type.
+ *
+ * @code
+ * int v1 = 10;
+ * assert(lp::is_numeric_castable<std::int8_t>(v));
+ *
+ * int v2 = 278;
+ * assert(not lp::is_numeric_castable<std::int8_t>(v2));
+ * @endcode
+ */
 template <typename Target, typename Source>
 inline bool
-is_numeric_castable(Source arg)
+is_numeric_castable(Source arg) noexcept
 {
     static_assert(std::is_integral<Source>::value, "Integer required.");
     static_assert(std::is_integral<Target>::value, "Integer required.");
@@ -126,6 +144,21 @@ is_numeric_castable(Source arg)
     return arg <= static_cast<Source>(result_traits::max());
 }
 
+/**
+ * @brief @c numeric_cast cast @c s to @c Target type.
+ *
+ * @details Converts the integer type @c Source @c s into the integer type
+ *     @c Target. If the value @c s is not castable to @c Target, @c
+ *     numeric_cast throws an exception.
+ *
+ * @param s The integer to cast.
+ * @return The cast integer.
+ *
+ * @code
+ * std::vector<double> v(1024);
+ * long int index = lp::numeric_cast<long int>(v); // No throw.
+ * @endcode
+ */
 template <typename Target, typename Source>
 inline Target
 numeric_cast(Source s)
@@ -526,7 +559,7 @@ public:
  *     solvers. Default, the logging system is active and the call to the
  *     @c log function are send to the logger functor. Define
  *     BARYONYX_DISABLE_LOGGING as preprocessor value to hide all logging
- *     message..
+ *     message.
  */
 class BARYONYX_API context
 {
@@ -574,7 +607,7 @@ public:
      *     [str:value]" and store @c str as argument's name and tries to
      *     convert the @c value in @c baryonyx::parameter.
      *
-     * @example
+     * @code
      * int main(int argc, char *argv[])
      * {
      *     auto ctx = baryonyx::make_context();
@@ -592,10 +625,10 @@ public:
      *         ...
      *     }
      * }
-     * @endexample
+     * @endcode
      *
-     * @return -1 if an error occured when parsing command argument or the file
-     * to parse int the `argv`.
+     * @return -1 if an error occurred when parsing command argument or
+     *     the file to parse int the `argv`.
      */
     int parse(int argc, char* argv[]) noexcept;
 
@@ -736,8 +769,8 @@ size(const baryonyx::problem& pb) noexcept
 
 /**
  * @details Recover all memory allocated for all container of the @c
- *     baryonyx::problem. After this function, the @c baryonyx::problem is completely empty
- *     of data and can be reuse.
+ *     baryonyx::problem. After this function, the @c baryonyx::problem is
+ *     completely empty of data and can be reuse.
  *
  * @param pb The problem to clear.
  */
@@ -802,7 +835,7 @@ compute_min_max_objective_function(const problem& pb) noexcept
  * Read a @e lp file from the @e file.
  *
  * @exception baryonyx::file_format_error, baryonyx::file_access_error,
- *  std::system_error.
+ *     std::system_error.
  */
 BARYONYX_API
 problem make_problem(std::shared_ptr<baryonyx::context> ctx,
@@ -812,7 +845,7 @@ problem make_problem(std::shared_ptr<baryonyx::context> ctx,
  * Read a @e lp file from the @e is stream.
  *
  * @exception baryonyx::file_format_error, baryonyx::file_access_error,
- *  std::system_error.
+ *     std::system_error.
  */
 BARYONYX_API
 problem make_problem(std::shared_ptr<baryonyx::context> ctx, std::istream& is);
@@ -856,7 +889,6 @@ bool is_valid_solution(const problem& pb,
 BARYONYX_API
 double compute_solution(const problem& pb,
                         const std::vector<int>& variable_value);
-
 }
 
 #endif
