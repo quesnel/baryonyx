@@ -28,17 +28,20 @@
 namespace lp {
 
 /**
- * @c scoped_array stores a smart pointer to a dynamically allocated array
- *      (with @c std::make_unique<T[]>().  @c scoped_array garantes to delete
- *      the pointer on destruction of the @c scoped_array
+ * @brief Manage a single pointer to an array of T.
+ *
+ * @details @c scoped_array stores a smart pointer to a dynamically
+ *      allocated array (with @c std::make_unique<T[]>().  @c scoped_array
+ *      garantes to delete the pointer on destruction of the @c
+ *      scoped_array
  *
  * @note The length is not stored into this containter.
  */
-template <typename T>
+template<typename T>
 class scoped_array
 {
 public:
-    typedef T value_type;
+    using value_type = T;
 
 private:
     std::unique_ptr<T[]> m_buffer;
@@ -80,55 +83,72 @@ public:
     T& operator[](std::ptrdiff_t i) noexcept;
     const T& operator[](std::ptrdiff_t i) const noexcept;
 
+    T& operator()(std::ptrdiff_t i) noexcept;
+    const T& operator()(std::ptrdiff_t i) const noexcept;
+
     void swap(scoped_array& other) noexcept;
 };
 
-template <class T>
+template<class T>
 scoped_array<T>::scoped_array(std::size_t n)
   : m_buffer{ std::make_unique<T[]>(n) }
 {
 }
 
-template <class T>
+template<class T>
 scoped_array<T>::scoped_array(std::size_t n, const value_type& def)
   : m_buffer{ std::make_unique<T[]>(n) }
 {
     std::fill(m_buffer.get(), m_buffer.get() + n, def);
 }
 
-template <class T>
+template<class T>
 T& scoped_array<T>::operator[](std::ptrdiff_t i) noexcept
 {
     return m_buffer[i];
 }
 
-template <class T>
+template<class T>
 const T& scoped_array<T>::operator[](std::ptrdiff_t i) const noexcept
 {
     return m_buffer[i];
 }
 
-template <class T>
+template<class T>
+T&
+scoped_array<T>::operator()(std::ptrdiff_t i) noexcept
+{
+    return m_buffer[i];
+}
+
+template<class T>
+const T&
+scoped_array<T>::operator()(std::ptrdiff_t i) const noexcept
+{
+    return m_buffer[i];
+}
+
+template<class T>
 T*
 scoped_array<T>::data() noexcept
 {
     return m_buffer.get();
 }
 
-template <class T>
+template<class T>
 const T*
 scoped_array<T>::data() const noexcept
 {
     return m_buffer.get();
 }
 
-template <class T>
+template<class T>
 scoped_array<T>::operator bool() const noexcept
 {
     return m_buffer.get() != nullptr;
 }
 
-template <class T>
+template<class T>
 void
 scoped_array<T>::swap(scoped_array& other) noexcept
 {
@@ -137,7 +157,7 @@ scoped_array<T>::swap(scoped_array& other) noexcept
     m_buffer = tmp;
 }
 
-template <class T>
+template<class T>
 constexpr inline void
 swap(scoped_array<T>& lhs, scoped_array<T>& rhs) noexcept
 {
