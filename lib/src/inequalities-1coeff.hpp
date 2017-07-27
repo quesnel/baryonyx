@@ -30,8 +30,6 @@
 #include "mitm.hpp"
 #include "utils.hpp"
 
-#include <Eigen/Core>
-
 #include <algorithm>
 #include <chrono>
 #include <fstream>
@@ -47,10 +45,25 @@ namespace lp {
 namespace inequalities_1coeff {
 
 using AP_type = lp::SparseArray<std::int8_t, double>;
-using b_type = Eigen::Matrix<int, 2, Eigen::Dynamic>;
-using c_type = Eigen::VectorXf;
-using x_type = Eigen::VectorXi;
-using pi_type = Eigen::VectorXf;
+
+struct bound
+{
+    bound() = default;
+
+    bound(int min_, int max_)
+      : min(min_)
+      , max(max_)
+    {
+    }
+
+    int min;
+    int max;
+};
+
+using b_type = lp::fixed_array<bound>;
+using c_type = lp::fixed_array<double>;
+using x_type = lp::fixed_array<std::int8_t>;
+using pi_type = lp::fixed_array<double>;
 
 enum class constraint_order
 {
@@ -190,7 +203,7 @@ struct minimize_tag
 {
 };
 
-template <typename iteratorT, typename randomT>
+template<typename iteratorT, typename randomT>
 void
 random_shuffle_unique(iteratorT begin, iteratorT end, randomT& rng)
 {
@@ -205,7 +218,7 @@ random_shuffle_unique(iteratorT begin, iteratorT end, randomT& rng)
     std::shuffle(ret, begin, rng);
 }
 
-template <typename iteratorT, typename randomT>
+template<typename iteratorT, typename randomT>
 void
 calculator_sort(iteratorT begin, iteratorT end, randomT& rng, minimize_tag)
 {
@@ -224,7 +237,7 @@ calculator_sort(iteratorT begin, iteratorT end, randomT& rng, minimize_tag)
     }
 }
 
-template <typename iteratorT, typename randomT>
+template<typename iteratorT, typename randomT>
 void
 calculator_sort(iteratorT begin, iteratorT end, randomT& rng, maximize_tag)
 {
@@ -322,7 +335,7 @@ compute_C_size(const AP_type& ap, index k) noexcept
     return C_size;
 }
 
-template <typename modeT, typename randomT>
+template<typename modeT, typename randomT>
 struct constraint_calculator
 {
     using mode_type = modeT;
@@ -456,8 +469,8 @@ struct constraint_calculator
                 }
             }
 
-            b(0, k) += C.size();
-            b(1, k) += C.size();
+            b(k).min += C.size();
+            b(k).max += C.size();
         }
 
         calculator_sort(r.begin(), r.end(), rng, mode_type());
@@ -475,7 +488,7 @@ struct constraint_calculator
         for (; i != endi; ++i) {
             sum += ap.A(k, r[i].id);
 
-            if (b(0, k) <= sum)
+            if (b(k).min <= sum)
                 break;
         }
 
@@ -484,7 +497,7 @@ struct constraint_calculator
         // preprocessing step.
         //
 
-        if (b(0, k) > sum)
+        if (b(k).min > sum)
             throw solver_failure(solver_error_tag::unrealisable_constraint);
 
         //
@@ -492,12 +505,12 @@ struct constraint_calculator
         // and we go to the next part otherwise, we continue to scan.
         //
 
-        if (b(0, k) <= sum and sum <= b(1, k)) {
+        if (b(k).min <= sum and sum <= b(k).max) {
             selected = i;
             for (; i != endi; ++i) {
                 sum += ap.A(k, r[i].id);
 
-                if (sum <= b(1, k)) {
+                if (sum <= b(k).max) {
                     if (stop_iterating(r[i].value, mode_type()))
                         break;
                     ++selected;
@@ -547,8 +560,8 @@ struct constraint_calculator
         //
 
         if (not C.empty()) {
-            b(0, k) -= C.size();
-            b(1, k) -= C.size();
+            b(k).min -= C.size();
+            b(k).max -= C.size();
 
             for (std::size_t i{ 0 }, e{ C.size() }; i != e; ++i) {
                 ap.invert(k, C[i]);
@@ -561,7 +574,7 @@ struct constraint_calculator
 c_type
 make_objective_function(const lp::objective_function& obj, index n)
 {
-    c_type ret = c_type::Zero(n);
+    c_type ret(n, 0);
 
     for (const auto& elem : obj.elements)
         ret(elem.variable_index) += elem.factor;
@@ -605,7 +618,7 @@ struct merged_constraint_hash
  * remove the constraint and we remove all reference to this variable in all
  * constraints.
  */
-template <typename constraintsT>
+template<typename constraintsT>
 long
 remove_small_constraints(constraintsT& csts) noexcept
 {
@@ -627,7 +640,7 @@ remove_small_constraints(constraintsT& csts) noexcept
  * removes, second is the number of constraints removed due to the 0 factor
  * removed.
  */
-template <typename constraintsT>
+template<typename constraintsT>
 std::tuple<long, long>
 remove_element_with_factor_0(constraintsT& csts) noexcept
 {
@@ -873,7 +886,7 @@ make_merged_constraints(std::shared_ptr<context> ctx,
     // return ret;
 }
 
-template <typename modeT, typename randomT>
+template<typename modeT, typename randomT>
 struct solver
 {
     using mode_type = modeT;
@@ -897,10 +910,10 @@ struct solver
       , m(csts.size())
       , n(n_)
       , ap(m, n)
-      , b(b_type::Zero(2, m))
+      , b(m)
       , c(c_)
-      , x(x_type::Zero(n))
-      , pi(pi_type::Zero(m))
+      , x(n)
+      , pi(m)
     {
         {
             // Compute the number of elements in the matrix A then compute for
@@ -934,21 +947,21 @@ struct solver
             }
 
             if (csts[i].min == std::numeric_limits<int>::min())
-                b(0, i) = lower;
+                b(i).min = lower;
             else {
                 if (csts[i].min < 0)
-                    b(0, i) = std::max(csts[i].min, lower);
+                    b(i).min = std::max(csts[i].min, lower);
                 else
-                    b(0, i) = csts[i].min;
+                    b(i).min = csts[i].min;
             }
 
             if (csts[i].max == std::numeric_limits<int>::max())
-                b(1, i) = upper;
+                b(i).max = upper;
             else {
                 if (csts[i].max > 0)
-                    b(1, i) = std::min(csts[i].max, upper);
+                    b(i).max = std::min(csts[i].max, upper);
                 else
-                    b(1, i) = csts[i].max;
+                    b(i).max = csts[i].max;
             }
         }
 
@@ -963,8 +976,7 @@ struct solver
     void reinit(random_generator_type& rng_)
     {
         std::fill(ap.P().begin(), ap.P().end(), 0.0);
-
-        pi = pi_type::Zero(m);
+        std::fill(pi.begin(), pi.end(), 0.0);
 
         init();
 
@@ -977,8 +989,7 @@ struct solver
     void reinit(random_generator_type& rng_, const x_type& best_previous)
     {
         std::fill(ap.P().begin(), ap.P().end(), 0.0);
-
-        pi = pi_type::Zero(m);
+        std::fill(pi.begin(), pi.end(), 0.0);
 
         init();
 
@@ -1031,7 +1042,7 @@ struct solver
                 v += values[std::get<0>(ak)->value] *
                      x(std::get<0>(ak)->position);
 
-            if (not(b(0, k) <= v and v <= b(1, k)))
+            if (not(b(k).min <= v and v <= b(k).max))
                 return false;
         }
 
@@ -1064,7 +1075,7 @@ struct solver
     }
 };
 
-template <typename T>
+template<typename T>
 std::size_t
 cycle_avoidance_hash(const std::vector<T>& vec)
 {
@@ -1079,7 +1090,7 @@ cycle_avoidance_hash(const std::vector<T>& vec)
 std::size_t
 cycle_avoidance_hash(const x_type& vec)
 {
-    std::size_t seed{ numeric_cast<std::size_t>(vec.rows()) };
+    std::size_t seed{ vec.size() };
 
     for (std::size_t i{ 0 }, e{ seed }; i != e; ++i)
         seed ^= vec(i) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
@@ -1098,7 +1109,7 @@ cycle_avoidance_hash(const std::vector<std::pair<index, index>>& vec)
     return seed;
 }
 
-template <typename T>
+template<typename T>
 struct no_cycle_avoidance
 {
     using value_type = T;
@@ -1124,7 +1135,7 @@ struct no_cycle_avoidance
     }
 };
 
-template <typename T>
+template<typename T>
 struct cycle_avoidance
 {
     using value_type = T;
@@ -1197,7 +1208,7 @@ struct cycle_avoidance
     }
 };
 
-template <typename solverT>
+template<typename solverT>
 std::size_t
 compute_missing_constraint(solverT& solver, std::vector<index>& R)
 {
@@ -1212,14 +1223,14 @@ compute_missing_constraint(solverT& solver, std::vector<index>& R)
             v += values[std::get<0>(ak)->value] *
                  solver.x(std::get<0>(ak)->position);
 
-        if (not(solver.b(0, k) <= v and v <= solver.b(1, k)))
+        if (not(solver.b(k).min <= v and v <= solver.b(k).max))
             R.push_back(k);
     }
 
     return R.size();
 }
 
-template <typename randomT>
+template<typename randomT>
 struct compute_reversing
 {
     std::vector<index> R;
@@ -1229,7 +1240,7 @@ struct compute_reversing
     {
     }
 
-    template <typename solverT>
+    template<typename solverT>
     std::size_t run_all(solverT& solver,
                         double kappa,
                         double delta,
@@ -1241,7 +1252,7 @@ struct compute_reversing
         return compute_missing_constraint(solver, R);
     }
 
-    template <typename solverT>
+    template<typename solverT>
     std::size_t run(solverT& solver, double kappa, double delta, double theta)
     {
         auto ret = compute_missing_constraint(solver, R);
@@ -1258,7 +1269,7 @@ struct compute_reversing
     }
 };
 
-template <typename randomT>
+template<typename randomT>
 struct compute_none
 {
     std::vector<index> R;
@@ -1268,7 +1279,7 @@ struct compute_none
     {
     }
 
-    template <typename solverT>
+    template<typename solverT>
     std::size_t run_all(solverT& solver,
                         double kappa,
                         double delta,
@@ -1280,7 +1291,7 @@ struct compute_none
         return compute_missing_constraint(solver, R);
     }
 
-    template <typename solverT>
+    template<typename solverT>
     std::size_t run(solverT& solver, double kappa, double delta, double theta)
     {
         auto ret = compute_missing_constraint(solver, R);
@@ -1297,7 +1308,7 @@ struct compute_none
     }
 };
 
-template <typename randomT>
+template<typename randomT>
 struct compute_random
 {
     using random_generator_type = randomT;
@@ -1311,7 +1322,7 @@ struct compute_random
     {
     }
 
-    template <typename solverT>
+    template<typename solverT>
     std::size_t run_all(solverT& solver,
                         double kappa,
                         double delta,
@@ -1327,7 +1338,7 @@ struct compute_random
         return compute_missing_constraint(solver, R);
     }
 
-    template <typename solverT>
+    template<typename solverT>
     std::size_t run(solverT& solver, double kappa, double delta, double theta)
     {
         auto ret = compute_missing_constraint(solver, R);
@@ -1353,7 +1364,7 @@ struct compute_infeasibility_decr
 {
 };
 
-template <typename randomT, typename directionT>
+template<typename randomT, typename directionT>
 struct compute_infeasibility
 {
     using random_generator_type = randomT;
@@ -1363,7 +1374,7 @@ struct compute_infeasibility
     std::vector<std::pair<index, index>> R;
     no_cycle_avoidance<index> detect_infeasability_cycle;
 
-    template <typename iteratorT>
+    template<typename iteratorT>
     void sort(iteratorT begin, iteratorT end, compute_infeasibility_incr) const
     {
         std::sort(begin, end, [](const auto& lhs, const auto& rhs) {
@@ -1371,7 +1382,7 @@ struct compute_infeasibility
         });
     }
 
-    template <typename iteratorT>
+    template<typename iteratorT>
     void sort(iteratorT begin, iteratorT end, compute_infeasibility_decr) const
     {
         std::sort(begin, end, [](const auto& lhs, const auto& rhs) {
@@ -1384,7 +1395,7 @@ struct compute_infeasibility
     {
     }
 
-    template <typename solverT>
+    template<typename solverT>
     std::size_t compute_missing_constraint(solverT& solver)
     {
         R.clear();
@@ -1399,17 +1410,17 @@ struct compute_infeasibility
                 v += values[std::get<0>(ak)->value] *
                      solver.x(std::get<0>(ak)->position);
 
-            if (solver.b(0, k) > v)
-                R.emplace_back(k, solver.b(0, k) - v);
+            if (solver.b(k).min > v)
+                R.emplace_back(k, solver.b(k).min - v);
 
-            if (solver.b(1, k) < v)
-                R.emplace_back(k, v - solver.b(1, k));
+            if (solver.b(k).max < v)
+                R.emplace_back(k, v - solver.b(k).max);
         }
 
         return R.size();
     }
 
-    template <typename solverT>
+    template<typename solverT>
     std::size_t run_all(solverT& solver,
                         double kappa,
                         double delta,
@@ -1427,10 +1438,10 @@ struct compute_infeasibility
                 v += values[std::get<0>(ak)->value] *
                      solver.x(std::get<1>(ak)->position);
 
-            if (solver.b(0, k) > v)
-                R.emplace_back(k, solver.b(0, k) - v);
-            else if (solver.b(1, k) < v)
-                R.emplace_back(k, v - solver.b(1, k));
+            if (solver.b(k).min > v)
+                R.emplace_back(k, solver.b(k).min - v);
+            else if (solver.b(k).max < v)
+                R.emplace_back(k, v - solver.b(k).max);
             else
                 R.emplace_back(k, 0);
         }
@@ -1454,7 +1465,7 @@ struct compute_infeasibility
         return compute_missing_constraint(solver);
     }
 
-    template <typename solverT>
+    template<typename solverT>
     std::size_t run(solverT& solver, double kappa, double delta, double theta)
     {
         auto ret = compute_missing_constraint(solver);
@@ -1484,7 +1495,7 @@ struct compute_infeasibility
     }
 };
 
-template <typename modeT, typename constraintOrderT, typename randomT>
+template<typename modeT, typename constraintOrderT, typename randomT>
 struct solver_functor
 {
     using mode_type = modeT;
@@ -1588,7 +1599,7 @@ struct solver_functor
     }
 };
 
-template <typename modeT, typename constraintOrderT, typename randomT>
+template<typename modeT, typename constraintOrderT, typename randomT>
 struct optimize_functor
 {
     using mode_type = modeT;
@@ -1747,10 +1758,11 @@ normalize_costs(std::shared_ptr<context> ctx, const c_type& c)
     {
         ctx->info("  - Compute infinity-norm\n");
 
-        double sum{ static_cast<double>(c.maxCoeff()) };
+        double max_coeff = *std::max_element(c.cbegin(), c.cend());
 
-        if (std::isnormal(sum))
-            return ret /= sum;
+        if (std::isnormal(max_coeff))
+            for (auto& elem : ret)
+                elem /= max_coeff;
     }
 
     // {
@@ -1776,7 +1788,7 @@ normalize_costs(std::shared_ptr<context> ctx, const c_type& c)
     return ret;
 }
 
-template <typename modeT, typename constraintOrderT, typename randomT>
+template<typename modeT, typename constraintOrderT, typename randomT>
 inline result
 solve(std::shared_ptr<context> ctx,
       problem& pb,
@@ -1805,7 +1817,7 @@ solve(std::shared_ptr<context> ctx,
     return result;
 }
 
-template <typename modeT, typename constraintOrderT, typename randomT>
+template<typename modeT, typename constraintOrderT, typename randomT>
 inline result
 optimize(std::shared_ptr<context> ctx,
          problem& pb,
