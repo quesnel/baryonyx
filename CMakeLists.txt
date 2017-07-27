@@ -1,11 +1,6 @@
 cmake_minimum_required(VERSION 3.0 FATAL_ERROR)
 project(lp VERSION 0.1 LANGUAGES C CXX)
 
-find_package(Boost REQUIRED)
-add_library(boost INTERFACE IMPORTED)
-set_property(TARGET boost PROPERTY
-  INTERFACE_INCLUDE_DIRECTORIES ${Boost_INCLUDE_DIR})
-
 find_package(Eigen3 REQUIRED)
 add_library(eigen3 INTERFACE IMPORTED)
 set_property(TARGET eigen3 PROPERTY
