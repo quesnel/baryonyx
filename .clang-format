@@ -14,3 +14,4 @@ AllowShortCaseLabelsOnASingleLine: false
 AllowShortFunctionsOnASingleLine: None
 IndentCaseLabels: false
 MaxEmptyLinesToKeep: 1
+NamespaceIndentation: None
