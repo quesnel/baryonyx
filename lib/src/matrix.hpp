@@ -20,17 +20,17 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef ORG_VLEPROJECT_LP_MATRIX_HPP
-#define ORG_VLEPROJECT_LP_MATRIX_HPP
-
-#include "utils.hpp"
+#ifndef ORG_VLEPROJECT_BARYONYX_SOLVER_MATRIX_HPP
+#define ORG_VLEPROJECT_BARYONYX_SOLVER_MATRIX_HPP
 
 #include <algorithm>
 #include <memory>
 #include <stdexcept>
 #include <vector>
 
-namespace lp {
+#include "utils.hpp"
+
+namespace baryonyx {
 
 /**
  * An \e SparseArray defined a two-dimensional template array. Informations are
@@ -516,6 +516,6 @@ SparseArray<A_T, P_T>::binary_find(
     //     }
 }
 
-} // namespace lp
+} // namespace baryonyx
 
 #endif

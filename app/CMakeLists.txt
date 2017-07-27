@@ -14,10 +14,10 @@ else()
     "spport. Please use a different C++ compiler.")
 endif()
 
-target_link_libraries(app liblp threads)
+target_link_libraries(app libbaryonyx threads)
 
 set_target_properties(app PROPERTIES
-  OUTPUT_NAME "lp-${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}")
+  OUTPUT_NAME "baryonyx-${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}")
 
 install(TARGETS app
   ARCHIVE DESTINATION lib

@@ -20,12 +20,12 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef ORG_VLEPROJECT_LP_SCOPED_ARRAY_HPP
-#define ORG_VLEPROJECT_LP_SCOPED_ARRAY_HPP
+#ifndef ORG_VLEPROJECT_BARYONYX_SOLVER_SCOPED_ARRAY_HPP
+#define ORG_VLEPROJECT_BARYONYX_SOLVER_SCOPED_ARRAY_HPP
 
 #include <memory>
 
-namespace lp {
+namespace baryonyx {
 
 /**
  * @brief Manage a single pointer to an array of T.
@@ -164,6 +164,6 @@ swap(scoped_array<T>& lhs, scoped_array<T>& rhs) noexcept
     lhs.swap(rhs);
 }
 
-} // namespace lp
+} // namespace baryonyx
 
 #endif

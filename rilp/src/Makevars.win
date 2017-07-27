@@ -1,9 +1,0 @@
-PKG_CPPFLAGS = -std=c++14 -I$(LP_PATH)/$(WIN)/lib/include -I$(MINGW_PATH)/mingw$(WIN)/include
-PKG_LIBS = -std=c++14 -Lliblp-1.0 -llp-1.0
-
-$(SHLIB): liblp-1.0/liblp-1.0.a
-
-liblp-1.0/liblp-1.0.a:
-        @(rm -fr liblp-1.0 && mkdir liblp-1.0)
-        @(cp $(LP_PATH)/$(WIN)/lib/liblp-1.0.a liblp-1.0/liblp-1.0.a)
-

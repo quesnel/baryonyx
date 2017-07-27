@@ -20,15 +20,15 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef ORG_VLEPROJECT_LP_FIXED_ARRAY_HPP
-#define ORG_VLEPROJECT_LP_FIXED_ARRAY_HPP
+#ifndef ORG_VLEPROJECT_BARYONYX_SOLVER_FIXED_ARRAY_HPP
+#define ORG_VLEPROJECT_BARYONYX_SOLVER_FIXED_ARRAY_HPP
 
 #include <cstddef>
 
 #include <iterator>
 #include <memory>
 
-namespace lp {
+namespace baryonyx {
 
 /**
  * @brief A @c std::vector<T> array without resize support.
@@ -357,6 +357,6 @@ swap(fixed_array<T>& lhs, fixed_array<T>& rhs) noexcept
     lhs.swap(rhs);
 }
 
-} // namespace lp
+} // namespace baryonyx
 
 #endif

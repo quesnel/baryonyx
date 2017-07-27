@@ -20,16 +20,16 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef ORG_VLEPROJECT_LP_WEDELIN_HPP
-#define ORG_VLEPROJECT_LP_WEDELIN_HPP
-
-#include "mitm.hpp"
-#include "utils.hpp"
+#ifndef ORG_VLEPROJECT_BARYONYX_SOLVER_WEDELIN_HPP
+#define ORG_VLEPROJECT_BARYONYX_SOLVER_WEDELIN_HPP
 
 #include <iostream>
 #include <iterator>
 
-namespace lp {
+#include "mitm.hpp"
+#include "utils.hpp"
+
+namespace baryonyx {
 
 // namespace details {
 
@@ -38,7 +38,7 @@ namespace lp {
 // {
 //     Eigen::MatrixXi A = Eigen::MatrixXi::Zero(m, n);
 
-//     for (lp::index i = 0; i != m; ++i) {
+//     for (baryonyx::index i = 0; i != m; ++i) {
 //         for (const auto& elem : pb.equal_constraints[i].elements) {
 //             auto j = elem.variable_index;
 //             A(i, j) = 1;
@@ -53,7 +53,7 @@ namespace lp {
 // {
 //     Eigen::VectorXi b = Eigen::VectorXi::Zero(m);
 
-//     for (lp::index i = 0; i != m; ++i)
+//     for (baryonyx::index i = 0; i != m; ++i)
 //         b(i) = p.equal_constraints[i].value;
 
 //     return b;
@@ -295,7 +295,7 @@ simple_wedelin(double /* kappa */,
     // using maximize_solver = default_algorithm<maximize_wedelin_tag>;
     // using minimize_solver = default_algorithm<minimize_wedelin_tag>;
 
-    // if (pb.type == lp::objective_function_type::maximize) {
+    // if (pb.type == baryonyx::objective_function_type::maximize) {
     //     maximize_solver solver(kappa, delta, theta, limit, pb);
     //     return solver.results();
     // }
@@ -303,9 +303,9 @@ simple_wedelin(double /* kappa */,
     // minimize_solver solver(kappa, delta, theta, limit, pb);
     // return solver.results();
 
-    return lp::result{};
+    return baryonyx::result{};
 }
 
-} // namespace lp
+} // namespace baryonyx
 
 #endif

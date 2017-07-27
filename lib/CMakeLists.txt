@@ -1,52 +1,52 @@
-project(liblp VERSION 0.1.0.0 LANGUAGES CXX C)
+project(libbaryonyx VERSION 0.1.0.0 LANGUAGES CXX C)
 
 option(WITH_FULL_OPTIMIZATION "Disable all logging facilities and active heavy optimization code. [default: off]" OFF)
 
 option(WITH_DEBUG "enable debug log message. [default: ON]" ON)
 
-add_library(liblp SHARED src/lpcore.cpp src/mitm.cpp src/utils.cpp)
-target_include_directories(liblp PUBLIC
+add_library(libbaryonyx SHARED src/lpcore.cpp src/mitm.cpp src/utils.cpp)
+target_include_directories(libbaryonyx PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>
   PRIVATE src ${CMAKE_BINARY_DIR})
-target_link_libraries(liblp threads)
-set_target_properties(liblp PROPERTIES
-  OUTPUT_NAME "lp-${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}"
-  COMPILE_DEFINITIONS "LP_DLL"
+target_link_libraries(libbaryonyx threads)
+set_target_properties(libbaryonyx PROPERTIES
+  OUTPUT_NAME "baryonyx-${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}"
+  COMPILE_DEFINITIONS "BARYONYX_DLL"
   COMPILE_FLAGS "-fvisibility=hidden -fvisibility-inlines-hidden")
-target_compile_definitions(liblp
+target_compile_definitions(libbaryonyx
   PRIVATE
-  $<$<BOOL:${WITH_FULL_OPTIMIZATION}>:LP_FULL_OPTIMIZATION>
-  $<$<BOOL:${WITH_DEBUG}>:LP_DISABLE_DEBUG>
+  $<$<BOOL:${WITH_FULL_OPTIMIZATION}>:BARYONYX_FULL_OPTIMIZATION>
+  $<$<BOOL:${WITH_DEBUG}>:BARYONYX_DISABLE_DEBUG>
   VERSION_MAJOR=${PROJECT_VERSION_MAJOR}
   VERSION_MINOR=${PROJECT_VERSION_MINOR}
   VERSION_PATCH=${PROJECT_VERSION_PATCH}
   VERSION_TWEAK=${PROJECT_VERSION_TWEAK})
-install(TARGETS liblp
+install(TARGETS libbaryonyx
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin)
 
-add_library(liblp-static STATIC src/lpcore.cpp src/mitm.cpp src/utils.cpp)
-target_include_directories(liblp-static PRIVATE
+add_library(libbaryonyx-static STATIC src/lpcore.cpp src/mitm.cpp src/utils.cpp)
+target_include_directories(libbaryonyx-static PRIVATE
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>
   src ${CMAKE_BINARY_DIR})
-target_link_libraries(liblp-static threads)
-set_target_properties(liblp-static PROPERTIES
+target_link_libraries(libbaryonyx-static threads)
+set_target_properties(libbaryonyx-static PROPERTIES
   POSITION_INDEPENDENT_CODE true
-  OUTPUT_NAME "lp-${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}"
-  DEFINE_SYMBOL "liblp_EXPORTS"
+  OUTPUT_NAME "baryonyx-${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}"
+  DEFINE_SYMBOL "libbaryonyx_EXPORTS"
   COMPILE_FLAGS "-fvisibility=hidden -fvisibility-inlines-hidden")
-target_compile_definitions(liblp-static
+target_compile_definitions(libbaryonyx-static
   PRIVATE
-  $<$<BOOL:${WITH_FULL_OPTIMIZATION}>:LP_FULL_OPTIMIZATION>
-  $<$<BOOL:${WITH_DEBUG}>:LP_DISABLE_DEBUG>
+  $<$<BOOL:${WITH_FULL_OPTIMIZATION}>:BARYONYX_FULL_OPTIMIZATION>
+  $<$<BOOL:${WITH_DEBUG}>:BARYONYX_DISABLE_DEBUG>
   VERSION_MAJOR=${PROJECT_VERSION_MAJOR}
   VERSION_MINOR=${PROJECT_VERSION_MINOR}
   VERSION_PATCH=${PROJECT_VERSION_PATCH}
   VERSION_TWEAK=${PROJECT_VERSION_TWEAK})
-install(TARGETS liblp-static
+install(TARGETS libbaryonyx-static
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin)
@@ -72,12 +72,12 @@ else()
     "spport. Please use a different C++ compiler.")
 endif()
 
-configure_file(lp.pc.in
-  "${CMAKE_BINARY_DIR}/lp-${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.pc"
+configure_file(baryonyx.pc.in
+  "${CMAKE_BINARY_DIR}/baryonyx-${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.pc"
   @ONLY)
 
 install(FILES
-  "${CMAKE_BINARY_DIR}/lp-${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.pc"
+  "${CMAKE_BINARY_DIR}/baryonyx-${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.pc"
   DESTINATION "lib/pkgconfig")
 
 # target_compile_features(lib
@@ -85,15 +85,15 @@ install(FILES
 
 
 install(DIRECTORY include/ DESTINATION
-  include/lp-${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR})
+  include/baryonyx-${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR})
 
 install(FILES test/sudoku.lp test/assignment_problem_1.lp
   test/assignment_problem_2.lp test/assignment_problem_3.lp
   DESTINATION
-  share/doc/lp-${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR})
+  share/doc/baryonyx-${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR})
 
 # This makes the project importable from the build directory
-export(TARGETS liblp FILE LiblpConfig.cmake)
+export(TARGETS libbaryonyx FILE LibbaryonyxConfig.cmake)
 
 add_executable(testio test/io.cpp)
 set_target_properties(testio PROPERTIES
@@ -102,7 +102,7 @@ target_include_directories(testio PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>
   PRIVATE src)
-target_link_libraries(testio liblp threads)
+target_link_libraries(testio libbaryonyx threads)
 add_test(testio testio)
 
 add_executable(testlib test/lib.cpp)
@@ -112,7 +112,7 @@ target_include_directories(testlib PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>
   PRIVATE src)
-target_link_libraries(testlib liblp threads)
+target_link_libraries(testlib libbaryonyx threads)
 add_test(testlib testlib)
 
 add_executable(testsolver test/solve.cpp)
@@ -122,7 +122,7 @@ target_include_directories(testsolver PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>
   PRIVATE src)
-target_link_libraries(testsolver liblp threads)
+target_link_libraries(testsolver libbaryonyx threads)
 add_test(testsolver testsolver)
 
 add_executable(testoptimizer test/optimize.cpp)
@@ -132,5 +132,5 @@ target_include_directories(testoptimizer PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>
   PRIVATE src)
-target_link_libraries(testoptimizer liblp threads)
+target_link_libraries(testoptimizer libbaryonyx threads)
 add_test(testoptimizer testoptimizer)

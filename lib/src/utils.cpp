@@ -22,7 +22,7 @@
 
 #include "utils.hpp"
 
-namespace lp {
+namespace baryonyx {
 
 std::string
 stringf(const char* format, ...) noexcept
@@ -50,7 +50,7 @@ stringf(const char* format, ...) noexcept
             ret.resize(size);
         }
     } catch (const std::bad_alloc& e) {
-        fputs("lp::stringf: not enough memory\n", stderr);
+        fputs("baryonyx::stringf: not enough memory\n", stderr);
         return {};
     }
 }
@@ -78,8 +78,9 @@ vstringf(const char* format, va_list ap) noexcept
             ret.resize(size);
         }
     } catch (const std::bad_alloc& e) {
-        fputs("lp::vstringf: not enough memory\n", stderr);
+        fputs("baryonyx::vstringf: not enough memory\n", stderr);
         return {};
     }
 }
-}
+
+} // namespace baryonyx

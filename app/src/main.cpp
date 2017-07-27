@@ -20,8 +20,8 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <lpcore-out>
-#include <lpcore>
+#include <baryonyx/core-out>
+#include <baryonyx/core>
 
 #include <fstream>
 #include <iomanip>
@@ -34,18 +34,18 @@
 #include <unistd.h>
 #endif
 
-const char* file_format_error_format(lp::file_format_error_tag) noexcept;
+const char* file_format_error_format(baryonyx::file_format_error_tag) noexcept;
 const char* problem_definition_error_format(
-  lp::problem_definition_error_tag) noexcept;
-const char* solver_error_format(lp::solver_error_tag) noexcept;
+  baryonyx::problem_definition_error_tag) noexcept;
+const char* solver_error_format(baryonyx::solver_error_tag) noexcept;
 
-lp::result solve_or_optimize(std::shared_ptr<lp::context> ctx,
-                             lp::problem& pb);
+baryonyx::result solve_or_optimize(std::shared_ptr<baryonyx::context> ctx,
+                             baryonyx::problem& pb);
 
 int
 main(int argc, char* argv[])
 {
-    auto ctx = std::make_shared<lp::context>();
+    auto ctx = std::make_shared<baryonyx::context>();
     ctx->set_standard_stream_logger();
     int i = ctx->parse(argc, argv);
 
@@ -54,7 +54,7 @@ main(int argc, char* argv[])
 
     for (; i < argc; ++i) {
         try {
-            auto pb = lp::make_problem(ctx, argv[i]);
+            auto pb = baryonyx::make_problem(ctx, argv[i]);
 
             std::string filename(argv[i]);
             filename += '-';
@@ -73,7 +73,7 @@ main(int argc, char* argv[])
             auto now = std::chrono::system_clock::now();
             auto in_time_t = std::chrono::system_clock::to_time_t(now);
 
-            ofs << lp::resume(pb) << "start: "
+            ofs << baryonyx::resume(pb) << "start: "
                 << std::put_time(std::localtime(&in_time_t), "%Y-%m-%d %X")
                 << std::endl;
 
@@ -83,34 +83,34 @@ main(int argc, char* argv[])
             ofs << std::put_time(std::localtime(&in_time_t), "%Y-%m-%d %X")
                 << '\n';
 
-            if (ret.status == lp::result_status::success) {
+            if (ret.status == baryonyx::result_status::success) {
                 ofs << "Solution found: " << ret.value << '\n' << ret;
             } else {
                 ofs << "Solution not found. Missing constraints: "
                     << ret.remaining_constraints << '\n';
             }
-        } catch (const lp::precondition_failure& e) {
+        } catch (const baryonyx::precondition_failure& e) {
             ctx->error("internal failure\n");
-        } catch (const lp::postcondition_failure& e) {
+        } catch (const baryonyx::postcondition_failure& e) {
             ctx->error("internal failure\n");
-        } catch (const lp::numeric_cast_failure& e) {
+        } catch (const baryonyx::numeric_cast_failure& e) {
             ctx->error("numeric cast interal failure\n");
-        } catch (const lp::file_access_failure& e) {
+        } catch (const baryonyx::file_access_failure& e) {
             ctx->error("file `%s' fail %d: %s\n",
                        e.file().c_str(),
                        e.error(),
                        std::strerror(e.error()));
-        } catch (const lp::file_format_failure& e) {
+        } catch (const baryonyx::file_format_failure& e) {
             ctx->error("file format error at line %d column %d "
                        "%s\n",
                        e.line(),
                        e.column(),
                        file_format_error_format(e.failure()));
-        } catch (const lp::problem_definition_failure& e) {
+        } catch (const baryonyx::problem_definition_failure& e) {
             ctx->error("definition problem error at %s: %s\n",
                        e.element().c_str(),
                        problem_definition_error_format(e.failure()));
-        } catch (const lp::solver_failure& e) {
+        } catch (const baryonyx::solver_failure& e) {
             ctx->error("solver error: %s\n", solver_error_format(e.failure()));
         } catch (const std::exception& e) {
             ctx->error("failure: %s.\n", e.what());
@@ -121,7 +121,7 @@ main(int argc, char* argv[])
 }
 
 const char*
-file_format_error_format(lp::file_format_error_tag failure) noexcept
+file_format_error_format(baryonyx::file_format_error_tag failure) noexcept
 {
     static const char* const tag[] = {
         "end of file",     "unknown",
@@ -133,27 +133,27 @@ file_format_error_format(lp::file_format_error_tag failure) noexcept
     };
 
     switch (failure) {
-    case lp::file_format_error_tag::end_of_file:
+    case baryonyx::file_format_error_tag::end_of_file:
         return tag[0];
-    case lp::file_format_error_tag::unknown:
+    case baryonyx::file_format_error_tag::unknown:
         return tag[1];
-    case lp::file_format_error_tag::already_defined:
+    case baryonyx::file_format_error_tag::already_defined:
         return tag[2];
-    case lp::file_format_error_tag::incomplete:
+    case baryonyx::file_format_error_tag::incomplete:
         return tag[3];
-    case lp::file_format_error_tag::bad_name:
+    case baryonyx::file_format_error_tag::bad_name:
         return tag[4];
-    case lp::file_format_error_tag::bad_operator:
+    case baryonyx::file_format_error_tag::bad_operator:
         return tag[5];
-    case lp::file_format_error_tag::bad_integer:
+    case baryonyx::file_format_error_tag::bad_integer:
         return tag[6];
-    case lp::file_format_error_tag::bad_objective_function_type:
+    case baryonyx::file_format_error_tag::bad_objective_function_type:
         return tag[7];
-    case lp::file_format_error_tag::bad_bound:
+    case baryonyx::file_format_error_tag::bad_bound:
         return tag[8];
-    case lp::file_format_error_tag::bad_function_element:
+    case baryonyx::file_format_error_tag::bad_function_element:
         return tag[9];
-    case lp::file_format_error_tag::bad_constraint:
+    case baryonyx::file_format_error_tag::bad_constraint:
         return tag[10];
     }
 
@@ -162,7 +162,7 @@ file_format_error_format(lp::file_format_error_tag failure) noexcept
 
 const char*
 problem_definition_error_format(
-  lp::problem_definition_error_tag failure) noexcept
+  baryonyx::problem_definition_error_tag failure) noexcept
 {
     static const char* const tag[] = {
         "empty variables",
@@ -173,15 +173,15 @@ problem_definition_error_format(
     };
 
     switch (failure) {
-    case lp::problem_definition_error_tag::empty_variables:
+    case baryonyx::problem_definition_error_tag::empty_variables:
         return tag[0];
-    case lp::problem_definition_error_tag::empty_objective_function:
+    case baryonyx::problem_definition_error_tag::empty_objective_function:
         return tag[1];
-    case lp::problem_definition_error_tag::variable_not_used:
+    case baryonyx::problem_definition_error_tag::variable_not_used:
         return tag[2];
-    case lp::problem_definition_error_tag::bad_bound:
+    case baryonyx::problem_definition_error_tag::bad_bound:
         return tag[3];
-    case lp::problem_definition_error_tag::multiple_constraint:
+    case baryonyx::problem_definition_error_tag::multiple_constraint:
         return tag[4];
     }
 
@@ -189,29 +189,29 @@ problem_definition_error_format(
 }
 
 const char*
-solver_error_format(lp::solver_error_tag failure) noexcept
+solver_error_format(baryonyx::solver_error_tag failure) noexcept
 {
     static const char* const tag[] = { "no solver available",
                                        "unrealisable constraint",
                                        "not enough memory" };
 
     switch (failure) {
-    case lp::solver_error_tag::no_solver_available:
+    case baryonyx::solver_error_tag::no_solver_available:
         return tag[0];
-    case lp::solver_error_tag::unrealisable_constraint:
+    case baryonyx::solver_error_tag::unrealisable_constraint:
         return tag[1];
-    case lp::solver_error_tag::not_enough_memory:
+    case baryonyx::solver_error_tag::not_enough_memory:
         return tag[2];
     }
 
     return nullptr;
 }
 
-lp::result
-solve_or_optimize(std::shared_ptr<lp::context> ctx, lp::problem& pb)
+baryonyx::result
+solve_or_optimize(std::shared_ptr<baryonyx::context> ctx, baryonyx::problem& pb)
 {
     if (ctx->optimize())
-        return lp::optimize(ctx, pb);
+        return baryonyx::optimize(ctx, pb);
 
-    return lp::solve(ctx, pb);
+    return baryonyx::solve(ctx, pb);
 }

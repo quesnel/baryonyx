@@ -20,12 +20,12 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef ORG_VLEPROJECT_LP_LPCORE_COMPARE
-#define ORG_VLEPROJECT_LP_LPCORE_COMPARE
+#ifndef ORG_VLEPROJECT_BARYONYX_SOLVER_CORE_COMPARE
+#define ORG_VLEPROJECT_BARYONYX_SOLVER_CORE_COMPARE
 
-#include <lpcore>
+#include <baryonyx/core>
 
-namespace lp {
+namespace baryonyx {
 
 inline bool
 operator==(const variable_value& lhs, const variable_value& rhs) noexcept
@@ -110,6 +110,6 @@ operator!=(const problem& lhs, const problem& rhs) noexcept
     return not(lhs == rhs);
 }
 
-} // namespace lp
+} // namespace baryonyx
 
 #endif

@@ -20,6 +20,8 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+#include <baryonyx/core>
+
 #include "lpformat-consistency.hpp"
 #include "lpformat-io.hpp"
 #include "mitm.hpp"
@@ -27,7 +29,6 @@
 
 #include <algorithm>
 #include <fstream>
-#include <lpcore>
 
 #include <cerrno>
 #include <climits>
@@ -71,7 +72,7 @@ to_long(const char* s, long bad_value) noexcept
     return value;
 }
 
-std::tuple<std::string, lp::parameter>
+std::tuple<std::string, baryonyx::parameter>
 split_param(const char* param) noexcept
 {
     std::string name, value;
@@ -97,16 +98,16 @@ split_param(const char* param) noexcept
 
     double tmp;
     if (valued != -HUGE_VAL and std::modf(valued, &tmp))
-        return std::make_tuple(name, lp::parameter(valued));
+        return std::make_tuple(name, baryonyx::parameter(valued));
 
     if (valuel != LONG_MIN)
-        return std::make_tuple(name, lp::parameter(valuel));
+        return std::make_tuple(name, baryonyx::parameter(valuel));
 
-    return std::make_tuple(name, lp::parameter(value));
+    return std::make_tuple(name, baryonyx::parameter(value));
 }
 
 void
-help(std::shared_ptr<lp::context> ctx) noexcept
+help(std::shared_ptr<baryonyx::context> ctx) noexcept
 {
     ctx->info("--help|-h                   This help message\n"
               "--param|-p [name]:[value]   Add a new parameter (name is"
@@ -120,7 +121,7 @@ help(std::shared_ptr<lp::context> ctx) noexcept
 }
 }
 
-namespace lp {
+namespace baryonyx {
 
 class standard_stream_logger : public context::logger
 {
@@ -145,7 +146,7 @@ public:
         }
     }
 
-    void write(lp::context::message_type m,
+    void write(baryonyx::context::message_type m,
                const char* format,
                va_list args) noexcept override
     {
@@ -216,7 +217,7 @@ context::parse(int argc, char* argv[]) noexcept
     int verbose = 1;
     int quiet = 0;
 
-    auto ctx = std::make_shared<lp::context>();
+    auto ctx = std::make_shared<baryonyx::context>();
     ctx->set_standard_stream_logger();
 
     for (;;) {
@@ -239,7 +240,7 @@ context::parse(int argc, char* argv[]) noexcept
             break;
         case 'p': {
             std::string name;
-            lp::parameter value;
+            baryonyx::parameter value;
             std::tie(name, value) = ::split_param(::optarg);
             m_parameters[name] = value;
         } break;
@@ -399,33 +400,33 @@ context::log(message_type type, const char* format, ...) const noexcept
         return;
 
     switch (type) {
-    case lp::context::message_type::emerg:
+    case baryonyx::context::message_type::emerg:
         break;
-    case lp::context::message_type::alert:
+    case baryonyx::context::message_type::alert:
         if (m_log_priority < 1)
             return;
         break;
-    case lp::context::message_type::crit:
+    case baryonyx::context::message_type::crit:
         if (m_log_priority < 2)
             return;
         break;
-    case lp::context::message_type::err:
+    case baryonyx::context::message_type::err:
         if (m_log_priority < 3)
             return;
         break;
-    case lp::context::message_type::warning:
+    case baryonyx::context::message_type::warning:
         if (m_log_priority < 4)
             return;
         break;
-    case lp::context::message_type::notice:
+    case baryonyx::context::message_type::notice:
         if (m_log_priority < 5)
             return;
         break;
-    case lp::context::message_type::info:
+    case baryonyx::context::message_type::info:
         if (m_log_priority < 6)
             return;
         break;
-    case lp::context::message_type::debug:
+    case baryonyx::context::message_type::debug:
         if (m_log_priority < 7)
             return;
         break;
@@ -541,7 +542,7 @@ context::error(const char*, va_list) const noexcept
 #endif
 
 problem
-make_problem(std::shared_ptr<lp::context> ctx, const std::string& filename)
+make_problem(std::shared_ptr<baryonyx::context> ctx, const std::string& filename)
 {
     ctx->info("problem read from file `%s'\n", filename.c_str());
 
@@ -553,7 +554,7 @@ make_problem(std::shared_ptr<lp::context> ctx, const std::string& filename)
 }
 
 problem
-make_problem(std::shared_ptr<lp::context> ctx, std::istream& is)
+make_problem(std::shared_ptr<baryonyx::context> ctx, std::istream& is)
 {
     ctx->info("problem read from stream\n");
 
@@ -571,7 +572,7 @@ operator<<(std::ostream& os, const problem& p)
 }
 
 result
-solve(std::shared_ptr<lp::context> ctx, problem& pb)
+solve(std::shared_ptr<baryonyx::context> ctx, problem& pb)
 {
     check(pb);
 
@@ -579,7 +580,7 @@ solve(std::shared_ptr<lp::context> ctx, problem& pb)
 }
 
 result
-optimize(std::shared_ptr<lp::context> ctx, problem& pb)
+optimize(std::shared_ptr<baryonyx::context> ctx, problem& pb)
 {
     check(pb);
 
@@ -653,4 +654,5 @@ compute_solution(const problem& pb, const std::vector<int>& variable_value)
 
     return ret;
 }
-}
+
+} // namespace baryonyx

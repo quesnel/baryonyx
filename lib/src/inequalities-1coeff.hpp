@@ -20,15 +20,11 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef ORG_VLEPROJECT_LP_INEQUALITIES_1COEFF_HPP
-#define ORG_VLEPROJECT_LP_INEQUALITIES_1COEFF_HPP
+#ifndef ORG_VLEPROJECT_BARYONYX_SOLVER_INEQUALITIES_1COEFF_HPP
+#define ORG_VLEPROJECT_BARYONYX_SOLVER_INEQUALITIES_1COEFF_HPP
 
-#include "fixed_array.hpp"
-#include "lpcore-compare"
-#include "lpcore-out"
-#include "matrix.hpp"
-#include "mitm.hpp"
-#include "utils.hpp"
+#include <baryonyx/core-compare>
+#include <baryonyx/core-out>
 
 #include <algorithm>
 #include <chrono>
@@ -41,10 +37,17 @@
 #include <thread>
 #include <unordered_map>
 
-namespace lp {
+#include "fixed_array.hpp"
+#include "matrix.hpp"
+#include "mitm.hpp"
+#include "utils.hpp"
+
+
+
+namespace baryonyx {
 namespace inequalities_1coeff {
 
-using AP_type = lp::SparseArray<std::int8_t, double>;
+using AP_type = baryonyx::SparseArray<std::int8_t, double>;
 
 struct bound
 {
@@ -60,10 +63,10 @@ struct bound
     int max;
 };
 
-using b_type = lp::fixed_array<bound>;
-using c_type = lp::fixed_array<double>;
-using x_type = lp::fixed_array<std::int8_t>;
-using pi_type = lp::fixed_array<double>;
+using b_type = baryonyx::fixed_array<bound>;
+using c_type = baryonyx::fixed_array<double>;
+using x_type = baryonyx::fixed_array<std::int8_t>;
+using pi_type = baryonyx::fixed_array<double>;
 
 enum class constraint_order
 {
@@ -572,7 +575,7 @@ struct constraint_calculator
 };
 
 c_type
-make_objective_function(const lp::objective_function& obj, index n)
+make_objective_function(const baryonyx::objective_function& obj, index n)
 {
     c_type ret(n, 0);
 
@@ -584,7 +587,7 @@ make_objective_function(const lp::objective_function& obj, index n)
 
 struct merged_constraint
 {
-    merged_constraint(const std::vector<lp::function_element>& elements_,
+    merged_constraint(const std::vector<baryonyx::function_element>& elements_,
                       int min_,
                       int max_)
       : elements(elements_)
@@ -593,7 +596,7 @@ struct merged_constraint
     {
     }
 
-    std::vector<lp::function_element> elements;
+    std::vector<baryonyx::function_element> elements;
     int min;
     int max;
 };
@@ -601,7 +604,7 @@ struct merged_constraint
 struct merged_constraint_hash
 {
     inline size_t operator()(
-      const std::vector<lp::function_element>& fct) const noexcept
+      const std::vector<baryonyx::function_element>& fct) const noexcept
     {
         std::size_t seed{ fct.size() };
 
@@ -673,11 +676,11 @@ remove_element_with_factor_0(constraintsT& csts) noexcept
 
 std::vector<merged_constraint>
 make_merged_constraints(std::shared_ptr<context> ctx,
-                        const lp::problem& pb,
+                        const baryonyx::problem& pb,
                         const parameters& params)
 {
     std::vector<merged_constraint> ret;
-    std::unordered_map<std::vector<lp::function_element>,
+    std::unordered_map<std::vector<baryonyx::function_element>,
                        std::size_t,
                        merged_constraint_hash>
       cache;
@@ -920,7 +923,7 @@ struct solver
             // each rows and columns the number of elements to correctly
             // initialize the @c `matrix` structure.
 
-            lp::fixed_array<index> r(m, 0), c(n, 0);
+            baryonyx::fixed_array<index> r(m, 0), c(n, 0);
             index elem{ 0 };
 
             for (std::size_t i{ 0 }, e{ csts.size() }; i != e; ++i) {
@@ -1799,12 +1802,12 @@ solve(std::shared_ptr<context> ctx,
 
     auto names = pb.vars.names;
     auto constraints{ make_merged_constraints(ctx, pb, p) };
-    auto variables = lp::numeric_cast<index>(pb.vars.values.size());
+    auto variables = baryonyx::numeric_cast<index>(pb.vars.values.size());
     auto cost = make_objective_function(pb.objective, variables);
     auto norm_costs = normalize_costs(ctx, cost);
     auto cost_constant = pb.objective.constant;
 
-    lp::clear(pb);
+    baryonyx::clear(pb);
 
     solver_functor<modeT, constraintOrderT, randomT> slv(ctx);
 
@@ -1831,12 +1834,12 @@ optimize(std::shared_ptr<context> ctx,
 
     auto names = pb.vars.names;
     auto constraints{ make_merged_constraints(ctx, pb, p) };
-    auto variables = lp::numeric_cast<index>(pb.vars.values.size());
+    auto variables = baryonyx::numeric_cast<index>(pb.vars.values.size());
     auto cost = make_objective_function(pb.objective, variables);
     auto norm_costs = normalize_costs(ctx, cost);
     auto cost_constant = pb.objective.constant;
 
-    lp::clear(pb);
+    baryonyx::clear(pb);
 
     std::vector<std::thread> pool(thread);
     pool.clear();
@@ -1870,8 +1873,8 @@ optimize(std::shared_ptr<context> ctx,
     result best = results[0].get();
     for (long int i{ 1 }; i != thread; ++i) {
         auto current = results[i].get();
-        if (current.status == lp::result_status::success) {
-            if (best.status != lp::result_status::success or
+        if (current.status == baryonyx::result_status::success) {
+            if (best.status != baryonyx::result_status::success or
                 is_better_solution(current.value, best.value, modeT()))
                 best = current;
         }
@@ -1886,10 +1889,10 @@ optimize(std::shared_ptr<context> ctx,
 } // inequalities_1coeff
 
 inline result
-inequalities_1coeff_wedelin_solve(std::shared_ptr<lp::context> ctx,
+inequalities_1coeff_wedelin_solve(std::shared_ptr<baryonyx::context> ctx,
                                   problem& pb)
 {
-    namespace ine_1 = lp::inequalities_1coeff;
+    namespace ine_1 = baryonyx::inequalities_1coeff;
     ine_1::parameters p(ctx);
 
     using random_generator_type = std::default_random_engine;
@@ -1906,7 +1909,7 @@ inequalities_1coeff_wedelin_solve(std::shared_ptr<lp::context> ctx,
 
     switch (p.order) {
     case ine_1::constraint_order::none:
-        if (pb.type == lp::objective_function_type::maximize)
+        if (pb.type == baryonyx::objective_function_type::maximize)
             return ine_1::solve<ine_1::maximize_tag,
                                 ine_1::compute_none<random_generator_type>,
                                 random_generator_type>(ctx, pb, p, rng);
@@ -1914,7 +1917,7 @@ inequalities_1coeff_wedelin_solve(std::shared_ptr<lp::context> ctx,
                             ine_1::compute_none<random_generator_type>,
                             random_generator_type>(ctx, pb, p, rng);
     case ine_1::constraint_order::reversing:
-        if (pb.type == lp::objective_function_type::maximize)
+        if (pb.type == baryonyx::objective_function_type::maximize)
             return ine_1::solve<
               ine_1::maximize_tag,
               ine_1::compute_reversing<random_generator_type>>(
@@ -1923,7 +1926,7 @@ inequalities_1coeff_wedelin_solve(std::shared_ptr<lp::context> ctx,
                             ine_1::compute_reversing<random_generator_type>>(
           ctx, pb, p, rng);
     case ine_1::constraint_order::random_sorting:
-        if (pb.type == lp::objective_function_type::maximize)
+        if (pb.type == baryonyx::objective_function_type::maximize)
             return ine_1::solve<ine_1::maximize_tag,
                                 ine_1::compute_random<random_generator_type>>(
               ctx, pb, p, rng);
@@ -1931,7 +1934,7 @@ inequalities_1coeff_wedelin_solve(std::shared_ptr<lp::context> ctx,
                             ine_1::compute_random<random_generator_type>>(
           ctx, pb, p, rng);
     case ine_1::constraint_order::infeasibility_decr:
-        if (pb.type == lp::objective_function_type::maximize)
+        if (pb.type == baryonyx::objective_function_type::maximize)
             return ine_1::solve<
               ine_1::maximize_tag,
               ine_1::compute_infeasibility<random_generator_type,
@@ -1943,7 +1946,7 @@ inequalities_1coeff_wedelin_solve(std::shared_ptr<lp::context> ctx,
                                        ine_1::compute_infeasibility_decr>>(
           ctx, pb, p, rng);
     case ine_1::constraint_order::infeasibility_incr:
-        if (pb.type == lp::objective_function_type::maximize)
+        if (pb.type == baryonyx::objective_function_type::maximize)
             return ine_1::solve<
               ine_1::maximize_tag,
               ine_1::compute_infeasibility<random_generator_type,
@@ -1962,12 +1965,12 @@ inequalities_1coeff_wedelin_solve(std::shared_ptr<lp::context> ctx,
 }
 
 inline result
-inequalities_1coeff_wedelin_optimize(std::shared_ptr<lp::context> ctx,
+inequalities_1coeff_wedelin_optimize(std::shared_ptr<baryonyx::context> ctx,
                                      problem& pb,
                                      long int thread)
 {
 
-    namespace ine_1 = lp::inequalities_1coeff;
+    namespace ine_1 = baryonyx::inequalities_1coeff;
     ine_1::parameters p(ctx);
 
     using random_generator_type = std::default_random_engine;
@@ -1984,7 +1987,7 @@ inequalities_1coeff_wedelin_optimize(std::shared_ptr<lp::context> ctx,
 
     switch (p.order) {
     case ine_1::constraint_order::none:
-        if (pb.type == lp::objective_function_type::maximize)
+        if (pb.type == baryonyx::objective_function_type::maximize)
             return ine_1::optimize<ine_1::maximize_tag,
                                    ine_1::compute_none<random_generator_type>,
                                    random_generator_type>(
@@ -1993,7 +1996,7 @@ inequalities_1coeff_wedelin_optimize(std::shared_ptr<lp::context> ctx,
                                ine_1::compute_none<random_generator_type>,
                                random_generator_type>(ctx, pb, p, rng, thread);
     case ine_1::constraint_order::reversing:
-        if (pb.type == lp::objective_function_type::maximize)
+        if (pb.type == baryonyx::objective_function_type::maximize)
             return ine_1::optimize<
               ine_1::maximize_tag,
               ine_1::compute_reversing<random_generator_type>>(
@@ -2003,7 +2006,7 @@ inequalities_1coeff_wedelin_optimize(std::shared_ptr<lp::context> ctx,
           ine_1::compute_reversing<random_generator_type>>(
           ctx, pb, p, rng, thread);
     case ine_1::constraint_order::random_sorting:
-        if (pb.type == lp::objective_function_type::maximize)
+        if (pb.type == baryonyx::objective_function_type::maximize)
             return ine_1::optimize<
               ine_1::maximize_tag,
               ine_1::compute_random<random_generator_type>>(
@@ -2012,7 +2015,7 @@ inequalities_1coeff_wedelin_optimize(std::shared_ptr<lp::context> ctx,
                                ine_1::compute_random<random_generator_type>>(
           ctx, pb, p, rng, thread);
     case ine_1::constraint_order::infeasibility_decr:
-        if (pb.type == lp::objective_function_type::maximize)
+        if (pb.type == baryonyx::objective_function_type::maximize)
             return ine_1::optimize<
               ine_1::maximize_tag,
               ine_1::compute_infeasibility<random_generator_type,
@@ -2024,7 +2027,7 @@ inequalities_1coeff_wedelin_optimize(std::shared_ptr<lp::context> ctx,
                                        ine_1::compute_infeasibility_decr>>(
           ctx, pb, p, rng, thread);
     case ine_1::constraint_order::infeasibility_incr:
-        if (pb.type == lp::objective_function_type::maximize)
+        if (pb.type == baryonyx::objective_function_type::maximize)
             return ine_1::optimize<
               ine_1::maximize_tag,
               ine_1::compute_infeasibility<random_generator_type,
@@ -2042,6 +2045,6 @@ inequalities_1coeff_wedelin_optimize(std::shared_ptr<lp::context> ctx,
     return {};
 }
 
-} // lp
+} // namespace baryonyx
 
 #endif

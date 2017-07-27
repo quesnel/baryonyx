@@ -1,6 +1,6 @@
-Package: rilp
+Package: rbaryonyx
 Type: Package
-Title: Integer Linear Programming with Wedelin method
+Title: Integer or Binary Linear Programming Solver
 Version: 1.0
 Date: 2017-05-18
 Author: Gauthier Quesnel <gauthier.quesnel@inra.fr>

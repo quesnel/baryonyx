@@ -20,8 +20,10 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef ORG_VLEPROJECT_LP_UTILS_HPP
-#define ORG_VLEPROJECT_LP_UTILS_HPP
+#ifndef ORG_VLEPROJECT_BARYONYX_SOLVER_UTILS_HPP
+#define ORG_VLEPROJECT_BARYONYX_SOLVER_UTILS_HPP
+
+#include <baryonyx/core>
 
 #include <cmath>
 #include <cstdarg>
@@ -29,9 +31,7 @@
 
 #include <chrono>
 
-#include <lpcore>
-
-namespace lp {
+namespace baryonyx {
 
 inline void
 Expects(bool condition)
@@ -73,14 +73,14 @@ is_essentially_equal(const T v1, const T v2, const T epsilon)
            ((fabs(v1) > fabs(v2) ? fabs(v2) : fabs(v1)) * (epsilon));
 }
 
-LP_API std::string stringf(const char* format, ...) noexcept LP_FORMAT(1, 2);
+std::string stringf(const char* format, ...) noexcept BARYONYX_FORMAT(1, 2);
 
-LP_API std::string vstringf(const char* format, va_list ap) noexcept;
+std::string vstringf(const char* format, va_list ap) noexcept;
 
 class timer_profiler
 {
 public:
-    timer_profiler(std::shared_ptr<lp::context> ctx)
+    timer_profiler(std::shared_ptr<baryonyx::context> ctx)
       : m_ctx(ctx)
       , m_s(std::chrono::steady_clock::now())
     {
@@ -110,8 +110,9 @@ public:
     }
 
 private:
-    std::shared_ptr<lp::context> m_ctx;
+    std::shared_ptr<baryonyx::context> m_ctx;
     std::chrono::time_point<std::chrono::steady_clock> m_s;
 };
-}
+
+} // namespace baryonyx
 #endif

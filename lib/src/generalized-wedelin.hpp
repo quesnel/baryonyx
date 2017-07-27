@@ -20,15 +20,15 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef ORG_VLEPROJECT_LP_GENERALIZED_WEDELIN_HPP
-#define ORG_VLEPROJECT_LP_GENERALIZED_WEDELIN_HPP
+#ifndef ORG_VLEPROJECT_BARYONYX_SOLVER_GENERALIZED_WEDELIN_HPP
+#define ORG_VLEPROJECT_BARYONYX_SOLVER_GENERALIZED_WEDELIN_HPP
 
 #include "mitm.hpp"
 #include "utils.hpp"
 
 #include <iterator>
 
-namespace lp {
+namespace baryonyx {
 
 // namespace generalized {
 
@@ -556,9 +556,9 @@ generalized_wedelin(double /* kappa */,
 
     //     return slv.results();
 
-    return lp::result{};
+    return baryonyx::result{};
 }
 
-} // lp
+}
 
 #endif

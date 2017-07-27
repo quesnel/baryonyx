@@ -21,21 +21,23 @@
  */
 
 #include "unit-test.hpp"
+
 #include <fstream>
 #include <iostream>
-#include <lpcore-compare>
-#include <lpcore-out>
-#include <lpcore>
-#include <lptest>
 #include <map>
 #include <numeric>
 #include <random>
 #include <sstream>
 
+#include <baryonyx/core-compare>
+#include <baryonyx/core-out>
+#include <baryonyx/core>
+#include <baryonyx/core-test>
+
 void
-test_qap(std::shared_ptr<lp::context> ctx)
+test_qap(std::shared_ptr<baryonyx::context> ctx)
 {
-    auto pb = lp::make_problem(ctx, EXAMPLES_DIR "/small4.lp");
+    auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/small4.lp");
 
     ctx->set_parameter("limit", 10'000'000l);
     ctx->set_parameter("theta", 0.5);
@@ -51,22 +53,22 @@ test_qap(std::shared_ptr<lp::context> ctx)
     ctx->set_parameter("pushing-iteration-limit", 50l);
     ctx->set_parameter("thread", 2l);
 
-    auto result = lp::optimize(ctx, pb);
+    auto result = baryonyx::optimize(ctx, pb);
 
-    Ensures(result.status == lp::result_status::success);
-    if (result.status == lp::result_status::success)
+    Ensures(result.status == baryonyx::result_status::success);
+    if (result.status == baryonyx::result_status::success)
         Ensures(result.value == 790.0);
 
-    if (result.status == lp::result_status::success) {
-        auto pb = lp::make_problem(ctx, EXAMPLES_DIR "/small4.lp");
+    if (result.status == baryonyx::result_status::success) {
+        auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/small4.lp");
 
-        Ensures(lp::is_valid_solution(pb, result.variable_value) == true);
-        Ensures(lp::compute_solution(pb, result.variable_value) == 790.0);
+        Ensures(baryonyx::is_valid_solution(pb, result.variable_value) == true);
+        Ensures(baryonyx::compute_solution(pb, result.variable_value) == 790.0);
     }
 }
 
 void
-test_n_queens_problem(std::shared_ptr<lp::context> ctx)
+test_n_queens_problem(std::shared_ptr<baryonyx::context> ctx)
 {
     std::vector<bool> valid_solutions(30, false);
     std::vector<double> solutions(30, 0.0);
@@ -111,8 +113,8 @@ test_n_queens_problem(std::shared_ptr<lp::context> ctx)
         filepath += std::to_string(i);
         filepath += ".lp";
 
-        auto pb = lp::make_problem(ctx, filepath);
-        auto result = lp::optimize(ctx, pb);
+        auto pb = baryonyx::make_problem(ctx, filepath);
+        auto result = baryonyx::optimize(ctx, pb);
 
         valid_solutions[i] = (result.remaining_constraints == 0);
         if (valid_solutions[i])
@@ -148,7 +150,7 @@ test_n_queens_problem(std::shared_ptr<lp::context> ctx)
 int
 main(int /* argc */, char* /* argv */ [])
 {
-    auto ctx = std::make_shared<lp::context>();
+    auto ctx = std::make_shared<baryonyx::context>();
     ctx->set_standard_stream_logger();
 
     test_qap(ctx);

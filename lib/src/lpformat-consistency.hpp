@@ -20,13 +20,15 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef ORG_VLEPROJECT_LP_LPFORMAT_CONSISTENCY_HPP
-#define ORG_VLEPROJECT_LP_LPFORMAT_CONSISTENCY_HPP
+#ifndef ORG_VLEPROJECT_BARYONYX_SOLVER_LPFORMAT_CONSISTENCY_HPP
+#define ORG_VLEPROJECT_BARYONYX_SOLVER_LPFORMAT_CONSISTENCY_HPP
+
+#include <baryonyx/core>
 
 #include <algorithm>
-#include <lpcore>
 
-namespace lp {
+namespace baryonyx {
+
 namespace details {
 
 inline void
@@ -78,6 +80,6 @@ check(const problem& pb)
     details::are_bounds_correct(pb);
 }
 
-} // namespace lp
+} // namespace baryonyx
 
 #endif

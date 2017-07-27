@@ -25,7 +25,7 @@
 #include "scoped_array.hpp"
 #include "unit-test.hpp"
 
-#include <lpcore>
+#include <baryonyx/core>
 
 #include <numeric>
 
@@ -37,108 +37,108 @@ check_numeric_cast()
     int large_positive = std::numeric_limits<int>::max();
     int large_negative = std::numeric_limits<int>::min();
 
-    Ensures(lp::is_numeric_castable<signed char>(small_positive));
-    Ensures(lp::is_numeric_castable<signed char>(small_negative));
-    Ensures(not lp::is_numeric_castable<signed char>(large_positive));
-    Ensures(not lp::is_numeric_castable<signed char>(large_negative));
+    Ensures(baryonyx::is_numeric_castable<signed char>(small_positive));
+    Ensures(baryonyx::is_numeric_castable<signed char>(small_negative));
+    Ensures(not baryonyx::is_numeric_castable<signed char>(large_positive));
+    Ensures(not baryonyx::is_numeric_castable<signed char>(large_negative));
 
-    Ensures(lp::is_numeric_castable<unsigned char>(small_positive));
-    Ensures(not lp::is_numeric_castable<unsigned char>(small_negative));
-    Ensures(not lp::is_numeric_castable<unsigned char>(large_positive));
-    Ensures(not lp::is_numeric_castable<unsigned char>(large_negative));
+    Ensures(baryonyx::is_numeric_castable<unsigned char>(small_positive));
+    Ensures(not baryonyx::is_numeric_castable<unsigned char>(small_negative));
+    Ensures(not baryonyx::is_numeric_castable<unsigned char>(large_positive));
+    Ensures(not baryonyx::is_numeric_castable<unsigned char>(large_negative));
 
-    Ensures(lp::is_numeric_castable<signed int>(small_positive));
-    Ensures(lp::is_numeric_castable<signed int>(small_negative));
-    Ensures(lp::is_numeric_castable<signed int>(large_positive));
-    Ensures(lp::is_numeric_castable<signed int>(large_negative));
+    Ensures(baryonyx::is_numeric_castable<signed int>(small_positive));
+    Ensures(baryonyx::is_numeric_castable<signed int>(small_negative));
+    Ensures(baryonyx::is_numeric_castable<signed int>(large_positive));
+    Ensures(baryonyx::is_numeric_castable<signed int>(large_negative));
 
-    Ensures(lp::is_numeric_castable<unsigned int>(small_positive));
-    Ensures(not lp::is_numeric_castable<unsigned int>(small_negative));
-    Ensures(lp::is_numeric_castable<unsigned int>(large_positive));
-    Ensures(not lp::is_numeric_castable<unsigned int>(large_negative));
+    Ensures(baryonyx::is_numeric_castable<unsigned int>(small_positive));
+    Ensures(not baryonyx::is_numeric_castable<unsigned int>(small_negative));
+    Ensures(baryonyx::is_numeric_castable<unsigned int>(large_positive));
+    Ensures(not baryonyx::is_numeric_castable<unsigned int>(large_negative));
 
-    Ensures(lp::is_numeric_castable<long long>(small_positive));
-    Ensures(lp::is_numeric_castable<long long>(large_negative));
-    Ensures(lp::is_numeric_castable<long long>(small_positive));
-    Ensures(lp::is_numeric_castable<long long>(large_negative));
+    Ensures(baryonyx::is_numeric_castable<long long>(small_positive));
+    Ensures(baryonyx::is_numeric_castable<long long>(large_negative));
+    Ensures(baryonyx::is_numeric_castable<long long>(small_positive));
+    Ensures(baryonyx::is_numeric_castable<long long>(large_negative));
 
-    Ensures(lp::is_numeric_castable<unsigned long long>(small_positive));
-    Ensures(not lp::is_numeric_castable<unsigned long long>(small_negative));
-    Ensures(lp::is_numeric_castable<unsigned long long>(large_positive));
-    Ensures(not lp::is_numeric_castable<unsigned long long>(large_negative));
+    Ensures(baryonyx::is_numeric_castable<unsigned long long>(small_positive));
+    Ensures(not baryonyx::is_numeric_castable<unsigned long long>(small_negative));
+    Ensures(baryonyx::is_numeric_castable<unsigned long long>(large_positive));
+    Ensures(not baryonyx::is_numeric_castable<unsigned long long>(large_negative));
 
-    Ensures(not lp::is_numeric_castable<size_t>(small_negative));
-    Ensures(not lp::is_numeric_castable<size_t>(large_negative));
+    Ensures(not baryonyx::is_numeric_castable<size_t>(small_negative));
+    Ensures(not baryonyx::is_numeric_castable<size_t>(large_negative));
 
     std::vector<int> v;
 
-    EnsuresNotThrow(lp::numeric_cast<short int>(v.size()), std::exception);
+    EnsuresNotThrow(baryonyx::numeric_cast<short int>(v.size()), std::exception);
 
-    EnsuresNotThrow(lp::numeric_cast<short int>(v.capacity()), std::exception);
+    EnsuresNotThrow(baryonyx::numeric_cast<short int>(v.capacity()), std::exception);
 
-    EnsuresThrow(lp::numeric_cast<short int>(v.max_size()), std::exception);
+    EnsuresThrow(baryonyx::numeric_cast<short int>(v.max_size()), std::exception);
 
-    unsigned int checked_size = lp::numeric_cast<unsigned int>(v.size());
+    unsigned int checked_size = baryonyx::numeric_cast<unsigned int>(v.size());
     Ensures(0 == checked_size);
 }
 
 void
 check_parameter()
 {
-    lp::parameter real{ 3.0 };
-    Ensures(real.type == lp::parameter::tag::real);
+    baryonyx::parameter real{ 3.0 };
+    Ensures(real.type == baryonyx::parameter::tag::real);
 
-    lp::parameter integer{ 1000l };
-    Ensures(integer.type == lp::parameter::tag::integer);
+    baryonyx::parameter integer{ 1000l };
+    Ensures(integer.type == baryonyx::parameter::tag::integer);
 
-    lp::parameter str{ "hello world" };
-    Ensures(str.type == lp::parameter::tag::string);
+    baryonyx::parameter str{ "hello world" };
+    Ensures(str.type == baryonyx::parameter::tag::string);
 
     str = real;
-    Ensures(str.type == lp::parameter::tag::real);
+    Ensures(str.type == baryonyx::parameter::tag::real);
     Ensures(str.d == 3.0);
 
     str = integer;
-    Ensures(str.type == lp::parameter::tag::integer);
+    Ensures(str.type == baryonyx::parameter::tag::integer);
     Ensures(str.l == 1000l);
 
-    std::vector<lp::parameter> x(100);
+    std::vector<baryonyx::parameter> x(100);
     for (auto& elem : x) {
-        Ensures(elem.type == lp::parameter::tag::integer);
+        Ensures(elem.type == baryonyx::parameter::tag::integer);
         Ensures(elem.l == 0l);
     }
 
-    auto y = lp::parameter(4.0);
-    Ensures(y.type == lp::parameter::tag::real);
+    auto y = baryonyx::parameter(4.0);
+    Ensures(y.type == baryonyx::parameter::tag::real);
     Ensures(y.d == 4.0);
 
-    x[0] = lp::parameter(5.0);
-    Ensures(x[0].type == lp::parameter::tag::real);
+    x[0] = baryonyx::parameter(5.0);
+    Ensures(x[0].type == baryonyx::parameter::tag::real);
     Ensures(x[0].d == 5.0);
 
     x[0].swap(x[1]);
-    Ensures(x[0].type == lp::parameter::tag::integer);
+    Ensures(x[0].type == baryonyx::parameter::tag::integer);
     Ensures(x[0].l == 0l);
-    Ensures(x[1].type == lp::parameter::tag::real);
+    Ensures(x[1].type == baryonyx::parameter::tag::real);
     Ensures(x[1].d == 5.0);
 
     x[2] = std::move(x[1]);
-    Ensures(x[0].type == lp::parameter::tag::integer);
+    Ensures(x[0].type == baryonyx::parameter::tag::integer);
     Ensures(x[0].l == 0l);
-    Ensures(x[1].type == lp::parameter::tag::integer);
+    Ensures(x[1].type == baryonyx::parameter::tag::integer);
     Ensures(x[1].l == 0l);
-    Ensures(x[2].type == lp::parameter::tag::real);
+    Ensures(x[2].type == baryonyx::parameter::tag::real);
     EnsuresEqual(x[2].d, 5.0);
     EnsuresNotEqual(x[2].d, 6.0);
 
-    x[3] = lp::parameter(std::string("hello world!"));
-    Ensures(x[3].type == lp::parameter::tag::string);
+    x[3] = baryonyx::parameter(std::string("hello world!"));
+    Ensures(x[3].type == baryonyx::parameter::tag::string);
     Ensures(x[3].s == "hello world!");
 }
 
 std::ptrdiff_t
-size(std::tuple<lp::SparseArray<int, double>::const_iterator,
-                lp::SparseArray<int, double>::const_iterator> elem)
+size(std::tuple<baryonyx::SparseArray<int, double>::const_iterator,
+                baryonyx::SparseArray<int, double>::const_iterator> elem)
 {
     return std::distance(std::get<0>(elem), std::get<1>(elem));
 }
@@ -149,7 +149,7 @@ check_matrix()
     std::vector<int> row{ 1, 1, 1, 1 };
     std::vector<int> col{ 1, 3 };
 
-    lp::SparseArray<int, double> m(4, 2);
+    baryonyx::SparseArray<int, double> m(4, 2);
     m.reserve(4, row.begin(), row.end(), col.begin(), col.end());
 
     EnsuresThrow(m.P(0, 0), std::out_of_range);
@@ -203,7 +203,7 @@ check_matrix()
 void
 check_scoped_array()
 {
-    lp::scoped_array<int> a(10);
+    baryonyx::scoped_array<int> a(10);
     if (not a) {
         Ensures(a);
         return;
@@ -235,7 +235,7 @@ check_scoped_array()
     Ensures(a[8] == 9);
     Ensures(a[9] == 0);
 
-    lp::scoped_array<int> b(std::move(a));
+    baryonyx::scoped_array<int> b(std::move(a));
 
     Ensures(b.data() == array);
     Ensures(a.data() == nullptr);
@@ -245,7 +245,7 @@ check_scoped_array()
     Ensures(a.data() == array);
     Ensures(b.data() == nullptr);
 
-    lp::scoped_array<double> x(1000, 123.0);
+    baryonyx::scoped_array<double> x(1000, 123.0);
     if (x) {
         for (int i{ 0 }; i < 1000; ++i)
             Ensures(x[i] == 123.0);
@@ -255,7 +255,7 @@ check_scoped_array()
 void
 check_fixed_array()
 {
-    lp::fixed_array<int> a(10);
+    baryonyx::fixed_array<int> a(10);
 
     Ensures(a.size() == 10);
 
@@ -272,22 +272,22 @@ check_fixed_array()
     Ensures(a[8] == 9);
     Ensures(a[9] == 10);
 
-    lp::fixed_array<int> b(a);
+    baryonyx::fixed_array<int> b(a);
 
     Ensures(a.data() != b.data());
 
-    lp::fixed_array<int> c(std::move(a));
+    baryonyx::fixed_array<int> c(std::move(a));
 
     Ensures(a.data() == nullptr);
     Ensures(b.data() != c.data());
 
-    lp::fixed_array<double> d(15, 3.0);
+    baryonyx::fixed_array<double> d(15, 3.0);
 
     Ensures(d[0] == 3.0);
     Ensures(d[7] == 3.0);
     Ensures(d[14] == 3.0);
 
-    lp::fixed_array<double> e;
+    baryonyx::fixed_array<double> e;
 
     std::swap(d, e);
 
@@ -296,7 +296,7 @@ check_fixed_array()
     Ensures(e[7] == 3.0);
     Ensures(e[14] == 3.0);
 
-    lp::fixed_array<double> x(1000, 123.0);
+    baryonyx::fixed_array<double> x(1000, 123.0);
     if (x) {
         for (int i{ 0 }; i < 1000; ++i)
             Ensures(x[i] == 123.0);

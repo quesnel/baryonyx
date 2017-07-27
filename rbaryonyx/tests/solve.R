@@ -1,4 +1,4 @@
-library(rilp)
+library(rbaryonyx)
 library(sensitivity)
 
 factors=c("theta", "delta", "constraint_order", "kappa_min",
@@ -30,7 +30,7 @@ solve_lp <- function(x, file_path, thread=1, limit=10000, time_limit=10) {
   alpha <- x["alpha"]
   w <- x["w"]
 
-  r <- rilp::optimize_01lp_problem(file_path = file_path,
+  r <- rbaryonyx::optimize_01lp_problem(file_path = file_path,
            limit = limit,
            theta = theta,
            delta = delta,
@@ -61,7 +61,7 @@ plot(morrisDesign)
 ## 
 ##
 
-library(rilp)
+library(rbaryonyx)
 library(sensitivity)
 
 factors=c("theta", "delta", "kappa_min",
@@ -86,7 +86,7 @@ solve_lp <- function(x, file_path, thread=1, limit=10000, time_limit=10) {
   kappa_min <- x["kappa_min"]
   kappa_step <- x["kappa_step"] 
 
-  r <- rilp::optimize_01lp_problem(file_path = file_path,
+  r <- rbaryonyx::optimize_01lp_problem(file_path = file_path,
            limit = limit,
            theta = theta,
            delta = delta,

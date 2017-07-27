@@ -3,4 +3,4 @@
 export(optimize_01lp_problem)
 export(solve_01lp_problem)
 importFrom(Rcpp,sourceCpp)
-useDynLib(rilp)
+useDynLib(rbaryonyx)

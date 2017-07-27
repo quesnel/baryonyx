@@ -20,8 +20,8 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef ORG_VLEPROJECT_LP_LPCORE_OUT
-#define ORG_VLEPROJECT_LP_LPCORE_OUT
+#ifndef ORG_VLEPROJECT_BARYONYX_SOLVER_CORE_OUT
+#define ORG_VLEPROJECT_BARYONYX_SOLVER_CORE_OUT
 
 #include <array>
 #include <chrono>
@@ -30,9 +30,9 @@
 #include <numeric>
 #include <ostream>
 
-#include <lpcore>
+#include <baryonyx/core>
 
-namespace lp {
+namespace baryonyx {
 
 inline std::ostream&
 operator<<(std::ostream& os, const result& result)
@@ -87,7 +87,7 @@ struct resume
     resume(const problem& pb)
       : variables({})
       , constraints({})
-      , minmax(lp::compute_min_max_objective_function(pb))
+      , minmax(compute_min_max_objective_function(pb))
     {
         variables =
           std::accumulate(pb.vars.values.begin(),
@@ -95,13 +95,13 @@ struct resume
                           variables,
                           [](std::array<long int, 3>& value, auto vv) {
                               switch (vv.type) {
-                              case lp::variable_type::real:
+                              case variable_type::real:
                                   value[0]++;
                                   break;
-                              case lp::variable_type::binary:
+                              case variable_type::binary:
                                   value[1]++;
                                   break;
-                              case lp::variable_type::general:
+                              case variable_type::general:
                                   value[2]++;
                                   break;
                               }
@@ -143,6 +143,6 @@ operator<<(std::ostream& os, const resume& pb)
               << "maximal value.: " << std::get<1>(pb.minmax) << '\n';
 }
 
-} // namespace lp
+} // namespace baryonyx
 
 #endif

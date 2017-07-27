@@ -20,8 +20,8 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef ORG_VLEPROJECT_LP_LPCORE
-#define ORG_VLEPROJECT_LP_LPCORE
+#ifndef ORG_VLEPROJECT_BARYONYX_SOLVER_CORE
+#define ORG_VLEPROJECT_BARYONYX_SOLVER_CORE
 
 #include <algorithm>
 #include <chrono>
@@ -37,43 +37,43 @@
 #include <cstdio>
 
 #if defined _WIN32 || defined __CYGWIN__
-#define LP_HELPER_DLL_IMPORT __declspec(dllimport)
-#define LP_HELPER_DLL_EXPORT __declspec(dllexport)
-#define LP_HELPER_DLL_LOCAL
+#define BARYONYX_HELPER_DLL_IMPORT __declspec(dllimport)
+#define BARYONYX_HELPER_DLL_EXPORT __declspec(dllexport)
+#define BARYONYX_HELPER_DLL_LOCAL
 #else
 #if __GNUC__ >= 4
-#define LP_HELPER_DLL_IMPORT __attribute__((visibility("default")))
-#define LP_HELPER_DLL_EXPORT __attribute__((visibility("default")))
-#define LP_HELPER_DLL_LOCAL __attribute__((visibility("hidden")))
+#define BARYONYX_HELPER_DLL_IMPORT __attribute__((visibility("default")))
+#define BARYONYX_HELPER_DLL_EXPORT __attribute__((visibility("default")))
+#define BARYONYX_HELPER_DLL_LOCAL __attribute__((visibility("hidden")))
 #else
-#define LP_HELPER_DLL_IMPORT
-#define LP_HELPER_DLL_EXPORT
-#define LP_HELPER_DLL_LOCAL
+#define BARYONYX_HELPER_DLL_IMPORT
+#define BARYONYX_HELPER_DLL_EXPORT
+#define BARYONYX_HELPER_DLL_LOCAL
 #endif
 #endif
 
-#ifdef LP_DLL
+#ifdef BARYONYX_DLL
 #ifdef liblp_EXPORTS
-#define LP_API LP_HELPER_DLL_EXPORT
+#define BARYONYX_API BARYONYX_HELPER_DLL_EXPORT
 #else
-#define LP_API LP_HELPER_DLL_IMPORT
+#define BARYONYX_API BARYONYX_HELPER_DLL_IMPORT
 #endif
-#define LP_LOCAL LP_HELPER_DLL_LOCAL
-#define LP_MODULE LP_HELPER_DLL_EXPORT
+#define BARYONYX_LOCAL BARYONYX_HELPER_DLL_LOCAL
+#define BARYONYX_MODULE BARYONYX_HELPER_DLL_EXPORT
 #else
-#define LP_API
-#define LP_LOCAL
-#define LP_MODULE LP_HELPER_DLL_EXPORT
+#define BARYONYX_API
+#define BARYONYX_LOCAL
+#define BARYONYX_MODULE BARYONYX_HELPER_DLL_EXPORT
 #endif
 
 #if defined(__GNUC__)
-#define LP_FORMAT(idformat, idarg)                                            \
+#define BARYONYX_FORMAT(idformat, idarg)                                            \
     __attribute__((format(printf, (idformat), (idarg))))
 #else
-#define LP_FORMAT(idformat, idarg)
+#define BARYONYX_FORMAT(idformat, idarg)
 #endif
 
-namespace lp {
+namespace baryonyx {
 
 /** @c index is used as accessor for all array. */
 using index = int;
@@ -131,7 +131,7 @@ inline Target
 numeric_cast(Source s)
 {
     if (not is_numeric_castable<Target>(s))
-        throw lp::numeric_cast_failure();
+        throw numeric_cast_failure();
 
     return static_cast<Target>(s);
 }
@@ -296,15 +296,16 @@ private:
 };
 
 /**
- * @brief @c lp::paramter is a simple class to represent a union between an
- *     integer, a real and a string (resp. @c long, @c double and @c
- *     std::string).
- * @details Waiting for a compiler with the @c std::optional class, @c
- *     lp::parameter implements an union between a @c long, a @c double and a
- *     @c std::string. @c lp::parameter, by default, defines a @c long with the
- *     value of @c 0. Use the @c lp::parameter::type function to get the
- *     current type stored into the @c lp::parameter.
+ * @brief @c baryonyx::paramter is a simple class to represent a union
+ *     between an integer, a real and a string (resp. @c long, @c double
+ *     and @c std::string).
  *
+ * @details Waiting for a compiler with the @c std::optional class, @c
+ *     baryonyx::parameter implements an union between a @c long, a @c
+ *     double and a @c std::string. @c baryonyx::parameter, by default,
+ *     defines a @c long with the value of @c 0. Use the @c
+ *     baryonyx::parameter::type function to get the current type stored
+ *     into the @c baryonyx::parameter.
  */
 class parameter
 {
@@ -517,15 +518,17 @@ public:
 };
 
 /**
- * @brief @c lp::context stores logging system and all parameters.
- * @details @c lp::context manages the logging system via a subclass @c
- *     lp::context::logger which writes logs to the user defined storage. @c
- *     lp::context stores a set of parameters for solvers. Default, the logging
- *     system is active and the call to the @c log function are send to the
- *     logger functor. Define LP_DISABLE_LOGGING as preprocessor value to hide
- *     all logging message..
+ * @brief @c baryonyx::context stores logging system and all parameters.
+ *
+ * @details @c baryonyx::context manages the logging system via a subclass
+ *     @c baryonyx::context::logger which writes logs to the user defined
+ *     storage. @c baryonyx::context stores a set of parameters for
+ *     solvers. Default, the logging system is active and the call to the
+ *     @c log function are send to the logger functor. Define
+ *     BARYONYX_DISABLE_LOGGING as preprocessor value to hide all logging
+ *     message..
  */
-class LP_API context
+class BARYONYX_API context
 {
 public:
     enum class message_type
@@ -564,15 +567,17 @@ public:
     context& operator=(const context&) = delete;
 
     /**
-     * @brief Parse the command line argument using the `getopt_long` function.
-     * @details Parse the command line and search for strings "-p [str:value]"
-     *     and store @c str as argument's name and tries to convert the @c
-     *     value in @c lp::parameter.
+     * @brief Parse the command line argument using the `getopt_long`
+     *     function.
+     *
+     * @details Parse the command line and search for strings "-p
+     *     [str:value]" and store @c str as argument's name and tries to
+     *     convert the @c value in @c baryonyx::parameter.
      *
      * @example
      * int main(int argc, char *argv[])
      * {
-     *     auto ctx = lp::make_context();
+     *     auto ctx = baryonyx::make_context();
      *     int i = ctx->parse(argc, argv);
      *     if (i < 0)
      *         return EXIT_FAILURE;
@@ -583,7 +588,7 @@ public:
      *     }
      *
      *     for (; i != argc; ++i) {
-     *         lp::make_problem(argv[i]);
+     *         baryonyx::make_problem(argv[i]);
      *         ...
      *     }
      * }
@@ -615,19 +620,19 @@ public:
     void set_standard_stream_logger() noexcept;
     void set_logger(std::unique_ptr<logger> function) noexcept;
 
-    void info(const char* format, ...) const noexcept LP_FORMAT(2, 3);
-    void debug(const char* format, ...) const noexcept LP_FORMAT(2, 3);
-    void warning(const char* format, ...) const noexcept LP_FORMAT(2, 3);
-    void error(const char* format, ...) const noexcept LP_FORMAT(2, 3);
+    void info(const char* format, ...) const noexcept BARYONYX_FORMAT(2, 3);
+    void debug(const char* format, ...) const noexcept BARYONYX_FORMAT(2, 3);
+    void warning(const char* format, ...) const noexcept BARYONYX_FORMAT(2, 3);
+    void error(const char* format, ...) const noexcept BARYONYX_FORMAT(2, 3);
 
     void log(message_type, const char* format, ...) const
-      noexcept LP_FORMAT(3, 4);
+      noexcept BARYONYX_FORMAT(3, 4);
     void log(int priority,
              const char* file,
              int line,
              const char* fn,
              const char* format,
-             ...) const noexcept LP_FORMAT(6, 7);
+             ...) const noexcept BARYONYX_FORMAT(6, 7);
 
 private:
     std::unordered_map<std::string, parameter> m_parameters;
@@ -716,13 +721,13 @@ struct problem
 };
 
 /**
- * @details Compute the number of constaints of the @c lp::problem.
+ * @details Compute the number of constaints of the @c baryonyx::problem.
  *
- * @param pb An lp::problem.
- * @return The number of constraints in the @c lp::problem.
+ * @param pb An baryonyx::problem.
+ * @return The number of constraints in the @c baryonyx::problem.
  */
 inline std::size_t
-size(const lp::problem& pb) noexcept
+size(const baryonyx::problem& pb) noexcept
 {
     return pb.equal_constraints.size() + pb.greater_constraints.size() +
            pb.greater_equal_constraints.size() + pb.less_constraints.size() +
@@ -731,13 +736,13 @@ size(const lp::problem& pb) noexcept
 
 /**
  * @details Recover all memory allocated for all container of the @c
- *     lp::problem. After this function, the @c lp::problem is completely empty
+ *     baryonyx::problem. After this function, the @c baryonyx::problem is completely empty
  *     of data and can be reuse.
  *
  * @param pb The problem to clear.
  */
 inline void
-clear(lp::problem& pb) noexcept
+clear(baryonyx::problem& pb) noexcept
 {
     std::vector<function_element>().swap(pb.objective.elements);
 
@@ -794,63 +799,64 @@ compute_min_max_objective_function(const problem& pb) noexcept
 }
 
 /**
- * Read a \e lp file from the \e file.
+ * Read a @e lp file from the @e file.
  *
- * \exception lp::file_format_error, lp::file_access_error,
+ * @exception baryonyx::file_format_error, baryonyx::file_access_error,
  *  std::system_error.
  */
-LP_API
-problem make_problem(std::shared_ptr<lp::context> ctx,
+BARYONYX_API
+problem make_problem(std::shared_ptr<baryonyx::context> ctx,
                      const std::string& filename);
 
 /**
- * Read a \e lp file from the \e is stream.
+ * Read a @e lp file from the @e is stream.
  *
- * \exception lp::file_format_error, lp::file_access_error,
+ * @exception baryonyx::file_format_error, baryonyx::file_access_error,
  *  std::system_error.
  */
-LP_API
-problem make_problem(std::shared_ptr<lp::context> ctx, std::istream& is);
+BARYONYX_API
+problem make_problem(std::shared_ptr<baryonyx::context> ctx, std::istream& is);
 
 /**
- * Write \e lp problem into a stream.
+ * Write @e lp problem into a stream.
  *
  */
-LP_API
+BARYONYX_API
 std::ostream& operator<<(std::ostream& os, const problem& p);
 
 /**
- * Try to solve or find a feasible solution for the \c lp::problem using
- * with a
- * set of parameters.
+ * @details Try to solve or find a feasible solution for the @c
+ *     baryonyx::problem.
  *
- * \param pb Problem definition.
+ * @param pb Problem definition.
  *
- * \exception lp::solver_error
- * \exception lp::problem_definition
+ * @exception baryonyx::solver_error
+ * @exception baryonyx::problem_definition
  */
-LP_API
-result solve(std::shared_ptr<lp::context> ctx, problem& pb);
+BARYONYX_API
+result solve(std::shared_ptr<baryonyx::context> ctx, problem& pb);
 
 /**
- * Try to optimize the \c lp::problem with a set of parameters.
+ * @details Try to optimize the @c baryonyx::problem with a set of
+ *     parameters.
  *
  * @param pb Problem definition.
  *
  * @return A representation of the result.
  *
- * @throw \c lp::solver_error.
+ * @throw @c baryonyx::solver_error.
  */
-LP_API
-result optimize(std::shared_ptr<lp::context> ctx, problem& pb);
+BARYONYX_API
+result optimize(std::shared_ptr<baryonyx::context> ctx, problem& pb);
 
-LP_API
+BARYONYX_API
 bool is_valid_solution(const problem& pb,
                        const std::vector<int>& variable_value);
 
-LP_API
+BARYONYX_API
 double compute_solution(const problem& pb,
                         const std::vector<int>& variable_value);
+
 }
 
 #endif

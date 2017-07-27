@@ -21,30 +21,32 @@
  */
 
 #include "unit-test.hpp"
+
 #include <fstream>
 #include <iostream>
-#include <lpcore-compare>
-#include <lpcore-out>
-#include <lpcore>
 #include <map>
 #include <numeric>
 #include <random>
 #include <sstream>
 
+#include <baryonyx/core-compare>
+#include <baryonyx/core-out>
+#include <baryonyx/core>
+
 void
-test_assignment_problem(std::shared_ptr<lp::context> ctx)
+test_assignment_problem(std::shared_ptr<baryonyx::context> ctx)
 {
-    auto pb = lp::make_problem(ctx, EXAMPLES_DIR "/assignment_problem_1.lp");
+    auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/assignment_problem_1.lp");
     ctx->set_parameter("limit", 50l);
 
-    auto result = lp::solve(ctx, pb);
+    auto result = baryonyx::solve(ctx, pb);
 
-    Ensures(result.status == lp::result_status::success);
-    Ensures(lp::is_valid_solution(pb, result.variable_value) == true);
+    Ensures(result.status == baryonyx::result_status::success);
+    Ensures(baryonyx::is_valid_solution(pb, result.variable_value) == true);
 }
 
 void
-test_assignment_problem_random_coast(std::shared_ptr<lp::context> ctx)
+test_assignment_problem_random_coast(std::shared_ptr<baryonyx::context> ctx)
 {
     ctx->set_parameter("limit", 1000000l);
     ctx->set_parameter("theta", 0.5);
@@ -56,7 +58,7 @@ test_assignment_problem_random_coast(std::shared_ptr<lp::context> ctx)
 
     for (int i{ 0 }, e{ 10 }; i != e; ++i) {
         auto pb =
-          lp::make_problem(ctx, EXAMPLES_DIR "/assignment_problem_1.lp");
+          baryonyx::make_problem(ctx, EXAMPLES_DIR "/assignment_problem_1.lp");
 
         std::random_device rd;
         std::mt19937 gen(rd());
@@ -65,78 +67,78 @@ test_assignment_problem_random_coast(std::shared_ptr<lp::context> ctx)
         for (auto& elem : pb.objective.elements)
             elem.factor = dis(gen);
 
-        auto result = lp::solve(ctx, pb);
+        auto result = baryonyx::solve(ctx, pb);
 
-        Ensures(result.status == lp::result_status::success);
-        Ensures(lp::is_valid_solution(pb, result.variable_value) == true);
+        Ensures(result.status == baryonyx::result_status::success);
+        Ensures(baryonyx::is_valid_solution(pb, result.variable_value) == true);
     }
 }
 
 void
-test_negative_coeff(std::shared_ptr<lp::context> ctx)
+test_negative_coeff(std::shared_ptr<baryonyx::context> ctx)
 {
-    auto pb = lp::make_problem(ctx, EXAMPLES_DIR "/negative-coeff.lp");
+    auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/negative-coeff.lp");
 
     ctx->set_parameter("limit", 50l);
 
-    auto result = lp::solve(ctx, pb);
+    auto result = baryonyx::solve(ctx, pb);
 
-    Ensures(result.status == lp::result_status::success);
-    Ensures(lp::is_valid_solution(pb, result.variable_value) == true);
+    Ensures(result.status == baryonyx::result_status::success);
+    Ensures(baryonyx::is_valid_solution(pb, result.variable_value) == true);
 }
 
 void
-test_negative_coeff2(std::shared_ptr<lp::context> ctx)
+test_negative_coeff2(std::shared_ptr<baryonyx::context> ctx)
 {
-    auto pb = lp::make_problem(ctx, EXAMPLES_DIR "/negative-coeff2.lp");
+    auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/negative-coeff2.lp");
 
     ctx->set_parameter("limit", 2l);
 
-    auto result = lp::solve(ctx, pb);
+    auto result = baryonyx::solve(ctx, pb);
 
     for (auto elen : result.variable_value)
         std::cout << elen << ' ';
     std::cout << '\n';
 
-    Ensures(result.status == lp::result_status::success);
+    Ensures(result.status == baryonyx::result_status::success);
     Ensures(result.variable_value[0] == 1);
     Ensures(result.variable_value[1] == 0);
     Ensures(result.variable_value[2] == 0);
     Ensures(result.variable_value[3] == 1);
 
-    Ensures(lp::is_valid_solution(pb, result.variable_value) == true);
+    Ensures(baryonyx::is_valid_solution(pb, result.variable_value) == true);
 }
 
 void
-test_negative_coeff3(std::shared_ptr<lp::context> ctx)
+test_negative_coeff3(std::shared_ptr<baryonyx::context> ctx)
 {
-    auto pb = lp::make_problem(ctx, EXAMPLES_DIR "/negative-coeff3.lp");
+    auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/negative-coeff3.lp");
 
     ctx->set_parameter("limit", 50l);
 
-    auto result = lp::solve(ctx, pb);
+    auto result = baryonyx::solve(ctx, pb);
 
-    Ensures(result.status == lp::result_status::success);
-    Ensures(lp::is_valid_solution(pb, result.variable_value) == true);
+    Ensures(result.status == baryonyx::result_status::success);
+    Ensures(baryonyx::is_valid_solution(pb, result.variable_value) == true);
 }
 
 void
-test_negative_coeff4(std::shared_ptr<lp::context> ctx)
+test_negative_coeff4(std::shared_ptr<baryonyx::context> ctx)
 {
-    auto pb = lp::make_problem(ctx, EXAMPLES_DIR "/negative-coeff4.lp");
+    auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/negative-coeff4.lp");
 
     ctx->set_parameter("limit", 50l);
 
-    auto result = lp::solve(ctx, pb);
+    auto result = baryonyx::solve(ctx, pb);
 
-    Ensures(result.status == lp::result_status::success);
-    Ensures(lp::is_valid_solution(pb, result.variable_value) == true);
+    Ensures(result.status == baryonyx::result_status::success);
+    Ensures(baryonyx::is_valid_solution(pb, result.variable_value) == true);
 }
 
 void
-test_flat30_7(std::shared_ptr<lp::context> ctx)
+test_flat30_7(std::shared_ptr<baryonyx::context> ctx)
 {
-    auto pb = lp::make_problem(ctx, EXAMPLES_DIR "/flat30-7.lp");
+    auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/flat30-7.lp");
 
     ctx->set_parameter("limit", 10'000'000l);
     ctx->set_parameter("delta", 0.001);
@@ -145,18 +147,18 @@ test_flat30_7(std::shared_ptr<lp::context> ctx)
     ctx->set_parameter("kappa-max", 10.0);
     ctx->set_parameter("w", 60l);
 
-    auto result = lp::solve(ctx, pb);
+    auto result = baryonyx::solve(ctx, pb);
 
-    Ensures(result.status == lp::result_status::success);
-    Ensures(lp::is_valid_solution(pb, result.variable_value) == true);
+    Ensures(result.status == baryonyx::result_status::success);
+    Ensures(baryonyx::is_valid_solution(pb, result.variable_value) == true);
 }
 
 void
-test_uf50_0448(std::shared_ptr<lp::context> ctx)
+test_uf50_0448(std::shared_ptr<baryonyx::context> ctx)
 {
-    auto pb = lp::make_problem(ctx, EXAMPLES_DIR "/uf50-0448.lp");
+    auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/uf50-0448.lp");
 
-    std::map<std::string, lp::parameter> params;
+    std::map<std::string, baryonyx::parameter> params;
     ctx->set_parameter("limit", 10'000'000'000l);
     ctx->set_parameter("theta", 0.5);
     ctx->set_parameter("delta", 1.0);
@@ -167,16 +169,16 @@ test_uf50_0448(std::shared_ptr<lp::context> ctx)
     ctx->set_parameter("w", 60l);
     ctx->set_parameter("constraint-order", std::string("random-sorting"));
 
-    auto result = lp::solve(ctx, pb);
+    auto result = baryonyx::solve(ctx, pb);
 
-    Ensures(result.status == lp::result_status::success);
-    Ensures(lp::is_valid_solution(pb, result.variable_value) == true);
+    Ensures(result.status == baryonyx::result_status::success);
+    Ensures(baryonyx::is_valid_solution(pb, result.variable_value) == true);
 }
 
 void
-test_aim_50_1_6_yes1_2(std::shared_ptr<lp::context> ctx)
+test_aim_50_1_6_yes1_2(std::shared_ptr<baryonyx::context> ctx)
 {
-    auto pb = lp::make_problem(ctx, EXAMPLES_DIR "/aim-50-1_6-yes1-2.lp");
+    auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/aim-50-1_6-yes1-2.lp");
 
     ctx->set_parameter("limit", 10'000'000'000l);
     ctx->set_parameter("theta", 0.6);
@@ -186,16 +188,16 @@ test_aim_50_1_6_yes1_2(std::shared_ptr<lp::context> ctx)
     ctx->set_parameter("alpha", 1.0);
     ctx->set_parameter("w", 20l);
 
-    auto result = lp::solve(ctx, pb);
+    auto result = baryonyx::solve(ctx, pb);
 
-    Ensures(result.status == lp::result_status::success);
-    Ensures(lp::is_valid_solution(pb, result.variable_value) == true);
+    Ensures(result.status == baryonyx::result_status::success);
+    Ensures(baryonyx::is_valid_solution(pb, result.variable_value) == true);
 }
 
 void
-test_bibd1n(std::shared_ptr<lp::context> ctx)
+test_bibd1n(std::shared_ptr<baryonyx::context> ctx)
 {
-    auto pb = lp::make_problem(ctx, EXAMPLES_DIR "/bibd1n.lp");
+    auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/bibd1n.lp");
 
     ctx->set_parameter("limit", 10'000'000'000l);
     ctx->set_parameter("theta", 0.5);
@@ -210,16 +212,16 @@ test_bibd1n(std::shared_ptr<lp::context> ctx)
     ctx->set_parameter("time-limit", 0.0);
     ctx->set_parameter("preprocessing", "variables-number");
 
-    auto result = lp::solve(ctx, pb);
+    auto result = baryonyx::solve(ctx, pb);
 
-    Ensures(result.status == lp::result_status::success);
-    Ensures(lp::is_valid_solution(pb, result.variable_value) == true);
+    Ensures(result.status == baryonyx::result_status::success);
+    Ensures(baryonyx::is_valid_solution(pb, result.variable_value) == true);
 }
 
 void
-test_8_queens_puzzle_fixed_cost(std::shared_ptr<lp::context> ctx)
+test_8_queens_puzzle_fixed_cost(std::shared_ptr<baryonyx::context> ctx)
 {
-    auto pb = lp::make_problem(ctx, EXAMPLES_DIR "/8_queens_puzzle.lp");
+    auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/8_queens_puzzle.lp");
 
     ctx->set_parameter("limit", 10'000'000l);
     ctx->set_parameter("theta", 0.5);
@@ -240,7 +242,7 @@ test_8_queens_puzzle_fixed_cost(std::shared_ptr<lp::context> ctx)
     for (auto& elem : pb.objective.elements)
         elem.factor = cost[i++];
 
-    auto result = lp::solve(ctx, pb);
+    auto result = baryonyx::solve(ctx, pb);
 
     for (int i = 0; i != 8; ++i) {
         for (int j = 0; j != 8; ++j) {
@@ -249,14 +251,14 @@ test_8_queens_puzzle_fixed_cost(std::shared_ptr<lp::context> ctx)
         std::cout << '\n';
     }
 
-    Ensures(result.status == lp::result_status::success);
-    Ensures(lp::is_valid_solution(pb, result.variable_value) == true);
+    Ensures(result.status == baryonyx::result_status::success);
+    Ensures(baryonyx::is_valid_solution(pb, result.variable_value) == true);
 }
 
 void
-test_8_queens_puzzle_random_cost(std::shared_ptr<lp::context> ctx)
+test_8_queens_puzzle_random_cost(std::shared_ptr<baryonyx::context> ctx)
 {
-    std::map<std::string, lp::parameter> params;
+    std::map<std::string, baryonyx::parameter> params;
     ctx->set_parameter("limit", 10'000'000l);
     ctx->set_parameter("theta", 0.5);
     ctx->set_parameter("delta", 0.02);
@@ -268,7 +270,7 @@ test_8_queens_puzzle_random_cost(std::shared_ptr<lp::context> ctx)
     ctx->set_parameter("preprocessing", std::string("variables-weight"));
 
     for (int i{ 0 }, e{ 10 }; i != e; ++i) {
-        auto pb = lp::make_problem(ctx, EXAMPLES_DIR "/8_queens_puzzle.lp");
+        auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/8_queens_puzzle.lp");
 
         std::random_device rd;
         std::mt19937 gen(rd());
@@ -277,19 +279,19 @@ test_8_queens_puzzle_random_cost(std::shared_ptr<lp::context> ctx)
         for (auto& elem : pb.objective.elements)
             elem.factor = dis(gen);
 
-        auto result = lp::solve(ctx, pb);
+        auto result = baryonyx::solve(ctx, pb);
 
-        Ensures(result.status == lp::result_status::success);
-        Ensures(lp::is_valid_solution(pb, result.variable_value) == true);
+        Ensures(result.status == baryonyx::result_status::success);
+        Ensures(baryonyx::is_valid_solution(pb, result.variable_value) == true);
     }
 }
 
 void
-test_qap(std::shared_ptr<lp::context> ctx)
+test_qap(std::shared_ptr<baryonyx::context> ctx)
 {
-    auto pb = lp::make_problem(ctx, EXAMPLES_DIR "/small4.lp");
+    auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/small4.lp");
 
-    std::map<std::string, lp::parameter> params;
+    std::map<std::string, baryonyx::parameter> params;
     ctx->set_parameter("limit", 10'000'000l);
     ctx->set_parameter("theta", 0.5);
     ctx->set_parameter("delta", 0.01);
@@ -298,14 +300,14 @@ test_qap(std::shared_ptr<lp::context> ctx)
     ctx->set_parameter("alpha", 0.0);
     ctx->set_parameter("w", 20l);
 
-    auto result = lp::solve(ctx, pb);
-    Ensures(lp::is_valid_solution(pb, result.variable_value) == true);
+    auto result = baryonyx::solve(ctx, pb);
+    Ensures(baryonyx::is_valid_solution(pb, result.variable_value) == true);
 }
 
 int
 main(int /* argc */, char* /* argv */ [])
 {
-    auto ctx = std::make_shared<lp::context>();
+    auto ctx = std::make_shared<baryonyx::context>();
     ctx->set_standard_stream_logger();
 
     test_assignment_problem(ctx);

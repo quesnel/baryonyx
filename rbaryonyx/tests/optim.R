@@ -1,7 +1,7 @@
-library(rilp)
+library(rbaryonyx)
 
 f <- function(x) {
-  r <- rilp::optimize_01lp_problem(file_path="bibd1n.lp",
+  r <- rbaryonyx::optimize_01lp_problem(file_path="bibd1n.lp",
            limit = 8000,
            theta = 0.5,
            delta = 0.01,

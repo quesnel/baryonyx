@@ -20,17 +20,18 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef ORG_VLEPROJECT_LP_LPFORMAT_IO_HPP
-#define ORG_VLEPROJECT_LP_LPFORMAT_IO_HPP
+#ifndef ORG_VLEPROJECT_BARYONYX_SOLVER_LPFORMAT_IO_HPP
+#define ORG_VLEPROJECT_BARYONYX_SOLVER_LPFORMAT_IO_HPP
+
+#include <baryonyx/core>
 
 #include <deque>
 #include <istream>
 #include <limits>
-#include <lpcore>
 #include <ostream>
 #include <unordered_map>
 
-namespace lp {
+namespace baryonyx {
 namespace details {
 
 inline bool
@@ -367,7 +368,7 @@ private:
 
 inline index
 get_variable(std::unordered_map<std::string, long>& cache,
-             lp::variables& vars,
+             baryonyx::variables& vars,
              const std::string& name) noexcept
 {
     auto it = cache.find(name);
@@ -1012,6 +1013,6 @@ private:
 
 } // namespace details
 
-} // namespace lp
+} // namespace baryonyx
 
 #endif

@@ -24,11 +24,11 @@
 #define R_USE_C99_IN_CXX
 #include <Rcpp.h>
 
-#include <lpcore>
+#include <baryonyx/core>
 
 using namespace Rcpp;
 
-class Rcontext : public lp::context::logger
+class Rcontext : public baryonyx::context::logger
 {
 public:
     Rcontext() = default;
@@ -50,29 +50,29 @@ public:
         Rvprintf(format, args);
     }
 
-    void write(lp::context::message_type m,
+    void write(baryonyx::context::message_type m,
                const char* format,
                va_list args) noexcept override final
     {
         switch (m) {
-        case lp::context::message_type::emerg:
+        case baryonyx::context::message_type::emerg:
             Rprintf("lp- System is unusable: ");
             break;
-        case lp::context::message_type::alert:
+        case baryonyx::context::message_type::alert:
             Rprintf("lp- Action must be taken immediately: ");
             break;
-        case lp::context::message_type::crit:
+        case baryonyx::context::message_type::crit:
             Rprintf("lp- critical conditions: ");
             break;
-        case lp::context::message_type::err:
+        case baryonyx::context::message_type::err:
             Rprintf("lp- error conditions: ");
             break;
-        case lp::context::message_type::warning:
+        case baryonyx::context::message_type::warning:
             Rprintf("lp- warning conditions: ");
             break;
-        case lp::context::message_type::notice:
-        case lp::context::message_type::info:
-        case lp::context::message_type::debug:
+        case baryonyx::context::message_type::notice:
+        case baryonyx::context::message_type::info:
+        case baryonyx::context::message_type::debug:
             break;
         }
 
@@ -81,7 +81,7 @@ public:
 };
 
 void
-assign_parameters(std::shared_ptr<lp::context> ctx,
+assign_parameters(std::shared_ptr<baryonyx::context> ctx,
                   long int limit,
                   double theta,
                   double delta,
@@ -149,7 +149,7 @@ assign_parameters(std::shared_ptr<lp::context> ctx,
 //'   - Real: The value [objective_function_min, objective_function_max +
 //'     constraints number].
 //'
-//' @useDynLib rilp
+//' @useDynLib rbaryonyx
 //' @importFrom Rcpp sourceCpp
 //'
 //' @export
@@ -171,14 +171,14 @@ solve_01lp_problem(std::string file_path,
                    bool verbose = true) noexcept
 {
     try {
-        auto ctx = std::make_shared<lp::context>();
+        auto ctx = std::make_shared<baryonyx::context>();
         ctx->set_logger(std::make_unique<Rcontext>());
         ctx->set_log_priority(!verbose ? 6 : 3);
 
-        auto pb = lp::make_problem(ctx, file_path);
-        auto mm = lp::compute_min_max_objective_function(pb);
+        auto pb = baryonyx::make_problem(ctx, file_path);
+        auto mm = baryonyx::compute_min_max_objective_function(pb);
 
-        if (pb.type == lp::objective_function_type::maximize) {
+        if (pb.type == baryonyx::objective_function_type::maximize) {
             std::swap(std::get<0>(mm), std::get<1>(mm));
             std::get<0>(mm) = -std::get<0>(mm);
             std::get<1>(mm) = -std::get<1>(mm);
@@ -198,10 +198,10 @@ solve_01lp_problem(std::string file_path,
                           seed,
                           thread);
 
-        auto result = lp::solve(ctx, pb);
+        auto result = baryonyx::solve(ctx, pb);
 
-        if (result.status == lp::result_status::success) {
-            if (pb.type == lp::objective_function_type::maximize)
+        if (result.status == baryonyx::result_status::success) {
+            if (pb.type == baryonyx::objective_function_type::maximize)
                 return List::create(
                   result.remaining_constraints, result.value, -result.value);
             else
@@ -246,7 +246,7 @@ solve_01lp_problem(std::string file_path,
 //'     - if the problem is a maximization: the inverse of the minimal
 //'       value possible + the number of constraints.
 //'
-//' @useDynLib rilp
+//' @useDynLib rbaryonyx
 //' @importFrom Rcpp sourceCpp
 //'
 //' @export
@@ -274,19 +274,19 @@ optimize_01lp_problem(std::string file_path,
     double ret{ 0 };
 
     try {
-        auto ctx = std::make_shared<lp::context>();
+        auto ctx = std::make_shared<baryonyx::context>();
         ctx->set_logger(std::make_unique<Rcontext>());
         ctx->set_log_priority(verbose ? 6 : 3);
 
-        auto pb = lp::make_problem(ctx, file_path);
-        auto mm = lp::compute_min_max_objective_function(pb);
+        auto pb = baryonyx::make_problem(ctx, file_path);
+        auto mm = baryonyx::compute_min_max_objective_function(pb);
 
-        if (pb.type == lp::objective_function_type::maximize)
+        if (pb.type == baryonyx::objective_function_type::maximize)
             ret = -std::get<0>(mm) + size(pb);
         else
             ret = std::get<1>(mm) + size(pb);
 
-        if (pb.type == lp::objective_function_type::maximize) {
+        if (pb.type == baryonyx::objective_function_type::maximize) {
             std::swap(std::get<0>(mm), std::get<1>(mm));
             std::get<0>(mm) = -std::get<0>(mm);
             std::get<1>(mm) = -std::get<1>(mm);
@@ -312,15 +312,15 @@ optimize_01lp_problem(std::string file_path,
                            pushing_objective_amplifier);
         ctx->set_parameter("pushing-iteration-limit", pushing_iteration_limit);
 
-        auto result = lp::optimize(ctx, pb);
+        auto result = baryonyx::optimize(ctx, pb);
 
-        if (result.status == lp::result_status::success) {
-            if (pb.type == lp::objective_function_type::maximize)
+        if (result.status == baryonyx::result_status::success) {
+            if (pb.type == baryonyx::objective_function_type::maximize)
                 ret = -result.value;
             else
                 ret = result.value;
         } else {
-            if (pb.type == lp::objective_function_type::maximize)
+            if (pb.type == baryonyx::objective_function_type::maximize)
                 ret = -std::get<0>(mm) + result.remaining_constraints;
             else
                 ret = std::get<1>(mm) + result.remaining_constraints;

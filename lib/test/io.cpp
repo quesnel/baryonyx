@@ -21,17 +21,19 @@
  */
 
 #include "unit-test.hpp"
+
 #include <fstream>
 #include <iostream>
-#include <lpcore-compare>
-#include <lpcore-out>
-#include <lpcore>
 #include <map>
 #include <numeric>
 #include <sstream>
 
+#include <baryonyx/core-compare>
+#include <baryonyx/core-out>
+#include <baryonyx/core>
+
 void
-test_examples_1(std::shared_ptr<lp::context> ctx)
+test_examples_1(std::shared_ptr<baryonyx::context> ctx)
 {
     const char* example_1 = "maximize\n"
                             "obj: x1 + 2x2 + 3x3 - 100\n"
@@ -45,10 +47,10 @@ test_examples_1(std::shared_ptr<lp::context> ctx)
 
     std::istringstream iss(example_1);
 
-    auto pb = lp::make_problem(ctx, iss);
-    std::cout << __func__ << '\n' << lp::resume(pb) << '\n';
+    auto pb = baryonyx::make_problem(ctx, iss);
+    std::cout << __func__ << '\n' << baryonyx::resume(pb) << '\n';
 
-    Ensures(pb.type == lp::objective_function_type::maximize);
+    Ensures(pb.type == baryonyx::objective_function_type::maximize);
     Ensures(pb.objective.elements.size() == 3);
     Ensures(pb.objective.elements[0].factor == 1);
     Ensures(pb.objective.elements[0].variable_index == 0);
@@ -103,7 +105,7 @@ test_examples_1(std::shared_ptr<lp::context> ctx)
 }
 
 void
-test_examples_2(std::shared_ptr<lp::context> ctx)
+test_examples_2(std::shared_ptr<baryonyx::context> ctx)
 {
     std::ifstream ifs;
 
@@ -118,8 +120,8 @@ test_examples_2(std::shared_ptr<lp::context> ctx)
         filepath += std::to_string(i);
         filepath += ".lp";
 
-        auto pb = lp::make_problem(ctx, filepath);
-        std::cout << __func__ << '\n' << lp::resume(pb) << '\n';
+        auto pb = baryonyx::make_problem(ctx, filepath);
+        std::cout << __func__ << '\n' << baryonyx::resume(pb) << '\n';
 
         Ensures(pb.vars.names.size() == 16);
         Ensures(pb.vars.values.size() == 16);
@@ -127,52 +129,52 @@ test_examples_2(std::shared_ptr<lp::context> ctx)
         std::stringstream ss;
         ss << pb;
 
-        auto pb2 = lp::make_problem(ctx, ss);
+        auto pb2 = baryonyx::make_problem(ctx, ss);
         Ensures(pb == pb2);
     }
 }
 
 void
-test_examples_3(std::shared_ptr<lp::context> ctx)
+test_examples_3(std::shared_ptr<baryonyx::context> ctx)
 {
     auto pb =
-      lp::make_problem(ctx, EXAMPLES_DIR "/geom-30a-3-ext_1000_support.lp");
-    std::cout << __func__ << '\n' << lp::resume(pb) << '\n';
+      baryonyx::make_problem(ctx, EXAMPLES_DIR "/geom-30a-3-ext_1000_support.lp");
+    std::cout << __func__ << '\n' << baryonyx::resume(pb) << '\n';
 
-    Ensures(pb.type == lp::objective_function_type::minimize);
+    Ensures(pb.type == baryonyx::objective_function_type::minimize);
     Ensures(pb.vars.names.size() == 819);
     Ensures(pb.vars.values.size() == 819);
 
-    lp::index nb{ 0 };
+    baryonyx::index nb{ 0 };
     for (auto& elem : pb.vars.values)
-        if (elem.type == lp::variable_type::binary)
+        if (elem.type == baryonyx::variable_type::binary)
             ++nb;
 
     Ensures(nb == 90);
 }
 
 void
-test_examples_4(std::shared_ptr<lp::context> ctx)
+test_examples_4(std::shared_ptr<baryonyx::context> ctx)
 {
-    auto pb = lp::make_problem(ctx, EXAMPLES_DIR "/general.lp");
-    std::cout << __func__ << '\n' << lp::resume(pb) << '\n';
+    auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/general.lp");
+    std::cout << __func__ << '\n' << baryonyx::resume(pb) << '\n';
 
-    Ensures(pb.type == lp::objective_function_type::minimize);
+    Ensures(pb.type == baryonyx::objective_function_type::minimize);
     Ensures(pb.vars.names.size() == 3);
     Ensures(pb.vars.values.size() == 3);
 
-    lp::index nb{ 0 };
+    baryonyx::index nb{ 0 };
     for (auto& elem : pb.vars.values)
-        if (elem.type == lp::variable_type::general)
+        if (elem.type == baryonyx::variable_type::general)
             ++nb;
 
     Ensures(nb == 3);
 }
 
 void
-test_examples_sudoku(std::shared_ptr<lp::context> ctx)
+test_examples_sudoku(std::shared_ptr<baryonyx::context> ctx)
 {
-    auto pb = lp::make_problem(ctx, EXAMPLES_DIR "/sudoku.lp");
+    auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/sudoku.lp");
 
     Ensures(pb.vars.names.size() == 81);
     Ensures(pb.vars.values.size() == 81);
@@ -182,16 +184,16 @@ test_examples_sudoku(std::shared_ptr<lp::context> ctx)
         Ensures(vv.max == 9);
         Ensures(vv.min_equal == true);
         Ensures(vv.max_equal == true);
-        Ensures(vv.type == lp::variable_type::general);
+        Ensures(vv.type == baryonyx::variable_type::general);
     }
 
-    std::cout << __func__ << '\n' << lp::resume(pb) << '\n';
+    std::cout << __func__ << '\n' << baryonyx::resume(pb) << '\n';
 }
 
 void
-test_examples_8_queens_puzzle(std::shared_ptr<lp::context> ctx)
+test_examples_8_queens_puzzle(std::shared_ptr<baryonyx::context> ctx)
 {
-    auto pb = lp::make_problem(ctx, EXAMPLES_DIR "/8_queens_puzzle.lp");
+    auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/8_queens_puzzle.lp");
 
     Ensures(pb.vars.names.size() == 64);
     Ensures(pb.vars.values.size() == 64);
@@ -201,32 +203,32 @@ test_examples_8_queens_puzzle(std::shared_ptr<lp::context> ctx)
         Ensures(vv.max == 1);
         Ensures(vv.min_equal == true);
         Ensures(vv.max_equal == true);
-        Ensures(vv.type == lp::variable_type::binary);
+        Ensures(vv.type == baryonyx::variable_type::binary);
     }
 
-    std::cout << __func__ << '\n' << lp::resume(pb) << '\n';
+    std::cout << __func__ << '\n' << baryonyx::resume(pb) << '\n';
 }
 
 void
-test_examples_vm(std::shared_ptr<lp::context> ctx)
+test_examples_vm(std::shared_ptr<baryonyx::context> ctx)
 {
-    auto pb = lp::make_problem(ctx, EXAMPLES_DIR "/vm.lp");
+    auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/vm.lp");
 
-    std::cout << __func__ << '\n' << lp::resume(pb) << '\n';
+    std::cout << __func__ << '\n' << baryonyx::resume(pb) << '\n';
 }
 
 void
-test_verger_5_5(std::shared_ptr<lp::context> ctx)
+test_verger_5_5(std::shared_ptr<baryonyx::context> ctx)
 {
-    auto pb = lp::make_problem(ctx, EXAMPLES_DIR "/verger_5_5.lp");
+    auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/verger_5_5.lp");
 
-    std::cout << __func__ << '\n' << lp::resume(pb) << '\n';
+    std::cout << __func__ << '\n' << baryonyx::resume(pb) << '\n';
 }
 
 int
 main(int /* argc */, char* /* argv */ [])
 {
-    auto ctx = std::make_shared<lp::context>();
+    auto ctx = std::make_shared<baryonyx::context>();
     ctx->set_standard_stream_logger();
 
     test_examples_1(ctx);

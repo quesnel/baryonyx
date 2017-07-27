@@ -20,16 +20,17 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef ORG_VLEPROJECT_LP_MITM_HPP
-#define ORG_VLEPROJECT_LP_MITM_HPP
+#ifndef ORG_VLEPROJECT_BARYONYX_SOLVER_MITM_HPP
+#define ORG_VLEPROJECT_BARYONYX_SOLVER_MITM_HPP
 
-#include <lpcore>
+#include <baryonyx/core>
 
-namespace lp {
+namespace baryonyx {
 
-result mitm_solve(std::shared_ptr<lp::context> ctx, problem& pb);
+result mitm_solve(std::shared_ptr<context> ctx, problem& pb);
 
-result mitm_optimize(std::shared_ptr<lp::context> ctx, problem& pb);
+result mitm_optimize(std::shared_ptr<context> ctx, problem& pb);
+
 }
 
 #endif

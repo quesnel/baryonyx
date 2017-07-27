@@ -20,37 +20,39 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+#include <baryonyx/core>
+#include <baryonyx/core-compare>
+
+#include <iterator>
+
 #include "mitm.hpp"
 #include "generalized-wedelin.hpp"
 #include "inequalities-1coeff.hpp"
 #include "utils.hpp"
 #include "wedelin.hpp"
 
-#include <iterator>
-#include <lpcore-compare>
-
-namespace lp {
+namespace baryonyx {
 
 /**
  * Get number of thread to use in optimizer from parameters list. If an
  * error occured, this function returns 1.
  *
- * @param ctx An `lp::context` where parameter "thread" is trying to be read.
+ * @param ctx An `baryonyx::context` where parameter "thread" is trying to be read.
  *
  * @return An integer >= 1 if the value exist and can be convert to
  * positive integer or 1 if an error occurred.
  */
 inline long int
-get_thread_number(std::shared_ptr<lp::context>& ctx) noexcept
+get_thread_number(std::shared_ptr<baryonyx::context>& ctx) noexcept
 {
     auto t = ctx->get_integer_parameter("thread",
                                         std::thread::hardware_concurrency());
 
-    return t <= 0 ? 1 : lp::numeric_cast<long int>(t);
+    return t <= 0 ? 1 : baryonyx::numeric_cast<long int>(t);
 }
 
 std::tuple<double, double, double, long>
-get_parameters(std::shared_ptr<lp::context>& ctx) noexcept
+get_parameters(std::shared_ptr<baryonyx::context>& ctx) noexcept
 {
     auto kappa = ctx->get_real_parameter("kappa", 0.001);
     auto theta = ctx->get_real_parameter("theta", 0.001);
@@ -143,7 +145,7 @@ cleanup_function_element(functionT fct, long int& nb)
 }
 
 void
-cleanup_problem(std::shared_ptr<lp::context> ctx, problem& pb)
+cleanup_problem(std::shared_ptr<baryonyx::context> ctx, problem& pb)
 {
     ctx->info("* cleaning problem definition:\n");
 
@@ -169,7 +171,7 @@ cleanup_problem(std::shared_ptr<lp::context> ctx, problem& pb)
 }
 
 result
-mitm_solve(std::shared_ptr<lp::context> ctx, problem& pb)
+mitm_solve(std::shared_ptr<baryonyx::context> ctx, problem& pb)
 {
     cleanup_problem(ctx, pb);
 
@@ -179,7 +181,7 @@ mitm_solve(std::shared_ptr<lp::context> ctx, problem& pb)
         is_boolean_coefficient(pb.equal_constraints) and
         is_boolean_variable(pb.vars.values)) {
 
-        return lp::inequalities_1coeff_wedelin_solve(ctx, pb);
+        return baryonyx::inequalities_1coeff_wedelin_solve(ctx, pb);
     }
 
     if ((not pb.equal_constraints.empty() or
@@ -201,7 +203,7 @@ mitm_solve(std::shared_ptr<lp::context> ctx, problem& pb)
             is_101_coefficient(pb.less_equal_constraints) and
             is_boolean_variable(pb.vars.values)) {
 
-            return lp::inequalities_1coeff_wedelin_solve(ctx, pb);
+            return baryonyx::inequalities_1coeff_wedelin_solve(ctx, pb);
         }
     }
 
@@ -216,14 +218,14 @@ mitm_solve(std::shared_ptr<lp::context> ctx, problem& pb)
 
         std::tie(kappa, delta, theta, limit) = get_parameters(ctx);
 
-        return lp::generalized_wedelin(kappa, delta, theta, limit, pb);
+        return baryonyx::generalized_wedelin(kappa, delta, theta, limit, pb);
     }
 
-    throw lp::solver_failure(solver_error_tag::no_solver_available);
+    throw baryonyx::solver_failure(solver_error_tag::no_solver_available);
 }
 
 result
-mitm_optimize(std::shared_ptr<lp::context> ctx, problem& pb)
+mitm_optimize(std::shared_ptr<baryonyx::context> ctx, problem& pb)
 {
     auto thread = get_thread_number(ctx);
     cleanup_problem(ctx, pb);
@@ -234,7 +236,7 @@ mitm_optimize(std::shared_ptr<lp::context> ctx, problem& pb)
         is_boolean_coefficient(pb.equal_constraints) and
         is_boolean_variable(pb.vars.values)) {
 
-        return lp::inequalities_1coeff_wedelin_optimize(ctx, pb, thread);
+        return baryonyx::inequalities_1coeff_wedelin_optimize(ctx, pb, thread);
     }
 
     if ((not pb.equal_constraints.empty() or
@@ -255,7 +257,7 @@ mitm_optimize(std::shared_ptr<lp::context> ctx, problem& pb)
             is_101_coefficient(pb.less_equal_constraints) and
             is_boolean_variable(pb.vars.values)) {
 
-            return lp::inequalities_1coeff_wedelin_optimize(ctx, pb, thread);
+            return baryonyx::inequalities_1coeff_wedelin_optimize(ctx, pb, thread);
         }
     }
 
@@ -270,10 +272,10 @@ mitm_optimize(std::shared_ptr<lp::context> ctx, problem& pb)
 
         std::tie(kappa, delta, theta, limit) = get_parameters(ctx);
 
-        return lp::generalized_wedelin(kappa, delta, theta, limit, pb);
+        return baryonyx::generalized_wedelin(kappa, delta, theta, limit, pb);
     }
 
-    throw lp::solver_failure(solver_error_tag::no_solver_available);
+    throw baryonyx::solver_failure(solver_error_tag::no_solver_available);
 }
 
-} // namespace lp
+} // namespace baryonyx
