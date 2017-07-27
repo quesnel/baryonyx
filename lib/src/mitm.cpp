@@ -26,8 +26,6 @@
 #include "utils.hpp"
 #include "wedelin.hpp"
 
-#include <Eigen/Core>
-
 #include <iterator>
 #include <lpcore-compare>
 
@@ -128,7 +126,7 @@ cleanup_function_element(functionT fct, long int& nb)
 
     while (it != end) {
         if (it->variable_index == prev->variable_index) {
-            assert(ret.back().variable_index == it->variable_index);
+            Expects(ret.back().variable_index == it->variable_index);
             ret.back().factor += it->factor;
         } else {
             prev = it;
