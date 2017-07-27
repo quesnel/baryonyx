@@ -14,7 +14,7 @@ else()
     "spport. Please use a different C++ compiler.")
 endif()
 
-target_link_libraries(app liblp eigen3 threads)
+target_link_libraries(app liblp threads)
 
 set_target_properties(app PROPERTIES
   OUTPUT_NAME "lp-${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}")

@@ -9,7 +9,7 @@ target_include_directories(liblp PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>
   PRIVATE src ${CMAKE_BINARY_DIR})
-target_link_libraries(liblp eigen3 threads)
+target_link_libraries(liblp threads)
 set_target_properties(liblp PROPERTIES
   OUTPUT_NAME "lp-${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}"
   COMPILE_DEFINITIONS "LP_DLL"
@@ -32,7 +32,7 @@ target_include_directories(liblp-static PRIVATE
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>
   src ${CMAKE_BINARY_DIR})
-target_link_libraries(liblp-static eigen3 threads)
+target_link_libraries(liblp-static threads)
 set_target_properties(liblp-static PROPERTIES
   POSITION_INDEPENDENT_CODE true
   OUTPUT_NAME "lp-${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}"
@@ -102,7 +102,7 @@ target_include_directories(testio PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>
   PRIVATE src)
-target_link_libraries(testio liblp eigen3 threads)
+target_link_libraries(testio liblp threads)
 add_test(testio testio)
 
 add_executable(testlib test/lib.cpp)
@@ -112,7 +112,7 @@ target_include_directories(testlib PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>
   PRIVATE src)
-target_link_libraries(testlib liblp eigen3 threads)
+target_link_libraries(testlib liblp threads)
 add_test(testlib testlib)
 
 add_executable(testsolver test/solve.cpp)
@@ -122,7 +122,7 @@ target_include_directories(testsolver PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>
   PRIVATE src)
-target_link_libraries(testsolver liblp eigen3 threads)
+target_link_libraries(testsolver liblp threads)
 add_test(testsolver testsolver)
 
 add_executable(testoptimizer test/optimize.cpp)
@@ -132,5 +132,5 @@ target_include_directories(testoptimizer PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>
   PRIVATE src)
-target_link_libraries(testoptimizer liblp eigen3 threads)
+target_link_libraries(testoptimizer liblp threads)
 add_test(testoptimizer testoptimizer)
