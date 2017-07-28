@@ -1,13 +1,4 @@
-- bounds: corret syntax are:
-  - [variable] [operator] [value]
-  - [value] [operator] variable [operator] [value].
-
-- check line/column.
-
-- replace map<tuple<...>, string> in problem with a vector<string>. If no
-  constraint names are specified, CPLEX assigns the names c1, c2, c3, etc.
-
-- main.cpp: replace the kappa, delta and theta parameter with a more generic
-  system
-
-- Remove the boost dependency.
+- Add the default algorithm (binary and equalities)
+- Add the integer algorithm (integer and inequalities)
+- Provides a cuda implementation of the binary and inequalities
+  solver.
