@@ -25,8 +25,8 @@ solve_lp <- function(x, file_path, thread=1, limit=10000, time_limit=10) {
   delta <- x["delta"]
   constraint_order <- x["constraint_order"]
   kappa_min <- x["kappa_min"]
-  kappa_step <- x["kappa_step"] 
-  kappa_max <- x["kappa_max"] 
+  kappa_step <- x["kappa_step"]
+  kappa_max <- x["kappa_max"]
   alpha <- x["alpha"]
   w <- x["w"]
 
@@ -57,8 +57,8 @@ plot(morrisDesign)
 
 
 ##
-## Try to search optimal parameteres for the verger_10_10-opt.lp 
-## 
+## Try to search optimal parameteres for the verger_10_10-opt.lp
+##
 ##
 
 library(rbaryonyx)
@@ -67,10 +67,14 @@ library(sensitivity)
 factors=c("theta", "delta", "kappa_min",
                    "kappa_step")
 
-bounds = data.frame(min=c(0.3, 0.0001, 0.10, 1e-10),
-                    max=c(  1, 0.1,    0.25, 1e-3))
+# optimizer returns: 3980.000000 (kappa: 0.118947 0.000000 5.000000
+#                                 delta: 0.003226 theta: 0.800000)
 
-rownames(bounds) <- factors
+
+bounds = data.frame(min=c(0.5, 0.0005, 0.10, 1e-7),
+                    max=c(0.9, 0.001, 0.15, 9e-7))
+
+rownames(bounds) <- factorsq
 
 morrisDesign <- morris(model = NULL,
                 factors = factors,
@@ -80,11 +84,11 @@ morrisDesign <- morris(model = NULL,
                 bsup = bounds$max,
                 scale=TRUE)
 
-solve_lp <- function(x, file_path, thread=1, limit=10000, time_limit=10) {
+solve_lp <- function(x, file_path, thread=1, limit=40000, time_limit=30) {
   theta <- x["theta"]
   delta <- x["delta"]
   kappa_min <- x["kappa_min"]
-  kappa_step <- x["kappa_step"] 
+  kappa_step <- x["kappa_step"]
 
   r <- rbaryonyx::optimize_01lp_problem(file_path = file_path,
            limit = limit,
@@ -93,7 +97,7 @@ solve_lp <- function(x, file_path, thread=1, limit=10000, time_limit=10) {
            constraint_order = 1,
            kappa_min = kappa_min,
            kappa_step = kappa_step,
-           kappa_max = 1.0,
+           kappa_max = 5.0,
            alpha = 1.0,
            w = 60,
            time_limit = time_limit,
