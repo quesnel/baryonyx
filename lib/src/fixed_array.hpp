@@ -345,9 +345,8 @@ template<class T>
 void
 fixed_array<T>::swap(fixed_array& other) noexcept
 {
-    auto tmp = other.m_buffer;
-    other.m_buffer = tmp;
-    m_buffer = tmp;
+    std::swap(m_buffer, other.m_buffer);
+    std::swap(m_length, other.m_length);
 }
 
 template<class T>

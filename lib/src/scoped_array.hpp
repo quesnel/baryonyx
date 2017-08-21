@@ -152,9 +152,7 @@ template<class T>
 void
 scoped_array<T>::swap(scoped_array& other) noexcept
 {
-    auto tmp = other.m_buffer;
-    other.m_buffer = tmp;
-    m_buffer = tmp;
+    std::swap(m_buffer, other.m_buffer);
 }
 
 template<class T>
