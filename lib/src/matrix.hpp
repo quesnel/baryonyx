@@ -33,12 +33,14 @@
 namespace baryonyx {
 
 /**
- * An \e SparseArray defined a two-dimensional template array. Informations are
- * stored into a \e std::vector<T> and accessors to the sparse array use \e
- * std::vector<access>.
+ * @brief A specfic class to store A and P sparse matrices.
  *
- * \tparam A_T Type of element of matrix A.
- * \tparam P_T Type of element of matrix P.
+ * The @c SparseArray defined a two-dimensional template array to access A
+ *     and P matrices. A and P data are stored into a @e std::vector<T>
+ *     and accessors to the sparse array use @e std::vector<access>.
+ *
+ * @tparam A_T Type of element of matrix A.
+ * @tparam P_T Type of element of matrix P.
  */
 template <typename A_T, typename P_T>
 class SparseArray
@@ -96,13 +98,11 @@ protected:
     std::vector<p_type> m_p;
 
 public:
-    /** TODO remove the default constructor. */
-    SparseArray() noexcept;
-
     /** TODO merge this constructor with the reserve function to avoid
      * reserve() forget.
      */
     explicit SparseArray(index_type rows, index_type cols);
+    SparseArray() = delete;
 
     ~SparseArray() = default;
 
@@ -162,16 +162,9 @@ private:
 };
 
 template <typename A_T, typename P_T>
-SparseArray<A_T, P_T>::SparseArray() noexcept
-{
-}
-
-template <typename A_T, typename P_T>
 SparseArray<A_T, P_T>::SparseArray(index_type rows, index_type cols)
   : m_rows_access(rows, -1)
   , m_cols_access(cols, -1)
-  , m_rows(rows)
-  , m_cols(cols)
 {
 }
 
@@ -361,6 +354,7 @@ SparseArray<A_T, P_T>::reserve(index_type elem,
 {
     m_a.reserve(elem);
     m_p.reserve(elem);
+
     m_rows.resize(elem);
     m_cols.resize(elem);
 
