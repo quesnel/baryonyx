@@ -28,6 +28,7 @@
 #include <stdexcept>
 #include <vector>
 
+#include "fixed_array.hpp"
 #include "utils.hpp"
 
 namespace baryonyx {
@@ -85,23 +86,21 @@ public:
     };
 
     using size_type = std::size_t;
-    using iterator = typename std::vector<access>::iterator;
-    using const_iterator = typename std::vector<access>::const_iterator;
+    using iterator = typename fixed_array<access>::iterator;
+    using const_iterator = typename fixed_array<access>::const_iterator;
 
 protected:
-    std::vector<int> m_rows_access;
-    std::vector<int> m_cols_access;
-    std::vector<access> m_rows;
-    std::vector<access> m_cols;
+    fixed_array<int> m_rows_access;
+    fixed_array<int> m_cols_access;
+    fixed_array<access> m_rows;
+    fixed_array<access> m_cols;
 
     std::vector<a_type> m_a;
     std::vector<p_type> m_p;
 
 public:
-    /** TODO merge this constructor with the reserve function to avoid
-     * reserve() forget.
-     */
     explicit SparseArray(index_type rows, index_type cols);
+
     SparseArray() = delete;
 
     ~SparseArray() = default;
@@ -221,7 +220,7 @@ SparseArray<A_T, P_T>::row(index_type row) const noexcept
 {
     m_check_index(row, 0);
 
-    const_iterator begin = m_rows.begin() + m_rows_access[row];
+    const_iterator begin = std::next(m_rows.begin(), m_rows_access[row]);
 
     if (static_cast<std::size_t>(row + 1) < m_rows_access.size())
         return std::make_tuple(
@@ -355,8 +354,8 @@ SparseArray<A_T, P_T>::reserve(index_type elem,
     m_a.reserve(elem);
     m_p.reserve(elem);
 
-    m_rows.resize(elem);
-    m_cols.resize(elem);
+    fixed_array<access>(elem).swap(m_rows);
+    fixed_array<access>(elem).swap(m_cols);
 
     for (index i{ 0 }, current{ 0 }; row_begin != row_end; ++row_begin, ++i) {
         m_rows_access[i] = current;
