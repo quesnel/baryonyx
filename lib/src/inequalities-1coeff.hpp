@@ -395,7 +395,7 @@ struct constraint_calculator
 
             //
             // We don't need to represent the I vector since the SparseArray
-            // stores non null coefficient in each row (and column).
+            // stores no null coefficient in each row (and column).
             // I.emplace_back(ak[i].position);
             //
 
@@ -405,6 +405,32 @@ struct constraint_calculator
             if (va[it->value] < 0)
                 C[C_idx++] = it->position;
         }
+    }
+
+    bool is_valid_solution(index k) const noexcept
+    {
+        int v{ 0 };
+        auto ak{ ap.row(k) };
+        const auto& values{ ap.A() };
+
+        for (; std::get<0>(ak) != std::get<1>(ak); ++std::get<0>(ak))
+            v += values[std::get<0>(ak)->value] * x(std::get<0>(ak)->position);
+
+        if (not(b(k).min <= v and v <= b(k).max))
+            return false;
+
+        return true;
+    }
+
+    void serialize(index k, std::ostream& os) const noexcept
+    {
+        os << "c " << k << ':'
+           << (is_valid_solution(k) ? "valid" : "violated:");
+
+        for (auto elem : r)
+            os << elem.id << '[' << elem.value << "] ";
+
+        os << '\n';
     }
 
     /**
@@ -1024,7 +1050,7 @@ struct solver
                 v += values[std::get<0>(ak)->value] *
                      x(std::get<0>(ak)->position);
 
-            if (not(b(0, k) <= v and v <= b(1, k)))
+            if (not(b(k).min <= v and v <= b(k).max))
                 vec.push_back(k);
         }
 
@@ -1526,6 +1552,7 @@ struct solver_functor
         m_begin = std::chrono::steady_clock::now();
         m_end = m_begin;
 
+        long int serialize_id{ 0 };
         long int i{ 0 };
         long int i2{ 0 };
         double kappa_old{ 0 };
@@ -1558,6 +1585,15 @@ struct solver_functor
                             current.constraints,
                             current.duration);
             }
+
+#ifndef LP_FULL_OPTIMIZATION
+            if (p.serialize) {
+                std::string filename = stringf("out-%ld.dump", serialize_id++);
+                std::ofstream ofs(filename);
+                if (ofs.is_open())
+                    slv.serialize(ofs);
+            }
+#endif
 
             if (current.status == result_status::success) {
                 m_ctx->info("  - Solution found: %f\n", current.value);
