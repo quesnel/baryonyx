@@ -36,7 +36,8 @@
 void
 test_assignment_problem(std::shared_ptr<baryonyx::context> ctx)
 {
-    auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/assignment_problem_1.lp");
+    auto pb =
+      baryonyx::make_problem(ctx, EXAMPLES_DIR "/assignment_problem_1.lp");
     ctx->set_parameter("limit", 50l);
 
     auto result = baryonyx::solve(ctx, pb);
@@ -70,7 +71,8 @@ test_assignment_problem_random_coast(std::shared_ptr<baryonyx::context> ctx)
         auto result = baryonyx::solve(ctx, pb);
 
         Ensures(result.status == baryonyx::result_status::success);
-        Ensures(baryonyx::is_valid_solution(pb, result.variable_value) == true);
+        Ensures(baryonyx::is_valid_solution(pb, result.variable_value) ==
+                true);
     }
 }
 
@@ -178,7 +180,8 @@ test_uf50_0448(std::shared_ptr<baryonyx::context> ctx)
 void
 test_aim_50_1_6_yes1_2(std::shared_ptr<baryonyx::context> ctx)
 {
-    auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/aim-50-1_6-yes1-2.lp");
+    auto pb =
+      baryonyx::make_problem(ctx, EXAMPLES_DIR "/aim-50-1_6-yes1-2.lp");
 
     ctx->set_parameter("limit", 10'000'000'000l);
     ctx->set_parameter("theta", 0.6);
@@ -270,7 +273,8 @@ test_8_queens_puzzle_random_cost(std::shared_ptr<baryonyx::context> ctx)
     ctx->set_parameter("preprocessing", std::string("variables-weight"));
 
     for (int i{ 0 }, e{ 10 }; i != e; ++i) {
-        auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/8_queens_puzzle.lp");
+        auto pb =
+          baryonyx::make_problem(ctx, EXAMPLES_DIR "/8_queens_puzzle.lp");
 
         std::random_device rd;
         std::mt19937 gen(rd());
@@ -282,7 +286,8 @@ test_8_queens_puzzle_random_cost(std::shared_ptr<baryonyx::context> ctx)
         auto result = baryonyx::solve(ctx, pb);
 
         Ensures(result.status == baryonyx::result_status::success);
-        Ensures(baryonyx::is_valid_solution(pb, result.variable_value) == true);
+        Ensures(baryonyx::is_valid_solution(pb, result.variable_value) ==
+                true);
     }
 }
 

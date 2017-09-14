@@ -8,3 +8,4 @@ rbaryonyx/src/rbaryonyx.o
 rbaryonyx/src/rbaryonyx.so
 rbaryonyx/src/symbols.rds
 rbaryonyx_*.tar.gz
+.dir-locals.el

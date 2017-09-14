@@ -558,7 +558,6 @@ generalized_wedelin(double /* kappa */,
 
     return baryonyx::result{};
 }
-
 }
 
 #endif

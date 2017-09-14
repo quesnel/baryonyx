@@ -20,14 +20,14 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <baryonyx/core>
 #include <baryonyx/core-compare>
+#include <baryonyx/core>
 
 #include <iterator>
 
-#include "mitm.hpp"
 #include "generalized-wedelin.hpp"
 #include "inequalities-1coeff.hpp"
+#include "mitm.hpp"
 #include "utils.hpp"
 #include "wedelin.hpp"
 
@@ -37,7 +37,8 @@ namespace baryonyx {
  * Get number of thread to use in optimizer from parameters list. If an
  * error occured, this function returns 1.
  *
- * @param ctx An `baryonyx::context` where parameter "thread" is trying to be read.
+ * @param ctx An `baryonyx::context` where parameter "thread" is trying to be
+ * read.
  *
  * @return An integer >= 1 if the value exist and can be convert to
  * positive integer or 1 if an error occurred.
@@ -257,7 +258,8 @@ mitm_optimize(std::shared_ptr<baryonyx::context> ctx, problem& pb)
             is_101_coefficient(pb.less_equal_constraints) and
             is_boolean_variable(pb.vars.values)) {
 
-            return baryonyx::inequalities_1coeff_wedelin_optimize(ctx, pb, thread);
+            return baryonyx::inequalities_1coeff_wedelin_optimize(
+              ctx, pb, thread);
         }
     }
 

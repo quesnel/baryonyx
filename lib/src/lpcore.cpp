@@ -542,7 +542,8 @@ context::error(const char*, va_list) const noexcept
 #endif
 
 problem
-make_problem(std::shared_ptr<baryonyx::context> ctx, const std::string& filename)
+make_problem(std::shared_ptr<baryonyx::context> ctx,
+             const std::string& filename)
 {
     ctx->info("problem read from file `%s'\n", filename.c_str());
 

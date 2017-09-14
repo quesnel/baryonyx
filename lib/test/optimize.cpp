@@ -31,8 +31,8 @@
 
 #include <baryonyx/core-compare>
 #include <baryonyx/core-out>
-#include <baryonyx/core>
 #include <baryonyx/core-test>
+#include <baryonyx/core>
 
 void
 test_qap(std::shared_ptr<baryonyx::context> ctx)
@@ -62,8 +62,10 @@ test_qap(std::shared_ptr<baryonyx::context> ctx)
     if (result.status == baryonyx::result_status::success) {
         auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/small4.lp");
 
-        Ensures(baryonyx::is_valid_solution(pb, result.variable_value) == true);
-        Ensures(baryonyx::compute_solution(pb, result.variable_value) == 790.0);
+        Ensures(baryonyx::is_valid_solution(pb, result.variable_value) ==
+                true);
+        Ensures(baryonyx::compute_solution(pb, result.variable_value) ==
+                790.0);
     }
 }
 

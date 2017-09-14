@@ -37,7 +37,7 @@ namespace baryonyx {
  *
  * @note The length is not stored into this containter.
  */
-template<typename T>
+template <typename T>
 class scoped_array
 {
 public:
@@ -89,73 +89,73 @@ public:
     void swap(scoped_array& other) noexcept;
 };
 
-template<class T>
+template <class T>
 scoped_array<T>::scoped_array(std::size_t n)
   : m_buffer{ std::make_unique<T[]>(n) }
 {
 }
 
-template<class T>
+template <class T>
 scoped_array<T>::scoped_array(std::size_t n, const value_type& def)
   : m_buffer{ std::make_unique<T[]>(n) }
 {
     std::fill(m_buffer.get(), m_buffer.get() + n, def);
 }
 
-template<class T>
+template <class T>
 T& scoped_array<T>::operator[](std::ptrdiff_t i) noexcept
 {
     return m_buffer[i];
 }
 
-template<class T>
+template <class T>
 const T& scoped_array<T>::operator[](std::ptrdiff_t i) const noexcept
 {
     return m_buffer[i];
 }
 
-template<class T>
+template <class T>
 T&
 scoped_array<T>::operator()(std::ptrdiff_t i) noexcept
 {
     return m_buffer[i];
 }
 
-template<class T>
+template <class T>
 const T&
 scoped_array<T>::operator()(std::ptrdiff_t i) const noexcept
 {
     return m_buffer[i];
 }
 
-template<class T>
+template <class T>
 T*
 scoped_array<T>::data() noexcept
 {
     return m_buffer.get();
 }
 
-template<class T>
+template <class T>
 const T*
 scoped_array<T>::data() const noexcept
 {
     return m_buffer.get();
 }
 
-template<class T>
+template <class T>
 scoped_array<T>::operator bool() const noexcept
 {
     return m_buffer.get() != nullptr;
 }
 
-template<class T>
+template <class T>
 void
 scoped_array<T>::swap(scoped_array& other) noexcept
 {
     std::swap(m_buffer, other.m_buffer);
 }
 
-template<class T>
+template <class T>
 constexpr inline void
 swap(scoped_array<T>& lhs, scoped_array<T>& rhs) noexcept
 {

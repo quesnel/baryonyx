@@ -30,7 +30,6 @@ namespace baryonyx {
 result mitm_solve(std::shared_ptr<context> ctx, problem& pb);
 
 result mitm_optimize(std::shared_ptr<context> ctx, problem& pb);
-
 }
 
 #endif

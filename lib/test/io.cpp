@@ -137,8 +137,8 @@ test_examples_2(std::shared_ptr<baryonyx::context> ctx)
 void
 test_examples_3(std::shared_ptr<baryonyx::context> ctx)
 {
-    auto pb =
-      baryonyx::make_problem(ctx, EXAMPLES_DIR "/geom-30a-3-ext_1000_support.lp");
+    auto pb = baryonyx::make_problem(
+      ctx, EXAMPLES_DIR "/geom-30a-3-ext_1000_support.lp");
     std::cout << __func__ << '\n' << baryonyx::resume(pb) << '\n';
 
     Ensures(pb.type == baryonyx::objective_function_type::minimize);

@@ -63,20 +63,25 @@ check_numeric_cast()
     Ensures(baryonyx::is_numeric_castable<long long>(large_negative));
 
     Ensures(baryonyx::is_numeric_castable<unsigned long long>(small_positive));
-    Ensures(not baryonyx::is_numeric_castable<unsigned long long>(small_negative));
+    Ensures(
+      not baryonyx::is_numeric_castable<unsigned long long>(small_negative));
     Ensures(baryonyx::is_numeric_castable<unsigned long long>(large_positive));
-    Ensures(not baryonyx::is_numeric_castable<unsigned long long>(large_negative));
+    Ensures(
+      not baryonyx::is_numeric_castable<unsigned long long>(large_negative));
 
     Ensures(not baryonyx::is_numeric_castable<size_t>(small_negative));
     Ensures(not baryonyx::is_numeric_castable<size_t>(large_negative));
 
     std::vector<int> v;
 
-    EnsuresNotThrow(baryonyx::numeric_cast<short int>(v.size()), std::exception);
+    EnsuresNotThrow(baryonyx::numeric_cast<short int>(v.size()),
+                    std::exception);
 
-    EnsuresNotThrow(baryonyx::numeric_cast<short int>(v.capacity()), std::exception);
+    EnsuresNotThrow(baryonyx::numeric_cast<short int>(v.capacity()),
+                    std::exception);
 
-    EnsuresThrow(baryonyx::numeric_cast<short int>(v.max_size()), std::exception);
+    EnsuresThrow(baryonyx::numeric_cast<short int>(v.max_size()),
+                 std::exception);
 
     unsigned int checked_size = baryonyx::numeric_cast<unsigned int>(v.size());
     Ensures(0 == checked_size);
