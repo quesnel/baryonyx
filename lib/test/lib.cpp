@@ -27,6 +27,7 @@
 
 #include <baryonyx/core>
 
+#include <functional>
 #include <numeric>
 
 void

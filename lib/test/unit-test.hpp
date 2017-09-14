@@ -26,14 +26,14 @@
 #include <cstdio>
 #include <cstdlib>
 
-#ifdef __unix__
+#ifndef __WIN32
 #include <unistd.h>
 #endif
 
 namespace unit_test {
 namespace detail {
 
-#ifdef __unix__
+#ifndef __WIN32
 inline bool
 have_color() noexcept
 {
@@ -41,9 +41,9 @@ have_color() noexcept
 }
 #else
 inline bool
-have_color()
+have_color() noexcept
 {
-    noexcept return false;
+    return false;
 }
 #endif
 

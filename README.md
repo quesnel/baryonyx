@@ -1,5 +1,7 @@
 # Baryonyx-0.1
 
+[![Build Status](https://travis-ci.org/quesnel/baryonyx.png?branch=master)](https://travis-ci.org/quesnel/baryonyx)
+
 [Baryonyx](https://en.wikipedia.org/wiki/Baryonyx) is an integer and
 binary linear programming solver based on
 the [Dag Wedelin](http://www.cse.chalmers.se/~dag/) heuristic.

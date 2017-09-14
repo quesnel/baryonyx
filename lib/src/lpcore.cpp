@@ -36,7 +36,7 @@
 #include <cstdio>
 #include <cstring>
 
-#ifdef __unix__
+#ifndef _WIN32
 #include <getopt.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -150,7 +150,7 @@ public:
                const char* format,
                va_list args) noexcept override
     {
-#ifdef __unix__
+#ifndef __WIN32
         if (::isatty(STDOUT_FILENO)) {
             switch (m) {
             case context::message_type::emerg:

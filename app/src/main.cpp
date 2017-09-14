@@ -28,9 +28,10 @@
 #include <limits>
 #include <sstream>
 
+#include <cmath>
 #include <cstring>
 
-#ifdef __unix__
+#ifndef __WIN32
 #include <unistd.h>
 #endif
 
@@ -40,7 +41,7 @@ const char* problem_definition_error_format(
 const char* solver_error_format(baryonyx::solver_error_tag) noexcept;
 
 baryonyx::result solve_or_optimize(std::shared_ptr<baryonyx::context> ctx,
-                             baryonyx::problem& pb);
+                                   baryonyx::problem& pb);
 
 int
 main(int argc, char* argv[])
@@ -208,7 +209,8 @@ solver_error_format(baryonyx::solver_error_tag failure) noexcept
 }
 
 baryonyx::result
-solve_or_optimize(std::shared_ptr<baryonyx::context> ctx, baryonyx::problem& pb)
+solve_or_optimize(std::shared_ptr<baryonyx::context> ctx,
+                  baryonyx::problem& pb)
 {
     if (ctx->optimize())
         return baryonyx::optimize(ctx, pb);
