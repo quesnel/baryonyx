@@ -204,7 +204,7 @@ struct minimize_tag
 {
 };
 
-template <typename iteratorT, typename randomT>
+template<typename iteratorT, typename randomT>
 void
 random_shuffle_unique(iteratorT begin, iteratorT end, randomT& rng)
 {
@@ -219,7 +219,7 @@ random_shuffle_unique(iteratorT begin, iteratorT end, randomT& rng)
     std::shuffle(ret, begin, rng);
 }
 
-template <typename iteratorT, typename randomT>
+template<typename iteratorT, typename randomT>
 void
 calculator_sort(iteratorT begin, iteratorT end, randomT& rng, minimize_tag)
 {
@@ -238,7 +238,7 @@ calculator_sort(iteratorT begin, iteratorT end, randomT& rng, minimize_tag)
     }
 }
 
-template <typename iteratorT, typename randomT>
+template<typename iteratorT, typename randomT>
 void
 calculator_sort(iteratorT begin, iteratorT end, randomT& rng, maximize_tag)
 {
@@ -336,7 +336,7 @@ compute_C_size(const AP_type& ap, index k) noexcept
     return C_size;
 }
 
-template <typename modeT, typename randomT>
+template<typename modeT, typename randomT>
 struct constraint_calculator
 {
     using mode_type = modeT;
@@ -645,7 +645,7 @@ struct merged_constraint_hash
  * remove the constraint and we remove all reference to this variable in all
  * constraints.
  */
-template <typename constraintsT>
+template<typename constraintsT>
 long
 remove_small_constraints(constraintsT& csts) noexcept
 {
@@ -667,7 +667,7 @@ remove_small_constraints(constraintsT& csts) noexcept
  * removes, second is the number of constraints removed due to the 0 factor
  * removed.
  */
-template <typename constraintsT>
+template<typename constraintsT>
 std::tuple<long, long>
 remove_element_with_factor_0(constraintsT& csts) noexcept
 {
@@ -913,7 +913,7 @@ make_merged_constraints(std::shared_ptr<context> ctx,
     // return ret;
 }
 
-template <typename modeT, typename randomT>
+template<typename modeT, typename randomT>
 struct solver
 {
     using mode_type = modeT;
@@ -1102,7 +1102,7 @@ struct solver
     }
 };
 
-template <typename T>
+template<typename T>
 std::size_t
 cycle_avoidance_hash(const std::vector<T>& vec)
 {
@@ -1136,7 +1136,7 @@ cycle_avoidance_hash(const std::vector<std::pair<index, index>>& vec)
     return seed;
 }
 
-template <typename T>
+template<typename T>
 struct no_cycle_avoidance
 {
     using value_type = T;
@@ -1162,7 +1162,7 @@ struct no_cycle_avoidance
     }
 };
 
-template <typename T>
+template<typename T>
 struct cycle_avoidance
 {
     using value_type = T;
@@ -1235,7 +1235,7 @@ struct cycle_avoidance
     }
 };
 
-template <typename solverT>
+template<typename solverT>
 std::size_t
 compute_missing_constraint(solverT& solver, std::vector<index>& R)
 {
@@ -1257,7 +1257,7 @@ compute_missing_constraint(solverT& solver, std::vector<index>& R)
     return R.size();
 }
 
-template <typename randomT>
+template<typename randomT>
 struct compute_reversing
 {
     std::vector<index> R;
@@ -1267,7 +1267,7 @@ struct compute_reversing
     {
     }
 
-    template <typename solverT>
+    template<typename solverT>
     std::size_t run_all(solverT& solver,
                         double kappa,
                         double delta,
@@ -1279,7 +1279,7 @@ struct compute_reversing
         return compute_missing_constraint(solver, R);
     }
 
-    template <typename solverT>
+    template<typename solverT>
     std::size_t run(solverT& solver, double kappa, double delta, double theta)
     {
         auto ret = compute_missing_constraint(solver, R);
@@ -1296,7 +1296,7 @@ struct compute_reversing
     }
 };
 
-template <typename randomT>
+template<typename randomT>
 struct compute_none
 {
     std::vector<index> R;
@@ -1306,7 +1306,7 @@ struct compute_none
     {
     }
 
-    template <typename solverT>
+    template<typename solverT>
     std::size_t run_all(solverT& solver,
                         double kappa,
                         double delta,
@@ -1318,7 +1318,7 @@ struct compute_none
         return compute_missing_constraint(solver, R);
     }
 
-    template <typename solverT>
+    template<typename solverT>
     std::size_t run(solverT& solver, double kappa, double delta, double theta)
     {
         auto ret = compute_missing_constraint(solver, R);
@@ -1335,7 +1335,7 @@ struct compute_none
     }
 };
 
-template <typename randomT>
+template<typename randomT>
 struct compute_random
 {
     using random_generator_type = randomT;
@@ -1349,7 +1349,7 @@ struct compute_random
     {
     }
 
-    template <typename solverT>
+    template<typename solverT>
     std::size_t run_all(solverT& solver,
                         double kappa,
                         double delta,
@@ -1365,7 +1365,7 @@ struct compute_random
         return compute_missing_constraint(solver, R);
     }
 
-    template <typename solverT>
+    template<typename solverT>
     std::size_t run(solverT& solver, double kappa, double delta, double theta)
     {
         auto ret = compute_missing_constraint(solver, R);
@@ -1391,7 +1391,7 @@ struct compute_infeasibility_decr
 {
 };
 
-template <typename randomT, typename directionT>
+template<typename randomT, typename directionT>
 struct compute_infeasibility
 {
     using random_generator_type = randomT;
@@ -1401,7 +1401,7 @@ struct compute_infeasibility
     std::vector<std::pair<index, index>> R;
     no_cycle_avoidance<index> detect_infeasability_cycle;
 
-    template <typename iteratorT>
+    template<typename iteratorT>
     void sort(iteratorT begin, iteratorT end, compute_infeasibility_incr) const
     {
         std::sort(begin, end, [](const auto& lhs, const auto& rhs) {
@@ -1409,7 +1409,7 @@ struct compute_infeasibility
         });
     }
 
-    template <typename iteratorT>
+    template<typename iteratorT>
     void sort(iteratorT begin, iteratorT end, compute_infeasibility_decr) const
     {
         std::sort(begin, end, [](const auto& lhs, const auto& rhs) {
@@ -1422,7 +1422,7 @@ struct compute_infeasibility
     {
     }
 
-    template <typename solverT>
+    template<typename solverT>
     std::size_t compute_missing_constraint(solverT& solver)
     {
         R.clear();
@@ -1447,7 +1447,7 @@ struct compute_infeasibility
         return R.size();
     }
 
-    template <typename solverT>
+    template<typename solverT>
     std::size_t run_all(solverT& solver,
                         double kappa,
                         double delta,
@@ -1492,7 +1492,7 @@ struct compute_infeasibility
         return compute_missing_constraint(solver);
     }
 
-    template <typename solverT>
+    template<typename solverT>
     std::size_t run(solverT& solver, double kappa, double delta, double theta)
     {
         auto ret = compute_missing_constraint(solver);
@@ -1522,7 +1522,7 @@ struct compute_infeasibility
     }
 };
 
-template <typename modeT, typename constraintOrderT, typename randomT>
+template<typename modeT, typename constraintOrderT, typename randomT>
 struct solver_functor
 {
     using mode_type = modeT;
@@ -1636,7 +1636,7 @@ struct solver_functor
     }
 };
 
-template <typename modeT, typename constraintOrderT, typename randomT>
+template<typename modeT, typename constraintOrderT, typename randomT>
 struct optimize_functor
 {
     using mode_type = modeT;
@@ -1825,7 +1825,7 @@ normalize_costs(std::shared_ptr<context> ctx, const c_type& c)
     return ret;
 }
 
-template <typename modeT, typename constraintOrderT, typename randomT>
+template<typename modeT, typename constraintOrderT, typename randomT>
 inline result
 solve(std::shared_ptr<context> ctx,
       problem& pb,
@@ -1854,7 +1854,7 @@ solve(std::shared_ptr<context> ctx,
     return result;
 }
 
-template <typename modeT, typename constraintOrderT, typename randomT>
+template<typename modeT, typename constraintOrderT, typename randomT>
 inline result
 optimize(std::shared_ptr<context> ctx,
          problem& pb,

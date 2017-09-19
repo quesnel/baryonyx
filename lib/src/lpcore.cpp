@@ -588,7 +588,7 @@ optimize(std::shared_ptr<baryonyx::context> ctx, problem& pb)
     return mitm_optimize(ctx, pb);
 }
 
-template <typename functionT, typename variablesT>
+template<typename functionT, typename variablesT>
 int
 compute_function(const functionT& fct, const variablesT& vars) noexcept
 {

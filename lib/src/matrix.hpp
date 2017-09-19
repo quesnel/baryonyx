@@ -43,7 +43,7 @@ namespace baryonyx {
  * @tparam A_T Type of element of matrix A.
  * @tparam P_T Type of element of matrix P.
  */
-template <typename A_T, typename P_T>
+template<typename A_T, typename P_T>
 class SparseArray
 {
 public:
@@ -132,7 +132,7 @@ public:
 
     void mult_row_p(index_type row, p_type y);
 
-    template <typename InputIterator>
+    template<typename InputIterator>
     void reserve(index_type elem,
                  InputIterator row_begin,
                  InputIterator row_end,
@@ -160,28 +160,28 @@ private:
     inline index_type binary_find(index_type row, index_type col) const;
 };
 
-template <typename A_T, typename P_T>
+template<typename A_T, typename P_T>
 SparseArray<A_T, P_T>::SparseArray(index_type rows, index_type cols)
   : m_rows_access(rows, -1)
   , m_cols_access(cols, -1)
 {
 }
 
-template <typename A_T, typename P_T>
+template<typename A_T, typename P_T>
 bool
 SparseArray<A_T, P_T>::empty() const noexcept
 {
     return m_a.empty();
 }
 
-template <typename A_T, typename P_T>
+template<typename A_T, typename P_T>
 typename SparseArray<A_T, P_T>::size_type
 SparseArray<A_T, P_T>::size() const noexcept
 {
     return m_a.size();
 }
 
-template <typename A_T, typename P_T>
+template<typename A_T, typename P_T>
 std::tuple<typename SparseArray<A_T, P_T>::iterator,
            typename SparseArray<A_T, P_T>::iterator>
 SparseArray<A_T, P_T>::row(index_type row) noexcept
@@ -197,7 +197,7 @@ SparseArray<A_T, P_T>::row(index_type row) noexcept
         return std::make_tuple(begin, m_rows.end());
 }
 
-template <typename A_T, typename P_T>
+template<typename A_T, typename P_T>
 std::tuple<typename SparseArray<A_T, P_T>::iterator,
            typename SparseArray<A_T, P_T>::iterator>
 SparseArray<A_T, P_T>::column(index_type col) noexcept
@@ -213,7 +213,7 @@ SparseArray<A_T, P_T>::column(index_type col) noexcept
         return std::make_tuple(begin, m_cols.end());
 }
 
-template <typename A_T, typename P_T>
+template<typename A_T, typename P_T>
 std::tuple<typename SparseArray<A_T, P_T>::const_iterator,
            typename SparseArray<A_T, P_T>::const_iterator>
 SparseArray<A_T, P_T>::row(index_type row) const noexcept
@@ -229,7 +229,7 @@ SparseArray<A_T, P_T>::row(index_type row) const noexcept
         return std::make_tuple(begin, m_rows.end());
 }
 
-template <typename A_T, typename P_T>
+template<typename A_T, typename P_T>
 std::tuple<typename SparseArray<A_T, P_T>::const_iterator,
            typename SparseArray<A_T, P_T>::const_iterator>
 SparseArray<A_T, P_T>::column(index_type col) const noexcept
@@ -245,7 +245,7 @@ SparseArray<A_T, P_T>::column(index_type col) const noexcept
         return std::make_tuple(begin, m_cols.end());
 }
 
-template <typename A_T, typename P_T>
+template<typename A_T, typename P_T>
 void
 SparseArray<A_T, P_T>::set(index_type row, index_type col, a_type x, p_type y)
 {
@@ -276,7 +276,7 @@ SparseArray<A_T, P_T>::set(index_type row, index_type col, a_type x, p_type y)
     }
 }
 
-template <typename A_T, typename P_T>
+template<typename A_T, typename P_T>
 void
 SparseArray<A_T, P_T>::set_p(index_type row, index_type col, p_type y)
 {
@@ -287,7 +287,7 @@ SparseArray<A_T, P_T>::set_p(index_type row, index_type col, p_type y)
     m_p[it] = y;
 }
 
-template <typename A_T, typename P_T>
+template<typename A_T, typename P_T>
 void
 SparseArray<A_T, P_T>::add_a(index_type row, index_type col, a_type x)
 {
@@ -298,7 +298,7 @@ SparseArray<A_T, P_T>::add_a(index_type row, index_type col, a_type x)
     m_a[it] += x;
 }
 
-template <typename A_T, typename P_T>
+template<typename A_T, typename P_T>
 void
 SparseArray<A_T, P_T>::add_p(index_type row, index_type col, p_type y)
 {
@@ -309,7 +309,7 @@ SparseArray<A_T, P_T>::add_p(index_type row, index_type col, p_type y)
     m_p[it] += y;
 }
 
-template <typename A_T, typename P_T>
+template<typename A_T, typename P_T>
 void
 SparseArray<A_T, P_T>::invert(index_type row, index_type col)
 {
@@ -321,7 +321,7 @@ SparseArray<A_T, P_T>::invert(index_type row, index_type col)
     m_p[it] = -m_p[it];
 }
 
-template <typename A_T, typename P_T>
+template<typename A_T, typename P_T>
 void
 SparseArray<A_T, P_T>::mult_p(index_type row, index_type col, p_type y)
 {
@@ -332,7 +332,7 @@ SparseArray<A_T, P_T>::mult_p(index_type row, index_type col, p_type y)
     m_p[it] *= y;
 }
 
-template <typename A_T, typename P_T>
+template<typename A_T, typename P_T>
 void
 SparseArray<A_T, P_T>::mult_row_p(index_type row, p_type y)
 {
@@ -342,8 +342,8 @@ SparseArray<A_T, P_T>::mult_row_p(index_type row, p_type y)
         m_p[std::get<0>(i)->value] *= y;
 }
 
-template <typename A_T, typename P_T>
-template <typename InputIterator>
+template<typename A_T, typename P_T>
+template<typename InputIterator>
 void
 SparseArray<A_T, P_T>::reserve(index_type elem,
                                InputIterator row_begin,
@@ -368,7 +368,7 @@ SparseArray<A_T, P_T>::reserve(index_type elem,
     }
 }
 
-template <typename A_T, typename P_T>
+template<typename A_T, typename P_T>
 void
 SparseArray<A_T, P_T>::sort() noexcept
 {
@@ -397,7 +397,7 @@ SparseArray<A_T, P_T>::sort() noexcept
     }
 }
 
-template <typename A_T, typename P_T>
+template<typename A_T, typename P_T>
 typename SparseArray<A_T, P_T>::a_type
 SparseArray<A_T, P_T>::A(index_type row, index_type col) const
 {
@@ -408,7 +408,7 @@ SparseArray<A_T, P_T>::A(index_type row, index_type col) const
     return m_a[it];
 }
 
-template <typename A_T, typename P_T>
+template<typename A_T, typename P_T>
 typename SparseArray<A_T, P_T>::p_type
 SparseArray<A_T, P_T>::P(index_type row, index_type col) const
 {
@@ -419,35 +419,35 @@ SparseArray<A_T, P_T>::P(index_type row, index_type col) const
     return m_p[it];
 }
 
-template <typename A_T, typename P_T>
+template<typename A_T, typename P_T>
 typename std::vector<typename SparseArray<A_T, P_T>::a_type>&
 SparseArray<A_T, P_T>::A()
 {
     return m_a;
 }
 
-template <typename A_T, typename P_T>
+template<typename A_T, typename P_T>
 const typename std::vector<typename SparseArray<A_T, P_T>::a_type>&
 SparseArray<A_T, P_T>::A() const
 {
     return m_a;
 }
 
-template <typename A_T, typename P_T>
+template<typename A_T, typename P_T>
 typename std::vector<typename SparseArray<A_T, P_T>::p_type>&
 SparseArray<A_T, P_T>::P()
 {
     return m_p;
 }
 
-template <typename A_T, typename P_T>
+template<typename A_T, typename P_T>
 const typename std::vector<typename SparseArray<A_T, P_T>::p_type>&
 SparseArray<A_T, P_T>::P() const
 {
     return m_p;
 }
 
-template <typename A_T, typename P_T>
+template<typename A_T, typename P_T>
 void
 SparseArray<A_T, P_T>::swap(SparseArray& c) noexcept(
   noexcept(swap(m_a, c.m_a)) && noexcept(swap(m_p, c.m_p)) &&
@@ -461,7 +461,7 @@ SparseArray<A_T, P_T>::swap(SparseArray& c) noexcept(
 }
 
 #ifndef LP_FULL_OPTIMIZATION
-template <typename A_T, typename P_T>
+template<typename A_T, typename P_T>
 void
 SparseArray<A_T, P_T>::m_check_index(index_type row, index_type col) const
   noexcept
@@ -470,14 +470,14 @@ SparseArray<A_T, P_T>::m_check_index(index_type row, index_type col) const
     Expects(row >= 0, "SparseArray: bad row access");
 }
 #else
-template <typename A_T, typename P_T>
+template<typename A_T, typename P_T>
 void SparseArray<A_T, P_T>::m_check_index(index_type, index_type) const
   noexcept
 {
 }
 #endif
 
-template <typename A_T, typename P_T>
+template<typename A_T, typename P_T>
 typename SparseArray<A_T, P_T>::index_type
 SparseArray<A_T, P_T>::binary_find(
   typename SparseArray<A_T, P_T>::index_type row,

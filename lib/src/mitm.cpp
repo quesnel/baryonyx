@@ -63,7 +63,7 @@ get_parameters(std::shared_ptr<baryonyx::context>& ctx) noexcept
     return std::make_tuple(kappa, delta, theta, limit);
 }
 
-template <typename variableT>
+template<typename variableT>
 bool
 is_boolean_variable(const variableT& vars)
 {
@@ -74,7 +74,7 @@ is_boolean_variable(const variableT& vars)
     return true;
 }
 
-template <typename constraintsT>
+template<typename constraintsT>
 bool
 is_boolean_coefficient(const constraintsT csts)
 {
@@ -86,7 +86,7 @@ is_boolean_coefficient(const constraintsT csts)
     return true;
 }
 
-template <typename variableT>
+template<typename variableT>
 bool
 is_integer_variable(const variableT& vars)
 {
@@ -97,7 +97,7 @@ is_integer_variable(const variableT& vars)
     return true;
 }
 
-template <typename constraintsT>
+template<typename constraintsT>
 bool
 is_101_coefficient(const constraintsT csts)
 {
@@ -109,7 +109,7 @@ is_101_coefficient(const constraintsT csts)
     return true;
 }
 
-template <typename functionT>
+template<typename functionT>
 functionT
 cleanup_function_element(functionT fct, long int& nb)
 {

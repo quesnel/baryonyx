@@ -61,7 +61,7 @@ Ensures(bool condition, const char* s)
         throw postcondition_failure(s);
 }
 
-template <typename T>
+template<typename T>
 inline bool
 is_essentially_equal(const T v1, const T v2, const T epsilon)
 {
@@ -73,9 +73,11 @@ is_essentially_equal(const T v1, const T v2, const T epsilon)
            ((fabs(v1) > fabs(v2) ? fabs(v2) : fabs(v1)) * (epsilon));
 }
 
-std::string stringf(const char* format, ...) noexcept BARYONYX_FORMAT(1, 2);
+std::string
+stringf(const char* format, ...) noexcept BARYONYX_FORMAT(1, 2);
 
-std::string vstringf(const char* format, va_list ap) noexcept;
+std::string
+vstringf(const char* format, va_list ap) noexcept;
 
 class timer_profiler
 {

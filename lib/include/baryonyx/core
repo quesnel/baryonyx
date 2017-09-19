@@ -120,7 +120,7 @@ struct numeric_cast_failure : public std::exception
  * assert(not lp::is_numeric_castable<std::int8_t>(v2));
  * @endcode
  */
-template <typename Target, typename Source>
+template<typename Target, typename Source>
 inline bool
 is_numeric_castable(Source arg) noexcept
 {
@@ -159,7 +159,7 @@ is_numeric_castable(Source arg) noexcept
  * long int index = lp::numeric_cast<long int>(v); // No throw.
  * @endcode
  */
-template <typename Target, typename Source>
+template<typename Target, typename Source>
 inline Target
 numeric_cast(Source s)
 {
@@ -716,8 +716,8 @@ struct variables
 struct function_element
 {
     function_element(int factor_, index variable_index_) noexcept
-      : factor(factor_),
-        variable_index(variable_index_)
+      : factor(factor_)
+      , variable_index(variable_index_)
     {
     }
 
@@ -838,8 +838,9 @@ compute_min_max_objective_function(const problem& pb) noexcept
  *     std::system_error.
  */
 BARYONYX_API
-problem make_problem(std::shared_ptr<baryonyx::context> ctx,
-                     const std::string& filename);
+problem
+make_problem(std::shared_ptr<baryonyx::context> ctx,
+             const std::string& filename);
 
 /**
  * Read a @e lp file from the @e is stream.
@@ -848,14 +849,16 @@ problem make_problem(std::shared_ptr<baryonyx::context> ctx,
  *     std::system_error.
  */
 BARYONYX_API
-problem make_problem(std::shared_ptr<baryonyx::context> ctx, std::istream& is);
+problem
+make_problem(std::shared_ptr<baryonyx::context> ctx, std::istream& is);
 
 /**
  * Write @e lp problem into a stream.
  *
  */
 BARYONYX_API
-std::ostream& operator<<(std::ostream& os, const problem& p);
+std::ostream&
+operator<<(std::ostream& os, const problem& p);
 
 /**
  * @details Try to solve or find a feasible solution for the @c
@@ -867,7 +870,8 @@ std::ostream& operator<<(std::ostream& os, const problem& p);
  * @exception baryonyx::problem_definition
  */
 BARYONYX_API
-result solve(std::shared_ptr<baryonyx::context> ctx, problem& pb);
+result
+solve(std::shared_ptr<baryonyx::context> ctx, problem& pb);
 
 /**
  * @details Try to optimize the @c baryonyx::problem with a set of
@@ -880,15 +884,16 @@ result solve(std::shared_ptr<baryonyx::context> ctx, problem& pb);
  * @throw @c baryonyx::solver_error.
  */
 BARYONYX_API
-result optimize(std::shared_ptr<baryonyx::context> ctx, problem& pb);
+result
+optimize(std::shared_ptr<baryonyx::context> ctx, problem& pb);
 
 BARYONYX_API
-bool is_valid_solution(const problem& pb,
-                       const std::vector<int>& variable_value);
+bool
+is_valid_solution(const problem& pb, const std::vector<int>& variable_value);
 
 BARYONYX_API
-double compute_solution(const problem& pb,
-                        const std::vector<int>& variable_value);
+double
+compute_solution(const problem& pb, const std::vector<int>& variable_value);
 }
 
 #endif
