@@ -143,6 +143,9 @@ struct parameters
       , preprocessing(ctx->get_string_parameter("preprocessing", "none"))
       , serialize(ctx->get_integer_parameter("serialize", 0l))
     {
+        if (limit < 0)
+            limit = std::numeric_limits<long int>::max();
+
         ctx->info("solver: inequalities_1coeff_wedelin\n"
                   "solver parameters:\n"
                   "  - preprocessing: %s\n"

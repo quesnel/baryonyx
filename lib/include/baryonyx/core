@@ -53,7 +53,7 @@
 #endif
 
 #ifdef BARYONYX_DLL
-#ifdef liblp_EXPORTS
+#ifdef libbaryonyx_EXPORTS
 #define BARYONYX_API BARYONYX_HELPER_DLL_EXPORT
 #else
 #define BARYONYX_API BARYONYX_HELPER_DLL_IMPORT

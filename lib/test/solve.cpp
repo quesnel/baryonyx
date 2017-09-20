@@ -161,7 +161,7 @@ test_uf50_0448(std::shared_ptr<baryonyx::context> ctx)
     auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/uf50-0448.lp");
 
     std::map<std::string, baryonyx::parameter> params;
-    ctx->set_parameter("limit", 10'000'000'000l);
+    ctx->set_parameter("limit", -1l);
     ctx->set_parameter("theta", 0.5);
     ctx->set_parameter("delta", 1.0);
     ctx->set_parameter("kappa-min", 0.1);
@@ -183,7 +183,7 @@ test_aim_50_1_6_yes1_2(std::shared_ptr<baryonyx::context> ctx)
     auto pb =
       baryonyx::make_problem(ctx, EXAMPLES_DIR "/aim-50-1_6-yes1-2.lp");
 
-    ctx->set_parameter("limit", 10'000'000'000l);
+    ctx->set_parameter("limit", -1l);
     ctx->set_parameter("theta", 0.6);
     ctx->set_parameter("delta", 0.01);
     ctx->set_parameter("kappa-step", 2 * 10e-4);
@@ -202,7 +202,7 @@ test_bibd1n(std::shared_ptr<baryonyx::context> ctx)
 {
     auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/bibd1n.lp");
 
-    ctx->set_parameter("limit", 10'000'000'000l);
+    ctx->set_parameter("limit", -1l);
     ctx->set_parameter("theta", 0.5);
     ctx->set_parameter("delta", 0.000001);
     ctx->set_parameter("kappa-min", 0.0005);
@@ -226,7 +226,7 @@ test_8_queens_puzzle_fixed_cost(std::shared_ptr<baryonyx::context> ctx)
 {
     auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/8_queens_puzzle.lp");
 
-    ctx->set_parameter("limit", 10'000'000l);
+    ctx->set_parameter("limit", -1l);
     ctx->set_parameter("theta", 0.5);
     ctx->set_parameter("delta", 0.02);
     ctx->set_parameter("kappa-step", 0.01);

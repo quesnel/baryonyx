@@ -36,8 +36,9 @@
 #include <cstdio>
 #include <cstring>
 
-#ifndef _WIN32
 #include <getopt.h>
+
+#ifndef _WIN32
 #include <sys/types.h>
 #include <unistd.h>
 #endif
