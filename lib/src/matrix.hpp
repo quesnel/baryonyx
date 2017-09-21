@@ -31,7 +31,16 @@
 #include "fixed_array.hpp"
 #include "utils.hpp"
 
+#include <iomanip>
+
 namespace baryonyx {
+
+template<typename A_T, typename P_T>
+class SparseArray;
+
+template<typename A_T, typename P_T>
+std::ostream&
+operator<<(std::ostream& os, const SparseArray<A_T, P_T>& m);
 
 /**
  * @brief A specfic class to store A and P sparse matrices.
@@ -154,11 +163,44 @@ public:
       noexcept(swap(m_cols_access, c.m_cols_acces)) &&
       noexcept(swap(m_rows_access, c.m_rows_acces)));
 
+    friend std::ostream& operator<<<>(std::ostream& os, const SparseArray& m);
+
 private:
     void m_check_index(index_type row, index_type col) const noexcept;
 
     inline index_type binary_find(index_type row, index_type col) const;
 };
+
+template<typename A_T, typename P_T>
+std::ostream&
+operator<<(std::ostream& os, const SparseArray<A_T, P_T>& m)
+{
+    const std::size_t rows = m.m_rows_access.size();
+    const std::size_t cols = m.m_cols_access.size();
+    std::vector<P_T> to_show(cols);
+
+    for (std::size_t i{ 0 }; i != rows; ++i) {
+        std::fill(std::begin(to_show),
+                  std::end(to_show),
+                  std::numeric_limits<double>::infinity());
+
+        auto its = m.row(i);
+
+        for (; std::get<0>(its) != std::get<1>(its); ++std::get<0>(its))
+            to_show[std::get<0>(its)->position] =
+              m.m_p[std::get<0>(its)->value];
+
+        for (auto elem : to_show)
+            if (elem == std::numeric_limits<double>::infinity())
+                os << std::setw(8) << std::left << "        ";
+            else
+                os << std::setw(8) << std::right << elem;
+
+        os << '\n';
+    }
+
+    return os;
+}
 
 template<typename A_T, typename P_T>
 SparseArray<A_T, P_T>::SparseArray(index_type rows, index_type cols)

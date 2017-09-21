@@ -28,6 +28,7 @@
 #include <baryonyx/core>
 
 #include <functional>
+#include <iostream>
 #include <numeric>
 
 void
@@ -174,8 +175,9 @@ check_matrix()
     m.set(2, 1, 4, 4.0);
     m.sort();
 
-    Ensures(m.size() == 4);
+    std::cout << m << '\n';
 
+    Ensures(m.size() == 4);
     EnsuresThrow(m.P(0, 0), std::out_of_range);
     Ensures(m.A(0, 1) == 2);
     Ensures(m.P(0, 1) == 2.0);
