@@ -526,7 +526,6 @@ SparseArray<A_T, P_T>::binary_find(
   typename SparseArray<A_T, P_T>::index_type col) const
 {
 
-    // if (m_rows[row].size() < m_cols[col].size()) {
     auto i = SparseArray<A_T, P_T>::row(row);
     auto ret =
       std::lower_bound(std::get<0>(i), std::get<1>(i), col, access_compare());
@@ -537,18 +536,6 @@ SparseArray<A_T, P_T>::binary_find(
 #endif
 
     return ret->value;
-    //     } else {
-    //         auto i = col(col);
-    //         auto ret = std::lower_bound(
-    //           std::get<0>(i), std::get<1>(i), row, access_compare());
-
-    // #ifndef LP_FULL_OPTIMIZATION
-    //         if (!(ret != std::get<1>(i) && ret->position == row))
-    //             throw std::out_of_range("SparseArray::binary_find");
-    // #endif
-
-    //         return ret->value;
-    //     }
 }
 
 } // namespace baryonyx
