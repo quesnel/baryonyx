@@ -46,8 +46,8 @@ static inline void
         }                                                                     \
     } while (0)
 
-#ifndef LP_FULL_OPTIMIZATION
-#ifndef LP_DISABLE_DEBUG
+#ifndef BARYONYX_FULL_OPTIMIZATION
+#ifndef BARYONYX_DISABLE_DEBUG
 #define lp_debug(ctx, arg...) lp_log_cond(ctx, VLE_LOG_DEBUG, ##arg)
 #else
 #define lp_debug(ctx, arg...) lp_log_null(ctx, ##arg)

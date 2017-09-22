@@ -158,17 +158,17 @@ public:
             case context::message_type::alert:
             case context::message_type::crit:
             case context::message_type::err:
-                ::puts("\033[30m\033[2m");
+                ::printf("\033[30m\033[2m");
                 break;
             case context::message_type::warning:
-                ::puts("\033[32m\033[1m");
+                ::printf("\033[32m\033[1m");
                 break;
             case context::message_type::notice:
                 break;
             case context::message_type::info:
                 break;
             case context::message_type::debug:
-                ::puts("\033[33m\033[1m");
+                ::printf("\033[33m\033[1m");
                 break;
             }
 
@@ -179,17 +179,17 @@ public:
             case context::message_type::alert:
             case context::message_type::crit:
             case context::message_type::err:
-                ::puts("\033[30m\033[0m");
+                ::printf("\033[30m\033[0m");
                 break;
             case context::message_type::warning:
-                ::puts("\033[30m\033[0m");
+                ::printf("\033[30m\033[0m");
                 break;
             case context::message_type::notice:
                 break;
             case context::message_type::info:
                 break;
             case context::message_type::debug:
-                ::puts("\033[30m\033[0m");
+                ::printf("\033[30m\033[0m");
                 break;
             }
 
@@ -388,11 +388,11 @@ context::set_logger(std::unique_ptr<logger> function) noexcept
     m_logger = std::move(function);
 }
 
-#ifndef LP_DISABLE_LOGGING
+#ifndef BARYONYX_DISABLE_LOGGING
 //
 // Default, the logging system is active and the call to the @c log function
-// are send to the logger functor. Define LP_DISABLE_LOGGING as preprocessor
-// value to hide all logging message..
+// are send to the logger functor. Define BARYONYX_DISABLE_LOGGING as
+// preprocessor value to hide all logging message..
 //
 void
 context::log(message_type type, const char* format, ...) const noexcept

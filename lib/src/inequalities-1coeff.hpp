@@ -157,7 +157,7 @@ struct parameters
                   "  - kappa: %.10g %.10g %.10g\n"
                   "  - alpha: %.10g\n"
                   "  - w: %ld\n"
-                  "  - serialise: %d\n"
+                  "  - serialise: %ld\n"
                   "optimizer parameters:\n"
                   "  - pushed limit: %ld\n"
                   "  - pushing objective amplifier: %ld\n"
@@ -196,7 +196,7 @@ struct parameters
     long int w;
     constraint_order order;
     std::string preprocessing;
-    bool serialize;
+    long int serialize;
 };
 
 struct maximize_tag
@@ -423,17 +423,6 @@ struct constraint_calculator
             return false;
 
         return true;
-    }
-
-    void serialize(index k, std::ostream& os) const noexcept
-    {
-        os << "c " << k << ':'
-           << (is_valid_solution(k) ? "valid" : "violated:");
-
-        for (auto elem : r)
-            os << elem.id << '[' << elem.value << "] ";
-
-        os << '\n';
     }
 
     /**
@@ -1039,26 +1028,28 @@ struct solver
             row_updaters[k].reinit();
     }
 
-    void serialize(std::ostream& os) const
+    void serialize(std::shared_ptr<baryonyx::context> ctx,
+                   long int serialize_id) const
     {
-        std::vector<index> vec;
+        if (serialize_id <= 0)
+            return;
+
+        ctx->debug("X: ");
+        for (auto elem : x)
+            ctx->debug("%d ", static_cast<int>(elem));
+        ctx->debug("\n");
 
         for (index k{ 0 }, ek{ m }; k != ek; ++k) {
-            int v = 0;
+            ctx->debug("C %d:%s ",
+                       k,
+                       (row_updaters[k].is_valid_solution(k) ? "   valid: "
+                                                             : "violated: "));
 
-            auto ak{ ap.row(k) };
-            const auto& values{ ap.A() };
+            for (auto elem : row_updaters[k].r)
+                ctx->debug("%d [%f] ", elem.id, elem.value);
 
-            for (; std::get<0>(ak) != std::get<1>(ak); ++std::get<0>(ak))
-                v += values[std::get<0>(ak)->value] *
-                     x(std::get<0>(ak)->position);
-
-            if (not(b(k).min <= v and v <= b(k).max))
-                vec.push_back(k);
+            ctx->debug("\n");
         }
-
-        for (auto it{ vec.cbegin() }, et{ vec.cend() }; it != et; ++it)
-            row_updaters[*it].serialize(*it, os);
     }
 
     bool is_valid_solution() const noexcept
@@ -1260,13 +1251,50 @@ compute_missing_constraint(solverT& solver, std::vector<index>& R)
     return R.size();
 }
 
+void
+print_AP(std::shared_ptr<context> ctx,
+         const AP_type& ap,
+         long int k,
+         long int rows,
+         long int cols)
+{
+    long int level = ctx->get_integer_parameter("serialize", 0l);
+    if (level <= 1)
+        return;
+
+    ctx->debug("P after constraint %ld computation:\n", k);
+    std::vector<AP_type::p_type> to_show(cols);
+
+    for (long int i{ 0 }; i != rows; ++i) {
+        std::fill(std::begin(to_show),
+                  std::end(to_show),
+                  std::numeric_limits<double>::infinity());
+
+        auto its = ap.row(i);
+
+        for (; std::get<0>(its) != std::get<1>(its); ++std::get<0>(its))
+            to_show[std::get<0>(its)->position] =
+              ap.P()[std::get<0>(its)->value];
+
+        for (auto elem : to_show)
+            if (elem == std::numeric_limits<double>::infinity())
+                ctx->debug("          ");
+            else
+                ctx->debug("%+.6f ", elem);
+
+        ctx->debug("\n");
+    }
+}
+
 template<typename randomT>
 struct compute_reversing
 {
+    std::shared_ptr<context> m_ctx;
     std::vector<index> R;
     no_cycle_avoidance<index> detect_infeasability_cycle;
 
-    compute_reversing(randomT&)
+    compute_reversing(std::shared_ptr<context> ctx, randomT&)
+      : m_ctx(ctx)
     {
     }
 
@@ -1292,8 +1320,13 @@ struct compute_reversing
         if (detect_infeasability_cycle.have_cycle(R))
             return run_all(solver, 0.8 * kappa, delta, theta);
 
-        for (auto it{ R.crbegin() }, et{ R.crend() }; it != et; ++it)
+        for (auto it{ R.crbegin() }, et{ R.crend() }; it != et; ++it) {
             solver.row_updaters[*it].update_row(*it, kappa, delta, theta);
+
+#ifndef BARYONYX_FULL_OPTIMIZATION
+            print_AP(m_ctx, solver.ap, *it, solver.m, solver.n);
+#endif
+        }
 
         return compute_missing_constraint(solver, R);
     }
@@ -1302,10 +1335,12 @@ struct compute_reversing
 template<typename randomT>
 struct compute_none
 {
+    std::shared_ptr<context> m_ctx;
     std::vector<index> R;
     no_cycle_avoidance<index> detect_infeasability_cycle;
 
-    compute_none(randomT&)
+    compute_none(std::shared_ptr<context> ctx, randomT&)
+      : m_ctx(ctx)
     {
     }
 
@@ -1331,8 +1366,12 @@ struct compute_none
         if (detect_infeasability_cycle.have_cycle(R))
             return run_all(solver, 0.8 * kappa, delta, theta);
 
-        for (auto it{ R.cbegin() }, et{ R.cend() }; it != et; ++it)
+        for (auto it{ R.cbegin() }, et{ R.cend() }; it != et; ++it) {
             solver.row_updaters[*it].update_row(*it, kappa, delta, theta);
+#ifndef BARYONYX_FULL_OPTIMIZATION
+            print_AP(m_ctx, solver.ap, *it, solver.m, solver.n);
+#endif
+        }
 
         return compute_missing_constraint(solver, R);
     }
@@ -1343,12 +1382,14 @@ struct compute_random
 {
     using random_generator_type = randomT;
 
+    std::shared_ptr<context> m_ctx;
+    std::vector<index> R;
     no_cycle_avoidance<index> detect_infeasability_cycle;
     random_generator_type& rng;
-    std::vector<index> R;
 
-    compute_random(random_generator_type& rng_)
-      : rng(rng_)
+    compute_random(std::shared_ptr<context> ctx, random_generator_type& rng_)
+      : m_ctx(ctx)
+      , rng(rng_)
     {
     }
 
@@ -1379,8 +1420,13 @@ struct compute_random
             return run_all(solver, 0.8 * kappa, delta, theta);
 
         std::shuffle(R.begin(), R.end(), rng);
-        for (auto it{ R.cbegin() }, et{ R.cend() }; it != et; ++it)
+        for (auto it{ R.cbegin() }, et{ R.cend() }; it != et; ++it) {
             solver.row_updaters[*it].update_row(*it, kappa, delta, theta);
+
+#ifndef BARYONYX_FULL_OPTIMIZATION
+            print_AP(m_ctx, solver.ap, *it, solver.m, solver.n);
+#endif
+        }
 
         return compute_missing_constraint(solver, R);
     }
@@ -1400,9 +1446,10 @@ struct compute_infeasibility
     using random_generator_type = randomT;
     using direction_type = directionT;
 
-    random_generator_type& rng;
+    std::shared_ptr<context> m_ctx;
     std::vector<std::pair<index, index>> R;
     no_cycle_avoidance<index> detect_infeasability_cycle;
+    random_generator_type& rng;
 
     template<typename iteratorT>
     void sort(iteratorT begin, iteratorT end, compute_infeasibility_incr) const
@@ -1420,8 +1467,10 @@ struct compute_infeasibility
         });
     }
 
-    compute_infeasibility(random_generator_type& rng_)
-      : rng(rng_)
+    compute_infeasibility(std::shared_ptr<context> ctx,
+                          random_generator_type& rng_)
+      : m_ctx(ctx)
+      , rng(rng_)
     {
     }
 
@@ -1517,9 +1566,14 @@ struct compute_infeasibility
         }
 
         std::shuffle(first, R.end(), rng);
-        for (std::size_t i{ 0 }, e = { R.size() }; i != e; ++i)
+        for (std::size_t i{ 0 }, e = { R.size() }; i != e; ++i) {
             solver.row_updaters[R[i].first].update_row(
               R[i].first, kappa, delta, theta);
+
+#ifndef BARYONYX_FULL_OPTIMIZATION
+            print_AP(m_ctx, solver.ap, R[i].first, solver.m, solver.n);
+#endif
+        }
 
         return compute_missing_constraint(solver);
     }
@@ -1555,7 +1609,6 @@ struct solver_functor
         m_begin = std::chrono::steady_clock::now();
         m_end = m_begin;
 
-        long int serialize_id{ 0 };
         long int i{ 0 };
         long int i2{ 0 };
         double kappa_old{ 0 };
@@ -1565,7 +1618,7 @@ struct solver_functor
         solver<mode_type, random_generator_type> slv(
           rng, variables, norm_costs, constraints);
 
-        constraint_order_type compute(rng);
+        constraint_order_type compute(m_ctx, rng);
 
         m_ctx->info("* solver starts:\n");
 
@@ -1589,13 +1642,8 @@ struct solver_functor
                             current.duration);
             }
 
-#ifndef LP_FULL_OPTIMIZATION
-            if (p.serialize) {
-                std::string filename = stringf("out-%ld.dump", serialize_id++);
-                std::ofstream ofs(filename);
-                if (ofs.is_open())
-                    slv.serialize(ofs);
-            }
+#ifndef BARYONYX_FULL_OPTIMIZATION
+            slv.serialize(m_ctx, p.serialize);
 #endif
 
             if (current.status == result_status::success) {
@@ -1618,20 +1666,20 @@ struct solver_functor
             }
 
             if (++i > p.limit) {
-                m_ctx->info("  - Loop reached: %f\n", kappa);
+                m_ctx->info("  - Loop limit reached: %ld %f\n", i, kappa);
                 m_best.status = result_status::limit_reached;
                 return m_best;
             }
 
             if (kappa > p.kappa_max) {
-                m_ctx->info("  - Kappa reached: %f\n", kappa);
+                m_ctx->info("  - Kappa max reached: %ld %f\n", i, kappa);
                 m_best.status = result_status::kappa_max_reached;
                 return m_best;
             }
 
             m_end = std::chrono::steady_clock::now();
             if (is_time_limit(p.time_limit, m_begin, m_end)) {
-                m_ctx->info("  - Time limit reached\n");
+                m_ctx->info("  - Time limit reached: %ld %f\n", i, kappa);
                 m_best.status = result_status::time_limit_reached;
                 return m_best;
             }
@@ -1680,7 +1728,7 @@ struct optimize_functor
         solver<mode_type, random_generator_type> slv(
           rng, variables, norm_costs, constraints);
 
-        constraint_order_type compute(rng);
+        constraint_order_type compute(m_ctx, rng);
 
         for (; not is_time_limit(p.time_limit, m_begin, m_end);
              m_end = std::chrono::steady_clock::now(), ++i) {

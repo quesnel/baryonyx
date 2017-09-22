@@ -502,7 +502,7 @@ SparseArray<A_T, P_T>::swap(SparseArray& c) noexcept(
     std::swap(m_rows_access, c.m_rows_access);
 }
 
-#ifndef LP_FULL_OPTIMIZATION
+#ifndef BARYONYX_FULL_OPTIMIZATION
 template<typename A_T, typename P_T>
 void
 SparseArray<A_T, P_T>::m_check_index(index_type row, index_type col) const
@@ -530,7 +530,7 @@ SparseArray<A_T, P_T>::binary_find(
     auto ret =
       std::lower_bound(std::get<0>(i), std::get<1>(i), col, access_compare());
 
-#ifndef LP_FULL_OPTIMIZATION
+#ifndef BARYONYX_FULL_OPTIMIZATION
     if (!(ret != std::get<1>(i) && ret->position == col))
         throw std::out_of_range("SparseArray::binary_find");
 #endif
