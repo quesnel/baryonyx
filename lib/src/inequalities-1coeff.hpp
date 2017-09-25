@@ -702,8 +702,8 @@ make_merged_constraints(std::shared_ptr<context> ctx,
       cache;
 
     const std::size_t origin_constraints_number{
-        pb.equal_constraints.size() + pb.less_equal_constraints.size() +
-        pb.greater_equal_constraints.size()
+        pb.equal_constraints.size() + pb.less_constraints.size() +
+        pb.greater_constraints.size()
     };
 
     //
@@ -718,7 +718,7 @@ make_merged_constraints(std::shared_ptr<context> ctx,
                          numeric_cast<int>(std::lround(elem.value)));
     }
 
-    for (const auto& elem : pb.less_equal_constraints) {
+    for (const auto& elem : pb.less_constraints) {
         auto it = cache.find(elem.elements);
         if (it == cache.end()) {
             cache.emplace(elem.elements, ret.size());
@@ -731,7 +731,7 @@ make_merged_constraints(std::shared_ptr<context> ctx,
         }
     }
 
-    for (const auto& elem : pb.greater_equal_constraints) {
+    for (const auto& elem : pb.greater_constraints) {
         auto it = cache.find(elem.elements);
         if (it == cache.end()) {
             cache.emplace(elem.elements, ret.size());

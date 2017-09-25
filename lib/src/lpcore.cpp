@@ -615,13 +615,6 @@ is_valid_solution(const problem& pb, const std::vector<int>& variable_value)
 
     for (auto& cst : pb.greater_constraints) {
         if (compute_function(cst.elements, variable_value) <= cst.value) {
-            printf("constraint %s (>) fails\n", cst.label.c_str());
-            return false;
-        }
-    }
-
-    for (auto& cst : pb.greater_equal_constraints) {
-        if (compute_function(cst.elements, variable_value) < cst.value) {
             printf("constraint %s (>=) fails\n", cst.label.c_str());
             return false;
         }
@@ -629,13 +622,6 @@ is_valid_solution(const problem& pb, const std::vector<int>& variable_value)
 
     for (auto& cst : pb.less_constraints) {
         if (compute_function(cst.elements, variable_value) >= cst.value) {
-            printf("constraint %s (<) fails\n", cst.label.c_str());
-            return false;
-        }
-    }
-
-    for (auto& cst : pb.greater_constraints) {
-        if (compute_function(cst.elements, variable_value) > cst.value) {
             printf("constraint %s (<=) fails\n", cst.label.c_str());
             return false;
         }

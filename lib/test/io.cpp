@@ -62,34 +62,34 @@ test_examples_1(std::shared_ptr<baryonyx::context> ctx)
 
     Ensures(pb.vars.names.size() == 3);
     Ensures(pb.vars.values.size() == 3);
-    Ensures(pb.less_equal_constraints.size() == 3);
+    Ensures(pb.less_constraints.size() == 3);
 
-    Ensures(pb.less_equal_constraints[0].elements.size() == 3);
-    Ensures(pb.less_equal_constraints[0].elements[0].factor == -1);
-    Ensures(pb.less_equal_constraints[0].elements[0].variable_index == 0);
-    Ensures(pb.less_equal_constraints[0].elements[1].factor == 1);
-    Ensures(pb.less_equal_constraints[0].elements[1].variable_index == 1);
-    Ensures(pb.less_equal_constraints[0].elements[2].factor == 1);
-    Ensures(pb.less_equal_constraints[0].elements[2].variable_index == 2);
-    Ensures(pb.less_equal_constraints[0].value == 20);
+    Ensures(pb.less_constraints[0].elements.size() == 3);
+    Ensures(pb.less_constraints[0].elements[0].factor == -1);
+    Ensures(pb.less_constraints[0].elements[0].variable_index == 0);
+    Ensures(pb.less_constraints[0].elements[1].factor == 1);
+    Ensures(pb.less_constraints[0].elements[1].variable_index == 1);
+    Ensures(pb.less_constraints[0].elements[2].factor == 1);
+    Ensures(pb.less_constraints[0].elements[2].variable_index == 2);
+    Ensures(pb.less_constraints[0].value == 20);
 
-    Ensures(pb.less_equal_constraints[1].elements.size() == 3);
-    Ensures(pb.less_equal_constraints[1].elements[0].factor == 1);
-    Ensures(pb.less_equal_constraints[1].elements[0].variable_index == 0);
-    Ensures(pb.less_equal_constraints[1].elements[1].factor == -3);
-    Ensures(pb.less_equal_constraints[1].elements[1].variable_index == 1);
-    Ensures(pb.less_equal_constraints[1].elements[2].factor == 1);
-    Ensures(pb.less_equal_constraints[1].elements[2].variable_index == 2);
-    Ensures(pb.less_equal_constraints[1].value == 30);
+    Ensures(pb.less_constraints[1].elements.size() == 3);
+    Ensures(pb.less_constraints[1].elements[0].factor == 1);
+    Ensures(pb.less_constraints[1].elements[0].variable_index == 0);
+    Ensures(pb.less_constraints[1].elements[1].factor == -3);
+    Ensures(pb.less_constraints[1].elements[1].variable_index == 1);
+    Ensures(pb.less_constraints[1].elements[2].factor == 1);
+    Ensures(pb.less_constraints[1].elements[2].variable_index == 2);
+    Ensures(pb.less_constraints[1].value == 30);
 
-    Ensures(pb.less_equal_constraints[2].elements.size() == 3);
-    Ensures(pb.less_equal_constraints[1].elements[0].factor == 1);
-    Ensures(pb.less_equal_constraints[2].elements[0].variable_index == 0);
-    Ensures(pb.less_equal_constraints[2].elements[1].factor == -3);
-    Ensures(pb.less_equal_constraints[2].elements[1].variable_index == 1);
-    Ensures(pb.less_equal_constraints[2].elements[2].factor == 1);
-    Ensures(pb.less_equal_constraints[2].elements[2].variable_index == 2);
-    Ensures(pb.less_equal_constraints[2].value == -5);
+    Ensures(pb.less_constraints[2].elements.size() == 3);
+    Ensures(pb.less_constraints[1].elements[0].factor == 1);
+    Ensures(pb.less_constraints[2].elements[0].variable_index == 0);
+    Ensures(pb.less_constraints[2].elements[1].factor == -3);
+    Ensures(pb.less_constraints[2].elements[1].variable_index == 1);
+    Ensures(pb.less_constraints[2].elements[2].factor == 1);
+    Ensures(pb.less_constraints[2].elements[2].variable_index == 2);
+    Ensures(pb.less_constraints[2].value == -5);
 
     Ensures(pb.vars.names[0] == "x1");
     Ensures(pb.vars.names[1] == "x2");
@@ -182,8 +182,6 @@ test_examples_sudoku(std::shared_ptr<baryonyx::context> ctx)
     for (auto& vv : pb.vars.values) {
         Ensures(vv.min == 1);
         Ensures(vv.max == 9);
-        Ensures(vv.min_equal == true);
-        Ensures(vv.max_equal == true);
         Ensures(vv.type == baryonyx::variable_type::general);
     }
 
@@ -201,8 +199,6 @@ test_examples_8_queens_puzzle(std::shared_ptr<baryonyx::context> ctx)
     for (auto& vv : pb.vars.values) {
         Ensures(vv.min == 0);
         Ensures(vv.max == 1);
-        Ensures(vv.min_equal == true);
-        Ensures(vv.max_equal == true);
         Ensures(vv.type == baryonyx::variable_type::binary);
     }
 

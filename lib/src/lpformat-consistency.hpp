@@ -45,13 +45,7 @@ are_variables_used(const problem& pb)
     for (const auto& cst : pb.greater_constraints)
         for (const auto& elem : cst.elements)
             vars[elem.variable_index] = true;
-    for (const auto& cst : pb.greater_equal_constraints)
-        for (const auto& elem : cst.elements)
-            vars[elem.variable_index] = true;
     for (const auto& cst : pb.less_constraints)
-        for (const auto& elem : cst.elements)
-            vars[elem.variable_index] = true;
-    for (const auto& cst : pb.less_equal_constraints)
         for (const auto& elem : cst.elements)
             vars[elem.variable_index] = true;
 
