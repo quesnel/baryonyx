@@ -40,8 +40,9 @@ const char* problem_definition_error_format(
   baryonyx::problem_definition_error_tag) noexcept;
 const char* solver_error_format(baryonyx::solver_error_tag) noexcept;
 
-baryonyx::result solve_or_optimize(std::shared_ptr<baryonyx::context> ctx,
-                                   baryonyx::problem& pb);
+baryonyx::result
+solve_or_optimize(std::shared_ptr<baryonyx::context> ctx,
+                  baryonyx::problem& pb);
 
 int
 main(int argc, char* argv[])
