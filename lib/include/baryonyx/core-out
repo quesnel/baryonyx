@@ -111,9 +111,7 @@ struct resume
 
         constraints[0] = pb.equal_constraints.size();
         constraints[1] = pb.greater_constraints.size();
-        constraints[2] = pb.greater_equal_constraints.size();
         constraints[3] = pb.less_constraints.size();
-        constraints[4] = pb.less_equal_constraints.size();
     }
 
     std::array<long int, 3> variables;

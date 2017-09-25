@@ -693,9 +693,7 @@ enum class operator_type
     undefined,
     equal,
     greater,
-    greater_equal,
     less,
-    less_equal
 };
 
 struct variable_value
@@ -703,8 +701,6 @@ struct variable_value
     int min = { 0 };
     int max = std::numeric_limits<int>::max();
     variable_type type = variable_type::real;
-    bool min_equal{ true };
-    bool max_equal{ false };
 };
 
 struct variables
@@ -744,9 +740,7 @@ struct problem
 
     std::vector<constraint> equal_constraints;
     std::vector<constraint> greater_constraints;
-    std::vector<constraint> greater_equal_constraints;
     std::vector<constraint> less_constraints;
-    std::vector<constraint> less_equal_constraints;
 
     variables vars;
 
@@ -763,8 +757,7 @@ inline std::size_t
 size(const baryonyx::problem& pb) noexcept
 {
     return pb.equal_constraints.size() + pb.greater_constraints.size() +
-           pb.greater_equal_constraints.size() + pb.less_constraints.size() +
-           pb.less_equal_constraints.size();
+           pb.less_constraints.size();
 }
 
 /**
@@ -781,9 +774,7 @@ clear(baryonyx::problem& pb) noexcept
 
     std::vector<constraint>().swap(pb.equal_constraints);
     std::vector<constraint>().swap(pb.greater_constraints);
-    std::vector<constraint>().swap(pb.greater_equal_constraints);
     std::vector<constraint>().swap(pb.less_constraints);
-    std::vector<constraint>().swap(pb.less_equal_constraints);
 
     std::vector<std::string>().swap(pb.vars.names);
     std::vector<variable_value>().swap(pb.vars.values);

@@ -158,13 +158,7 @@ cleanup_problem(std::shared_ptr<baryonyx::context> ctx, problem& pb)
     for (auto& elem : pb.greater_constraints)
         elem.elements =
           cleanup_function_element(elem.elements, nb_function_clean);
-    for (auto& elem : pb.greater_equal_constraints)
-        elem.elements =
-          cleanup_function_element(elem.elements, nb_function_clean);
     for (auto& elem : pb.less_constraints)
-        elem.elements =
-          cleanup_function_element(elem.elements, nb_function_clean);
-    for (auto& elem : pb.less_equal_constraints)
         elem.elements =
           cleanup_function_element(elem.elements, nb_function_clean);
 
@@ -176,43 +170,20 @@ mitm_solve(std::shared_ptr<baryonyx::context> ctx, problem& pb)
 {
     cleanup_problem(ctx, pb);
 
-    if (pb.greater_constraints.empty() and
-        pb.greater_equal_constraints.empty() and
-        pb.less_constraints.empty() and pb.less_equal_constraints.empty() and
+    if (pb.greater_constraints.empty() and pb.less_constraints.empty() and
         is_boolean_coefficient(pb.equal_constraints) and
-        is_boolean_variable(pb.vars.values)) {
-
+        is_boolean_variable(pb.vars.values))
         return baryonyx::inequalities_1coeff_wedelin_solve(ctx, pb);
-    }
 
-    if ((not pb.equal_constraints.empty() or
-         not pb.greater_equal_constraints.empty() or
-         not pb.less_equal_constraints.empty())) {
-
-        for (int i{ 0 },
-             e(numeric_cast<int>(pb.less_equal_constraints.size()));
-             i != e;
-             ++i)
-            for (const auto& elem : pb.less_equal_constraints[i].elements)
-                if (elem.factor < -1 or elem.factor > 1)
-                    ctx->warning(
-                      "Error at constraints %d (factor=%d)\n", i, elem.factor);
-
-        if (pb.greater_constraints.empty() and pb.less_constraints.empty() and
-            is_101_coefficient(pb.equal_constraints) and
-            is_101_coefficient(pb.greater_equal_constraints) and
-            is_101_coefficient(pb.less_equal_constraints) and
-            is_boolean_variable(pb.vars.values)) {
-
-            return baryonyx::inequalities_1coeff_wedelin_solve(ctx, pb);
-        }
-    }
+    if (is_101_coefficient(pb.equal_constraints) and
+        is_101_coefficient(pb.less_constraints) and
+        is_101_coefficient(pb.greater_constraints) and
+        is_boolean_variable(pb.vars.values))
+        return baryonyx::inequalities_1coeff_wedelin_solve(ctx, pb);
 
     if ((is_101_coefficient(pb.equal_constraints) or
          is_101_coefficient(pb.greater_constraints) or
-         is_101_coefficient(pb.greater_equal_constraints) or
-         is_101_coefficient(pb.less_constraints) or
-         is_101_coefficient(pb.less_equal_constraints)) and
+         is_101_coefficient(pb.less_constraints)) and
         is_integer_variable(pb.vars.values)) {
         double kappa, delta, theta;
         long limit;
@@ -221,6 +192,8 @@ mitm_solve(std::shared_ptr<baryonyx::context> ctx, problem& pb)
 
         return baryonyx::generalized_wedelin(kappa, delta, theta, limit, pb);
     }
+
+    ctx->info("no_solver_available");
 
     throw baryonyx::solver_failure(solver_error_tag::no_solver_available);
 }
@@ -231,43 +204,20 @@ mitm_optimize(std::shared_ptr<baryonyx::context> ctx, problem& pb)
     auto thread = get_thread_number(ctx);
     cleanup_problem(ctx, pb);
 
-    if (pb.greater_constraints.empty() and
-        pb.greater_equal_constraints.empty() and
-        pb.less_constraints.empty() and pb.less_equal_constraints.empty() and
+    if (pb.greater_constraints.empty() and pb.less_constraints.empty() and
         is_boolean_coefficient(pb.equal_constraints) and
-        is_boolean_variable(pb.vars.values)) {
-
+        is_boolean_variable(pb.vars.values))
         return baryonyx::inequalities_1coeff_wedelin_optimize(ctx, pb, thread);
-    }
 
-    if ((not pb.equal_constraints.empty() or
-         not pb.greater_equal_constraints.empty() or
-         not pb.less_equal_constraints.empty())) {
-
-        for (int i{ 0 },
-             e(numeric_cast<int>(pb.less_equal_constraints.size()));
-             i != e;
-             ++i)
-            for (const auto& elem : pb.less_equal_constraints[i].elements)
-                if (elem.factor < -1 or elem.factor > 1)
-                    ctx->warning("Error %d (factor=%d)\n", i, elem.factor);
-
-        if (pb.greater_constraints.empty() and pb.less_constraints.empty() and
-            is_101_coefficient(pb.equal_constraints) and
-            is_101_coefficient(pb.greater_equal_constraints) and
-            is_101_coefficient(pb.less_equal_constraints) and
-            is_boolean_variable(pb.vars.values)) {
-
-            return baryonyx::inequalities_1coeff_wedelin_optimize(
-              ctx, pb, thread);
-        }
-    }
+    if (is_101_coefficient(pb.equal_constraints) and
+        is_101_coefficient(pb.less_constraints) and
+        is_101_coefficient(pb.greater_constraints) and
+        is_boolean_variable(pb.vars.values))
+        return baryonyx::inequalities_1coeff_wedelin_optimize(ctx, pb, thread);
 
     if ((is_101_coefficient(pb.equal_constraints) or
          is_101_coefficient(pb.greater_constraints) or
-         is_101_coefficient(pb.greater_equal_constraints) or
-         is_101_coefficient(pb.less_constraints) or
-         is_101_coefficient(pb.less_equal_constraints)) and
+         is_101_coefficient(pb.less_constraints)) and
         is_integer_variable(pb.vars.values)) {
         double kappa, delta, theta;
         long limit;
@@ -276,6 +226,8 @@ mitm_optimize(std::shared_ptr<baryonyx::context> ctx, problem& pb)
 
         return baryonyx::generalized_wedelin(kappa, delta, theta, limit, pb);
     }
+
+    ctx->info("no_solver_available");
 
     throw baryonyx::solver_failure(solver_error_tag::no_solver_available);
 }

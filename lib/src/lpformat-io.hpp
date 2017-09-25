@@ -457,24 +457,34 @@ read_operator(parser_stack& stack)
     if (str[0] == '<') {
         if (str.size() > 1 and str[1] == '=') {
             stack.substr_front(2);
-            return operator_type::less_equal;
         } else {
             stack.substr_front(1);
-            return operator_type::less;
         }
+
+        return operator_type::less;
     }
 
     if (str[0] == '>') {
         if (str.size() > 1 and str[1] == '=') {
             stack.substr_front(2);
-            return operator_type::greater_equal;
         } else {
             stack.substr_front(1);
-            return operator_type::greater;
         }
+
+        return operator_type::greater;
     }
 
     if (str[0] == '=') {
+        if (str.size() > 1 and str[1] == '<') {
+            stack.substr_front(2);
+
+            return operator_type::less;
+        } else if (str.size() > 1 and str[1] == '=') {
+            stack.substr_front(2);
+
+            return operator_type::greater;
+        }
+
         stack.substr_front(1);
         return operator_type::equal;
     }
@@ -700,14 +710,8 @@ read_constraints(parser_stack& stack, problem& p)
         case operator_type::greater:
             p.greater_constraints.emplace_back(std::get<0>(cst));
             break;
-        case operator_type::greater_equal:
-            p.greater_equal_constraints.emplace_back(std::get<0>(cst));
-            break;
         case operator_type::less:
             p.less_constraints.emplace_back(std::get<0>(cst));
-            break;
-        case operator_type::less_equal:
-            p.less_equal_constraints.emplace_back(std::get<0>(cst));
             break;
         default:
             throw file_format_failure(
@@ -727,25 +731,13 @@ apply_bound(int value, operator_type type, variable_value& variable)
     switch (type) {
     case operator_type::greater:
         variable.max = value;
-        variable.max_equal = false;
-        break;
-    case operator_type::greater_equal:
-        variable.max = value;
-        variable.max_equal = true;
         break;
     case operator_type::less:
         variable.min = value;
-        variable.min_equal = false;
-        break;
-    case operator_type::less_equal:
-        variable.min = value;
-        variable.min_equal = true;
         break;
     case operator_type::equal:
         variable.min = value;
-        variable.max_equal = true;
         variable.max = value;
-        variable.max_equal = true;
         break;
     case operator_type::undefined:
         break;
@@ -758,25 +750,13 @@ apply_bound(variable_value& variable, operator_type type, int value)
     switch (type) {
     case operator_type::greater:
         variable.min = value;
-        variable.min_equal = false;
-        break;
-    case operator_type::greater_equal:
-        variable.min = value;
-        variable.min_equal = true;
         break;
     case operator_type::less:
         variable.max = value;
-        variable.max_equal = false;
-        break;
-    case operator_type::less_equal:
-        variable.max = value;
-        variable.max_equal = true;
         break;
     case operator_type::equal:
         variable.min = value;
-        variable.max_equal = true;
         variable.max = value;
-        variable.max_equal = true;
         break;
     case operator_type::undefined:
         break;
@@ -850,7 +830,7 @@ read_binary(parser_stack& stack, problem& p)
                                       stack.line(),
                                       stack.column());
 
-        p.vars.values[id] = { 0, 1, variable_type::binary, true, true };
+        p.vars.values[id] = { 0, 1, variable_type::binary };
 
         str = stack.top();
     }
@@ -1021,19 +1001,11 @@ private:
         }
 
         for (long i = 0, e = p.greater_constraints.size(); i != e; ++i) {
-            write_constraint(p.greater_constraints[i], " > ");
-        }
-
-        for (long i = 0, e = p.greater_equal_constraints.size(); i != e; ++i) {
-            write_constraint(p.greater_equal_constraints[i], " >= ");
+            write_constraint(p.greater_constraints[i], " >= ");
         }
 
         for (long i = 0, e = p.less_constraints.size(); i != e; ++i) {
-            write_constraint(p.less_constraints[i], " < ");
-        }
-
-        for (long i = 0, e = p.less_equal_constraints.size(); i != e; ++i) {
-            write_constraint(p.less_equal_constraints[i], " <= ");
+            write_constraint(p.less_constraints[i], " <= ");
         }
     }
 };
