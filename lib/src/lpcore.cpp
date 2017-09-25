@@ -108,7 +108,7 @@ split_param(const char* param) noexcept
 }
 
 void
-help(std::shared_ptr<baryonyx::context> ctx) noexcept
+help(baryonyx::context* ctx) noexcept
 {
     ctx->info("--help|-h                   This help message\n"
               "--param|-p [name]:[value]   Add a new parameter (name is"
@@ -215,11 +215,8 @@ context::parse(int argc, char* argv[]) noexcept
                                         { 0, 0, nullptr, 0 } };
 
     int opt_index;
-    int verbose = 1;
+    int verbose = 6;
     int quiet = 0;
-
-    auto ctx = std::make_shared<baryonyx::context>();
-    ctx->set_standard_stream_logger();
 
     for (;;) {
         const auto opt =
@@ -233,11 +230,8 @@ context::parse(int argc, char* argv[]) noexcept
         case 'O':
             m_optimize = true;
             break;
-        case 'l':
-            m_parameters["limit"] = ::to_long(::optarg, 1000l);
-            break;
         case 'h':
-            ::help(ctx);
+            ::help(this);
             break;
         case 'p': {
             std::string name;
@@ -245,20 +239,26 @@ context::parse(int argc, char* argv[]) noexcept
             std::tie(name, value) = ::split_param(::optarg);
             m_parameters[name] = value;
         } break;
+        case 'l':
+            m_parameters["limit"] = ::to_long(::optarg, 1000l);
+            break;
         case 'q':
             quiet = 1;
             break;
+        case 'v':
+            verbose = static_cast<int>(::to_long(::optarg, 3l));
+            break;
         case '?':
         default:
-            ctx->error("Unknown command line option\n");
+            error("Unknown command line option\n");
             return -1;
         };
     }
 
-    if (quiet)                    // priority to quiet over the
-        ctx->set_log_priority(3); // verbose mode.
+    if (quiet)
+        set_log_priority(4); // verbose mode.
     else if (verbose >= 0 and verbose <= 7)
-        ctx->set_log_priority(verbose);
+        set_log_priority(verbose);
 
     return ::optind;
 }
