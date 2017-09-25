@@ -145,40 +145,57 @@ struct parser_stack
     {
         auto str = top();
 
-        if (iequals(str, "binary") or iequals(str, "binaries"))
+        if (stack.empty())
+            return false;
+
+        if (iequals(str, "binary") or iequals(str, "binaries") or
+            iequals(str, "general") or iequals(str, "end") or
+            iequals(str, "st") or iequals(str, "st:"))
             return true;
 
-        if (iequals(str, "general"))
-            return true;
-
-        if (iequals(str, "end"))
-            return true;
-
-        if (iequals(str, "st"))
+        if (stack.size() > 2 and
+            (iequals(str, "subject") and iequals(stack[1], "to") and
+             iequals(stack[2], ":")))
             return true;
 
         if (stack.size() > 1 and
-            (iequals(str, "subject") and iequals(stack[1], "to")))
+            ((iequals(str, "subject") and iequals(stack[1], "to")) or
+             (iequals(str, "subject") and iequals(stack[1], "to:")) or
+             (iequals(str, "st") and iequals(stack[1], ":"))))
             return true;
 
         return false;
     }
 
+    /**
+     * @brief Tries to read on of the constraint title syntax.
+     *
+     * @details This function tries to read the constraint title that can be
+     *      any of 'st', 'st:', 'subject to', 'subject to:' or 'subject to :'.
+     */
     inline bool is_subject_to()
     {
-        if (stack.size() <= 1) {
-            if (iequals(stack[0], "st")) {
-                pop();
-                return true;
-            }
-
-            fill();
-        }
-
-        if (stack.size() <= 1)
+        if (stack.empty())
             return false;
 
-        if (iequals(stack[0], "subject") and iequals(stack[1], "to")) {
+        if (iequals(stack[0], "st") or iequals(stack[0], "st:")) {
+            pop();
+            return true;
+        }
+
+        if (stack.size() >= 2 and
+            (iequals(stack[0], "subject") and iequals(stack[1], "to") and
+             iequals(stack[2], ":"))) {
+            pop();
+            pop();
+            pop();
+            return true;
+        }
+
+        if (stack.size() > 1 and
+            ((iequals(stack[0], "st") and iequals(stack[1], ":")) or
+             (iequals(stack[0], "subject") and iequals(stack[1], "to")) or
+             (iequals(stack[0], "subject") and iequals(stack[1], "to:")))) {
             pop();
             pop();
             return true;
@@ -303,10 +320,12 @@ struct parser_stack
     {
         return stack.empty();
     }
+
     int line() const
     {
         return m_line;
     }
+
     int column() const
     {
         return m_column;
@@ -329,10 +348,12 @@ private:
     void fill()
     {
         std::string line;
+        int cache{ 256 };
 
-        do {
+        while (m_is.good()) {
             std::getline(m_is, line);
             m_line++;
+            cache--;
 
             if (line.empty() and m_is.eof())
                 return;
@@ -362,7 +383,13 @@ private:
                     if (not std::isspace(line[i]))
                         break;
             }
-        } while (m_is.good() and stack.empty());
+
+            if (cache <= 0 and not stack.empty())
+                return;
+
+            if (stack.empty())
+                cache = 256;
+        }
     }
 };
 
