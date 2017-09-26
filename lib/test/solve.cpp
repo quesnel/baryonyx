@@ -34,6 +34,31 @@
 #include <baryonyx/core>
 
 void
+test_preprocessor(std::shared_ptr<baryonyx::context> ctx)
+{
+    auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/prepro.lp");
+    auto result = baryonyx::solve(ctx, pb);
+
+    Ensures(result.affected_vars.names.size() == 3);
+    Ensures(result.affected_vars.values[0] == 0);
+    Ensures(result.affected_vars.values[1] == 0);
+    Ensures(result.affected_vars.values[2] == 1);
+
+    Ensures(result.status == baryonyx::result_status::success);
+    Ensures(baryonyx::is_valid_solution(pb, result.variable_value) == true);
+}
+
+void
+test_preprocessor_2(std::shared_ptr<baryonyx::context> ctx)
+{
+    auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/capmo1_direct.lp");
+    auto result = baryonyx::solve(ctx, pb);
+
+    Ensures(result.status == baryonyx::result_status::success);
+    Ensures(baryonyx::is_valid_solution(pb, result.variable_value) == true);
+}
+
+void
 test_assignment_problem(std::shared_ptr<baryonyx::context> ctx)
 {
     auto pb =
@@ -315,6 +340,8 @@ main(int /* argc */, char* /* argv */ [])
     auto ctx = std::make_shared<baryonyx::context>();
     ctx->set_standard_stream_logger();
 
+    test_preprocessor(ctx);
+    test_preprocessor_2(ctx);
     test_assignment_problem(ctx);
     test_assignment_problem_random_coast(ctx);
     test_negative_coeff(ctx);

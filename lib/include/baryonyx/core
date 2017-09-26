@@ -725,13 +725,25 @@ struct constraint
 {
     std::string label;
     std::vector<function_element> elements;
-    double value;
+    int value = { 0 };
 };
 
 struct objective_function
 {
     std::vector<function_element> elements;
-    int constant = { 0 };
+    int value = { 0 };
+};
+
+struct affected_variables
+{
+    void push_back(std::string name, int value)
+    {
+        names.emplace_back(name);
+        values.emplace_back(value);
+    }
+
+    std::vector<std::string> names;
+    std::vector<int> values;
 };
 
 struct problem
@@ -743,6 +755,7 @@ struct problem
     std::vector<constraint> less_constraints;
 
     variables vars;
+    affected_variables affected_vars;
 
     objective_function_type type = { objective_function_type::maximize };
 };
@@ -778,6 +791,9 @@ clear(baryonyx::problem& pb) noexcept
 
     std::vector<std::string>().swap(pb.vars.names);
     std::vector<variable_value>().swap(pb.vars.values);
+
+    std::vector<std::string>().swap(pb.affected_vars.names);
+    std::vector<int>().swap(pb.affected_vars.values);
 }
 
 enum class result_status
@@ -795,6 +811,7 @@ struct result
 
     std::vector<std::string> variable_name;
     std::vector<int> variable_value;
+    affected_variables affected_vars;
     double duration = 0.0;
     double value = 0.0;
     index loop = 0;
@@ -808,8 +825,7 @@ struct result
 inline std::tuple<double, double>
 compute_min_max_objective_function(const problem& pb) noexcept
 {
-    std::tuple<double, double> ret{ pb.objective.constant,
-                                    pb.objective.constant };
+    std::tuple<double, double> ret{ pb.objective.value, pb.objective.value };
 
     for (const auto& elem : pb.objective.elements)
         if (elem.factor < 0)

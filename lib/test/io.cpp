@@ -58,7 +58,7 @@ test_examples_1(std::shared_ptr<baryonyx::context> ctx)
     Ensures(pb.objective.elements[1].variable_index == 1);
     Ensures(pb.objective.elements[2].factor == 3);
     Ensures(pb.objective.elements[2].variable_index == 2);
-    Ensures(pb.objective.constant == -100);
+    Ensures(pb.objective.value == -100);
 
     Ensures(pb.vars.names.size() == 3);
     Ensures(pb.vars.values.size() == 3);
