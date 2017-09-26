@@ -63,7 +63,7 @@ inline bool
 operator==(const objective_function& lhs,
            const objective_function& rhs) noexcept
 {
-    return lhs.elements == rhs.elements and lhs.constant == rhs.constant;
+    return lhs.elements == rhs.elements and lhs.value == rhs.value;
 }
 
 inline bool

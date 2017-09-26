@@ -45,7 +45,7 @@ operator<<(std::ostream& os, const result& result)
        << "variables.............: " << result.variables << '\n'
        << "duration..............: " << result.duration << "s\n"
        << "loop..................: " << result.loop << '\n'
-       << "status................: \n";
+       << "status................: ";
 
     switch (result.status) {
     case result_status::uninitialized:
@@ -55,6 +55,12 @@ operator<<(std::ostream& os, const result& result)
         os << "solution found\n"
            << "value.................: " << result.value << '\n'
            << "variables.............: \n";
+
+        for (std::size_t i{ 0 }, e{ result.affected_vars.names.size() };
+             i != e;
+             ++i)
+            os << result.affected_vars.names[i] << ':'
+               << result.affected_vars.values[i] << '\n';
 
         for (std::size_t i{ 0 }, e{ result.variable_name.size() }; i != e; ++i)
             os << result.variable_name[i] << ':' << result.variable_value[i]
@@ -111,11 +117,11 @@ struct resume
 
         constraints[0] = pb.equal_constraints.size();
         constraints[1] = pb.greater_constraints.size();
-        constraints[3] = pb.less_constraints.size();
+        constraints[2] = pb.less_constraints.size();
     }
 
     std::array<long int, 3> variables;
-    std::array<long int, 5> constraints;
+    std::array<long int, 3> constraints;
     std::tuple<double, double> minmax;
 };
 
@@ -133,10 +139,8 @@ operator<<(std::ostream& os, const resume& pb)
                                                        0)
               << '\n'
               << "  ........ =  : " << pb.constraints[0] << '\n'
-              << "  ........ >  : " << pb.constraints[1] << '\n'
-              << "  ........ >= : " << pb.constraints[2] << '\n'
-              << "  ........ <  : " << pb.constraints[3] << '\n'
-              << "  ........ <= : " << pb.constraints[4] << '\n'
+              << "  ........ >= : " << pb.constraints[1] << '\n'
+              << "  ........ <= : " << pb.constraints[2] << '\n'
               << "minimal value.: " << std::get<0>(pb.minmax) << '\n'
               << "maximal value.: " << std::get<1>(pb.minmax) << '\n';
 }

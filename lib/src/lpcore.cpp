@@ -635,7 +635,7 @@ compute_solution(const problem& pb, const std::vector<int>& variable_value)
 {
     Expects(not variable_value.empty(), "variables vector empty");
 
-    double ret = pb.objective.constant;
+    double ret = pb.objective.value;
 
     for (auto& elem : pb.objective.elements)
         ret += elem.factor * variable_value[elem.variable_index];

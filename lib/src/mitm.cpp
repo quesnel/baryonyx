@@ -23,10 +23,12 @@
 #include <baryonyx/core-compare>
 #include <baryonyx/core>
 
+#include <fstream>
 #include <iterator>
 
 #include "generalized-wedelin.hpp"
 #include "inequalities-1coeff.hpp"
+#include "lpformat-io.hpp"
 #include "mitm.hpp"
 #include "utils.hpp"
 #include "wedelin.hpp"
@@ -111,8 +113,18 @@ is_101_coefficient(const constraintsT csts)
 
 template<typename functionT>
 functionT
-cleanup_function_element(functionT fct, long int& nb)
+cleanup_function_element(functionT& fct, int& nb)
 {
+    std::size_t fct_size{ fct.size() };
+
+    {
+        auto it = std::remove_if(fct.begin(), fct.end(), [](const auto& elem) {
+            return elem.factor == 0;
+        });
+        nb += std::distance(it, fct.end());
+        fct.erase(it, fct.end());
+    }
+
     if (fct.size() <= 1)
         return fct;
 
@@ -139,30 +151,322 @@ cleanup_function_element(functionT fct, long int& nb)
     }
 
     {
-        nb += numeric_cast<long int>(fct.size() - ret.size());
+        nb += numeric_cast<int>(fct_size - ret.size());
     }
 
     return ret;
 }
 
+int
+remove_variable(objective_function& obj, int variable_id, int variable_value)
+{
+    auto it = std::remove_if(obj.elements.begin(),
+                             obj.elements.end(),
+                             [variable_id](const auto& elem) {
+                                 return elem.variable_index == variable_id;
+                             });
+
+    int ret = std::distance(it, obj.elements.end());
+
+    for (auto jt = it; jt != obj.elements.end(); ++jt)
+        obj.value += (jt->factor * variable_value);
+
+    obj.elements.erase(it, obj.elements.end());
+
+    for (auto& elem : obj.elements)
+        if (elem.variable_index > variable_id)
+            --elem.variable_index;
+
+    return ret;
+}
+
+int
+remove_variable(constraint& obj, int variable_id, int variable_value)
+{
+    auto it = std::remove_if(obj.elements.begin(),
+                             obj.elements.end(),
+                             [variable_id](const auto& elem) {
+                                 return elem.variable_index == variable_id;
+                             });
+
+    int ret = std::distance(it, obj.elements.end());
+
+    for (auto jt = it; jt != obj.elements.end(); ++jt)
+        obj.value -= (jt->factor * variable_value);
+
+    obj.elements.erase(it, obj.elements.end());
+
+    for (auto& elem : obj.elements)
+        if (elem.variable_index > variable_id)
+            --elem.variable_index;
+
+    return ret;
+}
+
+void
+remove_variable(problem& pb,
+                int variable_id,
+                int variable_value,
+                int& clean_nb,
+                int& constraint_nb)
+{
+    pb.affected_vars.push_back(pb.vars.names[variable_id], variable_value);
+
+    pb.vars.names.erase(pb.vars.names.begin() + variable_id);
+    pb.vars.values.erase(pb.vars.values.begin() + variable_id);
+
+    clean_nb += remove_variable(pb.objective, variable_id, variable_value);
+
+    for (auto& elem : pb.equal_constraints)
+        clean_nb += remove_variable(elem, variable_id, variable_value);
+
+    for (auto& elem : pb.less_constraints)
+        clean_nb += remove_variable(elem, variable_id, variable_value);
+
+    for (auto& elem : pb.greater_constraints)
+        clean_nb += remove_variable(elem, variable_id, variable_value);
+
+    constraint_nb +=
+      (pb.equal_constraints.size() + pb.less_constraints.size() +
+       pb.greater_constraints.size());
+
+    pb.equal_constraints.erase(
+      std::remove_if(pb.equal_constraints.begin(),
+                     pb.equal_constraints.end(),
+                     [](const auto& v) { return v.elements.empty(); }),
+      pb.equal_constraints.end());
+
+    pb.less_constraints.erase(
+      std::remove_if(pb.less_constraints.begin(),
+                     pb.less_constraints.end(),
+                     [](const auto& v) { return v.elements.empty(); }),
+      pb.less_constraints.end());
+
+    pb.greater_constraints.erase(
+      std::remove_if(pb.greater_constraints.begin(),
+                     pb.greater_constraints.end(),
+                     [](const auto& v) { return v.elements.empty(); }),
+      pb.greater_constraints.end());
+
+    constraint_nb -=
+      (pb.equal_constraints.size() + pb.less_constraints.size() +
+       pb.greater_constraints.size());
+}
+
+inline size_t
+hash_constraint(const std::vector<function_element>& e) noexcept
+{
+    std::size_t seed{ e.size() };
+
+    for (auto& elem : e)
+        seed ^= elem.variable_index + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+
+    return seed;
+}
+
+struct hashed_constraints
+{
+    hashed_constraints(std::size_t hash_, int index_)
+      : hash(hash_)
+      , index(index_)
+    {
+    }
+
+    std::size_t hash;
+    int index;
+};
+
+void
+remove_duplicated_constraints(std::shared_ptr<baryonyx::context> ctx,
+                              std::vector<constraint>& cst,
+                              operator_type type,
+                              int& constraint_nb)
+{
+    std::vector<hashed_constraints> t;
+    std::vector<constraint> result;
+
+    t.reserve(cst.size());
+
+    for (int i{ 0 }, e{ numeric_cast<int>(cst.size()) }; i != e; ++i)
+        t.emplace_back(hash_constraint(cst[i].elements), i);
+
+    std::sort(t.begin(), t.end(), [](const auto& rhs, const auto& lhs) {
+        return rhs.hash < lhs.hash;
+    });
+
+    for (auto it = t.begin(); it != t.end();) {
+        result.push_back(cst[it->index]);
+        auto jt = it + 1;
+
+        while (jt != t.end() and it->hash == jt->hash and
+               result.back().elements == cst[jt->index].elements) {
+            switch (type) {
+            case operator_type::equal:
+                Expects(result.back().value == cst[jt->index].value);
+
+                ctx->debug("      = constraints %d = %d must be removed\n",
+                           jt->index,
+                           it->index);
+                break;
+            case operator_type::greater:
+                result.back().value =
+                  std::max(result.back().value, cst[jt->index].value);
+
+                ctx->debug("      >= constraints %d = %d must be removed\n",
+                           jt->index,
+                           it->index);
+                break;
+            case operator_type::less:
+                result.back().value =
+                  std::min(result.back().value, cst[jt->index].value);
+
+                ctx->debug("      <= constraints %d = %d must be removed\n",
+                           jt->index,
+                           it->index);
+                break;
+            default:
+                break;
+            }
+
+            ++jt;
+            ++constraint_nb;
+        }
+
+        it = jt;
+    }
+
+    result.swap(cst);
+}
+
+void
+remove_duplicated_constraints(std::shared_ptr<baryonyx::context> ctx,
+                              problem& pb,
+                              int& constraint)
+{
+    remove_duplicated_constraints(
+      ctx, pb.equal_constraints, operator_type::equal, constraint);
+    remove_duplicated_constraints(
+      ctx, pb.less_constraints, operator_type::less, constraint);
+    remove_duplicated_constraints(
+      ctx, pb.greater_constraints, operator_type::greater, constraint);
+}
+
+void
+remove_assigned_variables(std::shared_ptr<baryonyx::context> ctx,
+                          problem& pb,
+                          int& variable,
+                          int& clean,
+                          int& constraint)
+{
+    int i{ 0 }, e{ numeric_cast<int>(pb.vars.values.size()) };
+
+    while (i != e) {
+        if (pb.vars.values[i].min == pb.vars.values[i].max) {
+            ctx->debug("      bound pass: variable %s = %d must be removed\n",
+                       pb.vars.names[i].c_str(),
+                       pb.vars.values[i].max);
+
+            remove_variable(pb, i, pb.vars.values[i].max, clean, constraint);
+
+            ++variable;
+            i = 0;
+            e = numeric_cast<int>(pb.vars.values.size());
+        } else {
+            ++i;
+        }
+    }
+
+    bool modify = false;
+    int pass{ 0 };
+
+    do {
+        modify = false;
+
+        {
+            i = 0;
+            e = numeric_cast<int>(pb.equal_constraints.size());
+
+            while (i != e) {
+                if (pb.equal_constraints[i].elements.size() == 1) {
+                    ctx->debug(
+                      "      equal constraint (pass %d): variable %s = "
+                      "%d must be removed\n",
+                      pass,
+                      pb.vars
+                        .names[pb.equal_constraints[i]
+                                 .elements.front()
+                                 .variable_index]
+                        .c_str(),
+                      pb.equal_constraints[i].value);
+
+                    remove_variable(
+                      pb,
+                      pb.equal_constraints[i].elements.front().variable_index,
+                      pb.equal_constraints[i].value,
+                      clean,
+                      constraint);
+
+                    modify = true;
+                    ++variable;
+                    i = 0;
+                } else {
+                    ++i;
+                }
+            }
+        }
+
+        ++pass;
+    } while (modify);
+}
+
 void
 cleanup_problem(std::shared_ptr<baryonyx::context> ctx, problem& pb)
 {
-    ctx->info("* cleaning problem definition:\n");
+    ctx->info("preprocessor:\n");
 
-    long int nb_function_clean{ 0 };
+    {
+        ctx->info("  - cleaning functions (merge variables, remove zero) "
+                  "coefficient:\n");
+        int clean{ 0 };
 
-    for (auto& elem : pb.equal_constraints)
-        elem.elements =
-          cleanup_function_element(elem.elements, nb_function_clean);
-    for (auto& elem : pb.greater_constraints)
-        elem.elements =
-          cleanup_function_element(elem.elements, nb_function_clean);
-    for (auto& elem : pb.less_constraints)
-        elem.elements =
-          cleanup_function_element(elem.elements, nb_function_clean);
+        for (auto& elem : pb.equal_constraints)
+            elem.elements = cleanup_function_element(elem.elements, clean);
+        for (auto& elem : pb.greater_constraints)
+            elem.elements = cleanup_function_element(elem.elements, clean);
+        for (auto& elem : pb.less_constraints)
+            elem.elements = cleanup_function_element(elem.elements, clean);
 
-    ctx->info(" -> cleaned functions: %ld\n", nb_function_clean);
+        cleanup_function_element(pb.objective.elements, clean);
+
+        ctx->info("    `-> %d function element(s) merged.\n", clean);
+    }
+
+    {
+        ctx->info("  - cleaning already assigned variables:\n");
+        int variable{ 0 }, clean{ 0 }, constraint{ 0 };
+
+        remove_assigned_variables(ctx, pb, variable, clean, constraint);
+        remove_duplicated_constraints(ctx, pb, constraint);
+
+        ctx->info("    `-> %d variable(s) - %d function element(s) - %d "
+                  "constraint(s) removed.\n",
+                  variable,
+                  clean,
+                  constraint);
+    }
+
+#ifndef BARYONYX_FULL_OPTIMIZATION
+    {
+        ctx->info("  - write preprocessed.lp: ");
+        std::ofstream ofs("preprocessed.lp");
+        if (ofs.is_open()) {
+            details::problem_writer pw(pb, ofs);
+            ctx->info("writing %s\n", ((pw) ? "done" : "fail"));
+        } else {
+            ctx->info("opening failed\n");
+        }
+    }
+#endif
 }
 
 result

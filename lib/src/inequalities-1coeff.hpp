@@ -633,23 +633,6 @@ struct merged_constraint_hash
 };
 
 /**
- * If a variable is assigned, we remove then from the list of variable, we
- * remove the constraint and we remove all reference to this variable in all
- * constraints.
- */
-template<typename constraintsT>
-long
-remove_small_constraints(constraintsT& csts) noexcept
-{
-    for (auto& elem : csts) {
-        if (elem.elements.size() == 1) {
-        }
-    }
-
-    return 0;
-}
-
-/**
  * For each constraints, this function removes element from constraint
  * functions where the factor equal 0. Constraints are remove for all
  * empty.
@@ -758,12 +741,6 @@ make_merged_constraints(std::shared_ptr<context> ctx,
                   "  - removed empty functions in constraints: %ld\n",
                   std::get<0>(removed),
                   std::get<1>(removed));
-    }
-
-    {
-        auto removed = remove_small_constraints(ret);
-
-        ctx->info("  - removed small constraints: %ld\n", removed);
     }
 
     //
@@ -1666,13 +1643,13 @@ struct solver_functor
             }
 
             if (++i > p.limit) {
-                m_ctx->info("  - Loop limit reached: %ld %f\n", i, kappa);
+                m_ctx->info("  - Loop limit reached: %ld\n", i);
                 m_best.status = result_status::limit_reached;
                 return m_best;
             }
 
             if (kappa > p.kappa_max) {
-                m_ctx->info("  - Kappa max reached: %ld %f\n", i, kappa);
+                m_ctx->info("  - Kappa max reached: %f\n", kappa);
                 m_best.status = result_status::kappa_max_reached;
                 return m_best;
             }
@@ -1885,12 +1862,13 @@ solve(std::shared_ptr<context> ctx,
 {
     ctx->info("Solver initializing\n");
 
-    auto names = pb.vars.names;
     auto constraints{ make_merged_constraints(ctx, pb, p) };
     auto variables = baryonyx::numeric_cast<index>(pb.vars.values.size());
     auto cost = make_objective_function(pb.objective, variables);
     auto norm_costs = normalize_costs(ctx, cost);
-    auto cost_constant = pb.objective.constant;
+    auto cost_constant = pb.objective.value;
+    auto names = std::move(pb.vars.names);
+    auto affected_vars = std::move(pb.affected_vars);
 
     baryonyx::clear(pb);
 
@@ -1900,7 +1878,8 @@ solve(std::shared_ptr<context> ctx,
       slv(constraints, variables, cost, norm_costs, cost_constant, p, rng);
 
     result.method = "inequalities_1coeff solver";
-    result.variable_name = names;
+    result.variable_name = std::move(names);
+    result.affected_vars = std::move(affected_vars);
 
     return result;
 }
@@ -1917,12 +1896,13 @@ optimize(std::shared_ptr<context> ctx,
 
     ctx->info("Optimizer initializing\n");
 
-    auto names = pb.vars.names;
     auto constraints{ make_merged_constraints(ctx, pb, p) };
     auto variables = baryonyx::numeric_cast<index>(pb.vars.values.size());
     auto cost = make_objective_function(pb.objective, variables);
     auto norm_costs = normalize_costs(ctx, cost);
-    auto cost_constant = pb.objective.constant;
+    auto cost_constant = pb.objective.value;
+    auto names = std::move(pb.vars.names);
+    auto affected_vars = std::move(pb.affected_vars);
 
     baryonyx::clear(pb);
 
@@ -1966,7 +1946,8 @@ optimize(std::shared_ptr<context> ctx,
     }
 
     best.method = "inequalities_1coeff optimizer";
-    best.variable_name = names;
+    best.variable_name = std::move(names);
+    best.affected_vars = std::move(affected_vars);
 
     return best;
 }

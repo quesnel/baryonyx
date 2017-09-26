@@ -149,6 +149,7 @@ struct parser_stack
             return false;
 
         if (iequals(str, "binary") or iequals(str, "binaries") or
+            iequals(str, "bound") or iequals(str, "bounds") or
             iequals(str, "general") or iequals(str, "end") or
             iequals(str, "st") or iequals(str, "st:"))
             return true;
@@ -212,7 +213,7 @@ struct parser_stack
         if (stack.size() <= 0)
             return false;
 
-        if (iequals(stack[0], "bounds")) {
+        if (iequals(stack[0], "bounds") or iequals(stack[0], "bound")) {
             pop();
             return true;
         }
@@ -422,7 +423,7 @@ get_variable_only(std::unordered_map<std::string, long>& cache,
     return -1;
 }
 
-std::string
+inline std::string
 read_name(parser_stack& stack)
 {
     std::string str = stack.top();
@@ -449,7 +450,7 @@ read_name(parser_stack& stack)
       file_format_error_tag::bad_name, stack.line(), stack.column());
 }
 
-operator_type
+inline operator_type
 read_operator(parser_stack& stack)
 {
     std::string str = stack.top();
@@ -493,7 +494,7 @@ read_operator(parser_stack& stack)
       file_format_error_tag::bad_operator, stack.line(), stack.column());
 }
 
-int
+inline int
 read_integer(parser_stack& stack)
 {
     std::string str = stack.top();
@@ -535,7 +536,7 @@ read_integer(parser_stack& stack)
       file_format_error_tag::bad_integer, stack.line(), stack.column());
 }
 
-std::tuple<std::string, int>
+inline std::tuple<std::string, int>
 read_function_element(parser_stack& stack)
 {
     bool negative{ false };
@@ -581,7 +582,7 @@ read_function_element(parser_stack& stack)
                               stack.column());
 }
 
-objective_function_type
+inline objective_function_type
 read_objective_function_type(parser_stack& stack)
 {
     auto str = stack.top();
@@ -612,7 +613,7 @@ read_objective_function_type(parser_stack& stack)
       stack.column());
 }
 
-objective_function
+inline objective_function
 read_objective_function(parser_stack& stack, problem& p)
 {
     objective_function ret;
@@ -638,7 +639,7 @@ read_objective_function(parser_stack& stack, problem& p)
         auto elem = read_function_element(stack);
 
         if (std::get<0>(elem).empty()) // we read a constant
-            ret.constant += std::get<1>(elem);
+            ret.value += std::get<1>(elem);
         else
             ret.elements.emplace_back(
               std::get<1>(elem),
@@ -648,7 +649,7 @@ read_objective_function(parser_stack& stack, problem& p)
     return ret;
 }
 
-std::tuple<constraint, operator_type>
+inline std::tuple<constraint, operator_type>
 read_constraint(parser_stack& stack, problem& p)
 {
     constraint cst;
@@ -668,10 +669,12 @@ read_constraint(parser_stack& stack, problem& p)
 
     auto str = stack.top();
 
-    if (not iequals(str, "binary") and not iequals(str, "binaries") and
+    if (not iequals(str, "bound") and not iequals(str, "bounds") and
+        not iequals(str, "binary") and not iequals(str, "binaries") and
         not iequals(str, "general") and not iequals(str, "end")) {
 
         while (not is_operator(stack.peek()) and not iequals(str, "binary") and
+               not iequals(str, "bound") and not iequals(str, "bounds") and
                not iequals(str, "binaries") and not iequals(str, "general") and
                not iequals(str, "end")) {
             auto elem = read_function_element(stack);
@@ -691,15 +694,15 @@ read_constraint(parser_stack& stack, problem& p)
       file_format_error_tag::bad_constraint, stack.line(), stack.column());
 }
 
-void
+inline void
 read_constraints(parser_stack& stack, problem& p)
 {
     auto str = stack.top();
     index i = 0;
 
     while (not iequals(str, "binary") and not iequals(str, "binaries") and
-           not iequals(str, "bounds") and not iequals(str, "general") and
-           not iequals(str, "end")) {
+           not iequals(str, "bound") and not iequals(str, "bounds") and
+           not iequals(str, "general") and not iequals(str, "end")) {
 
         auto cst = read_constraint(stack, p);
 
@@ -725,7 +728,7 @@ read_constraints(parser_stack& stack, problem& p)
     }
 }
 
-void
+inline void
 apply_bound(int value, operator_type type, variable_value& variable)
 {
     switch (type) {
@@ -744,7 +747,7 @@ apply_bound(int value, operator_type type, variable_value& variable)
     }
 }
 
-void
+inline void
 apply_bound(variable_value& variable, operator_type type, int value)
 {
     switch (type) {
@@ -763,7 +766,7 @@ apply_bound(variable_value& variable, operator_type type, int value)
     }
 }
 
-void
+inline void
 read_bound(parser_stack& stack, problem& p)
 {
     /*
@@ -802,9 +805,10 @@ read_bound(parser_stack& stack, problem& p)
         apply_bound(p.vars.values[id], operator_type, value);
     }
 }
+inline
 
-void
-read_bounds(parser_stack& stack, problem& p)
+  void
+  read_bounds(parser_stack& stack, problem& p)
 {
     auto str = stack.top();
 
@@ -815,7 +819,7 @@ read_bounds(parser_stack& stack, problem& p)
     }
 }
 
-void
+inline void
 read_binary(parser_stack& stack, problem& p)
 {
     auto str = stack.top();
@@ -836,7 +840,7 @@ read_binary(parser_stack& stack, problem& p)
     }
 }
 
-void
+inline void
 read_general(parser_stack& stack, problem& p)
 {
     auto str = stack.top();
@@ -857,7 +861,7 @@ read_general(parser_stack& stack, problem& p)
     }
 }
 
-problem
+inline problem
 read_problem(std::istream& is)
 {
     problem p;
@@ -910,14 +914,13 @@ struct problem_writer
             os << "minimize\n";
 
         write_function_element(p.objective.elements);
-        if (p.objective.constant < 0)
-            os << p.objective.constant;
-        else if (p.objective.constant > 0)
-            os << '+' << p.objective.constant;
 
-        os << '\n';
+        if (p.objective.value < 0)
+            os << p.objective.value;
+        else if (p.objective.value > 0)
+            os << " + " << p.objective.value;
 
-        os << "subject to\n";
+        os << "\nsubject to\n";
         write_constraints();
 
         os << "bounds\n";
