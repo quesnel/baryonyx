@@ -329,16 +329,15 @@ private:
 };
 
 /**
- * @brief @c baryonyx::paramter is a simple class to represent a union
- *     between an integer, a real and a string (resp. @c long, @c double
- *     and @c std::string).
+ * @brief @c baryonyx::paramter is a simple class to represent a union between
+ *     an integer, a real and a string (resp. @c int, @c double and @c
+ *     std::string).
  *
  * @details Waiting for a compiler with the @c std::optional class, @c
- *     baryonyx::parameter implements an union between a @c long, a @c
- *     double and a @c std::string. @c baryonyx::parameter, by default,
- *     defines a @c long with the value of @c 0. Use the @c
- *     baryonyx::parameter::type function to get the current type stored
- *     into the @c baryonyx::parameter.
+ *     baryonyx::parameter implements an union between a @c int, a @c double
+ *     and a @c std::string. @c baryonyx::parameter, by default, defines a @c
+ *     int with the value of @c 0. Use the @c baryonyx::parameter::type
+ *     function to get the current type stored into the @c baryonyx::parameter.
  */
 class parameter
 {
@@ -356,7 +355,7 @@ public:
     {
     }
 
-    explicit parameter(long value_)
+    explicit parameter(int value_)
       : l(value_)
       , type(tag::integer)
     {
@@ -489,7 +488,7 @@ public:
         return *this;
     }
 
-    parameter& operator=(long value)
+    parameter& operator=(int value)
     {
         if (type == tag::integer) {
             l = value;
@@ -542,7 +541,7 @@ public:
 
     union
     {
-        long l;
+        int l;
         double d;
         std::string s;
     };
@@ -633,14 +632,13 @@ public:
     int parse(int argc, char* argv[]) noexcept;
 
     void set_parameter(const std::string& name, double p) noexcept;
-    void set_parameter(const std::string& name, long int p) noexcept;
+    void set_parameter(const std::string& name, int p) noexcept;
     void set_parameter(const std::string& name, std::string p) noexcept;
 
     double get_real_parameter(const std::string& name, double def) const
       noexcept;
 
-    long int get_integer_parameter(const std::string& name, long int def) const
-      noexcept;
+    int get_integer_parameter(const std::string& name, int def) const noexcept;
 
     std::string get_string_parameter(const std::string& name,
                                      std::string def) const noexcept;

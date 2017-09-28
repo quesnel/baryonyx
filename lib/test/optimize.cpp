@@ -39,19 +39,19 @@ test_qap(std::shared_ptr<baryonyx::context> ctx)
 {
     auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/small4.lp");
 
-    ctx->set_parameter("limit", 10'000'000l);
+    ctx->set_parameter("limit", -1);
     ctx->set_parameter("theta", 0.5);
     ctx->set_parameter("delta", 0.2);
     ctx->set_parameter("kappa-step", 10e-4);
     ctx->set_parameter("kappa-max", 10.0);
     ctx->set_parameter("alpha", 0.0);
-    ctx->set_parameter("w", 20l);
+    ctx->set_parameter("w", 20);
     ctx->set_parameter("time-limit", 40.0);
     ctx->set_parameter("pushing-k-factor", 0.9);
-    ctx->set_parameter("pushes-limit", 50l);
-    ctx->set_parameter("pushing-objective-amplifier", 10l);
-    ctx->set_parameter("pushing-iteration-limit", 50l);
-    ctx->set_parameter("thread", 2l);
+    ctx->set_parameter("pushes-limit", 50);
+    ctx->set_parameter("pushing-objective-amplifier", 10);
+    ctx->set_parameter("pushing-iteration-limit", 50);
+    ctx->set_parameter("thread", 2);
 
     auto result = baryonyx::optimize(ctx, pb);
 
@@ -95,20 +95,20 @@ test_n_queens_problem(std::shared_ptr<baryonyx::context> ctx)
             return;
     }
 
-    ctx->set_parameter("limit", 100000l);
+    ctx->set_parameter("limit", 100000);
     ctx->set_parameter("theta", 0.5);
     ctx->set_parameter("delta", 1.0);
     ctx->set_parameter("kappa-min", 0.30);
     ctx->set_parameter("kappa-step", 1e-2);
     ctx->set_parameter("kappa-max", 100.0);
     ctx->set_parameter("alpha", 1.0);
-    ctx->set_parameter("w", 60l);
+    ctx->set_parameter("w", 60);
     ctx->set_parameter("constraint-order", std::string("random-sorting"));
     ctx->set_parameter("time-limit", 20.0);
     ctx->set_parameter("pushing-k-factor", 0.9);
-    ctx->set_parameter("pushes-limit", 50l);
-    ctx->set_parameter("pushing-objective-amplifier", 10l);
-    ctx->set_parameter("pushing-iteration-limit", 10l);
+    ctx->set_parameter("pushes-limit", 50);
+    ctx->set_parameter("pushing-objective-amplifier", 10);
+    ctx->set_parameter("pushing-iteration-limit", 10);
 
     for (std::size_t i{ 0 }; i != valid_solutions.size(); ++i) {
         std::string filepath{ EXAMPLES_DIR "/n-queens/n-queens-problem-" };

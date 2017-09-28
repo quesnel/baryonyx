@@ -95,7 +95,7 @@ check_parameter()
     baryonyx::parameter real{ 3.0 };
     Ensures(real.type == baryonyx::parameter::tag::real);
 
-    baryonyx::parameter integer{ 1000l };
+    baryonyx::parameter integer{ 1000 };
     Ensures(integer.type == baryonyx::parameter::tag::integer);
 
     baryonyx::parameter str{ "hello world" };
@@ -107,12 +107,12 @@ check_parameter()
 
     str = integer;
     Ensures(str.type == baryonyx::parameter::tag::integer);
-    Ensures(str.l == 1000l);
+    Ensures(str.l == 1000);
 
     std::vector<baryonyx::parameter> x(100);
     for (auto& elem : x) {
         Ensures(elem.type == baryonyx::parameter::tag::integer);
-        Ensures(elem.l == 0l);
+        Ensures(elem.l == 0);
     }
 
     auto y = baryonyx::parameter(4.0);

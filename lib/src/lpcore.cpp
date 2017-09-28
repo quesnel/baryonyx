@@ -59,8 +59,8 @@ to_double(const char* s, double bad_value) noexcept
     return value;
 }
 
-long
-to_long(const char* s, long bad_value) noexcept
+int
+to_int(const char* s, int bad_value) noexcept
 {
     char* c;
     errno = 0;
@@ -69,6 +69,12 @@ to_long(const char* s, long bad_value) noexcept
     if ((errno == ERANGE and (value == LONG_MIN or value == LONG_MAX)) or
         (value == 0 and c == s))
         return bad_value;
+
+    if (value < INT_MIN)
+        return INT_MIN;
+
+    if (value > INT_MAX)
+        return INT_MAX;
 
     return value;
 }
@@ -94,14 +100,14 @@ split_param(const char* param) noexcept
             value += *param++;
     }
 
-    auto valuel = to_long(value.c_str(), LONG_MIN);
+    auto valuel = to_int(value.c_str(), INT_MIN);
     auto valued = to_double(value.c_str(), -HUGE_VAL);
 
     double tmp;
     if (valued != -HUGE_VAL and std::modf(valued, &tmp))
         return std::make_tuple(name, baryonyx::parameter(valued));
 
-    if (valuel != LONG_MIN)
+    if (valuel != INT_MIN)
         return std::make_tuple(name, baryonyx::parameter(valuel));
 
     return std::make_tuple(name, baryonyx::parameter(value));
@@ -240,13 +246,13 @@ context::parse(int argc, char* argv[]) noexcept
             m_parameters[name] = value;
         } break;
         case 'l':
-            m_parameters["limit"] = ::to_long(::optarg, 1000l);
+            m_parameters["limit"] = ::to_int(::optarg, 1000);
             break;
         case 'q':
             quiet = 1;
             break;
         case 'v':
-            verbose = static_cast<int>(::to_long(::optarg, 3l));
+            verbose = ::to_int(::optarg, 3);
             break;
         case '?':
         default:
@@ -276,7 +282,7 @@ context::set_parameter(const std::string& name, double p) noexcept
 }
 
 void
-context::set_parameter(const std::string& name, long int p) noexcept
+context::set_parameter(const std::string& name, int p) noexcept
 {
     if (name.empty())
         return;
@@ -317,9 +323,8 @@ context::get_real_parameter(const std::string& name, double def) const noexcept
     return def;
 }
 
-long int
-context::get_integer_parameter(const std::string& name, long int def) const
-  noexcept
+int
+context::get_integer_parameter(const std::string& name, int def) const noexcept
 {
     auto it = m_parameters.find(name);
     if (it == m_parameters.cend())
@@ -329,7 +334,7 @@ context::get_integer_parameter(const std::string& name, long int def) const
         return it->second.l;
 
     if (it->second.type == parameter::tag::real)
-        return static_cast<long>(it->second.d);
+        return static_cast<int>(it->second.d);
 
     warning("fail to convert parameter %s\n", name.c_str());
 

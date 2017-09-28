@@ -30,9 +30,9 @@ namespace example {
 
 struct n_queens
 {
-    long problem_size;
+    int problem_size;
 
-    n_queens(long problem_size_)
+    n_queens(int problem_size_)
       : problem_size(problem_size_)
     {
         if (problem_size < 3)
@@ -45,41 +45,41 @@ operator<<(std::ostream& os, const n_queens& pb)
 {
     os << "minimize\n";
 
-    for (long i = 0; i != pb.problem_size; ++i) {
-        for (long j = 0; j != pb.problem_size; ++j)
+    for (int i = 0; i != pb.problem_size; ++i) {
+        for (int j = 0; j != pb.problem_size; ++j)
             os << " + x_" << i << '_' << j;
         os << '\n';
     }
 
     os << "\nsubject to\n";
 
-    for (long i = 0; i != pb.problem_size; ++i) {
-        for (long j = 0; j != pb.problem_size; ++j)
+    for (int i = 0; i != pb.problem_size; ++i) {
+        for (int j = 0; j != pb.problem_size; ++j)
             os << "+ x_" << i << '_' << j << ' ';
 
         os << " = 1\n";
     }
 
-    for (long j = 0; j != pb.problem_size; ++j) {
-        for (long i = 0; i != pb.problem_size; ++i)
+    for (int j = 0; j != pb.problem_size; ++j) {
+        for (int i = 0; i != pb.problem_size; ++i)
             os << "+ x_" << i << '_' << j << ' ';
 
         os << " = 1\n";
     }
 
     os << '\n';
-    for (long diag = 1; diag != pb.problem_size - 1; ++diag) {
-        long i = diag;
-        long j = 0;
+    for (int diag = 1; diag != pb.problem_size - 1; ++diag) {
+        int i = diag;
+        int j = 0;
         while (i < pb.problem_size and j < pb.problem_size)
             os << "+ x_" << i++ << '_' << j++ << ' ';
 
         os << " <= 1\n";
     }
 
-    for (long diag = 0; diag != pb.problem_size - 1; ++diag) {
-        long i = 0;
-        long j = diag;
+    for (int diag = 0; diag != pb.problem_size - 1; ++diag) {
+        int i = 0;
+        int j = diag;
         while (i >= 0 and j < pb.problem_size)
             os << "+ x_" << i++ << '_' << j++ << ' ';
 
@@ -87,18 +87,18 @@ operator<<(std::ostream& os, const n_queens& pb)
     }
 
     os << '\n';
-    for (long diag = 1; diag != pb.problem_size; ++diag) {
-        long i = diag;
-        long j = 0;
+    for (int diag = 1; diag != pb.problem_size; ++diag) {
+        int i = diag;
+        int j = 0;
         while (i >= 0 and j < pb.problem_size)
             os << "+ x_" << i-- << '_' << j++ << ' ';
 
         os << " <= 1\n";
     }
 
-    for (long diag = 1; diag != pb.problem_size - 1; ++diag) {
-        long i = pb.problem_size - 1;
-        long j = diag;
+    for (int diag = 1; diag != pb.problem_size - 1; ++diag) {
+        int i = pb.problem_size - 1;
+        int j = diag;
         while (i >= 0 and j < pb.problem_size)
             os << "+ x_" << i-- << '_' << j++ << ' ';
 
@@ -106,8 +106,8 @@ operator<<(std::ostream& os, const n_queens& pb)
     }
 
     os << "\nbinary\n";
-    for (long i = 0; i != pb.problem_size; ++i) {
-        for (long j = 0; j != pb.problem_size; ++j)
+    for (int i = 0; i != pb.problem_size; ++i) {
+        for (int j = 0; j != pb.problem_size; ++j)
             os << "  x_" << i << '_' << j;
 
         os << '\n';

@@ -332,14 +332,14 @@ struct parser_stack
         return m_column;
     }
 
-    std::unordered_map<std::string, long>& cache()
+    std::unordered_map<std::string, int>& cache()
     {
         return m_variable_cache;
     }
 
 private:
     std::deque<std::tuple<int, int>> m_position_stack;
-    std::unordered_map<std::string, long> m_variable_cache;
+    std::unordered_map<std::string, int> m_variable_cache;
 
     std::istream& m_is;
     int m_line;
@@ -395,7 +395,7 @@ private:
 };
 
 inline index
-get_variable(std::unordered_map<std::string, long>& cache,
+get_variable(std::unordered_map<std::string, int>& cache,
              baryonyx::variables& vars,
              const std::string& name) noexcept
 {
@@ -413,7 +413,7 @@ get_variable(std::unordered_map<std::string, long>& cache,
 }
 
 inline index
-get_variable_only(std::unordered_map<std::string, long>& cache,
+get_variable_only(std::unordered_map<std::string, int>& cache,
                   const std::string& name) noexcept
 {
     auto it = cache.find(name);
@@ -999,17 +999,14 @@ private:
 
     void write_constraints() const
     {
-        for (long i = 0, e = p.equal_constraints.size(); i != e; ++i) {
+        for (std::size_t i = 0, e = p.equal_constraints.size(); i != e; ++i)
             write_constraint(p.equal_constraints[i], " = ");
-        }
 
-        for (long i = 0, e = p.greater_constraints.size(); i != e; ++i) {
+        for (std::size_t i = 0, e = p.greater_constraints.size(); i != e; ++i)
             write_constraint(p.greater_constraints[i], " >= ");
-        }
 
-        for (long i = 0, e = p.less_constraints.size(); i != e; ++i) {
+        for (std::size_t i = 0, e = p.less_constraints.size(); i != e; ++i)
             write_constraint(p.less_constraints[i], " <= ");
-        }
     }
 };
 

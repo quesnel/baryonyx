@@ -45,16 +45,16 @@ namespace baryonyx {
  * @return An integer >= 1 if the value exist and can be convert to
  * positive integer or 1 if an error occurred.
  */
-inline long int
+inline int
 get_thread_number(std::shared_ptr<baryonyx::context>& ctx) noexcept
 {
     auto t = ctx->get_integer_parameter("thread",
                                         std::thread::hardware_concurrency());
 
-    return t <= 0 ? 1 : baryonyx::numeric_cast<long int>(t);
+    return t <= 0 ? 1 : baryonyx::numeric_cast<int>(t);
 }
 
-std::tuple<double, double, double, long>
+std::tuple<double, double, double, int>
 get_parameters(std::shared_ptr<baryonyx::context>& ctx) noexcept
 {
     auto kappa = ctx->get_real_parameter("kappa", 0.001);
@@ -253,7 +253,7 @@ remove_variable(problem& pb,
        pb.greater_constraints.size());
 }
 
-inline size_t
+static inline size_t
 hash_constraint(const std::vector<function_element>& e) noexcept
 {
     std::size_t seed{ e.size() };
@@ -266,8 +266,8 @@ hash_constraint(const std::vector<function_element>& e) noexcept
 
 struct hashed_constraints
 {
-    hashed_constraints(std::size_t hash_, int index_)
-      : hash(hash_)
+    hashed_constraints(const std::vector<function_element>& elems, int index_)
+      : hash(hash_constraint(elems))
       , index(index_)
     {
     }
@@ -276,6 +276,11 @@ struct hashed_constraints
     int index;
 };
 
+// Tries to remove duplicated constraints (i.e. all function elements in the
+// vector must be equal) with or without the same value. To improve
+// calculation, we use a mapping vector between an hash of the function
+// elements vector and the index into the constraint vector. We merge
+// duplicated constraints and build an index vector with constraints preserved.
 void
 remove_duplicated_constraints(std::shared_ptr<baryonyx::context> ctx,
                               std::vector<constraint>& cst,
@@ -283,62 +288,71 @@ remove_duplicated_constraints(std::shared_ptr<baryonyx::context> ctx,
                               int& constraint_nb)
 {
     std::vector<hashed_constraints> t;
-    std::vector<constraint> result;
-
     t.reserve(cst.size());
 
+    std::vector<int> order;
+    order.reserve(cst.size());
+
     for (int i{ 0 }, e{ numeric_cast<int>(cst.size()) }; i != e; ++i)
-        t.emplace_back(hash_constraint(cst[i].elements), i);
+        t.emplace_back(cst[i].elements, i);
 
     std::sort(t.begin(), t.end(), [](const auto& rhs, const auto& lhs) {
         return rhs.hash < lhs.hash;
     });
 
-    for (auto it = t.begin(); it != t.end();) {
-        result.push_back(cst[it->index]);
-        auto jt = it + 1;
+    std::size_t i{ 0 }, e{ t.size() };
 
-        while (jt != t.end() and it->hash == jt->hash and
-               result.back().elements == cst[jt->index].elements) {
+    while (i != e) {
+        order.emplace_back(t[i].index);
+        auto j = i + 1;
+
+        while (j != e and t[i].hash == t[j].hash and
+               cst[t[i].index].elements == cst[t[j].index].elements) {
             switch (type) {
             case operator_type::equal:
-                Expects(result.back().value == cst[jt->index].value);
+                Expects(cst[t[i].index].value == cst[t[j].index].value);
 
                 ctx->debug("      = constraints %d = %d must be removed\n",
-                           jt->index,
-                           it->index);
+                           t[j].index,
+                           t[i].index);
                 break;
             case operator_type::greater:
-                result.back().value =
-                  std::max(result.back().value, cst[jt->index].value);
+                cst[t[i].index].value =
+                  std::max(cst[t[i].index].value, cst[t[j].index].value);
 
                 ctx->debug("      >= constraints %d = %d must be removed\n",
-                           jt->index,
-                           it->index);
+                           t[j].index,
+                           t[i].index);
                 break;
             case operator_type::less:
-                result.back().value =
-                  std::min(result.back().value, cst[jt->index].value);
+                cst[t[i].index].value =
+                  std::min(cst[t[i].index].value, cst[t[j].index].value);
 
                 ctx->debug("      <= constraints %d = %d must be removed\n",
-                           jt->index,
-                           it->index);
+                           t[j].index,
+                           t[i].index);
                 break;
             default:
                 break;
             }
 
-            ++jt;
+            ++j;
             ++constraint_nb;
         }
 
-        it = jt;
+        i = j;
     }
+
+    std::sort(order.begin(), order.end(), std::less<int>());
+
+    std::vector<constraint> result(order.size());
+    for (std::size_t i{ 0 }, e{ order.size() }; i != e; ++i)
+        result[i] = std::move(cst[order[i]]);
 
     result.swap(cst);
 }
 
-void
+static void
 remove_duplicated_constraints(std::shared_ptr<baryonyx::context> ctx,
                               problem& pb,
                               int& constraint)
@@ -351,7 +365,7 @@ remove_duplicated_constraints(std::shared_ptr<baryonyx::context> ctx,
       ctx, pb.greater_constraints, operator_type::greater, constraint);
 }
 
-void
+static void
 remove_assigned_variables(std::shared_ptr<baryonyx::context> ctx,
                           problem& pb,
                           int& variable,
@@ -490,7 +504,7 @@ mitm_solve(std::shared_ptr<baryonyx::context> ctx, problem& pb)
          is_101_coefficient(pb.less_constraints)) and
         is_integer_variable(pb.vars.values)) {
         double kappa, delta, theta;
-        long limit;
+        int limit;
 
         std::tie(kappa, delta, theta, limit) = get_parameters(ctx);
 
@@ -524,7 +538,7 @@ mitm_optimize(std::shared_ptr<baryonyx::context> ctx, problem& pb)
          is_101_coefficient(pb.less_constraints)) and
         is_integer_variable(pb.vars.values)) {
         double kappa, delta, theta;
-        long limit;
+        int limit;
 
         std::tie(kappa, delta, theta, limit) = get_parameters(ctx);
 
