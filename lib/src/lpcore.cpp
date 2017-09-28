@@ -22,9 +22,7 @@
 
 #include <baryonyx/core>
 
-#include "lpformat-consistency.hpp"
-#include "lpformat-io.hpp"
-#include "mitm.hpp"
+#include "private.hpp"
 #include "utils.hpp"
 
 #include <algorithm>
@@ -557,7 +555,7 @@ make_problem(std::shared_ptr<baryonyx::context> ctx,
     ifs.exceptions(std::ifstream::badbit);
     ifs.open(filename);
 
-    return details::read_problem(ifs);
+    return baryonyx_private::read_problem(ifs);
 }
 
 problem
@@ -567,13 +565,14 @@ make_problem(std::shared_ptr<baryonyx::context> ctx, std::istream& is)
 
     is.exceptions(std::ifstream::badbit);
 
-    return details::read_problem(is);
+    return baryonyx_private::read_problem(is);
 }
 
 std::ostream&
 operator<<(std::ostream& os, const problem& p)
 {
-    details::problem_writer pw(p, os);
+    if (not baryonyx_private::write_problem(os, p))
+        os.setstate(std::ios_base::failbit);
 
     return os;
 }
@@ -581,17 +580,17 @@ operator<<(std::ostream& os, const problem& p)
 result
 solve(std::shared_ptr<baryonyx::context> ctx, problem& pb)
 {
-    check(pb);
+    baryonyx_private::check_consistency(pb);
 
-    return mitm_solve(ctx, pb);
+    return baryonyx_private::solve(ctx, pb);
 }
 
 result
 optimize(std::shared_ptr<baryonyx::context> ctx, problem& pb)
 {
-    check(pb);
+    baryonyx_private::check_consistency(pb);
 
-    return mitm_optimize(ctx, pb);
+    return baryonyx_private::optimize(ctx, pb);
 }
 
 template<typename functionT, typename variablesT>

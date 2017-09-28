@@ -26,7 +26,6 @@
 #include <iostream>
 #include <iterator>
 
-#include "mitm.hpp"
 #include "utils.hpp"
 
 namespace baryonyx {

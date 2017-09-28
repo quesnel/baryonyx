@@ -39,7 +39,6 @@
 
 #include "fixed_array.hpp"
 #include "matrix.hpp"
-#include "mitm.hpp"
 #include "utils.hpp"
 
 namespace baryonyx {
