@@ -27,7 +27,7 @@ static inline void
 #if defined(__GNUC__)
   __attribute__((always_inline, format(printf, 2, 3)))
 #endif
-  lp_log_null(const vle::utils::ContextPtr&, const char*, ...)
+  lp_log_null(const std::shared_ptr<baryonyx::context>&, const char*, ...)
 {
 }
 
@@ -35,7 +35,7 @@ static inline void
 #if defined(__GNUC__)
   __attribute__((always_inline, format(printf, 2, 3)))
 #endif
-  lp_log_null(const vle::utils::Context*, const char*, ...)
+  lp_log_null(const baryonyx::context*, const char*, ...)
 {
 }
 
@@ -55,5 +55,27 @@ static inline void
 #else
 #define lp_debug(ctx, arg...) lp_log_null(ctx, ##arg)
 #endif
+
+namespace baryonyx_private {
+
+baryonyx::problem
+read_problem(std::istream& is);
+
+bool
+write_problem(std::ostream& os, const baryonyx::problem& pb);
+
+bool
+check_consistency(const baryonyx::problem& pb);
+
+void
+preprocess(std::shared_ptr<baryonyx::context> ctx, baryonyx::problem& pb);
+
+baryonyx::result
+solve(std::shared_ptr<baryonyx::context> ctx, baryonyx::problem& pb);
+
+baryonyx::result
+optimize(std::shared_ptr<baryonyx::context> ctx, baryonyx::problem& pb);
+
+} // namespace baryonyx
 
 #endif

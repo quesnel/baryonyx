@@ -1,4 +1,4 @@
-/* Copyright (C) 2016 INRA
+/* Copyright (C) 2017 INRA
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the
@@ -20,18 +20,15 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef ORG_VLEPROJECT_BARYONYX_SOLVER_LPFORMAT_CONSISTENCY_HPP
-#define ORG_VLEPROJECT_BARYONYX_SOLVER_LPFORMAT_CONSISTENCY_HPP
-
 #include <baryonyx/core>
+
+#include "private.hpp"
 
 #include <algorithm>
 
-namespace baryonyx {
+using namespace baryonyx;
 
-namespace details {
-
-inline void
+static inline void
 are_variables_used(const problem& pb)
 {
     std::vector<bool> vars(pb.vars.names.size(), false);
@@ -56,7 +53,7 @@ are_variables_used(const problem& pb)
           problem_definition_error_tag::variable_not_used);
 }
 
-inline void
+static inline void
 are_bounds_correct(const problem& pb)
 {
     for (std::size_t i{ 0 }, e{ pb.vars.values.size() }; i != e; ++i)
@@ -65,15 +62,14 @@ are_bounds_correct(const problem& pb)
               pb.vars.names[i], problem_definition_error_tag::bad_bound);
 }
 
-} // namespace details
+namespace baryonyx_private {
 
-void
-check(const problem& pb)
+bool
+check_consistency(const baryonyx::problem& pb)
 {
-    details::are_variables_used(pb);
-    details::are_bounds_correct(pb);
+    are_variables_used(pb);
+    are_bounds_correct(pb);
+
+    return true;
 }
-
-} // namespace baryonyx
-
-#endif
+}

@@ -55,6 +55,7 @@ test_preprocessor_2(std::shared_ptr<baryonyx::context> ctx)
     auto result = baryonyx::solve(ctx, pb);
 
     Ensures(result.status == baryonyx::result_status::success);
+    Ensures(result.value == 6212977);
     Ensures(baryonyx::is_valid_solution(pb, result.variable_value) == true);
 }
 

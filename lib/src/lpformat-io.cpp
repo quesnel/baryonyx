@@ -20,9 +20,6 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef ORG_VLEPROJECT_BARYONYX_SOLVER_LPFORMAT_IO_HPP
-#define ORG_VLEPROJECT_BARYONYX_SOLVER_LPFORMAT_IO_HPP
-
 #include <baryonyx/core>
 
 #include <deque>
@@ -31,10 +28,9 @@
 #include <ostream>
 #include <unordered_map>
 
-namespace baryonyx {
-namespace details {
+using namespace baryonyx;
 
-inline bool
+static inline bool
 iequals(const std::string& lhs, const std::string& rhs) noexcept
 {
     auto sz = lhs.size();
@@ -49,13 +45,13 @@ iequals(const std::string& lhs, const std::string& rhs) noexcept
     return true;
 }
 
-inline bool
+static inline bool
 is_operator(int c) noexcept
 {
     return c == '<' or c == '>' or c == '=';
 }
 
-inline bool
+static inline bool
 is_valid_character(int c) noexcept
 {
     if (std::isalnum(c))
@@ -85,7 +81,7 @@ is_valid_character(int c) noexcept
     }
 }
 
-inline bool
+static inline bool
 is_value(int c) noexcept
 {
     return std::isdigit(c) or c == '-';
@@ -394,7 +390,7 @@ private:
     }
 };
 
-inline index
+static inline int
 get_variable(std::unordered_map<std::string, int>& cache,
              baryonyx::variables& vars,
              const std::string& name) noexcept
@@ -403,7 +399,7 @@ get_variable(std::unordered_map<std::string, int>& cache,
     if (it != cache.end())
         return it->second;
 
-    index id = std::distance(vars.names.cbegin(), vars.names.cend());
+    int id = std::distance(vars.names.cbegin(), vars.names.cend());
     vars.names.emplace_back(name);
     vars.values.emplace_back();
 
@@ -412,7 +408,7 @@ get_variable(std::unordered_map<std::string, int>& cache,
     return id;
 }
 
-inline index
+static inline int
 get_variable_only(std::unordered_map<std::string, int>& cache,
                   const std::string& name) noexcept
 {
@@ -423,7 +419,7 @@ get_variable_only(std::unordered_map<std::string, int>& cache,
     return -1;
 }
 
-inline std::string
+static inline std::string
 read_name(parser_stack& stack)
 {
     std::string str = stack.top();
@@ -450,7 +446,7 @@ read_name(parser_stack& stack)
       file_format_error_tag::bad_name, stack.line(), stack.column());
 }
 
-inline operator_type
+static inline operator_type
 read_operator(parser_stack& stack)
 {
     std::string str = stack.top();
@@ -494,7 +490,7 @@ read_operator(parser_stack& stack)
       file_format_error_tag::bad_operator, stack.line(), stack.column());
 }
 
-inline int
+static inline int
 read_integer(parser_stack& stack)
 {
     std::string str = stack.top();
@@ -536,7 +532,7 @@ read_integer(parser_stack& stack)
       file_format_error_tag::bad_integer, stack.line(), stack.column());
 }
 
-inline std::tuple<std::string, int>
+static inline std::tuple<std::string, int>
 read_function_element(parser_stack& stack)
 {
     bool negative{ false };
@@ -582,7 +578,7 @@ read_function_element(parser_stack& stack)
                               stack.column());
 }
 
-inline objective_function_type
+static inline objective_function_type
 read_objective_function_type(parser_stack& stack)
 {
     auto str = stack.top();
@@ -613,7 +609,7 @@ read_objective_function_type(parser_stack& stack)
       stack.column());
 }
 
-inline objective_function
+static inline objective_function
 read_objective_function(parser_stack& stack, problem& p)
 {
     objective_function ret;
@@ -649,7 +645,7 @@ read_objective_function(parser_stack& stack, problem& p)
     return ret;
 }
 
-inline std::tuple<constraint, operator_type>
+static inline std::tuple<constraint, operator_type>
 read_constraint(parser_stack& stack, problem& p)
 {
     constraint cst;
@@ -694,11 +690,11 @@ read_constraint(parser_stack& stack, problem& p)
       file_format_error_tag::bad_constraint, stack.line(), stack.column());
 }
 
-inline void
+static inline void
 read_constraints(parser_stack& stack, problem& p)
 {
     auto str = stack.top();
-    index i = 0;
+    int i = 0;
 
     while (not iequals(str, "binary") and not iequals(str, "binaries") and
            not iequals(str, "bound") and not iequals(str, "bounds") and
@@ -728,7 +724,7 @@ read_constraints(parser_stack& stack, problem& p)
     }
 }
 
-inline void
+static inline void
 apply_bound(int value, operator_type type, variable_value& variable)
 {
     switch (type) {
@@ -747,7 +743,7 @@ apply_bound(int value, operator_type type, variable_value& variable)
     }
 }
 
-inline void
+static inline void
 apply_bound(variable_value& variable, operator_type type, int value)
 {
     switch (type) {
@@ -766,7 +762,7 @@ apply_bound(variable_value& variable, operator_type type, int value)
     }
 }
 
-inline void
+static inline void
 read_bound(parser_stack& stack, problem& p)
 {
     /*
@@ -805,10 +801,9 @@ read_bound(parser_stack& stack, problem& p)
         apply_bound(p.vars.values[id], operator_type, value);
     }
 }
-inline
 
-  void
-  read_bounds(parser_stack& stack, problem& p)
+static inline void
+read_bounds(parser_stack& stack, problem& p)
 {
     auto str = stack.top();
 
@@ -819,7 +814,7 @@ inline
     }
 }
 
-inline void
+static inline void
 read_binary(parser_stack& stack, problem& p)
 {
     auto str = stack.top();
@@ -840,7 +835,7 @@ read_binary(parser_stack& stack, problem& p)
     }
 }
 
-inline void
+static inline void
 read_general(parser_stack& stack, problem& p)
 {
     auto str = stack.top();
@@ -859,37 +854,6 @@ read_general(parser_stack& stack, problem& p)
 
         str = stack.top();
     }
-}
-
-inline problem
-read_problem(std::istream& is)
-{
-    problem p;
-    parser_stack stack(is);
-    std::string toek;
-
-    p.type = read_objective_function_type(stack);
-    p.objective = read_objective_function(stack, p);
-
-    if (stack.is_subject_to())
-        read_constraints(stack, p);
-
-    if (stack.is_bounds())
-        read_bounds(stack, p);
-
-    if (stack.is_binary())
-        read_binary(stack, p);
-
-    if (stack.is_general())
-        read_general(stack, p);
-
-    if (stack.is_end()) {
-        if (stack.empty())
-            return p;
-    }
-
-    throw file_format_failure(
-      "end", file_format_error_tag::incomplete, stack.line(), stack.column());
 }
 
 struct problem_writer
@@ -1010,8 +974,43 @@ private:
     }
 };
 
-} // namespace details
+namespace baryonyx_private {
 
-} // namespace baryonyx
+baryonyx::problem
+read_problem(std::istream& is)
+{
+    problem p;
+    parser_stack stack(is);
+    std::string toek;
 
-#endif
+    p.type = read_objective_function_type(stack);
+    p.objective = read_objective_function(stack, p);
+
+    if (stack.is_subject_to())
+        read_constraints(stack, p);
+
+    if (stack.is_bounds())
+        read_bounds(stack, p);
+
+    if (stack.is_binary())
+        read_binary(stack, p);
+
+    if (stack.is_general())
+        read_general(stack, p);
+
+    if (stack.is_end()) {
+        if (stack.empty())
+            return p;
+    }
+
+    throw file_format_failure(
+      "end", file_format_error_tag::incomplete, stack.line(), stack.column());
+}
+
+bool
+write_problem(std::ostream& os, const baryonyx::problem& pb)
+{
+    problem_writer pw(pb, os);
+    return pw;
+}
+}

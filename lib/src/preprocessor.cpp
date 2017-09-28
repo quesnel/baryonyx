@@ -1,4 +1,4 @@
-/* Copyright (C) 2016 INRA
+/* Copyright (C) 2017 INRA
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the
@@ -23,96 +23,13 @@
 #include <baryonyx/core-compare>
 #include <baryonyx/core>
 
-#include <fstream>
-#include <iterator>
-
-#include "generalized-wedelin.hpp"
-#include "inequalities-1coeff.hpp"
-#include "lpformat-io.hpp"
-#include "mitm.hpp"
+#include "private.hpp"
 #include "utils.hpp"
-#include "wedelin.hpp"
 
-namespace baryonyx {
-
-/**
- * Get number of thread to use in optimizer from parameters list. If an
- * error occured, this function returns 1.
- *
- * @param ctx An `baryonyx::context` where parameter "thread" is trying to be
- * read.
- *
- * @return An integer >= 1 if the value exist and can be convert to
- * positive integer or 1 if an error occurred.
- */
-inline int
-get_thread_number(std::shared_ptr<baryonyx::context>& ctx) noexcept
-{
-    auto t = ctx->get_integer_parameter("thread",
-                                        std::thread::hardware_concurrency());
-
-    return t <= 0 ? 1 : baryonyx::numeric_cast<int>(t);
-}
-
-std::tuple<double, double, double, int>
-get_parameters(std::shared_ptr<baryonyx::context>& ctx) noexcept
-{
-    auto kappa = ctx->get_real_parameter("kappa", 0.001);
-    auto theta = ctx->get_real_parameter("theta", 0.001);
-    auto delta = ctx->get_real_parameter("delta", 0.001);
-    auto limit = ctx->get_real_parameter("limit", 1000l);
-
-    return std::make_tuple(kappa, delta, theta, limit);
-}
-
-template<typename variableT>
-bool
-is_boolean_variable(const variableT& vars)
-{
-    for (const auto& elem : vars)
-        if (elem.type != variable_type::binary)
-            return false;
-
-    return true;
-}
-
-template<typename constraintsT>
-bool
-is_boolean_coefficient(const constraintsT csts)
-{
-    for (const auto& cst : csts)
-        for (const auto& elem : cst.elements)
-            if (elem.factor < 0 or elem.factor > 1)
-                return false;
-
-    return true;
-}
-
-template<typename variableT>
-bool
-is_integer_variable(const variableT& vars)
-{
-    for (const auto& elem : vars)
-        if (elem.type != variable_type::general)
-            return false;
-
-    return true;
-}
-
-template<typename constraintsT>
-bool
-is_101_coefficient(const constraintsT csts)
-{
-    for (const auto& cst : csts)
-        for (const auto& elem : cst.elements)
-            if (elem.factor < -1 or elem.factor > 1)
-                return false;
-
-    return true;
-}
+#include <fstream>
 
 template<typename functionT>
-functionT
+static functionT
 cleanup_function_element(functionT& fct, int& nb)
 {
     std::size_t fct_size{ fct.size() };
@@ -141,7 +58,7 @@ cleanup_function_element(functionT& fct, int& nb)
 
     while (it != end) {
         if (it->variable_index == prev->variable_index) {
-            Expects(ret.back().variable_index == it->variable_index);
+            baryonyx::Expects(ret.back().variable_index == it->variable_index);
             ret.back().factor += it->factor;
         } else {
             prev = it;
@@ -151,14 +68,16 @@ cleanup_function_element(functionT& fct, int& nb)
     }
 
     {
-        nb += numeric_cast<int>(fct_size - ret.size());
+        nb += baryonyx::numeric_cast<int>(fct_size - ret.size());
     }
 
     return ret;
 }
 
-int
-remove_variable(objective_function& obj, int variable_id, int variable_value)
+static int
+remove_variable(baryonyx::objective_function& obj,
+                int variable_id,
+                int variable_value)
 {
     auto it = std::remove_if(obj.elements.begin(),
                              obj.elements.end(),
@@ -180,8 +99,8 @@ remove_variable(objective_function& obj, int variable_id, int variable_value)
     return ret;
 }
 
-int
-remove_variable(constraint& obj, int variable_id, int variable_value)
+static int
+remove_variable(baryonyx::constraint& obj, int variable_id, int variable_value)
 {
     auto it = std::remove_if(obj.elements.begin(),
                              obj.elements.end(),
@@ -203,8 +122,8 @@ remove_variable(constraint& obj, int variable_id, int variable_value)
     return ret;
 }
 
-void
-remove_variable(problem& pb,
+static void
+remove_variable(baryonyx::problem& pb,
                 int variable_id,
                 int variable_value,
                 int& clean_nb,
@@ -254,7 +173,7 @@ remove_variable(problem& pb,
 }
 
 static inline size_t
-hash_constraint(const std::vector<function_element>& e) noexcept
+hash_constraint(const std::vector<baryonyx::function_element>& e) noexcept
 {
     std::size_t seed{ e.size() };
 
@@ -266,7 +185,8 @@ hash_constraint(const std::vector<function_element>& e) noexcept
 
 struct hashed_constraints
 {
-    hashed_constraints(const std::vector<function_element>& elems, int index_)
+    hashed_constraints(const std::vector<baryonyx::function_element>& elems,
+                       int index_)
       : hash(hash_constraint(elems))
       , index(index_)
     {
@@ -283,8 +203,8 @@ struct hashed_constraints
 // duplicated constraints and build an index vector with constraints preserved.
 void
 remove_duplicated_constraints(std::shared_ptr<baryonyx::context> ctx,
-                              std::vector<constraint>& cst,
-                              operator_type type,
+                              std::vector<baryonyx::constraint>& cst,
+                              baryonyx::operator_type type,
                               int& constraint_nb)
 {
     std::vector<hashed_constraints> t;
@@ -293,7 +213,7 @@ remove_duplicated_constraints(std::shared_ptr<baryonyx::context> ctx,
     std::vector<int> order;
     order.reserve(cst.size());
 
-    for (int i{ 0 }, e{ numeric_cast<int>(cst.size()) }; i != e; ++i)
+    for (int i{ 0 }, e{ baryonyx::numeric_cast<int>(cst.size()) }; i != e; ++i)
         t.emplace_back(cst[i].elements, i);
 
     std::sort(t.begin(), t.end(), [](const auto& rhs, const auto& lhs) {
@@ -309,14 +229,15 @@ remove_duplicated_constraints(std::shared_ptr<baryonyx::context> ctx,
         while (j != e and t[i].hash == t[j].hash and
                cst[t[i].index].elements == cst[t[j].index].elements) {
             switch (type) {
-            case operator_type::equal:
-                Expects(cst[t[i].index].value == cst[t[j].index].value);
+            case baryonyx::operator_type::equal:
+                baryonyx::Expects(cst[t[i].index].value ==
+                                  cst[t[j].index].value);
 
                 ctx->debug("      = constraints %d = %d must be removed\n",
                            t[j].index,
                            t[i].index);
                 break;
-            case operator_type::greater:
+            case baryonyx::operator_type::greater:
                 cst[t[i].index].value =
                   std::max(cst[t[i].index].value, cst[t[j].index].value);
 
@@ -324,7 +245,7 @@ remove_duplicated_constraints(std::shared_ptr<baryonyx::context> ctx,
                            t[j].index,
                            t[i].index);
                 break;
-            case operator_type::less:
+            case baryonyx::operator_type::less:
                 cst[t[i].index].value =
                   std::min(cst[t[i].index].value, cst[t[j].index].value);
 
@@ -345,7 +266,7 @@ remove_duplicated_constraints(std::shared_ptr<baryonyx::context> ctx,
 
     std::sort(order.begin(), order.end(), std::less<int>());
 
-    std::vector<constraint> result(order.size());
+    std::vector<baryonyx::constraint> result(order.size());
     for (std::size_t i{ 0 }, e{ order.size() }; i != e; ++i)
         result[i] = std::move(cst[order[i]]);
 
@@ -354,25 +275,27 @@ remove_duplicated_constraints(std::shared_ptr<baryonyx::context> ctx,
 
 static void
 remove_duplicated_constraints(std::shared_ptr<baryonyx::context> ctx,
-                              problem& pb,
+                              baryonyx::problem& pb,
                               int& constraint)
 {
     remove_duplicated_constraints(
-      ctx, pb.equal_constraints, operator_type::equal, constraint);
+      ctx, pb.equal_constraints, baryonyx::operator_type::equal, constraint);
     remove_duplicated_constraints(
-      ctx, pb.less_constraints, operator_type::less, constraint);
-    remove_duplicated_constraints(
-      ctx, pb.greater_constraints, operator_type::greater, constraint);
+      ctx, pb.less_constraints, baryonyx::operator_type::less, constraint);
+    remove_duplicated_constraints(ctx,
+                                  pb.greater_constraints,
+                                  baryonyx::operator_type::greater,
+                                  constraint);
 }
 
 static void
 remove_assigned_variables(std::shared_ptr<baryonyx::context> ctx,
-                          problem& pb,
+                          baryonyx::problem& pb,
                           int& variable,
                           int& clean,
                           int& constraint)
 {
-    int i{ 0 }, e{ numeric_cast<int>(pb.vars.values.size()) };
+    int i{ 0 }, e{ baryonyx::numeric_cast<int>(pb.vars.values.size()) };
 
     while (i != e) {
         if (pb.vars.values[i].min == pb.vars.values[i].max) {
@@ -384,7 +307,7 @@ remove_assigned_variables(std::shared_ptr<baryonyx::context> ctx,
 
             ++variable;
             i = 0;
-            e = numeric_cast<int>(pb.vars.values.size());
+            e = baryonyx::numeric_cast<int>(pb.vars.values.size());
         } else {
             ++i;
         }
@@ -398,7 +321,7 @@ remove_assigned_variables(std::shared_ptr<baryonyx::context> ctx,
 
         {
             i = 0;
-            e = numeric_cast<int>(pb.equal_constraints.size());
+            e = baryonyx::numeric_cast<int>(pb.equal_constraints.size());
 
             while (i != e) {
                 if (pb.equal_constraints[i].elements.size() == 1) {
@@ -433,10 +356,12 @@ remove_assigned_variables(std::shared_ptr<baryonyx::context> ctx,
     } while (modify);
 }
 
+namespace baryonyx_private {
+
 void
-cleanup_problem(std::shared_ptr<baryonyx::context> ctx, problem& pb)
+preprocess(std::shared_ptr<baryonyx::context> ctx, baryonyx::problem& pb)
 {
-    ctx->info("preprocessor:\n");
+    ctx->info("preprocessing:\n");
 
     {
         ctx->info("  - cleaning functions (merge variables, remove zero) "
@@ -474,80 +399,14 @@ cleanup_problem(std::shared_ptr<baryonyx::context> ctx, problem& pb)
         ctx->info("  - write preprocessed.lp: ");
         std::ofstream ofs("preprocessed.lp");
         if (ofs.is_open()) {
-            details::problem_writer pw(pb, ofs);
-            ctx->info("writing %s\n", ((pw) ? "done" : "fail"));
+            if (baryonyx_private::write_problem(ofs, pb))
+                ctx->info("writing done\n");
+            else
+                ctx->info("writing fail\n");
         } else {
             ctx->info("opening failed\n");
         }
     }
 #endif
 }
-
-result
-mitm_solve(std::shared_ptr<baryonyx::context> ctx, problem& pb)
-{
-    cleanup_problem(ctx, pb);
-
-    if (pb.greater_constraints.empty() and pb.less_constraints.empty() and
-        is_boolean_coefficient(pb.equal_constraints) and
-        is_boolean_variable(pb.vars.values))
-        return baryonyx::inequalities_1coeff_wedelin_solve(ctx, pb);
-
-    if (is_101_coefficient(pb.equal_constraints) and
-        is_101_coefficient(pb.less_constraints) and
-        is_101_coefficient(pb.greater_constraints) and
-        is_boolean_variable(pb.vars.values))
-        return baryonyx::inequalities_1coeff_wedelin_solve(ctx, pb);
-
-    if ((is_101_coefficient(pb.equal_constraints) or
-         is_101_coefficient(pb.greater_constraints) or
-         is_101_coefficient(pb.less_constraints)) and
-        is_integer_variable(pb.vars.values)) {
-        double kappa, delta, theta;
-        int limit;
-
-        std::tie(kappa, delta, theta, limit) = get_parameters(ctx);
-
-        return baryonyx::generalized_wedelin(kappa, delta, theta, limit, pb);
-    }
-
-    ctx->info("no_solver_available");
-
-    throw baryonyx::solver_failure(solver_error_tag::no_solver_available);
 }
-
-result
-mitm_optimize(std::shared_ptr<baryonyx::context> ctx, problem& pb)
-{
-    auto thread = get_thread_number(ctx);
-    cleanup_problem(ctx, pb);
-
-    if (pb.greater_constraints.empty() and pb.less_constraints.empty() and
-        is_boolean_coefficient(pb.equal_constraints) and
-        is_boolean_variable(pb.vars.values))
-        return baryonyx::inequalities_1coeff_wedelin_optimize(ctx, pb, thread);
-
-    if (is_101_coefficient(pb.equal_constraints) and
-        is_101_coefficient(pb.less_constraints) and
-        is_101_coefficient(pb.greater_constraints) and
-        is_boolean_variable(pb.vars.values))
-        return baryonyx::inequalities_1coeff_wedelin_optimize(ctx, pb, thread);
-
-    if ((is_101_coefficient(pb.equal_constraints) or
-         is_101_coefficient(pb.greater_constraints) or
-         is_101_coefficient(pb.less_constraints)) and
-        is_integer_variable(pb.vars.values)) {
-        double kappa, delta, theta;
-        int limit;
-
-        std::tie(kappa, delta, theta, limit) = get_parameters(ctx);
-
-        return baryonyx::generalized_wedelin(kappa, delta, theta, limit, pb);
-    }
-
-    ctx->info("no_solver_available");
-
-    throw baryonyx::solver_failure(solver_error_tag::no_solver_available);
-}
-
-} // namespace baryonyx

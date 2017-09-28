@@ -23,7 +23,6 @@
 #ifndef ORG_VLEPROJECT_BARYONYX_SOLVER_GENERALIZED_WEDELIN_HPP
 #define ORG_VLEPROJECT_BARYONYX_SOLVER_GENERALIZED_WEDELIN_HPP
 
-#include "mitm.hpp"
 #include "utils.hpp"
 
 #include <iterator>
