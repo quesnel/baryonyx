@@ -95,33 +95,32 @@ struct resume
       , constraints({})
       , minmax(compute_min_max_objective_function(pb))
     {
-        variables =
-          std::accumulate(pb.vars.values.begin(),
-                          pb.vars.values.end(),
-                          variables,
-                          [](std::array<long int, 3>& value, auto vv) {
-                              switch (vv.type) {
-                              case variable_type::real:
-                                  value[0]++;
-                                  break;
-                              case variable_type::binary:
-                                  value[1]++;
-                                  break;
-                              case variable_type::general:
-                                  value[2]++;
-                                  break;
-                              }
+        variables = std::accumulate(pb.vars.values.begin(),
+                                    pb.vars.values.end(),
+                                    variables,
+                                    [](std::array<int, 3>& value, auto vv) {
+                                        switch (vv.type) {
+                                        case variable_type::real:
+                                            value[0]++;
+                                            break;
+                                        case variable_type::binary:
+                                            value[1]++;
+                                            break;
+                                        case variable_type::general:
+                                            value[2]++;
+                                            break;
+                                        }
 
-                              return value;
-                          });
+                                        return value;
+                                    });
 
         constraints[0] = pb.equal_constraints.size();
         constraints[1] = pb.greater_constraints.size();
         constraints[2] = pb.less_constraints.size();
     }
 
-    std::array<long int, 3> variables;
-    std::array<long int, 3> constraints;
+    std::array<int, 3> variables;
+    std::array<int, 3> constraints;
     std::tuple<double, double> minmax;
 };
 

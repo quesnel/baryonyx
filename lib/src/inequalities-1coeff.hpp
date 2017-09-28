@@ -132,19 +132,19 @@ struct parameters
       , kappa_max(ctx->get_real_parameter("kappa-max", 0.6))
       , alpha(ctx->get_real_parameter("alpha", 1.0))
       , pushing_k_factor(ctx->get_real_parameter("pushing-k-factor", 0.9))
-      , pushes_limit(ctx->get_integer_parameter("pushes-limit", 10l))
+      , pushes_limit(ctx->get_integer_parameter("pushes-limit", 10))
       , pushing_objective_amplifier(
-          ctx->get_integer_parameter("pushing-objective-amplifier", 5l))
+          ctx->get_integer_parameter("pushing-objective-amplifier", 5))
       , pushing_iteration_limit(
-          ctx->get_integer_parameter("pushing-iteration-limit", 20l))
-      , limit(ctx->get_integer_parameter("limit", 1000l))
-      , w(ctx->get_integer_parameter("w", 20l))
+          ctx->get_integer_parameter("pushing-iteration-limit", 20))
+      , limit(ctx->get_integer_parameter("limit", 1000))
+      , w(ctx->get_integer_parameter("w", 20))
       , order(get_constraint_order(ctx))
       , preprocessing(ctx->get_string_parameter("preprocessing", "none"))
-      , serialize(ctx->get_integer_parameter("serialize", 0l))
+      , serialize(ctx->get_integer_parameter("serialize", 0))
     {
         if (limit < 0)
-            limit = std::numeric_limits<long int>::max();
+            limit = std::numeric_limits<int>::max();
 
         ctx->info("solver: inequalities_1coeff_wedelin\n"
                   "solver parameters:\n"
@@ -153,15 +153,15 @@ struct parameters
                   "  - time_limit: %.10g\n"
                   "  - theta: %.10g\n"
                   "  - delta: %.10g\n"
-                  "  - limit: %ld\n"
+                  "  - limit: %d\n"
                   "  - kappa: %.10g %.10g %.10g\n"
                   "  - alpha: %.10g\n"
-                  "  - w: %ld\n"
-                  "  - serialise: %ld\n"
+                  "  - w: %d\n"
+                  "  - serialise: %d\n"
                   "optimizer parameters:\n"
-                  "  - pushed limit: %ld\n"
-                  "  - pushing objective amplifier: %ld\n"
-                  "  - pushing iteration limit: %ld\n"
+                  "  - pushed limit: %d\n"
+                  "  - pushing objective amplifier: %d\n"
+                  "  - pushing iteration limit: %d\n"
                   "  - pushing k factor: %.10g\n",
                   preprocessing.c_str(),
                   constraint_order_to_string(order),
@@ -189,14 +189,14 @@ struct parameters
     double kappa_max;
     double alpha;
     double pushing_k_factor;
-    long int pushes_limit;
-    long int pushing_objective_amplifier;
-    long int pushing_iteration_limit;
-    long int limit;
-    long int w;
+    int pushes_limit;
+    int pushing_objective_amplifier;
+    int pushing_iteration_limit;
+    int limit;
+    int w;
     constraint_order order;
     std::string preprocessing;
-    long int serialize;
+    int serialize;
 };
 
 struct maximize_tag
@@ -643,7 +643,7 @@ struct merged_constraint_hash
  * removed.
  */
 template<typename constraintsT>
-std::tuple<long, long>
+std::tuple<int, int>
 remove_element_with_factor_0(constraintsT& csts) noexcept
 {
     std::size_t element_removed{ 0 }, constraint_removed{ 0 };
@@ -669,8 +669,8 @@ remove_element_with_factor_0(constraintsT& csts) noexcept
 
     constraint_removed = size - csts.size();
 
-    return std::make_tuple(numeric_cast<long>(element_removed),
-                           numeric_cast<long>(constraint_removed));
+    return std::make_tuple(numeric_cast<int>(element_removed),
+                           numeric_cast<int>(constraint_removed));
 }
 
 std::vector<merged_constraint>
@@ -727,8 +727,8 @@ make_merged_constraints(std::shared_ptr<context> ctx,
     }
 
     ctx->info(
-      "  - removed constraints (merged less and greater operator): %ld\n",
-      numeric_cast<long>(origin_constraints_number - ret.size()));
+      "  - removed constraints (merged less and greater operator): %d\n",
+      numeric_cast<int>(origin_constraints_number - ret.size()));
 
     //
     // Remove element from constraint functions where the factor equal 0.
@@ -737,8 +737,8 @@ make_merged_constraints(std::shared_ptr<context> ctx,
     {
         auto removed = remove_element_with_factor_0(ret);
 
-        ctx->info("  - removed elements in constraints: %ld\n"
-                  "  - removed empty functions in constraints: %ld\n",
+        ctx->info("  - removed elements in constraints: %d\n"
+                  "  - removed empty functions in constraints: %d\n",
                   std::get<0>(removed),
                   std::get<1>(removed));
     }
@@ -776,7 +776,7 @@ make_merged_constraints(std::shared_ptr<context> ctx,
         }
     }
 
-    std::vector<std::pair<merged_constraint, long>> tosort;
+    std::vector<std::pair<merged_constraint, int>> tosort;
 
     if (params.preprocessing == "variables-number") {
         // Algorithm to a tosort vector according to the number variables used
@@ -805,8 +805,8 @@ make_merged_constraints(std::shared_ptr<context> ctx,
     } else if (params.preprocessing == "variables-weight") {
         std::sort(
           ret.begin(), ret.end(), [vars](const auto& lhs, const auto& rhs) {
-              long sumlhs{ 0 };
-              long sumrhs{ 0 };
+              int sumlhs{ 0 };
+              int sumrhs{ 0 };
 
               for (auto& f : lhs.elements)
                   sumlhs += vars[f.variable_index];
@@ -822,8 +822,8 @@ make_merged_constraints(std::shared_ptr<context> ctx,
         std::sort(ret.begin(),
                   ret.end(),
                   [linkvars, linkcst](const auto& lhs, const auto& rhs) {
-                      long sumlhs{ 1 };
-                      long sumrhs{ 1 };
+                      int sumlhs{ 1 };
+                      int sumrhs{ 1 };
                       // std::size_t i, e;
 
                       for (auto& f : lhs.elements)
@@ -1006,7 +1006,7 @@ struct solver
     }
 
     void serialize(std::shared_ptr<baryonyx::context> ctx,
-                   long int serialize_id) const
+                   int serialize_id) const
     {
         if (serialize_id <= 0)
             return;
@@ -1165,7 +1165,7 @@ struct cycle_avoidance
         for (; distance != end; ++distance) {
             index i{ end - 1 };
             index j{ i - distance };
-            long cycle_size{ 0 };
+            int cycle_size{ 0 };
 
             while (j >= 0 and history[i] == history[j]) {
                 cycle_size++;
@@ -1231,18 +1231,18 @@ compute_missing_constraint(solverT& solver, std::vector<index>& R)
 void
 print_AP(std::shared_ptr<context> ctx,
          const AP_type& ap,
-         long int k,
-         long int rows,
-         long int cols)
+         int k,
+         int rows,
+         int cols)
 {
-    long int level = ctx->get_integer_parameter("serialize", 0l);
+    int level = ctx->get_integer_parameter("serialize", 0l);
     if (level <= 1)
         return;
 
-    ctx->debug("P after constraint %ld computation:\n", k);
+    ctx->debug("P after constraint %d computation:\n", k);
     std::vector<AP_type::p_type> to_show(cols);
 
-    for (long int i{ 0 }; i != rows; ++i) {
+    for (int i{ 0 }; i != rows; ++i) {
         std::fill(std::begin(to_show),
                   std::end(to_show),
                   std::numeric_limits<double>::infinity());
@@ -1586,8 +1586,8 @@ struct solver_functor
         m_begin = std::chrono::steady_clock::now();
         m_end = m_begin;
 
-        long int i{ 0 };
-        long int i2{ 0 };
+        int i{ 0 };
+        int i2{ 0 };
         double kappa_old{ 0 };
         double kappa = p.kappa_min;
         index best_remaining{ -1 };
@@ -1643,7 +1643,7 @@ struct solver_functor
             }
 
             if (++i > p.limit) {
-                m_ctx->info("  - Loop limit reached: %ld\n", i);
+                m_ctx->info("  - Loop limit reached: %d\n", i);
                 m_best.status = result_status::limit_reached;
                 return m_best;
             }
@@ -1656,7 +1656,7 @@ struct solver_functor
 
             m_end = std::chrono::steady_clock::now();
             if (is_time_limit(p.time_limit, m_begin, m_end)) {
-                m_ctx->info("  - Time limit reached: %ld %f\n", i, kappa);
+                m_ctx->info("  - Time limit reached: %d %f\n", i, kappa);
                 m_best.status = result_status::time_limit_reached;
                 return m_best;
             }
@@ -1694,13 +1694,13 @@ struct optimize_functor
         m_begin = std::chrono::steady_clock::now();
         m_end = m_begin;
 
-        long int i{ 0 };
-        long int i2{ 0 };
+        int i{ 0 };
+        int i2{ 0 };
         double kappa_old{ 0 };
         double kappa = p.kappa_min;
 
-        long int pushed{ -1 };
-        long int pushing_iteration{ 0 };
+        int pushed{ -1 };
+        int pushing_iteration{ 0 };
 
         solver<mode_type, random_generator_type> slv(
           rng, variables, norm_costs, constraints);
@@ -1890,7 +1890,7 @@ optimize(std::shared_ptr<context> ctx,
          problem& pb,
          const parameters& p,
          randomT& rng,
-         long int thread)
+         int thread)
 {
     Expects(thread >= 1, "optimize: bad thread number");
 
@@ -1914,9 +1914,9 @@ optimize(std::shared_ptr<context> ctx,
     if (thread == 1)
         ctx->info("optimizer starts with one thread\n");
     else
-        ctx->info("Optimizer starts with %ld threads\n", thread);
+        ctx->info("Optimizer starts with %d threads\n", thread);
 
-    for (long int i{ 0 }; i != thread; ++i) {
+    for (int i{ 0 }; i != thread; ++i) {
         std::packaged_task<result()> task(
           std::bind(optimize_functor<modeT, constraintOrderT, randomT>(ctx),
                     std::ref(constraints),
@@ -1936,7 +1936,7 @@ optimize(std::shared_ptr<context> ctx,
         t.join();
 
     result best = results[0].get();
-    for (long int i{ 1 }; i != thread; ++i) {
+    for (int i{ 1 }; i != thread; ++i) {
         auto current = results[i].get();
         if (current.status == baryonyx::result_status::success) {
             if (best.status != baryonyx::result_status::success or
@@ -2033,7 +2033,7 @@ inequalities_1coeff_wedelin_solve(std::shared_ptr<baryonyx::context> ctx,
 inline result
 inequalities_1coeff_wedelin_optimize(std::shared_ptr<baryonyx::context> ctx,
                                      problem& pb,
-                                     long int thread)
+                                     int thread)
 {
 
     namespace ine_1 = baryonyx::inequalities_1coeff;
