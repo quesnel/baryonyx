@@ -39,7 +39,7 @@ test_preprocessor(std::shared_ptr<baryonyx::context> ctx)
     auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/prepro.lp");
     auto result = baryonyx::solve(ctx, pb);
 
-    Ensures(result.affected_vars.names.size() == 3);
+    Ensures(result.affected_vars.names.size() == 14);
     Ensures(result.affected_vars.values[0] == 0);
     Ensures(result.affected_vars.values[1] == 0);
     Ensures(result.affected_vars.values[2] == 1);
