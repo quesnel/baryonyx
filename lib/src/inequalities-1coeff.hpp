@@ -134,7 +134,7 @@ struct parameters
       , pushing_k_factor(ctx->get_real_parameter("pushing-k-factor", 0.9))
       , pushes_limit(ctx->get_integer_parameter("pushes-limit", 10))
       , pushing_objective_amplifier(
-          ctx->get_integer_parameter("pushing-objective-amplifier", 5))
+          ctx->get_real_parameter("pushing-objective-amplifier", 5))
       , pushing_iteration_limit(
           ctx->get_integer_parameter("pushing-iteration-limit", 20))
       , limit(ctx->get_integer_parameter("limit", 1000))
@@ -160,7 +160,7 @@ struct parameters
                   "  - serialise: %d\n"
                   "optimizer parameters:\n"
                   "  - pushed limit: %d\n"
-                  "  - pushing objective amplifier: %d\n"
+                  "  - pushing objective amplifier: %.10g\n"
                   "  - pushing iteration limit: %d\n"
                   "  - pushing k factor: %.10g\n",
                   preprocessing.c_str(),
@@ -190,7 +190,7 @@ struct parameters
     double alpha;
     double pushing_k_factor;
     int pushes_limit;
-    int pushing_objective_amplifier;
+    double pushing_objective_amplifier;
     int pushing_iteration_limit;
     int limit;
     int w;
@@ -437,6 +437,16 @@ struct constraint_calculator
 #define BARYONYX_ASSIGN_0(p) (p)->value = 0.0
         BARYONYX_UNROLL_PTR(first, last, BARYONYX_ASSIGN_0);
 #undef BARYONYX_ASSIGN_0
+    }
+
+    void push(double objective_amplifier)
+    {
+        auto first = r.begin();
+        auto last = r.end();
+
+#define BARYONYX_PUSH(p) (p)->value += C[(p)->id] * objective_amplifier
+        BARYONYX_UNROLL_PTR(first, last, BARYONYX_PUSH);
+#undef BARYONYX_PUSH
     }
 
     void update_row(index k, double kappa, double delta, double theta)
@@ -971,6 +981,12 @@ struct solver
             row_updaters.emplace_back(rng_, k, m, n, ap, b, c, x, pi);
 
         init();
+    }
+
+    void push(double objective_amplifier)
+    {
+        for (index k{ 0 }, e{ m }; k != e; ++k)
+            row_updaters[k].push(objective_amplifier);
     }
 
     void reinit(random_generator_type& rng_)
@@ -1764,20 +1780,18 @@ struct optimize_functor
                     pushed++;
                     pushing_iteration = 0;
 
-                    auto c_copy = slv.c;
-                    for (index i{ 0 }; i != slv.n; ++i)
-                        slv.c(i) += slv.c(i) * p.pushing_objective_amplifier;
+                    slv.push(p.pushing_objective_amplifier);
 
                     remaining = compute.run_all(
                       slv, p.pushing_k_factor * kappa, p.delta, p.theta);
 
-                    slv.c = c_copy;
-
                     if (remaining == 0) {
                         current = slv.results(original_costs, cost_constant);
                         current.loop = i;
-                        if (store_if_better(current))
+                        if (store_if_better(current)) {
+                            lp_debug(m_ctx, "  `-> push found new solution\n");
                             m_best_x = slv.x;
+                        }
                     }
                 }
             }
