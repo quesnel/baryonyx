@@ -453,7 +453,6 @@ struct constraint_calculator
 
     void update_row(index k, double kappa, double delta, double theta)
     {
-        std::uniform_real_distribution<> dst(0.0, 1e-4);
         auto ak{ ap.row(k) };
         const auto& va{ ap.A() };
 
@@ -485,9 +484,6 @@ struct constraint_calculator
 
             r[i].id = it->position;
             r[i].value = cost(it->position) - sum_a_pi - sum_a_p;
-
-            if (is_essentially_equal(r[i].value, 0.0, 1e-10))
-                r[i].value += (std::signbit(r[i].value) ? -1. : 1.) * dst(rng);
         }
 
         //
