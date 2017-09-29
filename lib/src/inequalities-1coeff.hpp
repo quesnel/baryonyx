@@ -39,6 +39,7 @@
 
 #include "fixed_array.hpp"
 #include "matrix.hpp"
+#include "private.hpp"
 #include "utils.hpp"
 
 namespace baryonyx {
@@ -430,8 +431,12 @@ struct constraint_calculator
      */
     void reinit()
     {
-        for (auto& elem : r)
-            elem.value = 0.0;
+        auto first = r.begin();
+        auto last = r.end();
+
+#define BARYONYX_ASSIGN_0(p) (p)->value = 0.0
+        BARYONYX_UNROLL_PTR(first, last, BARYONYX_ASSIGN_0);
+#undef BARYONYX_ASSIGN_0
     }
 
     void update_row(index k, double kappa, double delta, double theta)

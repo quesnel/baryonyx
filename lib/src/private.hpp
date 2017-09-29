@@ -56,6 +56,18 @@ static inline void
 #define lp_debug(ctx, arg...) lp_log_null(ctx, ##arg)
 #endif
 
+#define BARYONYX_UNROLL_PTR(first, last, op)                                  \
+    do {                                                                      \
+        for (; (last) - (first) >= 4; (first) += 4) {                         \
+            op(((first) + 0));                                                \
+            op(((first) + 1));                                                \
+            op(((first) + 2));                                                \
+            op(((first) + 3));                                                \
+        }                                                                     \
+        for (; (first) != (last); ++(first))                                  \
+            op((first));                                                      \
+    } while (0);
+
 namespace baryonyx_private {
 
 baryonyx::problem
