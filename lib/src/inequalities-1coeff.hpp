@@ -228,14 +228,15 @@ calculator_sort(iteratorT begin, iteratorT end, randomT& rng, minimize_tag)
 {
     if (std::distance(begin, end) > 1) {
 
-        //
-        // TODO We can use stable_sort to be sure reproducible run:
-        // std::stable_sort(begin, end, [](const auto& lhs, const auto& rhs)
-        //
-
+#ifdef BARYONYX_FULL_OPTIMIZATION
         std::sort(begin, end, [](const auto& lhs, const auto& rhs) {
             return lhs.value < rhs.value;
         });
+#else
+        std::stable_sort(begin, end, [](const auto& lhs, const auto& rhs) {
+            return lhs.value < rhs.value;
+        });
+#endif
 
         random_shuffle_unique(begin, end, rng);
     }
@@ -247,14 +248,15 @@ calculator_sort(iteratorT begin, iteratorT end, randomT& rng, maximize_tag)
 {
     if (std::distance(begin, end) > 1) {
 
-        //
-        // TODO We can use stable_sort to be sure reproducible run:
-        // std::stable_sort(begin, end, [](const auto& lhs, const auto& rhs)
-        //
-
+#ifdef BARYONYX_FULL_OPTIMIZATION
         std::sort(begin, end, [](const auto& lhs, const auto& rhs) {
             return rhs.value < lhs.value;
         });
+#else
+        std::stable_sort(begin, end, [](const auto& lhs, const auto& rhs) {
+            return rhs.value < lhs.value;
+        });
+#endif
 
         random_shuffle_unique(begin, end, rng);
     }
