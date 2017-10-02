@@ -42,6 +42,8 @@
 #include "private.hpp"
 #include "utils.hpp"
 
+#include <cassert>
+
 namespace baryonyx {
 namespace inequalities_1coeff {
 
@@ -496,7 +498,7 @@ struct constraint_calculator
             for (std::size_t i{ 0 }; it != std::get<1>(ak); ++it, ++i) {
                 if (va[it->value] < 0) {
                     r[i].value = -r[i].value;
-                    ap.invert(k, it->position);
+                    ap.invert_p(k, it->position);
                 }
             }
 
@@ -513,23 +515,18 @@ struct constraint_calculator
         //
 
         index i{ 0 }, selected{ -1 }, first, second;
-        const index endi{ numeric_cast<index>(r.size()) };
+        const index endi = static_cast<index>(r.size());
         int sum{ 0 };
 
         for (; i != endi; ++i) {
-            sum += ap.A(k, r[i].id);
+            sum += 1;
 
             if (b(k).min <= sum)
                 break;
         }
 
-        //
-        // If the b(0, k) can not be reached, this is an error of the
-        // preprocessing step.
-        //
-
-        if (b(k).min > sum)
-            throw solver_failure(solver_error_tag::unrealisable_constraint);
+        assert(b(k).min <= sum && "b(0, k) can not be reached, this is an "
+                                  "error of the preprocessing step.");
 
         //
         // If all variable must be assigned to 0, we let selected assigned to 0
@@ -539,7 +536,7 @@ struct constraint_calculator
         if (b(k).min <= sum and sum <= b(k).max) {
             selected = i;
             for (; i != endi; ++i) {
-                sum += ap.A(k, r[i].id);
+                sum += 1;
 
                 if (sum <= b(k).max) {
                     if (stop_iterating(r[i].value, mode_type()))
@@ -549,9 +546,7 @@ struct constraint_calculator
                     break;
             }
 
-            if (i == endi)
-                throw solver_failure(
-                  solver_error_tag::unrealisable_constraint);
+            assert(i != endi && "unrealisable, preprocessing error");
 
             first = selected;
             second = selected + 1;
@@ -595,7 +590,7 @@ struct constraint_calculator
             b(k).max -= C.size();
 
             for (std::size_t i{ 0 }, e{ C.size() }; i != e; ++i) {
-                ap.invert(k, C[i]);
+                ap.invert_p(k, C[i]);
                 x[C[i]] = 1 - x[C[i]];
             }
         }

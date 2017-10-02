@@ -136,7 +136,7 @@ public:
     void add_a(index_type row, index_type col, a_type x);
     void add_p(index_type row, index_type col, p_type y);
 
-    void invert(index_type row, index_type col);
+    void invert_p(index_type row, index_type col);
     void mult_p(index_type row, index_type col, p_type y);
 
     void mult_row_p(index_type row, p_type y);
@@ -353,13 +353,12 @@ SparseArray<A_T, P_T>::add_p(index_type row, index_type col, p_type y)
 
 template<typename A_T, typename P_T>
 void
-SparseArray<A_T, P_T>::invert(index_type row, index_type col)
+SparseArray<A_T, P_T>::invert_p(index_type row, index_type col)
 {
     m_check_index(row, col);
 
     auto it = binary_find(row, col);
 
-    m_a[it] = -m_a[it];
     m_p[it] = -m_p[it];
 }
 
