@@ -81,12 +81,6 @@ is_valid_character(int c) noexcept
     }
 }
 
-static inline bool
-is_value(int c) noexcept
-{
-    return std::isdigit(c) or c == '-';
-}
-
 struct parser_stack
 {
     parser_stack(std::istream& is_)
