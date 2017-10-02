@@ -1019,14 +1019,15 @@ struct solver
     }
 
     void serialize(std::shared_ptr<baryonyx::context> ctx,
+                   const std::vector<std::string>& names,
                    int serialize_id) const
     {
         if (serialize_id <= 0)
             return;
 
         ctx->debug("X: ");
-        for (auto elem : x)
-            ctx->debug("%d ", static_cast<int>(elem));
+        for (std::size_t i{ 0 }, e{ x.size() }; i != e; ++i)
+            ctx->debug("%s=%d ", names[i].c_str(), static_cast<int>(x[i]));
         ctx->debug("\n");
 
         for (index k{ 0 }, ek{ m }; k != ek; ++k) {
@@ -1034,10 +1035,11 @@ struct solver
                        k,
                        (row_updaters[k].is_valid_solution(k) ? "   valid: "
                                                              : "violated: "));
-
-            for (auto elem : row_updaters[k].r)
-                ctx->debug("%d [%f] ", elem.id, elem.value);
-
+            for (std::size_t i{ 0 }, e{ row_updaters[k].r.size() }; i != e;
+                 ++i)
+                ctx->debug("%s [%f] ",
+                           names[row_updaters[k].r[i].id].c_str(),
+                           row_updaters[k].r[i].value);
             ctx->debug("\n");
         }
     }
@@ -1580,11 +1582,14 @@ struct solver_functor
     std::chrono::time_point<std::chrono::steady_clock> m_end;
 
     std::shared_ptr<context> m_ctx;
+    std::vector<std::string> m_names;
     x_type m_best_x;
     result m_best;
 
-    solver_functor(std::shared_ptr<context> ctx)
+    solver_functor(std::shared_ptr<context> ctx,
+                   const std::vector<std::string>& names)
       : m_ctx(ctx)
+      , m_names(names)
     {
     }
 
@@ -1633,7 +1638,7 @@ struct solver_functor
             }
 
 #ifndef BARYONYX_FULL_OPTIMIZATION
-            slv.serialize(m_ctx, p.serialize);
+            slv.serialize(m_ctx, m_names, p.serialize);
 #endif
 
             if (current.status == result_status::success) {
@@ -1883,7 +1888,7 @@ solve(std::shared_ptr<context> ctx,
 
     baryonyx::clear(pb);
 
-    solver_functor<modeT, constraintOrderT, randomT> slv(ctx);
+    solver_functor<modeT, constraintOrderT, randomT> slv(ctx, names);
 
     auto result =
       slv(constraints, variables, cost, norm_costs, cost_constant, p, rng);
