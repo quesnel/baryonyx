@@ -445,12 +445,17 @@ struct constraint_calculator
 
     void push(double objective_amplifier)
     {
+#ifndef BARYONYX_FULL_OPTIMIZATION
+        for (auto& elem : r)
+            elem.value += objective_amplifier * cost[elem.id];
+#else
         auto first = r.begin();
         auto last = r.end();
 
-#define BARYONYX_PUSH(p) (p)->value += C[(p)->id] * objective_amplifier
+#define BARYONYX_PUSH(p) (p)->value += cost[(p)->id] * objective_amplifier
         BARYONYX_UNROLL_PTR(first, last, BARYONYX_PUSH);
 #undef BARYONYX_PUSH
+#endif
     }
 
     void update_row(index k, double kappa, double delta, double theta)
