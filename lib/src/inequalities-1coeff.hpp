@@ -1827,17 +1827,36 @@ private:
     }
 };
 
-/*
+/**
  * Normalizes the cost vector, i.e. divides it by its l{1,2, +oo}norm. If the
- * input vector is too small the c is unchanged.
+ *      input vector is too small or with infinity value, the c is unchanged.
  */
 inline c_type
 normalize_costs(std::shared_ptr<context> ctx, const c_type& c)
 {
+    auto str = ctx->get_string_parameter("norm", "none");
     c_type ret(c);
 
-    {
-        ctx->info("  - Compute infinity-norm\n");
+    if (str == "l1") {
+        ctx->info("  - Compute l1 norm\n");
+        int sum{ 0 };
+        for (auto elem : ret)
+            sum += std::abs(elem);
+
+        if (std::isnormal(sum))
+            for (auto& elem : ret)
+                elem /= sum;
+    } else if (str == "l2") {
+        ctx->info("  - Compute l2 norm\n");
+        int sum{ 0 };
+        for (auto elem : ret)
+            sum += elem * elem;
+
+        if (std::isnormal(sum))
+            for (auto& elem : ret)
+                elem /= sum;
+    } else {
+        ctx->info("  - Compute infinity-norm (default)\n");
 
         double max_coeff = *std::max_element(c.cbegin(), c.cend());
 
@@ -1845,26 +1864,6 @@ normalize_costs(std::shared_ptr<context> ctx, const c_type& c)
             for (auto& elem : ret)
                 elem /= max_coeff;
     }
-
-    // {
-    //     ctx->info("Compute l1 norm\n");
-    //     int sum{ 0 };
-    //     for (long i{ 0 }, e{ c.rows() }; i != e; ++i)
-    //         sum += std::abs(c(i));
-
-    //     if (std::isnormal(sum))
-    //         return ret /= sum;
-    // }
-
-    // {
-    //     ctx->info("Compute l2 norm\n");
-    //     int sum{ 0 };
-    //     for (long i{ 0 }, e{ c.rows() }; i != e; ++i)
-    //         sum += c(i) * c(i);
-
-    //     if (std::isnormal(sum))
-    //         return ret /= sum;
-    // }
 
     return ret;
 }
