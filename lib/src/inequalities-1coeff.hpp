@@ -1698,11 +1698,20 @@ struct optimize_functor
     std::chrono::time_point<std::chrono::steady_clock> m_end;
 
     std::shared_ptr<context> m_ctx;
+    int m_thread_id;
+    const std::vector<std::string>& m_variable_names;
+    const affected_variables& m_affected_vars;
     x_type m_best_x;
     result m_best;
 
-    optimize_functor(std::shared_ptr<context> ctx)
+    optimize_functor(std::shared_ptr<context> ctx,
+                     int thread_id,
+                     const std::vector<std::string>& variable_names,
+                     const affected_variables& affected_vars)
       : m_ctx(ctx)
+      , m_thread_id(thread_id)
+      , m_variable_names(variable_names)
+      , m_affected_vars(affected_vars)
     {
     }
 
@@ -1817,13 +1826,27 @@ private:
                 m_end - m_begin)
                 .count();
 
-            m_ctx->info("  - Solution found: %f (i=%d t=%fs)\n",
+            m_ctx->info("  - Solution found: %f (i=%d t=%fs thread:%d)\n",
                         current.value,
                         current.loop,
-                        t);
+                        t,
+                        m_thread_id);
 
             m_best = current;
             m_best.duration = t;
+
+            std::ofstream ofs(stringf("temp-%d.sol", m_thread_id));
+            ofs << m_best;
+
+            std::size_t i, e;
+
+            for (i = 0, e = m_affected_vars.names.size(); i != e; ++i)
+                ofs << m_affected_vars.names[i] << ':'
+                    << m_affected_vars.values[i] << '\n';
+
+            for (i = 0, e = m_variable_names.size(); i != e; ++i)
+                ofs << m_variable_names[i] << ':' << m_best.variable_value[i]
+                    << '\n';
 
             return true;
         }
@@ -1844,7 +1867,7 @@ normalize_costs(std::shared_ptr<context> ctx, const c_type& c)
 
     if (str == "l1") {
         ctx->info("  - Compute l1 norm\n");
-        int sum{ 0 };
+        double sum{ 0 };
         for (auto elem : ret)
             sum += std::abs(elem);
 
@@ -1853,7 +1876,7 @@ normalize_costs(std::shared_ptr<context> ctx, const c_type& c)
                 elem /= sum;
     } else if (str == "l2") {
         ctx->info("  - Compute l2 norm\n");
-        int sum{ 0 };
+        double sum{ 0 };
         for (auto elem : ret)
             sum += elem * elem;
 
@@ -1862,7 +1885,6 @@ normalize_costs(std::shared_ptr<context> ctx, const c_type& c)
                 elem /= sum;
     } else {
         ctx->info("  - Compute infinity-norm (default)\n");
-
         double max_coeff = *std::max_element(c.cbegin(), c.cend());
 
         if (std::isnormal(max_coeff))
@@ -1938,7 +1960,8 @@ optimize(std::shared_ptr<context> ctx,
 
     for (int i{ 0 }; i != thread; ++i) {
         std::packaged_task<result()> task(
-          std::bind(optimize_functor<modeT, constraintOrderT, randomT>(ctx),
+          std::bind(optimize_functor<modeT, constraintOrderT, randomT>(
+                      ctx, i, names, affected_vars),
                     std::ref(constraints),
                     variables,
                     std::ref(cost),
