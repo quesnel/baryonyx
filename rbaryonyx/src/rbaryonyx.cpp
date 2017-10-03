@@ -82,18 +82,18 @@ public:
 
 void
 assign_parameters(std::shared_ptr<baryonyx::context> ctx,
-                  long int limit,
+                  int limit,
                   double theta,
                   double delta,
-                  long int constraint_order,
+                  int constraint_order,
                   double kappa_min,
                   double kappa_step,
                   double kappa_max,
                   double alpha,
-                  long int w,
+                  int w,
                   double time_limit,
-                  long int seed,
-                  long int thread)
+                  int seed,
+                  int thread)
 {
     ctx->set_parameter("limit", limit);
     ctx->set_parameter("theta", theta);
@@ -156,18 +156,18 @@ assign_parameters(std::shared_ptr<baryonyx::context> ctx,
 // [[Rcpp::export]]
 List
 solve_01lp_problem(std::string file_path,
-                   long int limit = 1000,
+                   int limit = 1000,
                    double theta = 0.5,
                    double delta = 1e-4,
-                   long int constraint_order = 0,
+                   int constraint_order = 0,
                    double kappa_min = 0.1,
                    double kappa_step = 1e-4,
                    double kappa_max = 1.0,
                    double alpha = 1.0,
-                   long int w = 60,
+                   int w = 60,
                    double time_limit = 10.0,
-                   long int seed = -1,
-                   long int thread = 1,
+                   int seed = -1,
+                   int thread = 1,
                    bool verbose = true) noexcept
 {
     try {
@@ -253,22 +253,22 @@ solve_01lp_problem(std::string file_path,
 // [[Rcpp::export]]
 double
 optimize_01lp_problem(std::string file_path,
-                      long int limit = 1000,
+                      int limit = 1000,
                       double theta = 0.5,
                       double delta = 1e-4,
-                      long int constraint_order = 0,
+                      int constraint_order = 0,
                       double kappa_min = 0.1,
                       double kappa_step = 1e-4,
                       double kappa_max = 1.0,
                       double alpha = 1.0,
-                      long int w = 60,
+                      int w = 60,
                       double time_limit = 10.0,
                       double pushing_k_factor = 0.9,
-                      long int pushes_limit = 50,
+                      int pushes_limit = 50,
                       double pushing_objective_amplifier = 10,
-                      long int pushing_iteration_limit = 10,
-                      long int seed = -1,
-                      long int thread = 1,
+                      int pushing_iteration_limit = 10,
+                      int seed = -1,
+                      int thread = 1,
                       bool verbose = true) noexcept
 {
     double ret{ 0 };
