@@ -143,6 +143,7 @@ struct parameters
       , w(ctx->get_integer_parameter("w", 20))
       , order(get_constraint_order(ctx))
       , preprocessing(ctx->get_string_parameter("preprocessing", "none"))
+      , norm(ctx->get_string_parameter("norm", "none"))
       , serialize(ctx->get_integer_parameter("serialize", 0))
     {
         if (limit < 0)
@@ -159,6 +160,7 @@ struct parameters
                   "  - kappa: %.10g %.10g %.10g\n"
                   "  - alpha: %.10g\n"
                   "  - w: %d\n"
+                  "  - norm: %s\n"
                   "  - serialise: %d\n"
                   "optimizer parameters:\n"
                   "  - pushed limit: %d\n"
@@ -176,6 +178,7 @@ struct parameters
                   kappa_max,
                   alpha,
                   w,
+                  norm.c_str(),
                   serialize,
                   pushes_limit,
                   pushing_objective_amplifier,
@@ -198,6 +201,7 @@ struct parameters
     int w;
     constraint_order order;
     std::string preprocessing;
+    std::string norm;
     int serialize;
 };
 
@@ -1922,40 +1926,40 @@ rng_normalize_costs(const c_type& c, randomT& rng)
  */
 template<typename randomT>
 static c_type
-normalize_costs(std::shared_ptr<context> ctx, const c_type& c, randomT& rng)
+normalize_costs(std::shared_ptr<context> ctx,
+                const std::string& norm,
+                const c_type& c,
+                randomT& rng)
 {
-    auto str = ctx->get_string_parameter("norm", "none");
-    c_type ret(c);
+    if (norm == "none") {
+        ctx->info("  - No norm");
+        return c;
+    }
 
-    if (str == "rng") {
+    if (norm == "rng") {
         ctx->info("  - Compute random norm\n");
         return rng_normalize_costs(c, rng);
-    } else if (str == "l1") {
+    }
+
+    c_type ret(c);
+    double div{ 0 };
+
+    if (norm == "l1") {
         ctx->info("  - Compute l1 norm\n");
-        double sum{ 0 };
         for (auto elem : ret)
-            sum += std::abs(elem);
-
-        if (std::isnormal(sum))
-            for (auto& elem : ret)
-                elem /= sum;
-    } else if (str == "l2") {
+            div += std::abs(elem);
+    } else if (norm == "l2") {
         ctx->info("  - Compute l2 norm\n");
-        double sum{ 0 };
         for (auto elem : ret)
-            sum += elem * elem;
-
-        if (std::isnormal(sum))
-            for (auto& elem : ret)
-                elem /= sum;
+            div += elem * elem;
     } else {
         ctx->info("  - Compute infinity-norm (default)\n");
-        double max_coeff = *std::max_element(c.cbegin(), c.cend());
-
-        if (std::isnormal(max_coeff))
-            for (auto& elem : ret)
-                elem /= max_coeff;
+        div = *std::max_element(c.cbegin(), c.cend());
     }
+
+    if (std::isnormal(div))
+        for (auto& elem : ret)
+            elem /= div;
 
     return ret;
 }
@@ -1972,7 +1976,7 @@ solve(std::shared_ptr<context> ctx,
     auto constraints{ make_merged_constraints(ctx, pb, p) };
     auto variables = baryonyx::numeric_cast<index>(pb.vars.values.size());
     auto cost = make_objective_function(pb.objective, variables);
-    auto norm_costs = normalize_costs(ctx, cost, rng);
+    auto norm_costs = normalize_costs(ctx, p.norm, cost, rng);
     auto cost_constant = pb.objective.value;
     auto names = std::move(pb.vars.names);
     auto affected_vars = std::move(pb.affected_vars);
@@ -2006,7 +2010,7 @@ optimize(std::shared_ptr<context> ctx,
     auto constraints{ make_merged_constraints(ctx, pb, p) };
     auto variables = baryonyx::numeric_cast<index>(pb.vars.values.size());
     auto cost = make_objective_function(pb.objective, variables);
-    auto norm_costs = normalize_costs(ctx, cost, rng);
+    auto norm_costs = normalize_costs(ctx, p.norm, cost, rng);
     auto cost_constant = pb.objective.value;
     auto names = std::move(pb.vars.names);
     auto affected_vars = std::move(pb.affected_vars);
