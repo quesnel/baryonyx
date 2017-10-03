@@ -34,18 +34,28 @@
 
 namespace baryonyx {
 
+/**
+ * @brief Write baryonyx::result into a `dot sol` format.
+ * @details The `dot sol` format use the same comment and variable names as the
+ *     `dot lp` format. All meta data, constraint remaining, duration are
+ *     stored into comment in `dot sol` format. Only variable affectation are
+ *     full useful.
+ *
+ * @param os [out] class output std::ostream.
+ * @param result [in] the baryonyx::result to write.
+ */
 inline std::ostream&
 operator<<(std::ostream& os, const result& result)
 {
     auto store = os.flags();
 
     os.flags(store | os.boolalpha);
-    os << "solver................: " << result.method << '\n'
-       << "constraints...........: " << result.constraints << '\n'
-       << "variables.............: " << result.variables << '\n'
-       << "duration..............: " << result.duration << "s\n"
-       << "loop..................: " << result.loop << '\n'
-       << "status................: ";
+    os << "\\ solver................: " << result.method << '\n'
+       << "\\ constraints...........: " << result.constraints << '\n'
+       << "\\ variables.............: " << result.variables << '\n'
+       << "\\ duration..............: " << result.duration << "s\n"
+       << "\\ loop..................: " << result.loop << '\n'
+       << "\\ status................: ";
 
     switch (result.status) {
     case result_status::uninitialized:
@@ -53,32 +63,32 @@ operator<<(std::ostream& os, const result& result)
         break;
     case result_status::success:
         os << "solution found\n"
-           << "value.................: " << result.value << '\n'
-           << "variables.............: \n";
+           << "\\ value.................: " << result.value << '\n'
+           << "\\ variables.............: \n";
 
         for (std::size_t i{ 0 }, e{ result.affected_vars.names.size() };
              i != e;
              ++i)
-            os << result.affected_vars.names[i] << ':'
+            os << result.affected_vars.names[i] << '='
                << result.affected_vars.values[i] << '\n';
 
         for (std::size_t i{ 0 }, e{ result.variable_name.size() }; i != e; ++i)
-            os << result.variable_name[i] << ':' << result.variable_value[i]
+            os << result.variable_name[i] << '=' << result.variable_value[i]
                << '\n';
         break;
     case result_status::time_limit_reached:
         os << "time limit reached\n"
-           << "remaining constraints.: " << result.remaining_constraints
+           << "\\ remaining constraints.: " << result.remaining_constraints
            << '\n';
         break;
     case result_status::kappa_max_reached:
         os << "kappa max reached\n"
-           << "remaining constraints.: " << result.remaining_constraints
+           << "\\ remaining constraints.: " << result.remaining_constraints
            << '\n';
         break;
     case result_status::limit_reached:
         os << "limit reached\n"
-           << "remaining constraints.: " << result.remaining_constraints
+           << "\\ remaining constraints.: " << result.remaining_constraints
            << '\n';
         break;
     }

@@ -647,6 +647,7 @@ public:
     int get_log_priority() const noexcept;
 
     bool optimize() const noexcept;
+    bool check() const noexcept;
 
     void set_standard_stream_logger() noexcept;
     void set_logger(std::unique_ptr<logger> function) noexcept;
@@ -670,6 +671,7 @@ private:
     std::unique_ptr<logger> m_logger;
     int m_log_priority = 7;
     bool m_optimize = false;
+    bool m_check = false;
 };
 
 enum class variable_type
@@ -818,6 +820,11 @@ struct result
     index remaining_constraints = std::numeric_limits<index>::max();
 
     result_status status = result_status::uninitialized;
+
+    operator bool() const
+    {
+        return status == result_status::success;
+    }
 };
 
 inline std::tuple<double, double>
@@ -856,6 +863,15 @@ make_problem(std::shared_ptr<baryonyx::context> ctx,
 BARYONYX_API
 problem
 make_problem(std::shared_ptr<baryonyx::context> ctx, std::istream& is);
+
+BARYONYX_API
+result
+make_result(std::shared_ptr<baryonyx::context> ctx,
+            const std::string& filename);
+
+BARYONYX_API
+result
+make_result(std::shared_ptr<baryonyx::context> ctx, std::istream& is);
 
 /**
  * Write @e lp problem into a stream.
@@ -899,6 +915,14 @@ is_valid_solution(const problem& pb, const std::vector<int>& variable_value);
 BARYONYX_API
 double
 compute_solution(const problem& pb, const std::vector<int>& variable_value);
+
+BARYONYX_API
+bool
+is_valid_solution(const problem& pb, const result& r);
+
+BARYONYX_API
+double
+compute_solution(const problem& pb, const result& r);
 }
 
 #endif

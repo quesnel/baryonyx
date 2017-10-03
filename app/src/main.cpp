@@ -67,6 +67,20 @@ main(int argc, char* argv[])
 
             ctx->info("Output file: %s\n", filename.c_str());
 
+            if (ctx->check()) {
+                auto filename =
+                  ctx->get_string_parameter("check-filename", std::string());
+
+                auto result = baryonyx::make_result(ctx, filename);
+                if (result) {
+                    auto valid = baryonyx::is_valid_solution(pb, result);
+                    ctx->info("Check %s with %s: %s",
+                              argv[i],
+                              filename.c_str(),
+                              (valid ? "success" : "failure"));
+                }
+            }
+
             std::ofstream ofs(filename);
             ofs << std::boolalpha
                 << std::setprecision(std::floor(

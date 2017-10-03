@@ -73,6 +73,9 @@ namespace baryonyx_private {
 baryonyx::problem
 read_problem(std::istream& is);
 
+baryonyx::result
+read_result(std::istream& is);
+
 bool
 write_problem(std::ostream& os, const baryonyx::problem& pb);
 

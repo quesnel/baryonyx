@@ -120,6 +120,7 @@ help(baryonyx::context* ctx) noexcept
               " string.\n"
               "--optimize|-O               Optimize model (default "
               "feasibility search only)\n"
+              "--check filename.sol        Check if the solution is correct.\n"
               "--limit int                 Set limit\n"
               "--quiet                     Remove any verbose message\n"
               "--verbose|-v int            Set verbose level\n");
@@ -209,14 +210,13 @@ public:
 int
 context::parse(int argc, char* argv[]) noexcept
 {
-    const char* const short_opts = "Ohp:l:qv:";
-    const struct option long_opts[] = { { "optimize", 0, nullptr, 'O' },
-                                        { "help", 0, nullptr, 'h' },
-                                        { "param", 1, nullptr, 'p' },
-                                        { "limit", 1, nullptr, 'l' },
-                                        { "quiet", 0, nullptr, 'q' },
-                                        { "verbose", 1, nullptr, 'v' },
-                                        { 0, 0, nullptr, 0 } };
+    const char* const short_opts = "OC:hp:l:qv:";
+    const struct option long_opts[] = {
+        { "optimize", 0, nullptr, 'O' }, { "check", 0, nullptr, 'C' },
+        { "help", 0, nullptr, 'h' },     { "param", 1, nullptr, 'p' },
+        { "limit", 1, nullptr, 'l' },    { "quiet", 0, nullptr, 'q' },
+        { "verbose", 1, nullptr, 'v' },  { 0, 0, nullptr, 0 }
+    };
 
     int opt_index;
     int verbose = 6;
@@ -230,6 +230,10 @@ context::parse(int argc, char* argv[]) noexcept
 
         switch (opt) {
         case 0:
+            break;
+        case 'C':
+            m_check = true;
+            m_parameters["check-filename"] = std::string(::optarg);
             break;
         case 'O':
             m_optimize = true;
@@ -377,6 +381,12 @@ bool
 context::optimize() const noexcept
 {
     return m_optimize;
+}
+
+bool
+context::check() const noexcept
+{
+    return m_check;
 }
 
 void
@@ -549,7 +559,7 @@ problem
 make_problem(std::shared_ptr<baryonyx::context> ctx,
              const std::string& filename)
 {
-    ctx->info("problem read from file `%s'\n", filename.c_str());
+    ctx->info("problem reads from file `%s'\n", filename.c_str());
 
     std::ifstream ifs;
     ifs.exceptions(std::ifstream::badbit);
@@ -561,11 +571,34 @@ make_problem(std::shared_ptr<baryonyx::context> ctx,
 problem
 make_problem(std::shared_ptr<baryonyx::context> ctx, std::istream& is)
 {
-    ctx->info("problem read from stream\n");
+    ctx->info("problem reads from stream\n");
 
     is.exceptions(std::ifstream::badbit);
 
     return baryonyx_private::read_problem(is);
+}
+
+result
+make_result(std::shared_ptr<baryonyx::context> ctx,
+            const std::string& filename)
+{
+    ctx->info("solution reads from file `%s'\n", filename.c_str());
+
+    std::ifstream ifs;
+    ifs.exceptions(std::ifstream::badbit);
+    ifs.open(filename);
+
+    return baryonyx_private::read_result(ifs);
+}
+
+result
+make_result(std::shared_ptr<baryonyx::context> ctx, std::istream& is)
+{
+    ctx->info("solution reads from stream\n");
+
+    is.exceptions(std::ifstream::badbit);
+
+    return baryonyx_private::read_result(is);
 }
 
 std::ostream&
@@ -594,7 +627,7 @@ optimize(std::shared_ptr<baryonyx::context> ctx, problem& pb)
 }
 
 template<typename functionT, typename variablesT>
-int
+static int
 compute_function(const functionT& fct, const variablesT& vars) noexcept
 {
     int v{ 0 };
@@ -609,26 +642,24 @@ bool
 is_valid_solution(const problem& pb, const std::vector<int>& variable_value)
 {
     Expects(not variable_value.empty(), "variables vector empty");
+    std::size_t i, e;
 
-    for (auto& cst : pb.equal_constraints) {
-        if (compute_function(cst.elements, variable_value) != cst.value) {
-            printf("constraint %s (=) fails\n", cst.label.c_str());
+    for (i = 0, e = pb.equal_constraints.size(); i != e; ++i) {
+        if (compute_function(pb.equal_constraints[i].elements,
+                             variable_value) != pb.equal_constraints[i].value)
             return false;
-        }
     }
 
-    for (auto& cst : pb.greater_constraints) {
-        if (compute_function(cst.elements, variable_value) <= cst.value) {
-            printf("constraint %s (>=) fails\n", cst.label.c_str());
+    for (i = 0, e = pb.less_constraints.size(); i != e; ++i) {
+        if (compute_function(pb.less_constraints[i].elements, variable_value) >
+            pb.less_constraints[i].value)
             return false;
-        }
     }
 
-    for (auto& cst : pb.less_constraints) {
-        if (compute_function(cst.elements, variable_value) >= cst.value) {
-            printf("constraint %s (<=) fails\n", cst.label.c_str());
+    for (i = 0, e = pb.greater_constraints.size(); i != e; ++i) {
+        if (compute_function(pb.greater_constraints[i].elements,
+                             variable_value) < pb.greater_constraints[i].value)
             return false;
-        }
     }
 
     return true;
@@ -645,6 +676,57 @@ compute_solution(const problem& pb, const std::vector<int>& variable_value)
         ret += elem.factor * variable_value[elem.variable_index];
 
     return ret;
+}
+
+static std::vector<int>
+make_variable_value(const problem& pb, const result& r)
+{
+    std::unordered_map<std::string, int> cache;
+
+    std::transform(
+      r.variable_name.cbegin(),
+      r.variable_name.cend(),
+      r.variable_value.cbegin(),
+      std::inserter(cache, cache.begin()),
+      [](const auto& name, int value) { return std::make_pair(name, value); });
+
+    std::vector<int> ret(pb.vars.names.size(), INT_MAX);
+
+    for (std::size_t i = 0, e = pb.vars.names.size(); i != e; ++i) {
+        auto it = cache.find(pb.vars.names[i]);
+        Expects(it != cache.end());
+        ret[i] = it->second;
+    }
+
+    return ret;
+}
+
+bool
+is_valid_solution(const problem& pb, const result& r)
+{
+    Expects(pb.vars.names.size() == pb.vars.values.size());
+    Expects(pb.vars.names.size() == r.variable_name.size());
+    Expects(r.variable_value.size() == r.variable_name.size());
+    Expects(pb.affected_vars.names.empty());
+    Expects(pb.affected_vars.values.empty());
+
+    auto variable_value = make_variable_value(pb, r);
+
+    return is_valid_solution(pb, variable_value);
+}
+
+double
+compute_solution(const problem& pb, const result& r)
+{
+    Expects(pb.vars.names.size() == pb.vars.values.size());
+    Expects(pb.vars.names.size() == r.variable_name.size());
+    Expects(r.variable_value.size() == r.variable_name.size());
+    Expects(pb.affected_vars.names.empty());
+    Expects(pb.affected_vars.values.empty());
+
+    auto variable_value = make_variable_value(pb, r);
+
+    return compute_solution(pb, variable_value);
 }
 
 } // namespace baryonyx

@@ -51,12 +51,34 @@ test_preprocessor(std::shared_ptr<baryonyx::context> ctx)
 void
 test_preprocessor_2(std::shared_ptr<baryonyx::context> ctx)
 {
-    auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/capmo1_direct.lp");
-    auto result = baryonyx::solve(ctx, pb);
+    std::stringstream ss;
 
-    Ensures(result.status == baryonyx::result_status::success);
-    Ensures(result.value == 6212977);
-    Ensures(baryonyx::is_valid_solution(pb, result.variable_value) == true);
+    {
+        auto pb =
+          baryonyx::make_problem(ctx, EXAMPLES_DIR "/capmo1_direct.lp");
+        auto result = baryonyx::solve(ctx, pb);
+
+        Ensures(result.value == 6212977);
+        Ensures(baryonyx::is_valid_solution(pb, result.variable_value) ==
+                true);
+
+        ss << result;
+        if (not ss.good())
+            Ensures(ss.good());
+    }
+
+    {
+        ss.seekg(0, std::ios::beg);
+
+        auto pb =
+          baryonyx::make_problem(ctx, EXAMPLES_DIR "/capmo1_direct.lp");
+        baryonyx::result result = baryonyx::make_result(ctx, ss);
+
+        result.status = baryonyx::result_status::success;
+
+        Ensures(baryonyx::is_valid_solution(pb, result));
+        Ensures(baryonyx::compute_solution(pb, result) == 6212977);
+    }
 }
 
 void
