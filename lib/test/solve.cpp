@@ -37,6 +37,7 @@ void
 test_preprocessor(std::shared_ptr<baryonyx::context> ctx)
 {
     auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/prepro.lp");
+    ctx->set_parameter("norm", "infinity");
     auto result = baryonyx::solve(ctx, pb);
 
     Ensures(result.affected_vars.names.size() == 14);
