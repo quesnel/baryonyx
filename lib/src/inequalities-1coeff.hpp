@@ -1855,17 +1855,82 @@ private:
     }
 };
 
+template<typename iteratorT, typename randomT>
+void
+random_epsilon_unique(iteratorT begin,
+                      iteratorT end,
+                      randomT& rng,
+                      double min,
+                      double max)
+{
+    assert(min != max && "rng_normalize_cost fail to define min and max");
+
+    std::uniform_real_distribution<double> distribution(min, max);
+
+    for (; begin != end; ++begin)
+        begin->second += distribution(rng);
+}
+
+template<typename randomT>
+static c_type
+rng_normalize_costs(const c_type& c, randomT& rng)
+{
+    std::vector<std::pair<double, int>> r(c.size());
+    int i, e;
+
+    for (i = 0, e = numeric_cast<int>(c.size()); i != e; ++i) {
+        r[i].first = c[i];
+        r[i].second = i;
+    }
+
+    std::sort(r.begin(), r.end(), [](const auto& lhs, const auto& rhs) {
+        return lhs.first < rhs.first;
+    });
+
+    auto begin = r.begin();
+    auto end = r.end();
+    auto next = r.begin()++;
+    for (; begin != end; ++begin) {
+        if (next->first != begin->first) {
+            double min = next->first;
+            double max;
+            if (begin != end)
+                max = begin->first;
+            else
+                max = next->first + 1;
+
+            random_epsilon_unique(next, begin, rng, min, max);
+        }
+
+        next = begin;
+    }
+
+    std::sort(r.begin(), r.end(), [](const auto& lhs, const auto& rhs) {
+        return lhs.second < rhs.second;
+    });
+
+    c_type ret(c);
+    for (i = 0, e = numeric_cast<int>(c.size()); i != e; ++i)
+        ret[i] = r[i].first;
+
+    return ret;
+}
+
 /**
  * Normalizes the cost vector, i.e. divides it by its l{1,2, +oo}norm. If the
  *      input vector is too small or with infinity value, the c is unchanged.
  */
-inline c_type
-normalize_costs(std::shared_ptr<context> ctx, const c_type& c)
+template<typename randomT>
+static c_type
+normalize_costs(std::shared_ptr<context> ctx, const c_type& c, randomT& rng)
 {
     auto str = ctx->get_string_parameter("norm", "none");
     c_type ret(c);
 
-    if (str == "l1") {
+    if (str == "rng") {
+        ctx->info("  - Compute random norm\n");
+        return rng_normalize_costs(c, rng);
+    } else if (str == "l1") {
         ctx->info("  - Compute l1 norm\n");
         double sum{ 0 };
         for (auto elem : ret)
@@ -1907,7 +1972,7 @@ solve(std::shared_ptr<context> ctx,
     auto constraints{ make_merged_constraints(ctx, pb, p) };
     auto variables = baryonyx::numeric_cast<index>(pb.vars.values.size());
     auto cost = make_objective_function(pb.objective, variables);
-    auto norm_costs = normalize_costs(ctx, cost);
+    auto norm_costs = normalize_costs(ctx, cost, rng);
     auto cost_constant = pb.objective.value;
     auto names = std::move(pb.vars.names);
     auto affected_vars = std::move(pb.affected_vars);
@@ -1941,7 +2006,7 @@ optimize(std::shared_ptr<context> ctx,
     auto constraints{ make_merged_constraints(ctx, pb, p) };
     auto variables = baryonyx::numeric_cast<index>(pb.vars.values.size());
     auto cost = make_objective_function(pb.objective, variables);
-    auto norm_costs = normalize_costs(ctx, cost);
+    auto norm_costs = normalize_costs(ctx, cost, rng);
     auto cost_constant = pb.objective.value;
     auto names = std::move(pb.vars.names);
     auto affected_vars = std::move(pb.affected_vars);
