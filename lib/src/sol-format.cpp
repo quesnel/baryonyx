@@ -68,8 +68,6 @@ read_result(std::istream& is)
               baryonyx::file_format_error_tag::bad_name, line, 0);
         }
 
-        printf("%s=%d\n", name.c_str(), value);
-
         ret.variable_name.emplace_back(name);
         ret.variable_value.emplace_back(value);
         ++line;
