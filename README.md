@@ -1,4 +1,4 @@
-# Baryonyx-0.1
+# Baryonyx-0.2
 
 [![Build Status](https://travis-ci.org/quesnel/baryonyx.png?branch=master)](https://travis-ci.org/quesnel/baryonyx)
 
@@ -24,8 +24,8 @@ gcc):
 
 ## Installation
 
-Default, baryonyx provides a shared library `libbaryonyx-0.1.so`, a static
-library `libbaryonyx-0.1.a` and an executable `baryonyx-0.1`. To compile and
+Default, baryonyx provides a shared library `libbaryonyx-0.2.so`, a static
+library `libbaryonyx-0.2.a` and an executable `baryonyx-0.2`. To compile and
 install in default cmake's install directory:
 
     cd baryonyx
@@ -63,13 +63,13 @@ parameter and override the `CXXFLAGS` as follow:
 
 To run baryonyx in solver mode (ie. trying to valid all constraints):
 
-    baryonyx-0.1 file.lp
+    baryonyx-0.2 file.lp
 
 To run baryonyx into the heuristic model (ie. trying to valid all constraints
 and optimize the solution), add a `-o` or `--optimize` option to the command
 line:
 
-    baryonyx-0.1 file.lp
+    baryonyx-0.2 file.lp
 
 The baryonyx solver have many parameters. To assign it, use the `-p
 [name]:value` syntax in the command line:
@@ -87,8 +87,9 @@ The baryonyx solver have many parameters. To assign it, use the `-p
 * `integer` **pushing_iteration_limit**:
 * `integer` **limit**: number of loop to stop the solver or the heuristic
 * `integer` **w**:
-* `constraint_order` **order**:
-* `string` **preprocessing**:
+* `constraint_order` **order**: `none`, `reversing`, `random-sorting`, `infeasibility-decr`, `infeasibility-incr`.
+* `string` **preprocessing**: `none`,  `variables-number`, `variables-weight`m `constraints-weight`, `implied`.
+* `string` **norm**: `none`, `l1`, `l2`, `rng`, `infinity`
 * `bool` **serialize**: true to store for each loop, constraint and variable states.
 
 For example:
