@@ -25,11 +25,11 @@
 
 #include <baryonyx/core>
 
+#include <chrono>
+
 #include <cmath>
 #include <cstdarg>
 #include <cstdio>
-
-#include <chrono>
 
 namespace baryonyx {
 
@@ -116,5 +116,34 @@ private:
     std::chrono::time_point<std::chrono::steady_clock> m_s;
 };
 
+/**
+ * @brief Check if the @c limit is reached.
+ * @details This function checks if @c end - @c begin is greater than @c limit.
+ *
+ * @code
+ * auto begin = std::chrono::steady_clock::now();
+ * // [..] Jbos.
+ * if (is_time_limit(10.0, begin, std::chrono::steady_clock::now())
+ *    return;
+ * @endcode
+ *
+ * @param limit Duration in second.
+ * @param begin Start time.
+ * @param end End time or current time.
+ */
+inline bool
+is_time_limit(double limit,
+              std::chrono::steady_clock::time_point begin,
+              std::chrono::steady_clock::time_point end) noexcept
+{
+    if (limit <= 0.0)
+        return false;
+
+    return std::chrono::duration_cast<std::chrono::duration<double>>(end -
+                                                                     begin)
+             .count() > limit;
+}
+
 } // namespace baryonyx
+
 #endif

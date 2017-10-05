@@ -27,28 +27,28 @@
 #include <iterator>
 
 #include "generalized-wedelin.hpp"
-#include "inequalities-1coeff.hpp"
+#include "itm.hpp"
 #include "private.hpp"
 #include "utils.hpp"
 #include "wedelin.hpp"
 
-using namespace baryonyx;
+namespace bx = baryonyx;
 
 //
 // Get number of thread to use in optimizer from parameters list or from the
 // standard thread API. If an error occurred, this function returns 1.
 //
 static inline int
-get_thread_number(std::shared_ptr<baryonyx::context>& ctx) noexcept
+get_thread_number(std::shared_ptr<bx::context>& ctx) noexcept
 {
     auto t = ctx->get_integer_parameter("thread",
                                         std::thread::hardware_concurrency());
 
-    return t <= 0 ? 1 : baryonyx::numeric_cast<int>(t);
+    return t <= 0 ? 1 : bx::numeric_cast<int>(t);
 }
 
 static std::tuple<double, double, double, int>
-get_parameters(std::shared_ptr<baryonyx::context>& ctx) noexcept
+get_parameters(std::shared_ptr<bx::context>& ctx) noexcept
 {
     auto kappa = ctx->get_real_parameter("kappa", 0.001);
     auto theta = ctx->get_real_parameter("theta", 0.001);
@@ -63,7 +63,7 @@ static bool
 is_boolean_variable(const variableT& vars)
 {
     for (const auto& elem : vars)
-        if (elem.type != variable_type::binary)
+        if (elem.type != bx::variable_type::binary)
             return false;
 
     return true;
@@ -86,7 +86,7 @@ static bool
 is_integer_variable(const variableT& vars)
 {
     for (const auto& elem : vars)
-        if (elem.type != variable_type::general)
+        if (elem.type != bx::variable_type::general)
             return false;
 
     return true;
@@ -106,21 +106,21 @@ is_101_coefficient(const constraintsT csts)
 
 namespace baryonyx_private {
 
-result
-solve(std::shared_ptr<baryonyx::context> ctx, problem& pb)
+bx::result
+solve(std::shared_ptr<bx::context> ctx, bx::problem& pb)
 {
     baryonyx_private::preprocess(ctx, pb);
 
     if (pb.greater_constraints.empty() and pb.less_constraints.empty() and
         is_boolean_coefficient(pb.equal_constraints) and
         is_boolean_variable(pb.vars.values))
-        return baryonyx::inequalities_1coeff_wedelin_solve(ctx, pb);
+        return baryonyx::itm::inequalities_1coeff_wedelin_solve(ctx, pb);
 
     if (is_101_coefficient(pb.equal_constraints) and
         is_101_coefficient(pb.less_constraints) and
         is_101_coefficient(pb.greater_constraints) and
         is_boolean_variable(pb.vars.values))
-        return baryonyx::inequalities_1coeff_wedelin_solve(ctx, pb);
+        return baryonyx::itm::inequalities_1coeff_wedelin_solve(ctx, pb);
 
     if ((is_101_coefficient(pb.equal_constraints) or
          is_101_coefficient(pb.greater_constraints) or
@@ -131,16 +131,16 @@ solve(std::shared_ptr<baryonyx::context> ctx, problem& pb)
 
         std::tie(kappa, delta, theta, limit) = get_parameters(ctx);
 
-        return baryonyx::generalized_wedelin(kappa, delta, theta, limit, pb);
+        return bx::generalized_wedelin(kappa, delta, theta, limit, pb);
     }
 
     ctx->info("no_solver_available");
 
-    throw baryonyx::solver_failure(solver_error_tag::no_solver_available);
+    throw bx::solver_failure(bx::solver_error_tag::no_solver_available);
 }
 
-result
-optimize(std::shared_ptr<baryonyx::context> ctx, problem& pb)
+bx::result
+optimize(std::shared_ptr<bx::context> ctx, bx::problem& pb)
 {
     auto thread = get_thread_number(ctx);
     baryonyx_private::preprocess(ctx, pb);
@@ -148,13 +148,13 @@ optimize(std::shared_ptr<baryonyx::context> ctx, problem& pb)
     if (pb.greater_constraints.empty() and pb.less_constraints.empty() and
         is_boolean_coefficient(pb.equal_constraints) and
         is_boolean_variable(pb.vars.values))
-        return baryonyx::inequalities_1coeff_wedelin_optimize(ctx, pb, thread);
+        return bx::itm::inequalities_1coeff_wedelin_optimize(ctx, pb, thread);
 
     if (is_101_coefficient(pb.equal_constraints) and
         is_101_coefficient(pb.less_constraints) and
         is_101_coefficient(pb.greater_constraints) and
         is_boolean_variable(pb.vars.values))
-        return baryonyx::inequalities_1coeff_wedelin_optimize(ctx, pb, thread);
+        return bx::itm::inequalities_1coeff_wedelin_optimize(ctx, pb, thread);
 
     if ((is_101_coefficient(pb.equal_constraints) or
          is_101_coefficient(pb.greater_constraints) or
@@ -165,11 +165,11 @@ optimize(std::shared_ptr<baryonyx::context> ctx, problem& pb)
 
         std::tie(kappa, delta, theta, limit) = get_parameters(ctx);
 
-        return baryonyx::generalized_wedelin(kappa, delta, theta, limit, pb);
+        return bx::generalized_wedelin(kappa, delta, theta, limit, pb);
     }
 
     ctx->info("no_solver_available");
 
-    throw baryonyx::solver_failure(solver_error_tag::no_solver_available);
+    throw bx::solver_failure(bx::solver_error_tag::no_solver_available);
 }
 }

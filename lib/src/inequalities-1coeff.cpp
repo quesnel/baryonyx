@@ -20,9 +20,6 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef ORG_VLEPROJECT_BARYONYX_SOLVER_INEQUALITIES_1COEFF_HPP
-#define ORG_VLEPROJECT_BARYONYX_SOLVER_INEQUALITIES_1COEFF_HPP
-
 #include <baryonyx/core-compare>
 #include <baryonyx/core-out>
 
@@ -38,16 +35,18 @@
 #include <unordered_map>
 
 #include "fixed_array.hpp"
+#include "itm.hpp"
 #include "matrix.hpp"
 #include "private.hpp"
 #include "utils.hpp"
 
 #include <cassert>
 
-namespace baryonyx {
-namespace inequalities_1coeff {
+namespace bx = baryonyx;
 
-using AP_type = baryonyx::SparseArray<std::int8_t, double>;
+namespace {
+
+using AP_type = bx::SparseArray<std::int8_t, double>;
 
 struct bound
 {
@@ -68,146 +67,6 @@ using c_type = baryonyx::fixed_array<double>;
 using x_type = baryonyx::fixed_array<std::int8_t>;
 using pi_type = baryonyx::fixed_array<double>;
 
-enum class constraint_order
-{
-    none,
-    reversing,
-    random_sorting,
-    infeasibility_decr,
-    infeasibility_incr,
-};
-
-const char*
-constraint_order_to_string(constraint_order type)
-{
-    static const char* ret[] = {
-        "none",
-        "reversing",
-        "random-sorting",
-        "infeasibility-decr",
-        "infeasibility-incr",
-    };
-
-    switch (type) {
-    case inequalities_1coeff::constraint_order::none:
-        return ret[0];
-    case inequalities_1coeff::constraint_order::reversing:
-        return ret[1];
-    case inequalities_1coeff::constraint_order::random_sorting:
-        return ret[2];
-    case inequalities_1coeff::constraint_order::infeasibility_decr:
-        return ret[3];
-    case inequalities_1coeff::constraint_order::infeasibility_incr:
-        return ret[4];
-    }
-
-    return nullptr;
-}
-
-inequalities_1coeff::constraint_order
-get_constraint_order(std::shared_ptr<context> ctx)
-{
-    auto str = ctx->get_string_parameter("constraint-order", "none");
-
-    if (str == "none")
-        return inequalities_1coeff::constraint_order::none;
-    if (str == "reversing")
-        return inequalities_1coeff::constraint_order::reversing;
-    if (str == "random-sorting")
-        return inequalities_1coeff::constraint_order::random_sorting;
-    if (str == "infeasibility-decr")
-        return inequalities_1coeff::constraint_order::infeasibility_decr;
-    if (str == "infeasibility-incr")
-        return inequalities_1coeff::constraint_order::infeasibility_incr;
-
-    return inequalities_1coeff::constraint_order::none;
-}
-
-struct parameters
-{
-    parameters(std::shared_ptr<context> ctx)
-      : time_limit(ctx->get_real_parameter("time-limit", -1.0))
-      , theta(ctx->get_real_parameter("theta", 0.5))
-      , delta(ctx->get_real_parameter("delta", 0.01))
-      , kappa_min(ctx->get_real_parameter("kappa-min", 0.0))
-      , kappa_step(ctx->get_real_parameter("kappa-step", 1.e-3))
-      , kappa_max(ctx->get_real_parameter("kappa-max", 0.6))
-      , alpha(ctx->get_real_parameter("alpha", 1.0))
-      , pushing_k_factor(ctx->get_real_parameter("pushing-k-factor", 0.9))
-      , pushes_limit(ctx->get_integer_parameter("pushes-limit", 10))
-      , pushing_objective_amplifier(
-          ctx->get_real_parameter("pushing-objective-amplifier", 5))
-      , pushing_iteration_limit(
-          ctx->get_integer_parameter("pushing-iteration-limit", 20))
-      , limit(ctx->get_integer_parameter("limit", 1000))
-      , w(ctx->get_integer_parameter("w", 20))
-      , order(get_constraint_order(ctx))
-      , preprocessing(ctx->get_string_parameter("preprocessing", "none"))
-      , norm(ctx->get_string_parameter("norm", "inf"))
-      , serialize(ctx->get_integer_parameter("serialize", 0))
-    {
-        if (limit < 0)
-            limit = std::numeric_limits<int>::max();
-
-        ctx->info("solver: inequalities_1coeff_wedelin\n"
-                  "solver parameters:\n"
-                  "  - preprocessing: %s\n"
-                  "  - constraint-order: %s\n"
-                  "  - time-limit: %.10g\n"
-                  "  - theta: %.10g\n"
-                  "  - delta: %.10g\n"
-                  "  - limit: %d\n"
-                  "  - kappa: %.10g %.10g %.10g\n"
-                  "  - alpha: %.10g\n"
-                  "  - w: %d\n"
-                  "  - norm: %s\n"
-                  "  - serialise: %d\n",
-                  preprocessing.c_str(),
-                  constraint_order_to_string(order),
-                  time_limit,
-                  theta,
-                  delta,
-                  limit,
-                  kappa_min,
-                  kappa_step,
-                  kappa_max,
-                  alpha,
-                  w,
-                  norm.c_str(),
-                  serialize);
-
-        if (ctx->optimize()) {
-            ctx->info("optimizer parameters:\n"
-                      "  - pushes-limit: %d\n"
-                      "  - pushing-objective-amplifier: %.10g\n"
-                      "  - pushing-iteration-limit: %d\n"
-                      "  - pushing-k-factor: %.10g\n",
-                      pushes_limit,
-                      pushing_objective_amplifier,
-                      pushing_iteration_limit,
-                      pushing_k_factor);
-        }
-    }
-
-    double time_limit;
-    double theta;
-    double delta;
-    double kappa_min;
-    double kappa_step;
-    double kappa_max;
-    double alpha;
-    double pushing_k_factor;
-    int pushes_limit;
-    double pushing_objective_amplifier;
-    int pushing_iteration_limit;
-    int limit;
-    int w;
-    constraint_order order;
-    std::string preprocessing;
-    std::string norm;
-    int serialize;
-};
-
 struct maximize_tag
 {
 };
@@ -217,8 +76,8 @@ struct minimize_tag
 };
 
 template<typename iteratorT, typename randomT>
-void
-random_shuffle_unique(iteratorT begin, iteratorT end, randomT& rng)
+inline void
+random_shuffle_unique(iteratorT begin, iteratorT end, randomT& rng) noexcept
 {
     auto ret = begin++;
     for (; begin != end; ++begin) {
@@ -321,7 +180,7 @@ is_time_limit(double limit,
 }
 
 std::size_t
-compute_r_size(const AP_type& ap, index k) noexcept
+compute_r_size(const AP_type& ap, int k) noexcept
 {
     auto ak{ ap.row(k) };
     const auto& va{ ap.A() };
@@ -336,7 +195,7 @@ compute_r_size(const AP_type& ap, index k) noexcept
 }
 
 std::size_t
-compute_C_size(const AP_type& ap, index k) noexcept
+compute_C_size(const AP_type& ap, int k) noexcept
 {
     auto ak{ ap.row(k) };
     const auto& va{ ap.A() };
@@ -360,14 +219,14 @@ struct constraint_calculator
     {
         r_data() = default;
 
-        r_data(double value_, index index_)
+        r_data(double value_, int index_)
           : value(value_)
           , id(index_)
         {
         }
 
         double value;
-        index id;
+        int id;
     };
 
     random_generator_type& rng;
@@ -376,15 +235,15 @@ struct constraint_calculator
     const c_type& cost;
     x_type& x;
     pi_type& pi;
-    fixed_array<r_data> r;
-    fixed_array<index> C; // Stores variables with negative coefficient.
-    index m;
-    index n;
+    bx::fixed_array<r_data> r;
+    bx::fixed_array<int> C; // Stores variables with negative coefficient.
+    int m;
+    int n;
 
     constraint_calculator(random_generator_type& rng_,
-                          index k,
-                          index m_,
-                          index n_,
+                          int k,
+                          int m_,
+                          int n_,
                           AP_type& ap_,
                           b_type& b_,
                           const c_type& c_,
@@ -421,7 +280,7 @@ struct constraint_calculator
         }
     }
 
-    bool is_valid_solution(index k) const noexcept
+    bool is_valid_solution(int k) const noexcept
     {
         int v{ 0 };
         auto ak{ ap.row(k) };
@@ -465,7 +324,7 @@ struct constraint_calculator
 #endif
     }
 
-    void update_row(index k, double kappa, double delta, double theta)
+    void update_row(int k, double kappa, double delta, double theta)
     {
         auto ak{ ap.row(k) };
         const auto& va{ ap.A() };
@@ -526,8 +385,8 @@ struct constraint_calculator
         // search a value j such as b(0, k) <= Sum A(k, r[j]) < b(1, k).
         //
 
-        index i{ 0 }, selected{ -1 }, first, second;
-        const index endi = static_cast<index>(r.size());
+        int i{ 0 }, selected{ -1 }, first, second;
+        const int endi = static_cast<int>(r.size());
         int sum{ 0 };
 
         for (; i != endi; ++i) {
@@ -565,12 +424,12 @@ struct constraint_calculator
         }
 
         if (selected < 0) {
-            for (index j{ 0 }; j < endi; ++j) {
+            for (int j{ 0 }; j < endi; ++j) {
                 x(r[j].id) = 0;
                 ap.add_p(k, r[j].id, -delta);
             }
         } else if (second >= endi) {
-            for (index j{ 0 }; j < endi; ++j) {
+            for (int j{ 0 }; j < endi; ++j) {
                 x(r[j].id) = 1;
                 ap.add_p(k, r[j].id, +delta);
             }
@@ -580,7 +439,7 @@ struct constraint_calculator
             double d = delta + ((kappa / (1.0 - kappa)) *
                                 (r[second].value - r[first].value));
 
-            index j{ 0 };
+            int j{ 0 };
             for (; j <= selected; ++j) {
                 x(r[j].id) = 1;
                 ap.add_p(k, r[j].id, +d);
@@ -610,7 +469,7 @@ struct constraint_calculator
 };
 
 c_type
-make_objective_function(const baryonyx::objective_function& obj, index n)
+make_objective_function(const bx::objective_function& obj, int n)
 {
     c_type ret(n, 0);
 
@@ -618,287 +477,6 @@ make_objective_function(const baryonyx::objective_function& obj, index n)
         ret(elem.variable_index) += elem.factor;
 
     return ret;
-}
-
-struct merged_constraint
-{
-    merged_constraint(const std::vector<baryonyx::function_element>& elements_,
-                      int min_,
-                      int max_)
-      : elements(elements_)
-      , min(min_)
-      , max(max_)
-    {
-    }
-
-    std::vector<baryonyx::function_element> elements;
-    int min;
-    int max;
-};
-
-struct merged_constraint_hash
-{
-    inline size_t operator()(
-      const std::vector<baryonyx::function_element>& fct) const noexcept
-    {
-        std::size_t seed{ fct.size() };
-
-        for (auto& elem : fct)
-            seed ^=
-              elem.variable_index + 0x9e3779b9 + (seed << 6) + (seed >> 2);
-
-        return seed;
-    }
-};
-
-/**
- * For each constraints, this function removes element from constraint
- * functions where the factor equal 0. Constraints are remove for all
- * empty.
- *
- * \param csts The constraints to process.
- * \return a \c std::tuple of two integers. First is the number of 0 factor
- * removes, second is the number of constraints removed due to the 0 factor
- * removed.
- */
-template<typename constraintsT>
-std::tuple<int, int>
-remove_element_with_factor_0(constraintsT& csts) noexcept
-{
-    std::size_t element_removed{ 0 }, constraint_removed{ 0 };
-    std::size_t size;
-
-    for (auto& elem : csts) {
-        size = elem.elements.size();
-        elem.elements.erase(
-          std::remove_if(elem.elements.begin(),
-                         elem.elements.end(),
-                         [](const auto& e) { return e.factor == 0; }),
-          elem.elements.end());
-
-        element_removed += (size - elem.elements.size());
-    }
-
-    size = csts.size();
-    csts.erase(
-      std::remove_if(csts.begin(),
-                     csts.end(),
-                     [](const auto& e) { return e.elements.empty(); }),
-      csts.end());
-
-    constraint_removed = size - csts.size();
-
-    return std::make_tuple(numeric_cast<int>(element_removed),
-                           numeric_cast<int>(constraint_removed));
-}
-
-std::vector<merged_constraint>
-make_merged_constraints(std::shared_ptr<context> ctx,
-                        const baryonyx::problem& pb,
-                        const parameters& params)
-{
-    std::vector<merged_constraint> ret;
-    std::unordered_map<std::vector<baryonyx::function_element>,
-                       std::size_t,
-                       merged_constraint_hash>
-      cache;
-
-    const std::size_t origin_constraints_number{
-        pb.equal_constraints.size() + pb.less_constraints.size() +
-        pb.greater_constraints.size()
-    };
-
-    //
-    // Merge less and greater equal constraints if function elements are the
-    // same.
-    //
-
-    for (const auto& elem : pb.equal_constraints) {
-        cache.emplace(elem.elements, ret.size());
-        ret.emplace_back(elem.elements,
-                         numeric_cast<int>(std::lround(elem.value)),
-                         numeric_cast<int>(std::lround(elem.value)));
-    }
-
-    for (const auto& elem : pb.less_constraints) {
-        auto it = cache.find(elem.elements);
-        if (it == cache.end()) {
-            cache.emplace(elem.elements, ret.size());
-            ret.emplace_back(elem.elements,
-                             std::numeric_limits<int>::min(),
-                             numeric_cast<int>(std::lround(elem.value)));
-        } else {
-            ret[it->second].max = std::min(
-              ret[it->second].max, numeric_cast<int>(std::lround(elem.value)));
-        }
-    }
-
-    for (const auto& elem : pb.greater_constraints) {
-        auto it = cache.find(elem.elements);
-        if (it == cache.end()) {
-            cache.emplace(elem.elements, ret.size());
-            ret.emplace_back(
-              elem.elements, elem.value, std::numeric_limits<int>::max());
-        } else {
-            ret[it->second].min = std::max(
-              ret[it->second].min, numeric_cast<int>(std::lround(elem.value)));
-        }
-    }
-
-    ctx->info(
-      "  - removed constraints (merged less and greater operator): %d\n",
-      numeric_cast<int>(origin_constraints_number - ret.size()));
-
-    //
-    // Remove element from constraint functions where the factor equal 0.
-    //
-
-    {
-        auto removed = remove_element_with_factor_0(ret);
-
-        ctx->info("  - removed elements in constraints: %d\n"
-                  "  - removed empty functions in constraints: %d\n",
-                  std::get<0>(removed),
-                  std::get<1>(removed));
-    }
-
-    //
-    // Compute the preprocessing step baed on constraints and variables
-    // uses.
-    //
-    // If no preprocessing is used, vars, linkvars and linkcst vectors are
-    // not necessary.
-    //
-
-    if (params.preprocessing.empty() or params.preprocessing == "none")
-        return ret;
-
-    std::vector<int> vars(pb.vars.values.size(), 0);
-    std::vector<std::set<int>> linkvars(pb.vars.values.size());
-    std::vector<std::set<int>> linkcst(pb.vars.values.size());
-
-    for (auto it{ ret.begin() }, et{ ret.end() }; it != et; ++it) {
-        for (std::size_t i{ 0 }, e{ it->elements.size() }; i != e; ++i) {
-
-            linkcst[it->elements[i].variable_index].emplace(
-              std::distance(it, ret.end()));
-
-            for (std::size_t j{ 0 }; j != e; ++j) {
-                if (i != j)
-                    linkvars[it->elements[i].variable_index].emplace(
-                      it->elements[j].variable_index);
-            }
-        }
-
-        for (auto& f : it->elements) {
-            vars[f.variable_index]++;
-        }
-    }
-
-    std::vector<std::pair<merged_constraint, int>> tosort;
-
-    if (params.preprocessing == "variables-number") {
-        // Algorithm to a tosort vector according to the number variables used
-        // by each constraints.
-
-        for (auto& cst : ret) {
-            tosort.emplace_back(cst, 0);
-            for (auto& elem : cst.elements) {
-                for (auto& s : linkcst[elem.variable_index])
-                    tosort.back().second += linkvars[s].size();
-            }
-        }
-
-        std::sort(
-          tosort.begin(), tosort.end(), [](const auto& lhs, const auto& rhs) {
-              return rhs.second < lhs.second;
-          });
-
-        ret.clear();
-        std::transform(tosort.begin(),
-                       tosort.end(),
-                       std::back_inserter(ret),
-                       [](const auto& elem) { return elem.first; });
-
-        return ret;
-    } else if (params.preprocessing == "variables-weight") {
-        std::sort(
-          ret.begin(), ret.end(), [vars](const auto& lhs, const auto& rhs) {
-              int sumlhs{ 0 };
-              int sumrhs{ 0 };
-
-              for (auto& f : lhs.elements)
-                  sumlhs += vars[f.variable_index];
-
-              for (auto& f : rhs.elements)
-                  sumrhs += vars[f.variable_index];
-
-              return sumlhs < sumrhs;
-          });
-
-        return ret;
-    } else if (params.preprocessing == "constraints-weight") {
-        std::sort(ret.begin(),
-                  ret.end(),
-                  [linkvars, linkcst](const auto& lhs, const auto& rhs) {
-                      int sumlhs{ 1 };
-                      int sumrhs{ 1 };
-                      // std::size_t i, e;
-
-                      for (auto& f : lhs.elements)
-                          sumlhs *= linkcst[f.variable_index].size();
-
-                      for (auto& f : rhs.elements)
-                          sumrhs *= linkcst[f.variable_index].size();
-
-                      return sumrhs > sumlhs;
-                  });
-
-        return ret;
-    } else if (params.preprocessing == "implied") {
-        // Algorithm to build a tosort vector according to constraints of type:
-        // -x1 -x2 -x3 +x4 <= 0
-
-        for (auto& cst : ret) {
-            tosort.emplace_back(cst, 0);
-
-            int nbneg{ 0 }, nbpos{ 0 };
-
-            for (auto& elem : cst.elements)
-                if (elem.factor < 0)
-                    nbneg++;
-                else
-                    nbpos++;
-
-            if (((nbneg > 1 and nbpos == 1) or (nbpos > 1 and nbneg == 1)) and
-                cst.min == cst.max) {
-                tosort.back().second = 1;
-            }
-        }
-
-        std::sort(
-          tosort.begin(), tosort.end(), [](const auto& lhs, const auto& rhs) {
-              return rhs.second < lhs.second;
-          });
-
-        ret.clear();
-        std::transform(tosort.begin(),
-                       tosort.end(),
-                       std::back_inserter(ret),
-                       [](const auto& elem) { return elem.first; });
-
-        return ret;
-    } else {
-        if (not params.preprocessing.empty() and
-            params.preprocessing != "none") {
-            ctx->warning("Unknown preprocessing `%s'\n",
-                         params.preprocessing.c_str());
-        }
-
-        return ret;
-    }
-
-    // return ret;
 }
 
 template<typename modeT, typename randomT>
@@ -909,8 +487,8 @@ struct solver
 
     random_generator_type& rng;
     std::vector<constraint_calculator<modeT, randomT>> row_updaters;
-    index m;
-    index n;
+    int m;
+    int n;
     AP_type ap;
     b_type b;
     c_type c;
@@ -918,9 +496,9 @@ struct solver
     pi_type pi;
 
     solver(random_generator_type& rng_,
-           index n_,
+           int n_,
            const c_type& c_,
-           const std::vector<merged_constraint>& csts)
+           const std::vector<bx::itm::merged_constraint>& csts)
       : rng(rng_)
       , m(csts.size())
       , n(n_)
@@ -935,8 +513,8 @@ struct solver
             // each rows and columns the number of elements to correctly
             // initialize the @c `matrix` structure.
 
-            baryonyx::fixed_array<index> r(m, 0), c(n, 0);
-            index elem{ 0 };
+            bx::fixed_array<int> r(m, 0), c(n, 0);
+            int elem{ 0 };
 
             for (std::size_t i{ 0 }, e{ csts.size() }; i != e; ++i) {
                 for (const auto& cst : csts[i].elements) {
@@ -982,7 +560,7 @@ struct solver
 
         ap.sort();
 
-        for (index k{ 0 }, e{ m }; k != e; ++k)
+        for (int k{ 0 }, e{ m }; k != e; ++k)
             row_updaters.emplace_back(rng_, k, m, n, ap, b, c, x, pi);
 
         init();
@@ -990,7 +568,7 @@ struct solver
 
     void push(double objective_amplifier)
     {
-        for (index k{ 0 }, e{ m }; k != e; ++k)
+        for (int k{ 0 }, e{ m }; k != e; ++k)
             row_updaters[k].push(objective_amplifier);
     }
 
@@ -1003,7 +581,7 @@ struct solver
 
         std::bernoulli_distribution d(0.5);
 
-        for (index i = 0; i != n; ++i)
+        for (int i = 0; i != n; ++i)
             x(i) = d(rng_);
     }
 
@@ -1017,20 +595,20 @@ struct solver
         x = best_previous;
         std::bernoulli_distribution d(0.5);
 
-        for (index i = 0; i != n; ++i)
+        for (int i = 0; i != n; ++i)
             x(i) = d(rng_);
     }
 
     void init()
     {
-        for (index i{ 0 }, e{ n }; i != e; ++i)
+        for (int i{ 0 }, e{ n }; i != e; ++i)
             x(i) = init_x(c(i), mode_type());
 
-        for (index k{ 0 }, e{ m }; k != e; ++k)
+        for (int k{ 0 }, e{ m }; k != e; ++k)
             row_updaters[k].reinit();
     }
 
-    void serialize(std::shared_ptr<baryonyx::context> ctx,
+    void serialize(std::shared_ptr<bx::context> ctx,
                    const std::vector<std::string>& names,
                    int serialize_id) const
     {
@@ -1042,7 +620,7 @@ struct solver
             ctx->debug("%s=%d ", names[i].c_str(), static_cast<int>(x[i]));
         ctx->debug("\n");
 
-        for (index k{ 0 }, ek{ m }; k != ek; ++k) {
+        for (int k{ 0 }, ek{ m }; k != ek; ++k) {
             ctx->debug("C %d:%s ",
                        k,
                        (row_updaters[k].is_valid_solution(k) ? "   valid: "
@@ -1058,7 +636,7 @@ struct solver
 
     bool is_valid_solution() const noexcept
     {
-        for (index k{ 0 }, ek{ m }; k != ek; ++k) {
+        for (int k{ 0 }, ek{ m }; k != ek; ++k) {
             int v{ 0 };
             auto ak{ ap.row(k) };
             const auto& values{ ap.A() };
@@ -1074,22 +652,23 @@ struct solver
         return true;
     }
 
-    result results(const c_type& original_costs, const int cost_constant) const
+    bx::result results(const c_type& original_costs,
+                       const int cost_constant) const
     {
-        result ret;
+        bx::result ret;
 
         if (is_valid_solution()) {
-            ret.status = result_status::success;
+            ret.status = bx::result_status::success;
             int value = cost_constant;
 
-            for (index i{ 0 }, ei{ n }; i != ei; ++i)
+            for (int i{ 0 }, ei{ n }; i != ei; ++i)
                 value += original_costs[i] * x[i];
 
             ret.value = static_cast<double>(value);
 
             ret.variable_value.resize(n, 0);
 
-            for (index i{ 0 }, ei{ n }; i != ei; ++i)
+            for (int i{ 0 }, ei{ n }; i != ei; ++i)
                 ret.variable_value[i] = x(i);
         }
 
@@ -1112,24 +691,14 @@ cycle_avoidance_hash(const std::vector<T>& vec)
     return seed;
 }
 
+template<typename T>
 std::size_t
-cycle_avoidance_hash(const x_type& vec)
-{
-    std::size_t seed{ vec.size() };
-
-    for (std::size_t i{ 0 }, e{ seed }; i != e; ++i)
-        seed ^= vec(i) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
-
-    return seed;
-}
-
-std::size_t
-cycle_avoidance_hash(const std::vector<std::pair<index, index>>& vec)
+cycle_avoidance_hash(const bx::fixed_array<T>& vec)
 {
     std::size_t seed{ vec.size() };
 
     for (auto& elem : vec)
-        seed ^= elem.first + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+        seed ^= elem + 0x9e3779b9 + (seed << 6) + (seed >> 2);
 
     return seed;
 }
@@ -1154,7 +723,7 @@ struct no_cycle_avoidance
         return false;
     }
 
-    bool have_cycle(const std::vector<std::pair<index, index>>&) const noexcept
+    bool have_cycle(const std::vector<std::pair<int, int>>&) const noexcept
     {
         return false;
     }
@@ -1167,7 +736,7 @@ struct cycle_avoidance
 
     std::vector<std::size_t> history;
     std::size_t limit;
-    index nb;
+    int nb;
 
     cycle_avoidance(std::size_t limit_ = 48l)
       : history(limit_)
@@ -1183,15 +752,15 @@ struct cycle_avoidance
 
     bool have_cycle()
     {
-        index distance{ 2 };
-        const index end{ numeric_cast<index>(history.size()) };
+        int distance{ 2 };
+        const int end{ bx::numeric_cast<int>(history.size()) };
 
         if (end < distance)
             return false;
 
         for (; distance != end; ++distance) {
-            index i{ end - 1 };
-            index j{ i - distance };
+            int i{ end - 1 };
+            int j{ i - distance };
             int cycle_size{ 0 };
 
             while (j >= 0 and history[i] == history[j]) {
@@ -1226,7 +795,7 @@ struct cycle_avoidance
         return have_cycle();
     }
 
-    bool have_cycle(const std::vector<std::pair<index, index>>& R)
+    bool have_cycle(const std::vector<std::pair<int, int>>& R)
     {
         history.push_back(cycle_avoidance_hash(R));
         return have_cycle();
@@ -1235,11 +804,11 @@ struct cycle_avoidance
 
 template<typename solverT>
 std::size_t
-compute_missing_constraint(solverT& solver, std::vector<index>& R)
+compute_missing_constraint(solverT& solver, std::vector<int>& R)
 {
     R.clear();
 
-    for (index k{ 0 }, ek{ solver.m }; k != ek; ++k) {
+    for (int k{ 0 }, ek{ solver.m }; k != ek; ++k) {
         int v = 0;
         auto ak{ solver.ap.row(k) };
         const auto& values{ solver.ap.A() };
@@ -1255,8 +824,9 @@ compute_missing_constraint(solverT& solver, std::vector<index>& R)
     return R.size();
 }
 
+#ifndef BARYONYX_FULL_OPTIMIZATION
 void
-print_AP(std::shared_ptr<context> ctx,
+print_AP(std::shared_ptr<bx::context> ctx,
          const AP_type& ap,
          int k,
          int rows,
@@ -1289,15 +859,18 @@ print_AP(std::shared_ptr<context> ctx,
         ctx->debug("\n");
     }
 }
+#endif
 
 template<typename randomT>
 struct compute_reversing
 {
-    std::shared_ptr<context> m_ctx;
-    std::vector<index> R;
-    no_cycle_avoidance<index> detect_infeasability_cycle;
+    using random_generator_type = randomT;
 
-    compute_reversing(std::shared_ptr<context> ctx, randomT&)
+    std::shared_ptr<bx::context> m_ctx;
+    std::vector<int> R;
+    no_cycle_avoidance<int> detect_infeasability_cycle;
+
+    compute_reversing(std::shared_ptr<bx::context> ctx, randomT&)
       : m_ctx(ctx)
     {
     }
@@ -1308,7 +881,7 @@ struct compute_reversing
                         double delta,
                         double theta)
     {
-        for (index i{ solver.m - 1 }; i >= 0; --i)
+        for (int i{ solver.m - 1 }; i >= 0; --i)
             solver.row_updaters[i].update_row(i, kappa, delta, theta);
 
         return compute_missing_constraint(solver, R);
@@ -1339,11 +912,13 @@ struct compute_reversing
 template<typename randomT>
 struct compute_none
 {
-    std::shared_ptr<context> m_ctx;
-    std::vector<index> R;
-    no_cycle_avoidance<index> detect_infeasability_cycle;
+    using random_generator_type = randomT;
 
-    compute_none(std::shared_ptr<context> ctx, randomT&)
+    std::shared_ptr<bx::context> m_ctx;
+    std::vector<int> R;
+    no_cycle_avoidance<int> detect_infeasability_cycle;
+
+    compute_none(std::shared_ptr<bx::context> ctx, randomT&)
       : m_ctx(ctx)
     {
     }
@@ -1354,7 +929,7 @@ struct compute_none
                         double delta,
                         double theta)
     {
-        for (index i{ 0 }; i != solver.m; ++i)
+        for (int i{ 0 }; i != solver.m; ++i)
             solver.row_updaters[i].update_row(i, kappa, delta, theta);
 
         return compute_missing_constraint(solver, R);
@@ -1386,12 +961,13 @@ struct compute_random
 {
     using random_generator_type = randomT;
 
-    std::shared_ptr<context> m_ctx;
-    std::vector<index> R;
-    no_cycle_avoidance<index> detect_infeasability_cycle;
+    std::shared_ptr<bx::context> m_ctx;
+    std::vector<int> R;
+    no_cycle_avoidance<int> detect_infeasability_cycle;
     random_generator_type& rng;
 
-    compute_random(std::shared_ptr<context> ctx, random_generator_type& rng_)
+    compute_random(std::shared_ptr<bx::context> ctx,
+                   random_generator_type& rng_)
       : m_ctx(ctx)
       , rng(rng_)
     {
@@ -1450,9 +1026,9 @@ struct compute_infeasibility
     using random_generator_type = randomT;
     using direction_type = directionT;
 
-    std::shared_ptr<context> m_ctx;
-    std::vector<std::pair<index, index>> R;
-    no_cycle_avoidance<index> detect_infeasability_cycle;
+    std::shared_ptr<bx::context> m_ctx;
+    std::vector<std::pair<int, int>> R;
+    no_cycle_avoidance<int> detect_infeasability_cycle;
     random_generator_type& rng;
 
     template<typename iteratorT>
@@ -1471,7 +1047,7 @@ struct compute_infeasibility
         });
     }
 
-    compute_infeasibility(std::shared_ptr<context> ctx,
+    compute_infeasibility(std::shared_ptr<bx::context> ctx,
                           random_generator_type& rng_)
       : m_ctx(ctx)
       , rng(rng_)
@@ -1483,7 +1059,7 @@ struct compute_infeasibility
     {
         R.clear();
 
-        for (index k{ 0 }, ek{ solver.m }; k != ek; ++k) {
+        for (int k{ 0 }, ek{ solver.m }; k != ek; ++k) {
             int v = 0;
 
             auto ak{ solver.ap.row(k) };
@@ -1511,7 +1087,7 @@ struct compute_infeasibility
     {
         R.clear();
 
-        for (index k{ 0 }, ek{ solver.m }; k != ek; ++k) {
+        for (int k{ 0 }, ek{ solver.m }; k != ek; ++k) {
             int v = 0;
 
             auto ak{ solver.ap.row(k) };
@@ -1593,25 +1169,26 @@ struct solver_functor
     std::chrono::time_point<std::chrono::steady_clock> m_begin;
     std::chrono::time_point<std::chrono::steady_clock> m_end;
 
-    std::shared_ptr<context> m_ctx;
+    std::shared_ptr<bx::context> m_ctx;
     std::vector<std::string> m_names;
     x_type m_best_x;
-    result m_best;
+    bx::result m_best;
 
-    solver_functor(std::shared_ptr<context> ctx,
+    solver_functor(std::shared_ptr<bx::context> ctx,
                    const std::vector<std::string>& names)
       : m_ctx(ctx)
       , m_names(names)
     {
     }
 
-    result operator()(const std::vector<merged_constraint>& constraints,
-                      index variables,
-                      const c_type& original_costs,
-                      const c_type& norm_costs,
-                      int cost_constant,
-                      const parameters& p,
-                      randomT& rng)
+    bx::result operator()(
+      const std::vector<bx::itm::merged_constraint>& constraints,
+      int variables,
+      const c_type& original_costs,
+      const c_type& norm_costs,
+      int cost_constant,
+      const bx::itm::parameters& p,
+      randomT& rng)
     {
         m_begin = std::chrono::steady_clock::now();
         m_end = m_begin;
@@ -1620,7 +1197,7 @@ struct solver_functor
         int i2{ 0 };
         double kappa_old{ 0 };
         double kappa = p.kappa_min;
-        index best_remaining{ -1 };
+        int best_remaining{ -1 };
 
         solver<mode_type, random_generator_type> slv(
           rng, variables, norm_costs, constraints);
@@ -1630,7 +1207,7 @@ struct solver_functor
         m_ctx->info("* solver starts:\n");
 
         for (;;) {
-            index remaining = compute.run(slv, kappa, p.delta, p.theta);
+            int remaining = compute.run(slv, kappa, p.delta, p.theta);
             auto current = slv.results(original_costs, cost_constant);
             current.loop = i;
             current.remaining_constraints = remaining;
@@ -1653,7 +1230,7 @@ struct solver_functor
             slv.serialize(m_ctx, m_names, p.serialize);
 #endif
 
-            if (current.status == result_status::success) {
+            if (current.status == bx::result_status::success) {
                 m_ctx->info("  - Solution found: %f\n", current.value);
                 m_best = current;
                 return m_best;
@@ -1674,20 +1251,20 @@ struct solver_functor
 
             if (++i > p.limit) {
                 m_ctx->info("  - Loop limit reached: %d\n", i);
-                m_best.status = result_status::limit_reached;
+                m_best.status = bx::result_status::limit_reached;
                 return m_best;
             }
 
             if (kappa > p.kappa_max) {
                 m_ctx->info("  - Kappa max reached: %f\n", kappa);
-                m_best.status = result_status::kappa_max_reached;
+                m_best.status = bx::result_status::kappa_max_reached;
                 return m_best;
             }
 
             m_end = std::chrono::steady_clock::now();
             if (is_time_limit(p.time_limit, m_begin, m_end)) {
                 m_ctx->info("  - Time limit reached: %d %f\n", i, kappa);
-                m_best.status = result_status::time_limit_reached;
+                m_best.status = bx::result_status::time_limit_reached;
                 return m_best;
             }
         }
@@ -1704,17 +1281,17 @@ struct optimize_functor
     std::chrono::time_point<std::chrono::steady_clock> m_begin;
     std::chrono::time_point<std::chrono::steady_clock> m_end;
 
-    std::shared_ptr<context> m_ctx;
+    std::shared_ptr<bx::context> m_ctx;
     int m_thread_id;
     const std::vector<std::string>& m_variable_names;
-    const affected_variables& m_affected_vars;
+    const bx::affected_variables& m_affected_vars;
     x_type m_best_x;
-    result m_best;
+    bx::result m_best;
 
-    optimize_functor(std::shared_ptr<context> ctx,
+    optimize_functor(std::shared_ptr<bx::context> ctx,
                      int thread_id,
                      const std::vector<std::string>& variable_names,
-                     const affected_variables& affected_vars)
+                     const bx::affected_variables& affected_vars)
       : m_ctx(ctx)
       , m_thread_id(thread_id)
       , m_variable_names(variable_names)
@@ -1722,13 +1299,14 @@ struct optimize_functor
     {
     }
 
-    result operator()(const std::vector<merged_constraint>& constraints,
-                      index variables,
-                      const c_type& original_costs,
-                      const c_type& norm_costs,
-                      int cost_constant,
-                      const parameters& p,
-                      randomT& rng)
+    bx::result operator()(
+      const std::vector<bx::itm::merged_constraint>& constraints,
+      int variables,
+      const c_type& original_costs,
+      const c_type& norm_costs,
+      int cost_constant,
+      const bx::itm::parameters& p,
+      randomT& rng)
     {
         m_begin = std::chrono::steady_clock::now();
         m_end = m_begin;
@@ -1749,7 +1327,7 @@ struct optimize_functor
         for (; not is_time_limit(p.time_limit, m_begin, m_end);
              m_end = std::chrono::steady_clock::now(), ++i) {
 
-            index remaining = compute.run(slv, kappa, p.delta, p.theta);
+            int remaining = compute.run(slv, kappa, p.delta, p.theta);
 
             auto current = slv.results(original_costs, cost_constant);
             current.loop = i;
@@ -1776,7 +1354,7 @@ struct optimize_functor
 
             if (i >= p.limit or kappa > p.kappa_max or
                 pushed > p.pushes_limit) {
-                if (m_best.status == result_status::success) {
+                if (m_best.status == bx::result_status::success) {
                     slv.reinit(rng, m_best_x);
                 } else {
                     slv.reinit(rng);
@@ -1820,12 +1398,12 @@ struct optimize_functor
     }
 
 private:
-    bool store_if_better(const result& current) noexcept
+    bool store_if_better(const bx::result& current) noexcept
     {
-        if (current.status != result_status::success)
+        if (current.status != bx::result_status::success)
             return false;
 
-        if (m_best.status != result_status::success or
+        if (m_best.status != bx::result_status::success or
             is_better_solution(current.value, m_best.value, mode_type())) {
 
             double t =
@@ -1842,7 +1420,7 @@ private:
             m_best = current;
             m_best.duration = t;
 
-            std::ofstream ofs(stringf("temp-%d.sol", m_thread_id));
+            std::ofstream ofs(bx::stringf("temp-%d.sol", m_thread_id));
             ofs << m_best;
 
             std::size_t i, e;
@@ -1885,7 +1463,7 @@ rng_normalize_costs(const c_type& c, randomT& rng)
     std::vector<std::pair<double, int>> r(c.size());
     int i, e;
 
-    for (i = 0, e = numeric_cast<int>(c.size()); i != e; ++i) {
+    for (i = 0, e = bx::numeric_cast<int>(c.size()); i != e; ++i) {
         r[i].first = c[i];
         r[i].second = i;
     }
@@ -1920,7 +1498,7 @@ rng_normalize_costs(const c_type& c, randomT& rng)
     });
 
     c_type ret(c);
-    for (i = 0, e = numeric_cast<int>(c.size()); i != e; ++i)
+    for (i = 0, e = bx::numeric_cast<int>(c.size()); i != e; ++i)
         ret[i] = r[i].first;
 
     // Finally we compute the l+oo norm.
@@ -1939,7 +1517,7 @@ rng_normalize_costs(const c_type& c, randomT& rng)
  */
 template<typename randomT>
 static c_type
-normalize_costs(std::shared_ptr<context> ctx,
+normalize_costs(std::shared_ptr<bx::context> ctx,
                 const std::string& norm,
                 const c_type& c,
                 randomT& rng)
@@ -1978,23 +1556,23 @@ normalize_costs(std::shared_ptr<context> ctx,
 }
 
 template<typename modeT, typename constraintOrderT, typename randomT>
-inline result
-solve(std::shared_ptr<context> ctx,
-      problem& pb,
-      const parameters& p,
+inline bx::result
+solve(std::shared_ptr<bx::context> ctx,
+      bx::problem& pb,
+      const bx::itm::parameters& p,
       randomT& rng)
 {
     ctx->info("Solver initializing\n");
 
-    auto constraints{ make_merged_constraints(ctx, pb, p) };
-    auto variables = baryonyx::numeric_cast<index>(pb.vars.values.size());
+    auto constraints{ bx::itm::make_merged_constraints(ctx, pb, p) };
+    auto variables = bx::numeric_cast<int>(pb.vars.values.size());
     auto cost = make_objective_function(pb.objective, variables);
     auto norm_costs = normalize_costs(ctx, p.norm, cost, rng);
     auto cost_constant = pb.objective.value;
     auto names = std::move(pb.vars.names);
     auto affected_vars = std::move(pb.affected_vars);
 
-    baryonyx::clear(pb);
+    bx::clear(pb);
 
     solver_functor<modeT, constraintOrderT, randomT> slv(ctx, names);
 
@@ -2009,30 +1587,30 @@ solve(std::shared_ptr<context> ctx,
 }
 
 template<typename modeT, typename constraintOrderT, typename randomT>
-inline result
-optimize(std::shared_ptr<context> ctx,
-         problem& pb,
-         const parameters& p,
+inline bx::result
+optimize(std::shared_ptr<bx::context> ctx,
+         bx::problem& pb,
+         const bx::itm::parameters& p,
          randomT& rng,
          int thread)
 {
-    Expects(thread >= 1, "optimize: bad thread number");
+    bx::Expects(thread >= 1, "optimize: bad thread number");
 
     ctx->info("Optimizer initializing\n");
 
-    auto constraints{ make_merged_constraints(ctx, pb, p) };
-    auto variables = baryonyx::numeric_cast<index>(pb.vars.values.size());
+    auto constraints{ bx::itm::make_merged_constraints(ctx, pb, p) };
+    auto variables = bx::numeric_cast<int>(pb.vars.values.size());
     auto cost = make_objective_function(pb.objective, variables);
     auto norm_costs = normalize_costs(ctx, p.norm, cost, rng);
     auto cost_constant = pb.objective.value;
     auto names = std::move(pb.vars.names);
     auto affected_vars = std::move(pb.affected_vars);
 
-    baryonyx::clear(pb);
+    bx::clear(pb);
 
     std::vector<std::thread> pool(thread);
     pool.clear();
-    std::vector<std::future<result>> results(thread);
+    std::vector<std::future<bx::result>> results(thread);
     results.clear();
 
     if (thread == 1)
@@ -2041,7 +1619,7 @@ optimize(std::shared_ptr<context> ctx,
         ctx->info("Optimizer starts with %d threads\n", thread);
 
     for (int i{ 0 }; i != thread; ++i) {
-        std::packaged_task<result()> task(
+        std::packaged_task<bx::result()> task(
           std::bind(optimize_functor<modeT, constraintOrderT, randomT>(
                       ctx, i, names, affected_vars),
                     std::ref(constraints),
@@ -2060,11 +1638,11 @@ optimize(std::shared_ptr<context> ctx,
     for (auto& t : pool)
         t.join();
 
-    result best = results[0].get();
+    bx::result best = results[0].get();
     for (int i{ 1 }; i != thread; ++i) {
         auto current = results[i].get();
-        if (current.status == baryonyx::result_status::success) {
-            if (best.status != baryonyx::result_status::success or
+        if (current.status == bx::result_status::success) {
+            if (best.status != bx::result_status::success or
                 is_better_solution(current.value, best.value, modeT()))
                 best = current;
         }
@@ -2077,14 +1655,16 @@ optimize(std::shared_ptr<context> ctx,
     return best;
 }
 
-} // inequalities_1coeff
+} // anonymous namespace
 
-inline result
+namespace baryonyx {
+namespace itm {
+
+result
 inequalities_1coeff_wedelin_solve(std::shared_ptr<baryonyx::context> ctx,
                                   problem& pb)
 {
-    namespace ine_1 = baryonyx::inequalities_1coeff;
-    ine_1::parameters p(ctx);
+    parameters p(ctx);
 
     using random_generator_type = std::default_random_engine;
 
@@ -2099,54 +1679,51 @@ inequalities_1coeff_wedelin_solve(std::shared_ptr<baryonyx::context> ctx,
     random_generator_type rng(seed);
 
     switch (p.order) {
-    case ine_1::constraint_order::none:
+    case constraint_order::none:
         if (pb.type == baryonyx::objective_function_type::maximize)
-            return ine_1::solve<ine_1::maximize_tag,
-                                ine_1::compute_none<random_generator_type>,
-                                random_generator_type>(ctx, pb, p, rng);
-        return ine_1::solve<ine_1::minimize_tag,
-                            ine_1::compute_none<random_generator_type>,
-                            random_generator_type>(ctx, pb, p, rng);
-    case ine_1::constraint_order::reversing:
+            return ::solve<::maximize_tag,
+                           ::compute_none<random_generator_type>,
+                           random_generator_type>(ctx, pb, p, rng);
+        return ::solve<::minimize_tag,
+                       ::compute_none<random_generator_type>,
+                       random_generator_type>(ctx, pb, p, rng);
+    case constraint_order::reversing:
         if (pb.type == baryonyx::objective_function_type::maximize)
-            return ine_1::solve<
-              ine_1::maximize_tag,
-              ine_1::compute_reversing<random_generator_type>>(
-              ctx, pb, p, rng);
-        return ine_1::solve<ine_1::minimize_tag,
-                            ine_1::compute_reversing<random_generator_type>>(
+            return ::solve<::maximize_tag,
+                           ::compute_reversing<random_generator_type>,
+                           random_generator_type>(ctx, pb, p, rng);
+        return ::solve<::minimize_tag,
+                       ::compute_reversing<random_generator_type>>(
           ctx, pb, p, rng);
-    case ine_1::constraint_order::random_sorting:
+    case constraint_order::random_sorting:
         if (pb.type == baryonyx::objective_function_type::maximize)
-            return ine_1::solve<ine_1::maximize_tag,
-                                ine_1::compute_random<random_generator_type>>(
+            return ::solve<::maximize_tag,
+                           ::compute_random<random_generator_type>>(
               ctx, pb, p, rng);
-        return ine_1::solve<ine_1::minimize_tag,
-                            ine_1::compute_random<random_generator_type>>(
+        return ::solve<::minimize_tag,
+                       ::compute_random<random_generator_type>>(
           ctx, pb, p, rng);
-    case ine_1::constraint_order::infeasibility_decr:
+    case constraint_order::infeasibility_decr:
         if (pb.type == baryonyx::objective_function_type::maximize)
-            return ine_1::solve<
-              ine_1::maximize_tag,
-              ine_1::compute_infeasibility<random_generator_type,
-                                           ine_1::compute_infeasibility_decr>>(
+            return ::solve<
+              ::maximize_tag,
+              ::compute_infeasibility<random_generator_type,
+                                      compute_infeasibility_decr>>(
               ctx, pb, p, rng);
-        return ine_1::solve<
-          ine_1::minimize_tag,
-          ine_1::compute_infeasibility<random_generator_type,
-                                       ine_1::compute_infeasibility_decr>>(
+        return ::solve<::minimize_tag,
+                       ::compute_infeasibility<random_generator_type,
+                                               compute_infeasibility_decr>>(
           ctx, pb, p, rng);
-    case ine_1::constraint_order::infeasibility_incr:
-        if (pb.type == baryonyx::objective_function_type::maximize)
-            return ine_1::solve<
-              ine_1::maximize_tag,
-              ine_1::compute_infeasibility<random_generator_type,
-                                           ine_1::compute_infeasibility_incr>>(
+    case constraint_order::infeasibility_incr:
+        if (pb.type == bx::objective_function_type::maximize)
+            return ::solve<
+              ::maximize_tag,
+              ::compute_infeasibility<random_generator_type,
+                                      compute_infeasibility_incr>>(
               ctx, pb, p, rng);
-        return ine_1::solve<
-          ine_1::minimize_tag,
-          ine_1::compute_infeasibility<random_generator_type,
-                                       ine_1::compute_infeasibility_incr>>(
+        return ::solve<::minimize_tag,
+                       ::compute_infeasibility<random_generator_type,
+                                               compute_infeasibility_incr>>(
           ctx, pb, p, rng);
     }
 
@@ -2155,14 +1732,12 @@ inequalities_1coeff_wedelin_solve(std::shared_ptr<baryonyx::context> ctx,
     return {};
 }
 
-inline result
+result
 inequalities_1coeff_wedelin_optimize(std::shared_ptr<baryonyx::context> ctx,
                                      problem& pb,
                                      int thread)
 {
-
-    namespace ine_1 = baryonyx::inequalities_1coeff;
-    ine_1::parameters p(ctx);
+    parameters p(ctx);
 
     using random_generator_type = std::default_random_engine;
 
@@ -2177,57 +1752,53 @@ inequalities_1coeff_wedelin_optimize(std::shared_ptr<baryonyx::context> ctx,
     random_generator_type rng(seed);
 
     switch (p.order) {
-    case ine_1::constraint_order::none:
+    case constraint_order::none:
         if (pb.type == baryonyx::objective_function_type::maximize)
-            return ine_1::optimize<ine_1::maximize_tag,
-                                   ine_1::compute_none<random_generator_type>,
-                                   random_generator_type>(
-              ctx, pb, p, rng, thread);
-        return ine_1::optimize<ine_1::minimize_tag,
-                               ine_1::compute_none<random_generator_type>,
-                               random_generator_type>(ctx, pb, p, rng, thread);
-    case ine_1::constraint_order::reversing:
+            return ::optimize<::maximize_tag,
+                              ::compute_none<random_generator_type>,
+                              random_generator_type>(ctx, pb, p, rng, thread);
+        return ::optimize<::minimize_tag,
+                          ::compute_none<random_generator_type>,
+                          random_generator_type>(ctx, pb, p, rng, thread);
+    case constraint_order::reversing:
         if (pb.type == baryonyx::objective_function_type::maximize)
-            return ine_1::optimize<
-              ine_1::maximize_tag,
-              ine_1::compute_reversing<random_generator_type>>(
+            return ::optimize<::maximize_tag,
+                              ::compute_reversing<random_generator_type>>(
               ctx, pb, p, rng, thread);
-        return ine_1::optimize<
-          ine_1::minimize_tag,
-          ine_1::compute_reversing<random_generator_type>>(
+        return ::optimize<::minimize_tag,
+                          ::compute_reversing<random_generator_type>>(
           ctx, pb, p, rng, thread);
-    case ine_1::constraint_order::random_sorting:
+    case constraint_order::random_sorting:
         if (pb.type == baryonyx::objective_function_type::maximize)
-            return ine_1::optimize<
-              ine_1::maximize_tag,
-              ine_1::compute_random<random_generator_type>>(
+            return ::optimize<::maximize_tag,
+                              ::compute_random<random_generator_type>>(
               ctx, pb, p, rng, thread);
-        return ine_1::optimize<ine_1::minimize_tag,
-                               ine_1::compute_random<random_generator_type>>(
+        return ::optimize<::minimize_tag,
+                          compute_random<random_generator_type>>(
           ctx, pb, p, rng, thread);
-    case ine_1::constraint_order::infeasibility_decr:
+    case constraint_order::infeasibility_decr:
         if (pb.type == baryonyx::objective_function_type::maximize)
-            return ine_1::optimize<
-              ine_1::maximize_tag,
-              ine_1::compute_infeasibility<random_generator_type,
-                                           ine_1::compute_infeasibility_decr>>(
+            return ::optimize<
+              ::maximize_tag,
+              ::compute_infeasibility<random_generator_type,
+                                      ::compute_infeasibility_decr>>(
               ctx, pb, p, rng, thread);
-        return ine_1::optimize<
-          ine_1::minimize_tag,
-          ine_1::compute_infeasibility<random_generator_type,
-                                       ine_1::compute_infeasibility_decr>>(
+        return ::optimize<
+          ::minimize_tag,
+          ::compute_infeasibility<random_generator_type,
+                                  ::compute_infeasibility_decr>>(
           ctx, pb, p, rng, thread);
-    case ine_1::constraint_order::infeasibility_incr:
+    case constraint_order::infeasibility_incr:
         if (pb.type == baryonyx::objective_function_type::maximize)
-            return ine_1::optimize<
-              ine_1::maximize_tag,
-              ine_1::compute_infeasibility<random_generator_type,
-                                           ine_1::compute_infeasibility_incr>>(
+            return ::optimize<
+              ::maximize_tag,
+              ::compute_infeasibility<random_generator_type,
+                                      ::compute_infeasibility_incr>>(
               ctx, pb, p, rng, thread);
-        return ine_1::optimize<
-          ine_1::minimize_tag,
-          ine_1::compute_infeasibility<random_generator_type,
-                                       ine_1::compute_infeasibility_incr>>(
+        return ::optimize<
+          ::minimize_tag,
+          ::compute_infeasibility<random_generator_type,
+                                  ::compute_infeasibility_incr>>(
           ctx, pb, p, rng, thread);
     }
 
@@ -2235,7 +1806,5 @@ inequalities_1coeff_wedelin_optimize(std::shared_ptr<baryonyx::context> ctx,
 
     return {};
 }
-
-} // namespace baryonyx
-
-#endif
+}
+}
