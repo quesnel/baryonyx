@@ -161,12 +161,7 @@ struct parameters
                   "  - alpha: %.10g\n"
                   "  - w: %d\n"
                   "  - norm: %s\n"
-                  "  - serialise: %d\n"
-                  "optimizer parameters:\n"
-                  "  - pushed limit: %d\n"
-                  "  - pushing objective amplifier: %.10g\n"
-                  "  - pushing iteration limit: %d\n"
-                  "  - pushing k factor: %.10g\n",
+                  "  - serialise: %d\n",
                   preprocessing.c_str(),
                   constraint_order_to_string(order),
                   time_limit,
@@ -179,11 +174,19 @@ struct parameters
                   alpha,
                   w,
                   norm.c_str(),
-                  serialize,
-                  pushes_limit,
-                  pushing_objective_amplifier,
-                  pushing_iteration_limit,
-                  pushing_k_factor);
+                  serialize);
+
+        if (ctx->optimize()) {
+            ctx->info("optimizer parameters:\n"
+                      "  - pushes-limit: %d\n"
+                      "  - pushing-objective-amplifier: %.10g\n"
+                      "  - pushing-iteration-limit: %d\n"
+                      "  - pushing-k-factor: %.10g\n",
+                      pushes_limit,
+                      pushing_objective_amplifier,
+                      pushing_iteration_limit,
+                      pushing_k_factor);
+        }
     }
 
     double time_limit;
