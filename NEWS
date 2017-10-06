@@ -1,3 +1,18 @@
+# baryonyx v0.2.1.0 - 2017-10-06
+
+## solver:
+- switch back to infinity norm instead of none
+- adding l+oo norm after the rng norm
+- fix parameters in console output (show optimization parameters only in optimization mode)
+- fix typo in parameters
+
+## core
+- rewrite the help message and add all parameters
+- fix the --check|-C option
+
+## preprocessor
+- fix objective function cleanup
+
 # baryonyx v0.2.0.0 - 2017-10-03
 
 ## solver

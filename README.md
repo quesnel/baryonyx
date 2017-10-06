@@ -1,4 +1,4 @@
-# Baryonyx-0.2
+# Baryonyx-0.2.1
 
 [![Build Status](https://travis-ci.org/quesnel/baryonyx.png?branch=master)](https://travis-ci.org/quesnel/baryonyx)
 
