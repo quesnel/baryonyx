@@ -1912,6 +1912,9 @@ rng_normalize_costs(const c_type& c, randomT& rng)
         next = begin;
     }
 
+    // Reorder the vector according to the variable index, so, it restores the
+    // initial order.
+
     std::sort(r.begin(), r.end(), [](const auto& lhs, const auto& rhs) {
         return lhs.second < rhs.second;
     });
@@ -1919,6 +1922,13 @@ rng_normalize_costs(const c_type& c, randomT& rng)
     c_type ret(c);
     for (i = 0, e = numeric_cast<int>(c.size()); i != e; ++i)
         ret[i] = r[i].first;
+
+    // Finally we compute the l+oo norm.
+
+    double div = *std::max_element(c.cbegin(), c.cend());
+    if (std::isnormal(div))
+        for (auto& elem : ret)
+            elem /= div;
 
     return ret;
 }
