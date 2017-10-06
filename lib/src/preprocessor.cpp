@@ -67,7 +67,9 @@ cleanup_function_element(functionT& fct, int& nb)
 
     while (it != end) {
         if (it->variable_index == prev->variable_index) {
-            baryonyx::Expects(ret.back().variable_index == it->variable_index);
+            assert(ret.back().variable_index == it->variable_index &&
+                   "parser error to assign variable index.");
+
             ret.back().factor += it->factor;
         } else {
             prev = it;
@@ -558,7 +560,8 @@ preprocess(std::shared_ptr<baryonyx::context> ctx, baryonyx::problem& pb)
         for (auto& elem : pb.less_constraints)
             elem.elements = cleanup_function_element(elem.elements, clean);
 
-        cleanup_function_element(pb.objective.elements, clean);
+        pb.objective.elements =
+          cleanup_function_element(pb.objective.elements, clean);
 
         ctx->info("    `-> %d function element(s) merged.\n", clean);
     }

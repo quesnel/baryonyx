@@ -534,15 +534,13 @@ read_function_element(parser_stack& stack)
 
     std::string str = stack.pop();
 
-    {
-        if (str[0] == '-' or str[0] == '+') {
-            negative = (str[0] == '-');
+    if (str[0] == '-' or str[0] == '+') {
+        negative = (str[0] == '-');
 
-            if (str.length() != 1)
-                stack.push_front(str.substr(1, std::string::npos));
-        } else {
-            stack.push_front(str);
-        }
+        if (str.length() != 1)
+            stack.push_front(str.substr(1, std::string::npos));
+    } else {
+        stack.push_front(str);
     }
 
     str = stack.top();
@@ -562,14 +560,10 @@ read_function_element(parser_stack& stack)
 
     str = stack.top();
 
-    if (std::isalpha(str[0])) {
+    if (std::isalpha(str[0]))
         std::get<0>(ret) = read_name(stack);
-        return ret;
-    }
 
-    throw file_format_failure(file_format_error_tag::bad_function_element,
-                              stack.line(),
-                              stack.column());
+    return ret;
 }
 
 static inline objective_function_type
