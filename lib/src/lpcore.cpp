@@ -114,16 +114,45 @@ split_param(const char* param) noexcept
 void
 help(baryonyx::context* ctx) noexcept
 {
-    ctx->info("--help|-h                   This help message\n"
-              "--param|-p [name]:[value]   Add a new parameter (name is"
-              " [a-z][A-Z]_ value can be a double, an integer otherwise a"
+    ctx->info(
+      "Baryonyx v%d.%d.%d", VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH);
+
+    if (VERSION_TWEAK)
+        ctx->info("-%d", VERSION_TWEAK);
+
+    ctx->info("\nGeneral options:\n"
+              "  --help|-h                   This help message\n"
+              "  --param|-p [name][:|=][value]   Add a new parameter (name is"
+              " [a-z][A-Z]_) value can be a double, an integer otherwise a"
               " string.\n"
-              "--optimize|-O               Optimize model (default "
+              "  --optimize|-O               Optimize model (default "
               "feasibility search only)\n"
-              "--check filename.sol        Check if the solution is correct.\n"
-              "--limit int                 Set limit\n"
-              "--quiet                     Remove any verbose message\n"
-              "--verbose|-v int            Set verbose level\n");
+              "  --check filename.sol        Check if the solution is correct."
+              "\n"
+              "  --quiet                     Remove any verbose message\n"
+              "  --verbose|-v int            Set verbose level\n\n"
+              "Parameter list for in the middle heuristic\n"
+              "solver parameters:\n"
+              "  - preprocessing: none variables-number variables-weight "
+              "constraints-weight implied\n"
+              "  - constraint-order: none reversing random-sorting "
+              "infeasibility-decr ingeasibility-incr\n"
+              "  - time-limit: real [0, +oo[ in second\n"
+              "  - theta: real [0, 1]\n"
+              "  - delta: real [0, +oo[\n"
+              "  - limit: integer [0, +oo[\n"
+              "  - kappa-min: real [0, 1[\n"
+              "  - kappa-step: real [0, 1[\n"
+              "  - kappa-max: real [0, 1[\n"
+              "  - alpha: integer [0, 2]\n"
+              "  - w: integer [0, +oo[\n"
+              "  - norm: l1 l2 inf none rng\n"
+              "  - serialise: [0, 2]\n"
+              "optimizer parameters:\n"
+              "  - pushes-limit: integer [0, +oo[\n"
+              "  - pushing-objective-amplifier: real [0, +oo[\n"
+              "  - pushing-iteration-limit: integer [0, +oo[\n"
+              "  - pushing-k-factor: real [0, +oo[\n");
 }
 }
 
