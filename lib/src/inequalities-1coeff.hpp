@@ -143,7 +143,7 @@ struct parameters
       , w(ctx->get_integer_parameter("w", 20))
       , order(get_constraint_order(ctx))
       , preprocessing(ctx->get_string_parameter("preprocessing", "none"))
-      , norm(ctx->get_string_parameter("norm", "none"))
+      , norm(ctx->get_string_parameter("norm", "inf"))
       , serialize(ctx->get_integer_parameter("serialize", 0))
     {
         if (limit < 0)
