@@ -153,7 +153,7 @@ struct parameters
                   "solver parameters:\n"
                   "  - preprocessing: %s\n"
                   "  - constraint-order: %s\n"
-                  "  - time_limit: %.10g\n"
+                  "  - time-limit: %.10g\n"
                   "  - theta: %.10g\n"
                   "  - delta: %.10g\n"
                   "  - limit: %d\n"
