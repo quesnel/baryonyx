@@ -55,6 +55,45 @@ inequalities_1coeff_wedelin_optimize(std::shared_ptr<context> ctx,
                                      problem& pb,
                                      int thread);
 
+enum class floating_point_type
+{
+    float_type,
+    double_type,
+    longdouble_type
+};
+
+static inline const char*
+floating_point_type_to_string(floating_point_type type) noexcept
+{
+    static const char* ret[] = {
+        "float", "double", "longdouble",
+    };
+
+    switch (type) {
+    case floating_point_type::float_type:
+        return ret[0];
+    case floating_point_type::double_type:
+        return ret[1];
+    case floating_point_type::longdouble_type:
+        return ret[2];
+    default:
+        return ret[0];
+    };
+}
+
+inline floating_point_type
+get_floating_point_type(std::shared_ptr<context> ctx) noexcept
+{
+    auto str = ctx->get_string_parameter("floating-point-type", "double");
+
+    if (str == "float")
+        return floating_point_type::float_type;
+    if (str == "longdouble")
+        return floating_point_type::longdouble_type;
+
+    return floating_point_type::double_type;
+}
+
 enum class constraint_order
 {
     none,
@@ -96,8 +135,6 @@ get_constraint_order(std::shared_ptr<context> ctx) noexcept
 {
     auto str = ctx->get_string_parameter("constraint-order", "none");
 
-    if (str == "none")
-        return constraint_order::none;
     if (str == "reversing")
         return constraint_order::reversing;
     if (str == "random-sorting")
@@ -128,10 +165,11 @@ struct parameters
           ctx->get_integer_parameter("pushing-iteration-limit", 20))
       , limit(ctx->get_integer_parameter("limit", 1000))
       , w(ctx->get_integer_parameter("w", 20))
-      , order(get_constraint_order(ctx))
       , preprocessing(ctx->get_string_parameter("preprocessing", "none"))
-      , norm(ctx->get_string_parameter("norm", "none"))
+      , norm(ctx->get_string_parameter("norm", "inf"))
       , serialize(ctx->get_integer_parameter("serialize", 0))
+      , order(get_constraint_order(ctx))
+      , float_type(get_floating_point_type(ctx))
     {
         if (limit < 0)
             limit = std::numeric_limits<int>::max();
@@ -140,7 +178,7 @@ struct parameters
                   "solver parameters:\n"
                   "  - preprocessing: %s\n"
                   "  - constraint-order: %s\n"
-                  "  - time_limit: %.10g\n"
+                  "  - time-limit: %.10g\n"
                   "  - theta: %.10g\n"
                   "  - delta: %.10g\n"
                   "  - limit: %d\n"
@@ -149,11 +187,7 @@ struct parameters
                   "  - w: %d\n"
                   "  - norm: %s\n"
                   "  - serialise: %d\n"
-                  "optimizer parameters:\n"
-                  "  - pushed limit: %d\n"
-                  "  - pushing objective amplifier: %.10g\n"
-                  "  - pushing iteration limit: %d\n"
-                  "  - pushing k factor: %.10g\n",
+                  "  - float-point-type: %s\n",
                   preprocessing.c_str(),
                   constraint_order_to_string(order),
                   time_limit,
@@ -167,10 +201,18 @@ struct parameters
                   w,
                   norm.c_str(),
                   serialize,
-                  pushes_limit,
-                  pushing_objective_amplifier,
-                  pushing_iteration_limit,
-                  pushing_k_factor);
+                  floating_point_type_to_string(float_type));
+
+        if (ctx->optimize())
+            ctx->info("optimizer parameters:\n"
+                      "  - pushed limit: %d\n"
+                      "  - pushing objective amplifier: %.10g\n"
+                      "  - pushing iteration limit: %d\n"
+                      "  - pushing k factor: %.10g\n",
+                      pushes_limit,
+                      pushing_objective_amplifier,
+                      pushing_iteration_limit,
+                      pushing_k_factor);
     }
 
     double time_limit;
@@ -186,10 +228,11 @@ struct parameters
     int pushing_iteration_limit;
     int limit;
     int w;
-    constraint_order order;
     std::string preprocessing;
     std::string norm;
     int serialize;
+    constraint_order order;
+    floating_point_type float_type;
 };
 
 struct merged_constraint
