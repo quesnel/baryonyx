@@ -20,6 +20,7 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+#include "fixed_2darray.hpp"
 #include "fixed_array.hpp"
 #include "matrix.hpp"
 #include "scoped_array.hpp"
@@ -318,6 +319,35 @@ check_fixed_array()
     }
 }
 
+void
+check_fixed_2darray()
+{
+    baryonyx::fixed_2darray<int> a(2, 10);
+
+    Ensures(a.size() == 20);
+    Ensures(a.rows() == 2);
+    Ensures(a.columns() == 10);
+
+    std::iota(a.begin(), a.end(), 0);
+
+    Ensures(a.data()[0] == 0);
+    Ensures(a.data()[19] == 19);
+
+    std::iota(a.rbegin(), a.rend(), 0);
+
+    Ensures(a.data()[0] == 19);
+    Ensures(a.data()[19] == 0);
+
+    Ensures(a(0, 0) == 19);
+    Ensures(a(1, 9) == 0);
+
+    a(0, 1) = 100;
+    a(1, 0) = 200;
+
+    Ensures(a.data()[1] == 100);
+    Ensures(a.data()[10] == 200);
+}
+
 int
 main(int /* argc */, char* /* argv */ [])
 {
@@ -326,6 +356,7 @@ main(int /* argc */, char* /* argv */ [])
     check_matrix();
     check_scoped_array();
     check_fixed_array();
+    check_fixed_2darray();
 
     return unit_test::report_errors();
 }
