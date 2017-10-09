@@ -47,6 +47,14 @@
 namespace baryonyx {
 namespace itm {
 
+struct maximize_tag
+{
+};
+
+struct minimize_tag
+{
+};
+
 result
 inequalities_1coeff_wedelin_solve(std::shared_ptr<context> ctx, problem& pb);
 
