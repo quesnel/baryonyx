@@ -194,84 +194,84 @@ template<typename T>
 typename fixed_array<T>::iterator
 fixed_array<T>::begin() noexcept
 {
-    return data();
+    return fixed_array<T>::iterator(data());
 }
 
 template<typename T>
 typename fixed_array<T>::const_iterator
 fixed_array<T>::begin() const noexcept
 {
-    return data();
+    return fixed_array<T>::const_iterator(data());
 }
 
 template<typename T>
 typename fixed_array<T>::const_iterator
 fixed_array<T>::cbegin() const noexcept
 {
-    return data();
+    return fixed_array<T>::const_iterator(data());
 }
 
 template<typename T>
 typename fixed_array<T>::iterator
 fixed_array<T>::end() noexcept
 {
-    return data() + size();
+    return fixed_array<T>::iterator(data() + size());
 }
 
 template<typename T>
 typename fixed_array<T>::const_iterator
 fixed_array<T>::end() const noexcept
 {
-    return data() + size();
+    return fixed_array<T>::const_iterator(data() + size());
 }
 
 template<typename T>
 typename fixed_array<T>::const_iterator
 fixed_array<T>::cend() const noexcept
 {
-    return data() + size();
+    return fixed_array<T>::const_iterator(data() + size());
 }
 
 template<typename T>
 typename fixed_array<T>::reverse_iterator
 fixed_array<T>::rbegin() noexcept
 {
-    return { end() };
+    return fixed_array<T>::reverse_iterator(end());
 }
 
 template<typename T>
 typename fixed_array<T>::const_reverse_iterator
 fixed_array<T>::rbegin() const noexcept
 {
-    return { end() };
+    return fixed_array<T>::const_reverse_iterator(end());
 }
 
 template<typename T>
 typename fixed_array<T>::const_reverse_iterator
 fixed_array<T>::crbegin() const noexcept
 {
-    return { end() };
+    return fixed_array<T>::const_reverse_iterator(end());
 }
 
 template<typename T>
 typename fixed_array<T>::reverse_iterator
 fixed_array<T>::rend() noexcept
 {
-    return { begin() };
+    return fixed_array<T>::reverse_iterator(begin());
 }
 
 template<typename T>
 typename fixed_array<T>::const_reverse_iterator
 fixed_array<T>::rend() const noexcept
 {
-    return { begin() };
+    return fixed_array<T>::const_reverse_iterator(begin());
 }
 
 template<typename T>
 typename fixed_array<T>::const_reverse_iterator
 fixed_array<T>::crend() const noexcept
 {
-    return { begin() };
+    return fixed_array<T>::const_reverse_iterator(begin());
 }
 
 template<typename T>

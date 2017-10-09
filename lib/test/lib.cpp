@@ -281,6 +281,22 @@ check_fixed_array()
     Ensures(a[8] == 9);
     Ensures(a[9] == 10);
 
+    {
+        baryonyx::fixed_array<int> copy(a);
+
+        std::iota(copy.rbegin(), copy.rend(), 1);
+        Ensures(copy[9] == 1);
+        Ensures(copy[8] == 2);
+        Ensures(copy[7] == 3);
+        Ensures(copy[6] == 4);
+        Ensures(copy[5] == 5);
+        Ensures(copy[4] == 6);
+        Ensures(copy[3] == 7);
+        Ensures(copy[2] == 8);
+        Ensures(copy[1] == 9);
+        Ensures(copy[0] == 10);
+    }
+
     baryonyx::fixed_array<int> b(a);
 
     Ensures(a.data() != b.data());
