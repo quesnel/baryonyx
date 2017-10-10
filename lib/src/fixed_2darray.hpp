@@ -149,7 +149,7 @@ fixed_2darray<T>::fixed_2darray(size_type rows,
   , m_columns{ columns }
   , m_buffer{ std::make_unique<T[]>(columns * rows) }
 {
-    std::fill(m_buffer.begin(), m_buffer.end(), def);
+    std::fill(begin(), end(), def);
 }
 
 template<typename T>
@@ -200,7 +200,7 @@ template<typename T>
 bool
 fixed_2darray<T>::empty() const noexcept
 {
-    return m_buffer.empty();
+    return m_columns * m_rows == 0;
 }
 
 template<typename T>

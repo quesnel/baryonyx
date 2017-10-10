@@ -46,6 +46,15 @@ namespace bx = baryonyx;
 
 namespace {
 
+using bx::length;
+
+struct maximize_tag
+{
+};
+struct minimize_tag
+{
+};
+
 struct bound
 {
     bound() = default;
@@ -104,10 +113,7 @@ random_shuffle_unique(iteratorT begin, iteratorT end, randomT& rng) noexcept
 
 template<typename iteratorT, typename randomT>
 static void
-calculator_sort(iteratorT begin,
-                iteratorT end,
-                randomT& rng,
-                bx::itm::minimize_tag)
+calculator_sort(iteratorT begin, iteratorT end, randomT& rng, minimize_tag)
 {
     if (std::distance(begin, end) > 1) {
 
@@ -127,10 +133,7 @@ calculator_sort(iteratorT begin,
 
 template<typename iteratorT, typename randomT>
 static void
-calculator_sort(iteratorT begin,
-                iteratorT end,
-                randomT& rng,
-                bx::itm::maximize_tag)
+calculator_sort(iteratorT begin, iteratorT end, randomT& rng, maximize_tag)
 {
     if (std::distance(begin, end) > 1) {
 
@@ -150,14 +153,14 @@ calculator_sort(iteratorT begin,
 
 template<typename floatingpointT>
 static inline bool
-stop_iterating(floatingpointT value, bx::itm::minimize_tag) noexcept
+stop_iterating(floatingpointT value, minimize_tag) noexcept
 {
     return value > 0;
 }
 
 template<typename floatingpointT>
 static inline bool
-stop_iterating(floatingpointT value, bx::itm::maximize_tag) noexcept
+stop_iterating(floatingpointT value, maximize_tag) noexcept
 {
     return value < 0;
 }
@@ -166,19 +169,19 @@ template<typename floatingpointT>
 static inline bool
 is_better_solution(floatingpointT lhs,
                    floatingpointT rhs,
-                   bx::itm::minimize_tag) noexcept
+                   minimize_tag) noexcept
 {
     return lhs < rhs;
 }
 
 static inline bool
-init_x(int v, bx::itm::minimize_tag) noexcept
+init_x(int v, minimize_tag) noexcept
 {
     return v <= 0;
 }
 
 static inline bool
-init_x(int v, bx::itm::maximize_tag) noexcept
+init_x(int v, maximize_tag) noexcept
 {
     return v >= 0;
 }
@@ -187,7 +190,7 @@ template<typename floatingpointT>
 static inline bool
 is_better_solution(floatingpointT lhs,
                    floatingpointT rhs,
-                   bx::itm::maximize_tag) noexcept
+                   maximize_tag) noexcept
 {
     return lhs > rhs;
 }
@@ -372,6 +375,11 @@ struct constraint_calculator
                             pi(std::get<0>(H)->position);
                 sum_a_p += ap.A(std::get<0>(H)->position, it->position) *
                            ap.P(std::get<0>(H)->position, it->position);
+                // sum_a_pi +=
+                // ap.A()[std::get<0>(H)->value] *
+                // pi(std::get<0>(H)->position);
+                // sum_a_p += ap.A()[std::get<0>(H)->value] *
+                // ap.P()[std::get<0>(H)->value];
             }
 
             r[i].id = it->position;
@@ -893,6 +901,7 @@ struct compute_reversing
     std::shared_ptr<bx::context> m_ctx;
     std::vector<int> R;
     no_cycle_avoidance<int> detect_infeasability_cycle;
+    int nb = 0;
 
     compute_reversing(std::shared_ptr<bx::context> ctx, randomT&)
       : m_ctx(ctx)
@@ -1260,10 +1269,12 @@ struct solver_functor
                 best_remaining = remaining;
                 m_best = current;
 
-                m_ctx->info("  - constraints remaining: %d/%d at %fs\n",
-                            remaining,
-                            current.constraints,
-                            current.duration);
+                m_ctx->info(
+                  "  - constraints remaining: %d/%d at %fs (loop: %d)\n",
+                  remaining,
+                  current.constraints,
+                  current.duration,
+                  i);
             }
 
 #ifndef BARYONYX_FULL_OPTIMIZATION
@@ -1819,30 +1830,30 @@ inequalities_1coeff_wedelin_solve(std::shared_ptr<baryonyx::context> ctx,
         switch (p.float_type) {
         case floating_point_type::float_type:
             return dispatch_solve<float,
-                                  baryonyx::itm::maximize_tag,
+                                  ::maximize_tag,
                                   random_generator_type>(ctx, pb, p, rng);
         case floating_point_type::double_type:
             return dispatch_solve<double,
-                                  baryonyx::itm::maximize_tag,
+                                  ::maximize_tag,
                                   random_generator_type>(ctx, pb, p, rng);
         case floating_point_type::longdouble_type:
             return dispatch_solve<long double,
-                                  baryonyx::itm::maximize_tag,
+                                  ::maximize_tag,
                                   random_generator_type>(ctx, pb, p, rng);
         }
     } else {
         switch (p.float_type) {
         case floating_point_type::float_type:
             return dispatch_solve<float,
-                                  baryonyx::itm::minimize_tag,
+                                  ::minimize_tag,
                                   random_generator_type>(ctx, pb, p, rng);
         case floating_point_type::double_type:
             return dispatch_solve<double,
-                                  baryonyx::itm::minimize_tag,
+                                  ::minimize_tag,
                                   random_generator_type>(ctx, pb, p, rng);
         case floating_point_type::longdouble_type:
             return dispatch_solve<long double,
-                                  baryonyx::itm::minimize_tag,
+                                  ::minimize_tag,
                                   random_generator_type>(ctx, pb, p, rng);
         }
     }
@@ -1867,17 +1878,17 @@ inequalities_1coeff_wedelin_optimize(std::shared_ptr<baryonyx::context> ctx,
         switch (p.float_type) {
         case floating_point_type::float_type:
             return dispatch_optimize<float,
-                                     baryonyx::itm::maximize_tag,
+                                     ::maximize_tag,
                                      random_generator_type>(
               ctx, pb, p, rng, thread);
         case floating_point_type::double_type:
             return dispatch_optimize<double,
-                                     baryonyx::itm::maximize_tag,
+                                     ::maximize_tag,
                                      random_generator_type>(
               ctx, pb, p, rng, thread);
         case floating_point_type::longdouble_type:
             return dispatch_optimize<long double,
-                                     baryonyx::itm::maximize_tag,
+                                     ::maximize_tag,
                                      random_generator_type>(
               ctx, pb, p, rng, thread);
         }
@@ -1885,17 +1896,17 @@ inequalities_1coeff_wedelin_optimize(std::shared_ptr<baryonyx::context> ctx,
         switch (p.float_type) {
         case floating_point_type::float_type:
             return dispatch_optimize<float,
-                                     baryonyx::itm::minimize_tag,
+                                     ::minimize_tag,
                                      random_generator_type>(
               ctx, pb, p, rng, thread);
         case floating_point_type::double_type:
             return dispatch_optimize<double,
-                                     baryonyx::itm::minimize_tag,
+                                     ::minimize_tag,
                                      random_generator_type>(
               ctx, pb, p, rng, thread);
         case floating_point_type::longdouble_type:
             return dispatch_optimize<long double,
-                                     baryonyx::itm::minimize_tag,
+                                     ::minimize_tag,
                                      random_generator_type>(
               ctx, pb, p, rng, thread);
         }

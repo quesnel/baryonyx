@@ -33,6 +33,8 @@
 
 #include <iomanip>
 
+#include <cassert>
+
 namespace baryonyx {
 
 template<typename A_T, typename P_T>
@@ -501,22 +503,16 @@ SparseArray<A_T, P_T>::swap(SparseArray& c) noexcept(
     std::swap(m_rows_access, c.m_rows_access);
 }
 
-#ifndef BARYONYX_FULL_OPTIMIZATION
 template<typename A_T, typename P_T>
 void
 SparseArray<A_T, P_T>::m_check_index(index_type row, index_type col) const
   noexcept
 {
-    Expects(col >= 0, "SparseArray: bad column access");
-    Expects(row >= 0, "SparseArray: bad row access");
+    (void)row;
+    (void)col;
+    assert(col >= 0 && "SparseArray: bad column access");
+    assert(row >= 0 && "SparseArray: bad row access");
 }
-#else
-template<typename A_T, typename P_T>
-void SparseArray<A_T, P_T>::m_check_index(index_type, index_type) const
-  noexcept
-{
-}
-#endif
 
 template<typename A_T, typename P_T>
 typename SparseArray<A_T, P_T>::index_type

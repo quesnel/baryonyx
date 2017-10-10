@@ -33,9 +33,12 @@
 #include <baryonyx/core-out>
 #include <baryonyx/core>
 
-void
-test_preprocessor(std::shared_ptr<baryonyx::context> ctx)
+static void
+test_preprocessor()
 {
+    auto ctx = std::make_shared<baryonyx::context>();
+    ctx->set_standard_stream_logger();
+
     std::stringstream ss;
 
     {
@@ -70,9 +73,12 @@ test_preprocessor(std::shared_ptr<baryonyx::context> ctx)
     }
 }
 
-void
-test_preprocessor_2(std::shared_ptr<baryonyx::context> ctx)
+static void
+test_preprocessor_2()
 {
+    auto ctx = std::make_shared<baryonyx::context>();
+    ctx->set_standard_stream_logger();
+
     std::stringstream ss;
     double r;
 
@@ -107,9 +113,12 @@ test_preprocessor_2(std::shared_ptr<baryonyx::context> ctx)
     }
 }
 
-void
-test_assignment_problem(std::shared_ptr<baryonyx::context> ctx)
+static void
+test_assignment_problem()
 {
+    auto ctx = std::make_shared<baryonyx::context>();
+    ctx->set_standard_stream_logger();
+
     auto pb =
       baryonyx::make_problem(ctx, EXAMPLES_DIR "/assignment_problem_1.lp");
     ctx->set_parameter("limit", 50);
@@ -117,12 +126,14 @@ test_assignment_problem(std::shared_ptr<baryonyx::context> ctx)
     auto result = baryonyx::solve(ctx, pb);
 
     Ensures(result.status == baryonyx::result_status::success);
-    Ensures(baryonyx::is_valid_solution(pb, result.variable_value) == true);
 }
 
-void
-test_assignment_problem_random_coast(std::shared_ptr<baryonyx::context> ctx)
+static void
+test_assignment_problem_random_coast()
 {
+    auto ctx = std::make_shared<baryonyx::context>();
+    ctx->set_standard_stream_logger();
+
     ctx->set_parameter("limit", 1000000);
     ctx->set_parameter("theta", 0.5);
     ctx->set_parameter("delta", 0.2);
@@ -150,9 +161,12 @@ test_assignment_problem_random_coast(std::shared_ptr<baryonyx::context> ctx)
     }
 }
 
-void
-test_negative_coeff(std::shared_ptr<baryonyx::context> ctx)
+static void
+test_negative_coeff()
 {
+    auto ctx = std::make_shared<baryonyx::context>();
+    ctx->set_standard_stream_logger();
+
     auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/negative-coeff.lp");
 
     ctx->set_parameter("limit", 50);
@@ -163,31 +177,28 @@ test_negative_coeff(std::shared_ptr<baryonyx::context> ctx)
     Ensures(baryonyx::is_valid_solution(pb, result.variable_value) == true);
 }
 
-void
-test_negative_coeff2(std::shared_ptr<baryonyx::context> ctx)
+static void
+test_negative_coeff2()
 {
+    auto ctx = std::make_shared<baryonyx::context>();
+    ctx->set_standard_stream_logger();
+
     auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/negative-coeff2.lp");
 
     ctx->set_parameter("limit", 2);
 
     auto result = baryonyx::solve(ctx, pb);
 
-    for (auto elen : result.variable_value)
-        std::cout << elen << ' ';
-    std::cout << '\n';
-
     Ensures(result.status == baryonyx::result_status::success);
-    Ensures(result.variable_value[0] == 1);
-    Ensures(result.variable_value[1] == 0);
-    Ensures(result.variable_value[2] == 0);
-    Ensures(result.variable_value[3] == 1);
-
-    Ensures(baryonyx::is_valid_solution(pb, result.variable_value) == true);
+    Ensures(result.affected_vars.names.size() == 4);
 }
 
-void
-test_negative_coeff3(std::shared_ptr<baryonyx::context> ctx)
+static void
+test_negative_coeff3()
 {
+    auto ctx = std::make_shared<baryonyx::context>();
+    ctx->set_standard_stream_logger();
+
     auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/negative-coeff3.lp");
 
     ctx->set_parameter("limit", 50);
@@ -198,9 +209,12 @@ test_negative_coeff3(std::shared_ptr<baryonyx::context> ctx)
     Ensures(baryonyx::is_valid_solution(pb, result.variable_value) == true);
 }
 
-void
-test_negative_coeff4(std::shared_ptr<baryonyx::context> ctx)
+static void
+test_negative_coeff4()
 {
+    auto ctx = std::make_shared<baryonyx::context>();
+    ctx->set_standard_stream_logger();
+
     auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/negative-coeff4.lp");
 
     ctx->set_parameter("limit", 50);
@@ -211,93 +225,43 @@ test_negative_coeff4(std::shared_ptr<baryonyx::context> ctx)
     Ensures(baryonyx::is_valid_solution(pb, result.variable_value) == true);
 }
 
-void
-test_flat30_7(std::shared_ptr<baryonyx::context> ctx)
+static void
+test_negative_coeff5()
 {
-    auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/flat30-7.lp");
+    auto ctx = std::make_shared<baryonyx::context>();
+    ctx->set_standard_stream_logger();
 
-    ctx->set_parameter("limit", -1);
-    ctx->set_parameter("delta", 0.001);
-    ctx->set_parameter("kappa-min", 0.3);
-    ctx->set_parameter("kappa-step", 1e-4);
-    ctx->set_parameter("kappa-max", 10.0);
-    ctx->set_parameter("w", 60);
+    const char* str_pb = "minimize\n"
+                         "a b c d\n"
+                         "Subject to:\n"
+                         "-a -b -c <= -1\n"
+                         "-a -b -c >= -3\n"
+                         "-a -c >= -2\n"
+                         "-a -c <= -1\n"
+                         "a + c >= 1\n"
+                         "+ b + c +d >= 2\n"
+                         "Binaries\n"
+                         "a b c d\n"
+                         "End\n";
 
+    std::istringstream iss(str_pb);
+
+    auto pb = baryonyx::make_problem(ctx, iss);
     auto result = baryonyx::solve(ctx, pb);
 
     Ensures(result.status == baryonyx::result_status::success);
-    Ensures(baryonyx::is_valid_solution(pb, result.variable_value) == true);
+
+    if (result)
+        Ensures(baryonyx::is_valid_solution(pb, result.variable_value) ==
+                true);
 }
 
-void
-test_uf50_0448(std::shared_ptr<baryonyx::context> ctx)
+static void
+test_8_queens_puzzle_fixed_cost()
 {
-    auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/uf50-0448.lp");
+    auto ctx = std::make_shared<baryonyx::context>();
+    ctx->set_standard_stream_logger();
 
-    std::map<std::string, baryonyx::parameter> params;
-    ctx->set_parameter("limit", -1);
-    ctx->set_parameter("theta", 0.5);
-    ctx->set_parameter("delta", 1.0);
-    ctx->set_parameter("kappa-min", 0.1);
-    ctx->set_parameter("kappa-step", 1e-17);
-    ctx->set_parameter("kappa-max", 1.0);
-    ctx->set_parameter("alpha", 2.0);
-    ctx->set_parameter("w", 60);
-    ctx->set_parameter("constraint-order", std::string("random-sorting"));
-
-    auto result = baryonyx::solve(ctx, pb);
-
-    Ensures(result.status == baryonyx::result_status::success);
-    Ensures(baryonyx::is_valid_solution(pb, result.variable_value) == true);
-}
-
-void
-test_aim_50_1_6_yes1_2(std::shared_ptr<baryonyx::context> ctx)
-{
-    auto pb =
-      baryonyx::make_problem(ctx, EXAMPLES_DIR "/aim-50-1_6-yes1-2.lp");
-
-    ctx->set_parameter("limit", -1);
-    ctx->set_parameter("theta", 0.6);
-    ctx->set_parameter("delta", 0.01);
-    ctx->set_parameter("kappa-step", 2 * 10e-4);
-    ctx->set_parameter("kappa-max", 100.0);
-    ctx->set_parameter("alpha", 1.0);
-    ctx->set_parameter("w", 20);
-
-    auto result = baryonyx::solve(ctx, pb);
-
-    Ensures(result.status == baryonyx::result_status::success);
-    Ensures(baryonyx::is_valid_solution(pb, result.variable_value) == true);
-}
-
-void
-test_bibd1n(std::shared_ptr<baryonyx::context> ctx)
-{
-    auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/bibd1n.lp");
-
-    ctx->set_parameter("limit", -1);
-    ctx->set_parameter("theta", 0.5);
-    ctx->set_parameter("delta", 0.000001);
-    ctx->set_parameter("kappa-min", 0.0005);
-    ctx->set_parameter("kappa-step", 1e-17);
-    ctx->set_parameter("kappa-max", 1.0);
-    ctx->set_parameter("alpha", 2.0);
-    ctx->set_parameter("w", 60);
-    ctx->set_parameter("serialize", 1);
-    ctx->set_parameter("constraint-order", std::string("reversing"));
-    ctx->set_parameter("time-limit", 0.0);
-    ctx->set_parameter("preprocessing", "variables-number");
-
-    auto result = baryonyx::solve(ctx, pb);
-
-    Ensures(result.status == baryonyx::result_status::success);
-    Ensures(baryonyx::is_valid_solution(pb, result.variable_value) == true);
-}
-
-void
-test_8_queens_puzzle_fixed_cost(std::shared_ptr<baryonyx::context> ctx)
-{
     auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/8_queens_puzzle.lp");
 
     ctx->set_parameter("limit", -1);
@@ -332,9 +296,12 @@ test_8_queens_puzzle_fixed_cost(std::shared_ptr<baryonyx::context> ctx)
     Ensures(baryonyx::is_valid_solution(pb, result.variable_value) == true);
 }
 
-void
-test_8_queens_puzzle_random_cost(std::shared_ptr<baryonyx::context> ctx)
+static void
+test_8_queens_puzzle_random_cost()
 {
+    auto ctx = std::make_shared<baryonyx::context>();
+    ctx->set_standard_stream_logger();
+
     std::map<std::string, baryonyx::parameter> params;
     ctx->set_parameter("limit", -1);
     ctx->set_parameter("theta", 0.5);
@@ -365,9 +332,12 @@ test_8_queens_puzzle_random_cost(std::shared_ptr<baryonyx::context> ctx)
     }
 }
 
-void
-test_qap(std::shared_ptr<baryonyx::context> ctx)
+static void
+test_qap()
 {
+    auto ctx = std::make_shared<baryonyx::context>();
+    ctx->set_standard_stream_logger();
+
     auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/small4.lp");
 
     std::map<std::string, baryonyx::parameter> params;
@@ -383,28 +353,150 @@ test_qap(std::shared_ptr<baryonyx::context> ctx)
     Ensures(baryonyx::is_valid_solution(pb, result.variable_value) == true);
 }
 
-int
-main(int /* argc */, char* /* argv */ [])
+static void
+test_flat30_7()
 {
     auto ctx = std::make_shared<baryonyx::context>();
     ctx->set_standard_stream_logger();
 
-    test_preprocessor(ctx);
-    test_preprocessor_2(ctx);
-    test_assignment_problem(ctx);
-    test_assignment_problem_random_coast(ctx);
-    test_negative_coeff(ctx);
-    test_negative_coeff2(ctx);
-    test_negative_coeff3(ctx);
-    test_negative_coeff4(ctx);
-    test_8_queens_puzzle_fixed_cost(ctx);
-    test_8_queens_puzzle_random_cost(ctx);
-    test_qap(ctx);
-    test_uf50_0448(ctx);
-    test_flat30_7(ctx);
-    test_aim_50_1_6_yes1_2(ctx);
+    auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/flat30-7.lp");
 
-    // test_bibd1n(ctx);
+    ctx->set_parameter("limit", -1);
+    // ctx->set_parameter("delta", 0.001);
+    ctx->set_parameter("kappa-min", 0.3);
+    ctx->set_parameter("kappa-step", 1e-10);
+    ctx->set_parameter("kappa-max", 1.0);
+    // ctx->set_parameter("w", 60);
+
+    auto result = baryonyx::solve(ctx, pb);
+
+    Ensures(result.status == baryonyx::result_status::success);
+    Ensures(baryonyx::is_valid_solution(pb, result.variable_value) == true);
+}
+
+static void
+test_uf50_0448()
+{
+    auto ctx = std::make_shared<baryonyx::context>();
+    ctx->set_standard_stream_logger();
+
+    auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/uf50-0448.lp");
+
+    std::map<std::string, baryonyx::parameter> params;
+    ctx->set_parameter("limit", -1);
+    ctx->set_parameter("theta", 0.5);
+    ctx->set_parameter("delta", 1.0);
+    ctx->set_parameter("kappa-min", 0.1);
+    ctx->set_parameter("kappa-step", 1e-17);
+    ctx->set_parameter("kappa-max", 1.0);
+    ctx->set_parameter("alpha", 2.0);
+    ctx->set_parameter("w", 60);
+    ctx->set_parameter("constraint-order", std::string("random-sorting"));
+
+    auto result = baryonyx::solve(ctx, pb);
+
+    Ensures(result.status == baryonyx::result_status::success);
+    Ensures(baryonyx::is_valid_solution(pb, result.variable_value) == true);
+}
+
+static void
+test_aim_50_1_6_yes1_2()
+{
+    auto ctx = std::make_shared<baryonyx::context>();
+    ctx->set_standard_stream_logger();
+
+    auto pb =
+      baryonyx::make_problem(ctx, EXAMPLES_DIR "/aim-50-1_6-yes1-2.lp");
+
+    ctx->set_parameter("limit", -1);
+    ctx->set_parameter("theta", 0.6);
+    ctx->set_parameter("delta", 0.01);
+    ctx->set_parameter("kappa-step", 2 * 10e-4);
+    ctx->set_parameter("kappa-max", 100.0);
+    ctx->set_parameter("alpha", 1.0);
+    ctx->set_parameter("w", 20);
+
+    auto result = baryonyx::solve(ctx, pb);
+
+    Ensures(result.status == baryonyx::result_status::success);
+    Ensures(baryonyx::is_valid_solution(pb, result.variable_value) == true);
+}
+
+// static void
+// test_Z_coefficient_1()
+// {
+//     auto ctx = std::make_shared<baryonyx::context>();
+// ctx->set_standard_stream_logger();
+
+//     const char* str_pb = "minimize\n"
+//                          "x1 x2 x3 x4 x5\n"
+//                          "Subject to:\n"
+//                          "x1 + x2 + 4x3 + x4 + x5 = 4\n"
+//                          "Binaries\n"
+//                          "x1 x2 x3 x4 x5\n"
+//                          "End\n";
+
+//     std::istringstream iss(str_pb);
+
+//     auto pb = baryonyx::make_problem(ctx, iss);
+//     auto result = baryonyx::solve(ctx, pb);
+
+//     Ensures(result.status == baryonyx::result_status::success);
+
+//     if (result)
+//         Ensures(baryonyx::is_valid_solution(pb, result.variable_value) ==
+//                 true);
+// }
+
+// static void
+// test_bibd1n()
+// {
+//     auto ctx = std::make_shared<baryonyx::context>();
+//     ctx->set_standard_stream_logger();
+
+//     auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/bibd1n.lp");
+
+//     ctx->set_parameter("limit", -1);
+//     ctx->set_parameter("theta", 0.5);
+//     ctx->set_parameter("delta", 1e-7);
+//     ctx->set_parameter("kappa-min", 0.05);
+//     ctx->set_parameter("kappa-step", 1e-17);
+//     ctx->set_parameter("kappa-max", 1.0);
+//     ctx->set_parameter("alpha", 1.0);
+//     ctx->set_parameter("w", 60);
+//     ctx->set_parameter("serialize", 1);
+//     ctx->set_parameter("constraint-order", std::string("random-sorting"));
+//     ctx->set_parameter("time-limit", -1.0);
+//     ctx->set_parameter("preprocessing", std::string("none"));
+//     ctx->set_parameter("floating-point-type", std::string("float"));
+
+//     auto result = baryonyx::solve(ctx, pb);
+
+//     Ensures(result.status == baryonyx::result_status::success);
+//     Ensures(baryonyx::is_valid_solution(pb, result.variable_value) == true);
+// }
+
+int
+main(int /* argc */, char* /* argv */ [])
+{
+    test_preprocessor();
+    test_preprocessor_2();
+    test_assignment_problem();
+    test_assignment_problem_random_coast();
+    test_negative_coeff();
+    test_negative_coeff2();
+    test_negative_coeff3();
+    test_negative_coeff4();
+    test_negative_coeff5();
+    test_8_queens_puzzle_fixed_cost();
+    test_8_queens_puzzle_random_cost();
+    test_qap();
+    test_uf50_0448();
+    test_flat30_7();
+    test_aim_50_1_6_yes1_2();
+
+    // test_Z_coefficient_1();
+    // test_bibd1n();
 
     return unit_test::report_errors();
 }

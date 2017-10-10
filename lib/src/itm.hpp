@@ -29,19 +29,19 @@
 namespace baryonyx {
 namespace itm {
 
-struct maximize_tag
-{
-};
-
-struct minimize_tag
-{
-};
-
 result
 inequalities_1coeff_wedelin_solve(std::shared_ptr<context> ctx, problem& pb);
 
 result
 inequalities_1coeff_wedelin_optimize(std::shared_ptr<context> ctx,
+                                     problem& pb,
+                                     int thread);
+
+result
+inequalities_Zcoeff_wedelin_solve(std::shared_ptr<context> ctx, problem& pb);
+
+result
+inequalities_Zcoeff_wedelin_optimize(std::shared_ptr<context> ctx,
                                      problem& pb,
                                      int thread);
 
@@ -164,8 +164,7 @@ struct parameters
         if (limit < 0)
             limit = std::numeric_limits<int>::max();
 
-        ctx->info("solver: inequalities_1coeff_wedelin\n"
-                  "solver parameters:\n"
+        ctx->info("solver parameters:\n"
                   "  - preprocessing: %s\n"
                   "  - constraint-order: %s\n"
                   "  - time-limit: %.10g\n"

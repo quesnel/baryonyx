@@ -1,4 +1,4 @@
-/* Copyright (C) 2016 INRA
+/* Copyright (C) 2017 INRA
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the
@@ -27,11 +27,64 @@
 
 #include <chrono>
 
+#include <cassert>
+#include <climits>
 #include <cmath>
 #include <cstdarg>
 #include <cstdio>
 
 namespace baryonyx {
+
+/**
+ * @brief Compute the length of the @c container.
+ * @details Return the @c size provided by the @c C::size() but cast it into a
+ *     @c int. This is a specific baryonyx function, we know that number of
+ *     variables and constraints are lower than the  @c int max value
+ *     (INT_MAX).
+ *
+ * @code
+ * std::vector<int> v(z);
+ *
+ * for (int i = 0, e = length(v); i != e; ++i)
+ *     ...
+ * @endcode
+ *
+ * @param c The container to request to size.
+ * @tparam T The of container value (must provide a @c size() member).
+ */
+template<class C>
+constexpr int
+length(const C& c) noexcept
+{
+    assert(c.size() <= INT_MAX);
+
+    return static_cast<int>(c.size());
+}
+
+/**
+ * @brief Compute the length of the C array.
+ * @details Return the size of the C array but cast it into a @c int. This is a
+ *     specific baryonyx function, we know that number of variables and
+ *     constraints are lower than the  @c int max value (INT_MAX).
+ *
+ * @code
+ * int v[150];
+ * for (int i = 0, e = length(v); i != e; ++i)
+ *     ...
+ * @endcode
+ *
+ * @param v The container to return size.
+ * @tparam T The type of the C array.
+ * @tparam N The size of the C array.
+ */
+template<class T, size_t N>
+constexpr int
+length(const T (&array)[N]) noexcept
+{
+    assert(N <= INT_MAX);
+
+    return static_cast<int>(N);
+}
 
 inline void
 Expects(bool condition)
@@ -117,31 +170,37 @@ private:
 };
 
 /**
- * @brief Check if the @c limit is reached.
+ * @brief Check if the duration between @c begin and @c end is greater than @c
+ *     limit in second.
+ *
  * @details This function checks if @c end - @c begin is greater than @c limit.
  *
  * @code
  * auto begin = std::chrono::steady_clock::now();
- * // [..] Jbos.
- * if (is_time_limit(10.0, begin, std::chrono::steady_clock::now())
- *    return;
+ * // computation
+ * auto end = std::chrono::steady_clock::now();
+ *
+ * if (is_time_limit(10.0, begin, end)) {
+ *    std::cout << "computation takes more than 10s.\n";
+ * }
  * @endcode
  *
- * @param limit Duration in second.
- * @param begin Start time.
- * @param end End time or current time.
+ * @param limit Minimal duration in second to test.
+ * @param begin Time point from the begining of a compuation.
+ * @param end Time point of the current compuation.
  */
 inline bool
 is_time_limit(double limit,
               std::chrono::steady_clock::time_point begin,
               std::chrono::steady_clock::time_point end) noexcept
 {
-    if (limit <= 0.0)
+    using std::chrono::duration_cast;
+    using std::chrono::duration;
+
+    if (limit <= 0)
         return false;
 
-    return std::chrono::duration_cast<std::chrono::duration<double>>(end -
-                                                                     begin)
-             .count() > limit;
+    return duration_cast<duration<double>>(end - begin).count() > limit;
 }
 
 } // namespace baryonyx

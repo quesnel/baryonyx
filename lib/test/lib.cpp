@@ -22,6 +22,7 @@
 
 #include "fixed_2darray.hpp"
 #include "fixed_array.hpp"
+#include "knapsack-solver.hpp"
 #include "matrix.hpp"
 #include "scoped_array.hpp"
 #include "unit-test.hpp"
@@ -364,6 +365,26 @@ check_fixed_2darray()
     Ensures(a.data()[10] == 200);
 }
 
+void
+check_knapsack_solver()
+{
+    // An example:
+    // maximize: 16x1 + 19x2 + 23x3 + 26x4
+    // st: 2x1 + 3x2 +4x3 + 5x4 <= 7
+
+    std::vector<int> w{ 2, 3, 4, 5 };
+    std::vector<int> v{ 16, 19, 23, 28 };
+    int capacity{ 7 };
+
+    auto result = baryonyx::knapsack_solver_dp<int>(v, w, capacity);
+
+    Ensures(result.size() == 4);
+    Ensures(result[0] == true);
+    Ensures(result[1] == false);
+    Ensures(result[2] == false);
+    Ensures(result[3] == true);
+}
+
 int
 main(int /* argc */, char* /* argv */ [])
 {
@@ -373,6 +394,7 @@ main(int /* argc */, char* /* argv */ [])
     check_scoped_array();
     check_fixed_array();
     check_fixed_2darray();
+    check_knapsack_solver();
 
     return unit_test::report_errors();
 }

@@ -65,7 +65,6 @@ fill_merged_constraints(std::shared_ptr<bx::context> ctx,
                 ret.emplace_back(elem.elements,
                                  bx::numeric_cast<int>(elem.value),
                                  bx::numeric_cast<int>(elem.value),
-
                                  elem.id);
             } else {
                 if (ret[it->second].min <= elem.value and

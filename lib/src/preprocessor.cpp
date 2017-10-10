@@ -32,11 +32,47 @@
 #include <cassert>
 
 //
+// Remove empty constraints, where the function does not have element from the
+// problem.
+//
+static void
+remove_empty_constraints(baryonyx::problem& pb, int& constraint_nb)
+{
+    constraint_nb +=
+      (pb.equal_constraints.size() + pb.less_constraints.size() +
+       pb.greater_constraints.size());
+
+    pb.equal_constraints.erase(
+      std::remove_if(pb.equal_constraints.begin(),
+                     pb.equal_constraints.end(),
+                     [](const auto& v) { return v.elements.empty(); }),
+      pb.equal_constraints.end());
+
+    pb.less_constraints.erase(
+      std::remove_if(pb.less_constraints.begin(),
+                     pb.less_constraints.end(),
+                     [](const auto& v) { return v.elements.empty(); }),
+      pb.less_constraints.end());
+
+    pb.greater_constraints.erase(
+      std::remove_if(pb.greater_constraints.begin(),
+                     pb.greater_constraints.end(),
+                     [](const auto& v) { return v.elements.empty(); }),
+      pb.greater_constraints.end());
+
+    constraint_nb -=
+      (pb.equal_constraints.size() + pb.less_constraints.size() +
+       pb.greater_constraints.size());
+}
+
+//
 // Remove function element equal to 0, merge function elements with the same
 // variable index.
 //
 // For example:
 // x + 0 y + z + z will now equal to x + 2 z
+//
+// TODO take into account function with -x +x ... : x must be removed.
 //
 template<typename functionT>
 static functionT
@@ -93,45 +129,22 @@ remove_variable(baryonyx::objective_function& obj,
                 int variable_id,
                 int variable_value)
 {
-    auto it = std::remove_if(obj.elements.begin(),
-                             obj.elements.end(),
-                             [variable_id](const auto& elem) {
-                                 return elem.variable_index == variable_id;
-                             });
+    auto it = std::find_if(obj.elements.begin(),
+                           obj.elements.end(),
+                           [variable_id](const auto& elem) {
+                               return elem.variable_index == variable_id;
+                           });
 
-    assert(std::distance(it, obj.elements.end()) <= 1 &&
-           "remove_variable but more than one function element");
+    if (it != obj.elements.end()) {
+        obj.value += (it->factor * variable_value);
+        obj.elements.erase(it, obj.elements.end());
+    }
 
-    for (auto jt = it; jt != obj.elements.end(); ++jt)
-        obj.value += (jt->factor * variable_value);
-
-    obj.elements.erase(it, obj.elements.end());
-
-    for (auto& elem : obj.elements)
-        if (elem.variable_index > variable_id)
-            --elem.variable_index;
-}
-
-//
-// Remove the variable from the constraints and add the `factor * value`  to
-// the value of the constaints.
-//
-static void
-remove_variable(baryonyx::constraint& obj, int variable_id, int variable_value)
-{
-    auto it = std::remove_if(obj.elements.begin(),
-                             obj.elements.end(),
-                             [variable_id](const auto& elem) {
-                                 return elem.variable_index == variable_id;
-                             });
-
-    assert(std::distance(it, obj.elements.end()) <= 1 &&
-           "remove_variable but more than one function element");
-
-    for (auto jt = it; jt != obj.elements.end(); ++jt)
-        obj.value -= (jt->factor * variable_value);
-
-    obj.elements.erase(it, obj.elements.end());
+    assert(std::find_if(obj.elements.begin(),
+                        obj.elements.end(),
+                        [variable_id](const auto& elem) {
+                            return elem.variable_index == variable_id;
+                        }) == obj.elements.end());
 
     for (auto& elem : obj.elements)
         if (elem.variable_index > variable_id)
@@ -139,40 +152,37 @@ remove_variable(baryonyx::constraint& obj, int variable_id, int variable_value)
 }
 
 //
-// Remove empty constraints from the problem
+// Remove the variable from the constraint and add the `factor * value`  to the
+// value of the constaints.
 //
 static void
-remove_empty_constraints(baryonyx::problem& pb, int& constraint_nb)
+remove_variable(baryonyx::constraint& cst, int variable_id, int variable_value)
 {
-    constraint_nb +=
-      (pb.equal_constraints.size() + pb.less_constraints.size() +
-       pb.greater_constraints.size());
+    auto it = std::find_if(cst.elements.begin(),
+                           cst.elements.end(),
+                           [variable_id](const auto& elem) {
+                               return elem.variable_index == variable_id;
+                           });
 
-    pb.equal_constraints.erase(
-      std::remove_if(pb.equal_constraints.begin(),
-                     pb.equal_constraints.end(),
-                     [](const auto& v) { return v.elements.empty(); }),
-      pb.equal_constraints.end());
+    if (it != cst.elements.end()) {
+        cst.value -= (it->factor * variable_value);
+        cst.elements.erase(it);
+    }
 
-    pb.less_constraints.erase(
-      std::remove_if(pb.less_constraints.begin(),
-                     pb.less_constraints.end(),
-                     [](const auto& v) { return v.elements.empty(); }),
-      pb.less_constraints.end());
+    assert(std::find_if(cst.elements.begin(),
+                        cst.elements.end(),
+                        [variable_id](const auto& elem) {
+                            return elem.variable_index == variable_id;
+                        }) == cst.elements.end());
 
-    pb.greater_constraints.erase(
-      std::remove_if(pb.greater_constraints.begin(),
-                     pb.greater_constraints.end(),
-                     [](const auto& v) { return v.elements.empty(); }),
-      pb.greater_constraints.end());
-
-    constraint_nb -=
-      (pb.equal_constraints.size() + pb.less_constraints.size() +
-       pb.greater_constraints.size());
+    for (auto& elem : cst.elements)
+        if (elem.variable_index > variable_id)
+            --elem.variable_index;
 }
 
 //
-// Remove the specified variable to the problem.
+// Remove the specified variable to the problem and add the variable and its
+// value to the problem affected variables vector.
 //
 static void
 remove_variable(baryonyx::problem& pb, int variable_id, int variable_value)
@@ -218,12 +228,14 @@ struct hashed_constraints
     int index;
 };
 
+//
 // Tries to remove duplicated constraints (i.e. all function elements in the
 // vector must be equal) with or without the same value. To improve
 // calculation, we use a mapping vector between an hash of the function
 // elements vector and the index into the constraint vector. We merge
 // duplicated constraints and build an index vector with constraints preserved.
-void
+//
+static void
 remove_duplicated_constraints(std::shared_ptr<baryonyx::context> ctx,
                               std::vector<baryonyx::constraint>& cst,
                               baryonyx::operator_type type,
@@ -310,23 +322,26 @@ remove_duplicated_constraints(std::shared_ptr<baryonyx::context> ctx,
                                   constraint);
 }
 
-static bool
-is_all_factor_equal_to(const std::vector<baryonyx::function_element>& elems,
-                       int f)
+static std::tuple<int, int>
+get_factor_type(const std::vector<baryonyx::function_element>& elems)
 {
-    for (const auto& e : elems)
-        if (e.factor != f)
-            return false;
+    int min = 0, max = 0;
 
-    return true;
+    for (const auto& elem : elems)
+        if (elem.factor < 0)
+            min = std::min(min, elem.factor);
+        else
+            max = std::max(max, elem.factor);
+
+    return std::make_tuple(min, max);
 }
 
 static bool
-remove_assigned_variable(std::shared_ptr<baryonyx::context> ctx,
-                         baryonyx::problem& pb,
-                         const baryonyx::constraint& cst,
-                         baryonyx::operator_type type,
-                         int& variable_nb)
+try_remove_assigned_variable(std::shared_ptr<baryonyx::context> ctx,
+                             baryonyx::problem& pb,
+                             const baryonyx::constraint& cst,
+                             baryonyx::operator_type type,
+                             int& variable_nb)
 {
     assert(cst.elements.size() == 1);
 
@@ -409,11 +424,11 @@ remove_assigned_variable(std::shared_ptr<baryonyx::context> ctx,
 }
 
 static bool
-remove_assigned_variables(std::shared_ptr<baryonyx::context> ctx,
-                          baryonyx::problem& pb,
-                          const baryonyx::constraint& cst,
-                          baryonyx::operator_type type,
-                          int& variable)
+try_remove_assigned_variables_01(std::shared_ptr<baryonyx::context> ctx,
+                                 baryonyx::problem& pb,
+                                 const baryonyx::constraint& cst,
+                                 baryonyx::operator_type type,
+                                 int& variable)
 {
     int nb = baryonyx::numeric_cast<int>(cst.elements.size());
     int value{ -1 };
@@ -472,6 +487,82 @@ remove_assigned_variables(std::shared_ptr<baryonyx::context> ctx,
 }
 
 static bool
+try_remove_assigned_variables_101(std::shared_ptr<baryonyx::context> ctx,
+                                  baryonyx::problem& pb,
+                                  const baryonyx::constraint& cst,
+                                  baryonyx::operator_type type,
+                                  int& variable)
+{
+    int min = 0, max = 0;
+    for (const auto& elem : cst.elements)
+        if (elem.factor < 0)
+            --min;
+        else
+            ++max;
+
+    std::vector<std::pair<int, int>> id;
+
+    switch (type) {
+    case baryonyx::operator_type::undefined:
+        break;
+    case baryonyx::operator_type::equal:
+        if (cst.value == min) {
+            for (const auto& elem : cst.elements)
+                id.emplace_back(std::make_pair(elem.variable_index,
+                                               (elem.factor < 0) ? 1 : 0));
+        } else if (cst.value == max) {
+            for (const auto& elem : cst.elements)
+                id.emplace_back(std::make_pair(elem.variable_index,
+                                               (elem.factor > 0) ? 1 : 0));
+        }
+        break;
+    case baryonyx::operator_type::greater:
+        if (cst.value == max) { // -x + y >= 1, x = 0 and y = 1
+            for (const auto& elem : cst.elements)
+                id.emplace_back(std::make_pair(elem.variable_index,
+                                               (elem.factor > 0) ? 1 : 0));
+        } else if (cst.value == min) // -x + y >= -1, useless constraint.
+            return true;
+        break;
+    case baryonyx::operator_type::less:
+        if (cst.value == min) { // -x + y <= -1, x = 1, y = 0
+            for (const auto& elem : cst.elements)
+                id.emplace_back(std::make_pair(elem.variable_index,
+                                               (elem.factor < 0) ? 1 : 0));
+        } else if (cst.value == max) // -x + y <= 1 useless constraint.
+            return true;
+        break;
+    }
+
+    if (id.empty())
+        return false;
+
+    while (not id.empty()) {
+        ctx->debug("      variable %s = %d must be removed (2)\n",
+                   pb.vars.names[id.back().first].c_str(),
+                   id.back().second);
+
+        remove_variable(pb, id.back().first, id.back().second);
+
+        for (auto& elem : id)
+            if (elem.first > id.back().first)
+                --elem.first;
+
+        id.pop_back();
+        ++variable;
+    }
+
+    return true;
+}
+
+//
+// Try to removed the current constraint by affecting variables. For
+// example,
+// if a constraint is defined as: x + y = 0, with x and y >= 0 then,
+// variable x
+// and y are equals to 0 and the constraint can be removed.
+//
+static bool
 try_remove_assigned_variables(std::shared_ptr<baryonyx::context> ctx,
                               baryonyx::problem& pb,
                               const baryonyx::constraint& cst,
@@ -480,12 +571,15 @@ try_remove_assigned_variables(std::shared_ptr<baryonyx::context> ctx,
 {
 
     if (cst.elements.size() == 1)
-        return remove_assigned_variable(ctx, pb, cst, type, variable);
+        return try_remove_assigned_variable(ctx, pb, cst, type, variable);
 
-    if (not is_all_factor_equal_to(cst.elements, 1))
-        return false;
+    auto factor = get_factor_type(cst.elements);
+    if (std::get<0>(factor) == 0 and std::get<1>(factor) == 1)
+        return try_remove_assigned_variables_01(ctx, pb, cst, type, variable);
+    else if (std::get<0>(factor) == -1 and std::get<1>(factor) == 1)
+        return try_remove_assigned_variables_101(ctx, pb, cst, type, variable);
 
-    return remove_assigned_variables(ctx, pb, cst, type, variable);
+    return false;
 }
 
 static void
@@ -663,9 +757,12 @@ remove_unused_variables(std::shared_ptr<baryonyx::context> ctx,
           "      unused variable %s %d\n", pb.vars.names[var].c_str(), var);
 
         //
-        // Here, we are sur that variables are not in constraint vectors so we
-        // only remove the variables from the objective function but, we need
-        // to know the factor and compute the correct value of this variable
+        // Here, we are sur that variables are not in constraint vectors so
+        // we
+        // only remove the variables from the objective function but, we
+        // need
+        // to know the factor and compute the correct value of this
+        // variable
         // according to the cost.
         //
 

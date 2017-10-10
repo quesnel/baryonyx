@@ -187,7 +187,7 @@ template<typename T>
 bool
 fixed_array<T>::empty() const noexcept
 {
-    return m_length == 0;
+    return m_buffer.get() == nullptr or m_length == 0;
 }
 
 template<typename T>
