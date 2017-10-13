@@ -62,12 +62,11 @@ fill_merged_constraints(std::shared_ptr<bx::context> ctx,
             auto it = cache.find(elem.elements);
             if (it == cache.end()) {
                 cache.emplace(elem.elements, ret.size());
-                ret.emplace_back(
-                  elem.elements,
-                  bx::numeric_cast<int>(std::lround(elem.value)),
-                  bx::numeric_cast<int>(std::lround(elem.value)),
+                ret.emplace_back(elem.elements,
+                                 bx::numeric_cast<int>(elem.value),
+                                 bx::numeric_cast<int>(elem.value),
 
-                  elem.id);
+                                 elem.id);
             } else {
                 if (ret[it->second].min <= elem.value and
                     elem.value <= ret[it->second].max) {
@@ -87,15 +86,13 @@ fill_merged_constraints(std::shared_ptr<bx::context> ctx,
             auto it = cache.find(elem.elements);
             if (it == cache.end()) {
                 cache.emplace(elem.elements, ret.size());
-                ret.emplace_back(
-                  elem.elements,
-                  std::numeric_limits<int>::min(),
-                  bx::numeric_cast<int>(std::lround(elem.value)),
-                  elem.id);
+                ret.emplace_back(elem.elements,
+                                 std::numeric_limits<int>::min(),
+                                 bx::numeric_cast<int>(elem.value),
+                                 elem.id);
             } else {
-                ret[it->second].max =
-                  std::min(ret[it->second].max,
-                           bx::numeric_cast<int>(std::lround(elem.value)));
+                ret[it->second].max = std::min(
+                  ret[it->second].max, bx::numeric_cast<int>(elem.value));
             }
         }
         break;
@@ -109,9 +106,8 @@ fill_merged_constraints(std::shared_ptr<bx::context> ctx,
                                  std::numeric_limits<int>::max(),
                                  elem.id);
             } else {
-                ret[it->second].min =
-                  std::max(ret[it->second].min,
-                           bx::numeric_cast<int>(std::lround(elem.value)));
+                ret[it->second].min = std::max(
+                  ret[it->second].min, bx::numeric_cast<int>(elem.value));
             }
         }
         break;
