@@ -25,6 +25,7 @@
 
 #include <fstream>
 #include <iterator>
+#include <thread>
 
 #include "generalized-wedelin.hpp"
 #include "itm.hpp"

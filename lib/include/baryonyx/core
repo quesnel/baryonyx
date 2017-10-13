@@ -726,6 +726,7 @@ struct constraint
     std::string label;
     std::vector<function_element> elements;
     int value = { 0 };
+    int id;
 };
 
 struct objective_function

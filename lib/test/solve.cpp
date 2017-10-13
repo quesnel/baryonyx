@@ -77,12 +77,15 @@ void
 test_preprocessor_2(std::shared_ptr<baryonyx::context> ctx)
 {
     std::stringstream ss;
+    double r;
 
     {
         auto pb =
           baryonyx::make_problem(ctx, EXAMPLES_DIR "/capmo1_direct.lp");
+        ctx->set_parameter("preprocessing", "equal,less,greater");
         auto result = baryonyx::solve(ctx, pb);
 
+        r = result.value;
         Ensures(result.value == 6212977);
         Ensures(baryonyx::is_valid_solution(pb, result.variable_value) ==
                 true);
@@ -97,12 +100,13 @@ test_preprocessor_2(std::shared_ptr<baryonyx::context> ctx)
 
         auto pb =
           baryonyx::make_problem(ctx, EXAMPLES_DIR "/capmo1_direct.lp");
+
         baryonyx::result result = baryonyx::make_result(ctx, ss);
 
         result.status = baryonyx::result_status::success;
 
         Ensures(baryonyx::is_valid_solution(pb, result));
-        Ensures(baryonyx::compute_solution(pb, result) == 6212977);
+        Ensures(baryonyx::compute_solution(pb, result) == r);
     }
 }
 

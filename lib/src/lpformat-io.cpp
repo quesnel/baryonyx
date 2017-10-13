@@ -22,6 +22,8 @@
 
 #include <baryonyx/core>
 
+#include "utils.hpp"
+
 #include <deque>
 #include <istream>
 #include <limits>
@@ -85,6 +87,7 @@ struct parser_stack
 {
     parser_stack(std::istream& is_)
       : m_is(is_)
+      , m_current_constraint_id(0)
       , m_line(0)
       , m_column(0)
       , m_eof_reached(is_.eof())
@@ -327,11 +330,22 @@ struct parser_stack
         return m_variable_cache;
     }
 
+    int current_constraint_id() const noexcept
+    {
+        return m_current_constraint_id;
+    }
+
+    void increase_current_constaint_id() noexcept
+    {
+        ++m_current_constraint_id;
+    }
+
 private:
     std::deque<std::tuple<int, int>> m_position_stack;
     std::unordered_map<std::string, int> m_variable_cache;
 
     std::istream& m_is;
+    int m_current_constraint_id;
     int m_line;
     int m_column;
     bool m_eof_reached;
@@ -682,13 +696,13 @@ static inline void
 read_constraints(parser_stack& stack, problem& p)
 {
     auto str = stack.top();
-    int i = 0;
 
     while (not iequals(str, "binary") and not iequals(str, "binaries") and
            not iequals(str, "bound") and not iequals(str, "bounds") and
            not iequals(str, "general") and not iequals(str, "end")) {
 
         auto cst = read_constraint(stack, p);
+        std::get<0>(cst).id = stack.current_constraint_id();
 
         switch (std::get<1>(cst)) {
         case operator_type::equal:
@@ -706,8 +720,10 @@ read_constraints(parser_stack& stack, problem& p)
         }
 
         if (std::get<0>(cst).label.empty())
-            std::get<0>(cst).label = std::string("ct") + std::to_string(i);
+            std::get<0>(cst).label =
+              stringf("ct%d", stack.current_constraint_id());
 
+        stack.increase_current_constaint_id();
         str = stack.top();
     }
 }
