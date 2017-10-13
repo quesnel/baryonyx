@@ -43,20 +43,17 @@ test_preprocessor(std::shared_ptr<baryonyx::context> ctx)
         ctx->set_parameter("norm", "infinity");
         auto result = baryonyx::solve(ctx, pb);
 
-        Ensures(result.affected_vars.names.size() == 14);
+        Ensures(result.affected_vars.names.size() == 20);
         Ensures(result.affected_vars.values[0] == 0);
         Ensures(result.affected_vars.values[1] == 0);
         Ensures(result.affected_vars.values[2] == 1);
 
-        Ensures(result.variable_value.size() == 8);
-        Ensures(result.variable_name.size() == 8);
+        Ensures(result.variable_value.size() == 2);
+        Ensures(result.variable_name.size() == 2);
 
         Ensures(result.status == baryonyx::result_status::success);
         Ensures(baryonyx::is_valid_solution(pb, result.variable_value) ==
                 true);
-
-        std::ofstream ofs("OUT.sol");
-        ofs << result;
 
         ss << result;
         if (not ss.good())

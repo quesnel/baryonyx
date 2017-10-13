@@ -255,25 +255,25 @@ remove_duplicated_constraints(std::shared_ptr<baryonyx::context> ctx,
                 baryonyx::Expects(cst[t[i].index].value ==
                                   cst[t[j].index].value);
 
-                ctx->debug("      = constraints %d = %d must be removed\n",
-                           t[j].index,
-                           t[i].index);
+                ctx->debug("      = constraints %s = %s must be removed\n",
+                           cst[t[j].index].label.c_str(),
+                           cst[t[i].index].label.c_str());
                 break;
             case baryonyx::operator_type::greater:
                 cst[t[i].index].value =
                   std::max(cst[t[i].index].value, cst[t[j].index].value);
 
-                ctx->debug("      >= constraints %d = %d must be removed\n",
-                           t[j].index,
-                           t[i].index);
+                ctx->debug("      >= constraints %s = %s must be removed\n",
+                           cst[t[j].index].label.c_str(),
+                           cst[t[i].index].label.c_str());
                 break;
             case baryonyx::operator_type::less:
                 cst[t[i].index].value =
                   std::min(cst[t[i].index].value, cst[t[j].index].value);
 
-                ctx->debug("      <= constraints %d = %d must be removed\n",
-                           t[j].index,
-                           t[i].index);
+                ctx->debug("      <= constraints %s = %s must be removed\n",
+                           cst[t[j].index].label.c_str(),
+                           cst[t[i].index].label.c_str());
                 break;
             default:
                 break;
@@ -330,27 +330,68 @@ remove_assigned_variable(std::shared_ptr<baryonyx::context> ctx,
 {
     assert(cst.elements.size() == 1);
 
+    int factor = cst.elements.front().factor;
     int variable_index{ -1 }, variable_value{ -1 };
 
-    switch (type) {
-    case baryonyx::operator_type::undefined:
-        break;
-    case baryonyx::operator_type::equal:
-        variable_index = cst.elements.front().variable_index;
-        variable_value = cst.value / cst.elements.front().factor;
-        break;
-    case baryonyx::operator_type::greater:
-        if (cst.value == 1) {
+    if (factor == 1) {
+        switch (type) {
+        case baryonyx::operator_type::undefined:
+            break;
+        case baryonyx::operator_type::equal:
             variable_index = cst.elements.front().variable_index;
             variable_value = cst.value / cst.elements.front().factor;
+            break;
+        case baryonyx::operator_type::greater:
+            if (cst.value == 1) {
+                variable_index = cst.elements.front().variable_index;
+                variable_value = cst.value / cst.elements.front().factor;
+            } else if (cst.value == 0)
+                return true;
+            break;
+        case baryonyx::operator_type::less:
+            if (cst.value == 0) {
+                variable_index = cst.elements.front().variable_index;
+                variable_value = cst.value / cst.elements.front().factor;
+            } else if (cst.value == 1)
+                return true;
+            break;
         }
-        break;
-    case baryonyx::operator_type::less:
-        if (cst.value == 0) {
+    } else {
+        switch (type) {
+        case baryonyx::operator_type::undefined:
+            break;
+        case baryonyx::operator_type::equal:
+            if (cst.value == 0) { // -x = 0 -> x = 0
+                variable_index = cst.elements.front().variable_index;
+                variable_value = 0;
+            } else if (cst.value == -1) { // -x = -1 -> x = 1
+                variable_index = cst.elements.front().variable_index;
+                variable_value = 0;
+            } else {
+                // -x = 1 -> impossible
+                assert(cst.value != 1);
+            }
+            break;
+        case baryonyx::operator_type::greater:
+            assert(cst.value != 1); // -x >= 1 impossible
+
+            if (cst.value == 0) { // -x >= 0 -> x = 0
+                variable_index = cst.elements.front().variable_index;
+                variable_value = 0;
+            } else if (cst.value == -1) { // -x >= -1 -> x = 1
+                variable_index = cst.elements.front().variable_index;
+                variable_value = 0;
+            }
+            return true;
+            break;
+        case baryonyx::operator_type::less:
+            if (cst.value == 0 or cst.value == 1) // -x <= {0,1} -> normal
+                return true;
+
+            // -x <= -1 -> x = 1
             variable_index = cst.elements.front().variable_index;
-            variable_value = cst.value / cst.elements.front().factor;
+            variable_value = 1;
         }
-        break;
     }
 
     if (variable_index < 0)
@@ -374,9 +415,6 @@ remove_assigned_variables(std::shared_ptr<baryonyx::context> ctx,
                           baryonyx::operator_type type,
                           int& variable)
 {
-    if (not is_all_factor_equal_to(cst.elements, 1))
-        return false;
-
     int nb = baryonyx::numeric_cast<int>(cst.elements.size());
     int value{ -1 };
     bool found{ false };
@@ -394,13 +432,15 @@ remove_assigned_variables(std::shared_ptr<baryonyx::context> ctx,
         if (cst.value == nb) {
             value = 1;
             found = true;
-        }
+        } else if (cst.value == 0)
+            return true;
         break;
     case baryonyx::operator_type::less:
         if (cst.value == 0) {
             value = 0;
             found = true;
-        }
+        } else if (cst.value == nb)
+            return true;
         break;
     }
 
@@ -414,7 +454,7 @@ remove_assigned_variables(std::shared_ptr<baryonyx::context> ctx,
         id.push_back(cst.elements[i].variable_index);
 
     while (not id.empty()) {
-        ctx->debug("      variable %s = %d must be removed\n",
+        ctx->debug("      variable %s = %d must be removed (2)\n",
                    pb.vars.names[id.back()].c_str(),
                    value);
 
@@ -438,8 +478,12 @@ try_remove_assigned_variables(std::shared_ptr<baryonyx::context> ctx,
                               baryonyx::operator_type type,
                               int& variable)
 {
+
     if (cst.elements.size() == 1)
         return remove_assigned_variable(ctx, pb, cst, type, variable);
+
+    if (not is_all_factor_equal_to(cst.elements, 1))
+        return false;
 
     return remove_assigned_variables(ctx, pb, cst, type, variable);
 }
@@ -486,9 +530,11 @@ remove_assigned_variables(std::shared_ptr<baryonyx::context> ctx,
                                               baryonyx::operator_type::equal,
                                               variable)) {
 
-                ctx->debug("      = constraint: %d must be removed\n", i);
+                ctx->debug("      = constraint: %s must be removed\n",
+                           pb.equal_constraints[i].label.c_str());
                 pb.equal_constraints.erase(pb.equal_constraints.begin() + i);
                 modify = true;
+                ++constraint_nb;
                 i = 0;
                 e = baryonyx::numeric_cast<int>(pb.equal_constraints.size());
             } else {
@@ -505,9 +551,11 @@ remove_assigned_variables(std::shared_ptr<baryonyx::context> ctx,
                                               baryonyx::operator_type::less,
                                               variable)) {
 
-                ctx->debug("      <= constraint: %d must be removed\n", i);
+                ctx->debug("      <= constraint: %s must be removed\n",
+                           pb.less_constraints[i].label.c_str());
                 pb.less_constraints.erase(pb.less_constraints.begin() + i);
                 modify = true;
+                ++constraint_nb;
                 i = 0;
                 e = baryonyx::numeric_cast<int>(pb.less_constraints.size());
             } else {
@@ -524,10 +572,12 @@ remove_assigned_variables(std::shared_ptr<baryonyx::context> ctx,
                                               baryonyx::operator_type::greater,
                                               variable)) {
 
-                ctx->debug("      >= constraint: %d must be removed\n", i);
+                ctx->debug("      >= constraint: %s must be removed\n",
+                           pb.greater_constraints[i].label.c_str());
                 pb.greater_constraints.erase(pb.greater_constraints.begin() +
                                              i);
                 modify = true;
+                ++constraint_nb;
                 i = 0;
                 e = baryonyx::numeric_cast<int>(pb.greater_constraints.size());
             } else {
@@ -539,6 +589,53 @@ remove_assigned_variables(std::shared_ptr<baryonyx::context> ctx,
             remove_empty_constraints(pb, constraint_nb);
 
     } while (modify);
+}
+
+bool
+is_use_variable(baryonyx::problem& pb, int i)
+{
+    for (auto& cst : pb.equal_constraints)
+        for (auto& elem : cst.elements)
+            if (elem.variable_index == i)
+                return true;
+
+    for (auto& cst : pb.less_constraints)
+        for (auto& elem : cst.elements)
+            if (elem.variable_index == i)
+                return true;
+
+    for (auto& cst : pb.greater_constraints)
+        for (auto& elem : cst.elements)
+            if (elem.variable_index == i)
+                return true;
+
+    return false;
+}
+
+void
+remove_unused_variables(std::shared_ptr<baryonyx::context> ctx,
+                        baryonyx::problem& pb,
+                        int& variable)
+{
+    int i = 0, e = pb.vars.values.size();
+    while (i != e) {
+        if (not is_use_variable(pb, i)) {
+            ctx->debug("      unused variable %s in constraints\n",
+                       pb.vars.names[i].c_str());
+
+            const bool max =
+              pb.type == baryonyx::objective_function_type::maximize;
+
+            remove_variable(
+              pb, i, (max ? pb.vars.values[i].max : pb.vars.values[i].min));
+
+            ++variable;
+            i = 0;
+            e = pb.vars.values.size();
+        } else {
+            ++i;
+        }
+    }
 }
 
 namespace baryonyx_private {
@@ -572,6 +669,7 @@ preprocess(std::shared_ptr<baryonyx::context> ctx, baryonyx::problem& pb)
 
         remove_assigned_variables(ctx, pb, variable, constraint);
         remove_duplicated_constraints(ctx, pb, constraint);
+        remove_unused_variables(ctx, pb, variable);
 
         ctx->info("    `-> %d variable(s) - %d constraint(s) removed.\n",
                   variable,
