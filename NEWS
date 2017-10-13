@@ -1,56 +1,69 @@
-# baryonyx v0.2.1.0 - 2017-10-06
+= baryonyx v0.2.2.0
+Gauthier Quesnel <gauthier.quesnel@inra.fr>
+v0.2.2.0, 2017-10-13
 
-## solver:
-- switch back to infinity norm instead of none
-- adding l+oo norm after the rng norm
-- fix parameters in console output (show optimization parameters only in optimization mode)
-- fix typo in parameters
+preprocessor::
 
-## core
-- rewrite the help message and add all parameters
-- fix the --check|-C option
+* fix the greedy constraints/variables remover
 
-## preprocessor
-- fix objective function cleanup
+solver::
 
-# baryonyx v0.2.0.0 - 2017-10-03
+* fix crash when constraints or variables vector are empty
 
-## solver
+== baryonyx v0.2.1.0 - 2017-10-06
 
-- Add a new parameter norm (-p norm:string)
-  -`none`: no normalization
-  -`l1`: l1 norm (sum of absolute cost / cost number)
-  -`l2`: l2 norm (sum of cost * cost / cost number)
-  -`inf`: l+oo norm (max cost / cost number)
-  -`rng`: a complex experimental norm
+solver::
 
-- Add an external solution checker. Use the `--check|-C [filename]`
-  command line option to valid a `.sol` result with an another algorithm.
+* switch back to infinity norm instead of none
+* adding l+oo norm after the rng norm
+* fix parameters in console output (show optimization parameters only in
+  optimization mode)
+* fix typo in parameters
 
-- Improve debug log facilities. If baryonyx:
-  - is compiled without `BARYONYX_FULL_OPTIMIZATION`
-  - have verbose level = 7 (`baryonyx-0.2 -v 7`)
-  - have serialize option = 2 (`baryonyx-0.2 -v 7 -p serialize=2`)
+core::
 
-  Then:
+* rewrite the help message and add all parameters
+* fix the --check|-C option
 
-  The log facilities show:
-  - current X solution with variable names compute() [`serialize >= 1`]
-  - all constraints status for each compute() [`serialize >= 1`]
-  - P matrix between for each update_row() [`serialize >= 2`]
+preprocessor::
 
-- Write temporary solutions during optimization process
-- Fix push system using cost vector
-- Show variable names into dump
-- Remove the inversion of the matrix A for negative coefficient
-- Remove random gap to zero
-- Use `std::sort` in full optimization, `std::stable_sort` otherwise
+* fix objective function cleanup
 
-## preprocessor
+== baryonyx v0.2.0.0 - 2017-10-03
+
+solver::
+
+* Add a new parameter norm (-p norm:string):
+
+** `none`: no normalization
+** `l1`: l1 norm (sum of absolute cost / cost number)
+** `l2`: l2 norm (sum of cost * cost / cost number)
+** `inf`: l+oo norm (max cost / cost number)
+** `rng`: a complex experimental norm
+
+* Add an external solution checker. Use the `--check|-C [filename]` command
+  line option to valid a `.sol` result with an another algorithm.
+* Improve debug log facilities. If baryonyx:
+** is compiled without `BARYONYX_FULL_OPTIMIZATION`
+** have verbose level = 7 (`baryonyx-0.2 -v 7`)
+** have serialize option = 2 (`baryonyx-0.2 -v 7 -p serialize=2`)
+* Then the log facilities show:
+** current X solution with variable names compute() [`serialize >= 1`]
+** all constraints status for each compute() [`serialize >= 1`]
+** P matrix between for each update_row() [`serialize >= 2`]
+
+* Write temporary solutions during optimization process
+* Fix push system using cost vector
+* Show variable names into dump
+* Remove the inversion of the matrix A for negative coefficient
+* Remove random gap to zero
+* Use `std::sort` in full optimization, `std::stable_sort` otherwise
+
+preprocessor::
 
 Remove more constraints and variable
 
-- Remove constraints and affects variables:
+* Remove constraints and affects variables:
 
 ```
  x + y + z = 0
@@ -59,31 +72,32 @@ Remove more constraints and variable
  x + y + z <= 0
 ```
 
-- Remove constraints:
+* Remove constraints:
 
 ```
 x + y + z >= 0
 x + y + z <= 3
 ```
 
-- Remove multiple elements in objective function or constraints:
+* Remove multiple elements in objective function or constraints:
 
 ```
  x1 + x2 + x3 + x2 becomes x1 + 2x2 + x3).
 ```
 
-- Remove null factor elements in objective function or constraints:
+* Remove null factor elements in objective function or constraints:
 
 ```
 x1 + x2 becomes x2
 ```
 
-- Remove affected variables in bounds or in constraints
-- Remove duplicated constraints
+* Remove affected variables in bounds or in constraints
+* Remove duplicated constraints
 
-## Core
+core::
 
-Replace `long int` with `int`. The int or std::int32_t type to reference array index, variable index seems to be sufficient for all source code.
+* Replace `long int` with `int`. The int or std::int32_t type to reference
+  array index, variable index seems to be sufficient for all source code.
 
-io: improve read with more 'subject to' syntax. This patch allows parser to
-read lp file with `subject to[:]` syntax.
+* Improve read with more 'subject to' syntax. This patch allows parser to read
+  lp file with `subject to[:]` syntax.
