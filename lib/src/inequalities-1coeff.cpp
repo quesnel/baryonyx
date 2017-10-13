@@ -1614,28 +1614,34 @@ solve(std::shared_ptr<bx::context> ctx,
 {
     ctx->info("Solver initializing\n");
 
+    bx::result ret;
+
     auto constraints{ bx::itm::make_merged_constraints(ctx, pb, p) };
-    auto variables = bx::numeric_cast<int>(pb.vars.values.size());
-    auto cost =
-      make_objective_function<floatingpointT>(pb.objective, variables);
-    auto norm_costs = normalize_costs(ctx, p.norm, cost, rng);
-    auto cost_constant = pb.objective.value;
-    auto names = std::move(pb.vars.names);
-    auto affected_vars = std::move(pb.affected_vars);
+    if (not constraints.empty() and not pb.vars.values.empty()) {
+        auto variables = bx::numeric_cast<int>(pb.vars.values.size());
+        auto cost =
+          make_objective_function<floatingpointT>(pb.objective, variables);
+        auto norm_costs = normalize_costs(ctx, p.norm, cost, rng);
+        auto cost_constant = pb.objective.value;
+        auto names = std::move(pb.vars.names);
+        auto affected_vars = std::move(pb.affected_vars);
 
-    bx::clear(pb);
+        bx::clear(pb);
 
-    solver_functor<floatingpointT, modeT, constraintOrderT, randomT> slv(
-      ctx, names);
+        solver_functor<floatingpointT, modeT, constraintOrderT, randomT> slv(
+          ctx, names);
 
-    auto result =
-      slv(constraints, variables, cost, norm_costs, cost_constant, p, rng);
+        ret =
+          slv(constraints, variables, cost, norm_costs, cost_constant, p, rng);
 
-    result.method = "inequalities_1coeff solver";
-    result.variable_name = std::move(names);
-    result.affected_vars = std::move(affected_vars);
+        ret.method = "inequalities_1coeff solver";
+        ret.variable_name = std::move(names);
+        ret.affected_vars = std::move(affected_vars);
+    } else {
+        ret.status = bx::result_status::success;
+    }
 
-    return result;
+    return ret;
 }
 
 template<typename floatingpointT,
@@ -1653,62 +1659,70 @@ optimize(std::shared_ptr<bx::context> ctx,
 
     ctx->info("Optimizer initializing\n");
 
+    bx::result ret;
+
     auto constraints{ bx::itm::make_merged_constraints(ctx, pb, p) };
-    auto variables = bx::numeric_cast<int>(pb.vars.values.size());
-    auto cost =
-      make_objective_function<floatingpointT>(pb.objective, variables);
-    auto norm_costs = normalize_costs(ctx, p.norm, cost, rng);
-    auto cost_constant = pb.objective.value;
-    auto names = std::move(pb.vars.names);
-    auto affected_vars = std::move(pb.affected_vars);
+    if (not constraints.empty() and not pb.vars.values.empty()) {
+        auto variables = bx::numeric_cast<int>(pb.vars.values.size());
+        auto cost =
+          make_objective_function<floatingpointT>(pb.objective, variables);
+        auto norm_costs = normalize_costs(ctx, p.norm, cost, rng);
+        auto cost_constant = pb.objective.value;
+        auto names = std::move(pb.vars.names);
+        auto affected_vars = std::move(pb.affected_vars);
 
-    bx::clear(pb);
+        bx::clear(pb);
 
-    std::vector<std::thread> pool(thread);
-    pool.clear();
-    std::vector<std::future<bx::result>> results(thread);
-    results.clear();
+        std::vector<std::thread> pool(thread);
+        pool.clear();
+        std::vector<std::future<bx::result>> results(thread);
+        results.clear();
 
-    if (thread == 1)
-        ctx->info("optimizer starts with one thread\n");
-    else
-        ctx->info("Optimizer starts with %d threads\n", thread);
+        if (thread == 1)
+            ctx->info("optimizer starts with one thread\n");
+        else
+            ctx->info("Optimizer starts with %d threads\n", thread);
 
-    for (int i{ 0 }; i != thread; ++i) {
-        std::packaged_task<bx::result()> task(std::bind(
-          optimize_functor<floatingpointT, modeT, constraintOrderT, randomT>(
-            ctx, i, names, affected_vars),
-          std::ref(constraints),
-          variables,
-          std::ref(cost),
-          std::ref(norm_costs),
-          cost_constant,
-          std::ref(p),
-          std::ref(rng)));
+        for (int i{ 0 }; i != thread; ++i) {
+            std::packaged_task<bx::result()> task(std::bind(
+              optimize_functor<floatingpointT,
+                               modeT,
+                               constraintOrderT,
+                               randomT>(ctx, i, names, affected_vars),
+              std::ref(constraints),
+              variables,
+              std::ref(cost),
+              std::ref(norm_costs),
+              cost_constant,
+              std::ref(p),
+              std::ref(rng)));
 
-        results.emplace_back(task.get_future());
+            results.emplace_back(task.get_future());
 
-        pool.emplace_back(std::thread(std::move(task)));
-    }
-
-    for (auto& t : pool)
-        t.join();
-
-    bx::result best = results[0].get();
-    for (int i{ 1 }; i != thread; ++i) {
-        auto current = results[i].get();
-        if (current.status == bx::result_status::success) {
-            if (best.status != bx::result_status::success or
-                is_better_solution(current.value, best.value, modeT()))
-                best = current;
+            pool.emplace_back(std::thread(std::move(task)));
         }
+
+        for (auto& t : pool)
+            t.join();
+
+        ret = results[0].get();
+        for (int i{ 1 }; i != thread; ++i) {
+            auto current = results[i].get();
+            if (current.status == bx::result_status::success) {
+                if (ret.status != bx::result_status::success or
+                    is_better_solution(current.value, ret.value, modeT()))
+                    ret = current;
+            }
+        }
+
+        ret.method = "inequalities_1coeff optimizer";
+        ret.variable_name = std::move(names);
+        ret.affected_vars = std::move(affected_vars);
+    } else {
+        ret.status = bx::result_status::success;
     }
 
-    best.method = "inequalities_1coeff optimizer";
-    best.variable_name = std::move(names);
-    best.affected_vars = std::move(affected_vars);
-
-    return best;
+    return ret;
 }
 
 template<typename realT, typename modeT, typename randomT>
