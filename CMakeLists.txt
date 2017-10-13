@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.0 FATAL_ERROR)
-project(baryonyx VERSION 0.2.1.0 LANGUAGES CXX C)
+project(baryonyx VERSION 0.2.2.0 LANGUAGES CXX C)
 
 find_package(Threads REQUIRED)
 add_library(threads INTERFACE IMPORTED)
