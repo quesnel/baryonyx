@@ -27,6 +27,7 @@
 #include "utils.hpp"
 
 #include <fstream>
+#include <unordered_set>
 
 #include <cassert>
 
@@ -87,7 +88,7 @@ cleanup_function_element(functionT& fct, int& nb)
 // Remove the variable from the objective function and add the `variable_value
 // * factor` to the constant of the objective function.
 //
-static int
+static void
 remove_variable(baryonyx::objective_function& obj,
                 int variable_id,
                 int variable_value)
@@ -98,7 +99,8 @@ remove_variable(baryonyx::objective_function& obj,
                                  return elem.variable_index == variable_id;
                              });
 
-    int ret = std::distance(it, obj.elements.end());
+    assert(std::distance(it, obj.elements.end()) <= 1 &&
+           "remove_variable but more than one function element");
 
     for (auto jt = it; jt != obj.elements.end(); ++jt)
         obj.value += (jt->factor * variable_value);
@@ -108,8 +110,6 @@ remove_variable(baryonyx::objective_function& obj,
     for (auto& elem : obj.elements)
         if (elem.variable_index > variable_id)
             --elem.variable_index;
-
-    return ret;
 }
 
 //
@@ -617,25 +617,78 @@ remove_unused_variables(std::shared_ptr<baryonyx::context> ctx,
                         baryonyx::problem& pb,
                         int& variable)
 {
-    int i = 0, e = pb.vars.values.size();
-    while (i != e) {
-        if (not is_use_variable(pb, i)) {
-            ctx->debug("      unused variable %s in constraints\n",
-                       pb.vars.names[i].c_str());
+    std::vector<int> unused_variable;
 
-            const bool max =
-              pb.type == baryonyx::objective_function_type::maximize;
+    {
+        std::unordered_set<int> vars;
+        vars.reserve(pb.vars.values.size());
 
-            remove_variable(
-              pb, i, (max ? pb.vars.values[i].max : pb.vars.values[i].min));
+        for (int i = 0, e = (int)pb.vars.values.size(); i != e; ++i)
+            vars.insert(i);
 
-            ++variable;
-            i = 0;
-            e = pb.vars.values.size();
-        } else {
-            ++i;
+        for (auto& cst : pb.equal_constraints) {
+            for (auto& elem : cst.elements) {
+                auto it = vars.find(elem.variable_index);
+                if (it != vars.end())
+                    vars.erase(it);
+            }
         }
+
+        for (auto& cst : pb.less_constraints) {
+            for (auto& elem : cst.elements) {
+                auto it = vars.find(elem.variable_index);
+                if (it != vars.end())
+                    vars.erase(it);
+            }
+        }
+
+        for (auto& cst : pb.greater_constraints) {
+            for (auto& elem : cst.elements) {
+                auto it = vars.find(elem.variable_index);
+                if (it != vars.end())
+                    vars.erase(it);
+            }
+        }
+
+        unused_variable.assign(vars.begin(), vars.end());
     }
+
+    std::sort(
+      unused_variable.begin(), unused_variable.end(), std::greater<int>());
+
+    const bool max = pb.type == baryonyx::objective_function_type::maximize;
+
+    for (auto var : unused_variable) {
+        ctx->debug(
+          "      unused variable %s %d\n", pb.vars.names[var].c_str(), var);
+
+        //
+        // Here, we are sur that variables are not in constraint vectors so we
+        // only remove the variables from the objective function but, we need
+        // to know the factor and compute the correct value of this variable
+        // according to the cost.
+        //
+
+        auto it = std::find_if(
+          pb.objective.elements.begin(),
+          pb.objective.elements.end(),
+          [var](const auto& elem) { return elem.variable_index == var; });
+
+        int value = 0;
+
+        if (it != pb.objective.elements.end()) {
+            if (it->factor > 0)
+                value =
+                  max ? pb.vars.values[var].max : pb.vars.values[var].min;
+            else if (it->factor < 0)
+                value =
+                  max ? pb.vars.values[var].min : pb.vars.values[var].max;
+        }
+
+        remove_variable(pb, var, value);
+    }
+
+    variable += (int)unused_variable.size();
 }
 
 namespace baryonyx_private {
