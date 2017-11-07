@@ -35,12 +35,28 @@
 #include <unistd.h>
 #endif
 
-const char* file_format_error_format(baryonyx::file_format_error_tag) noexcept;
-const char* problem_definition_error_format(
-  baryonyx::problem_definition_error_tag) noexcept;
-const char* solver_error_format(baryonyx::solver_error_tag) noexcept;
+namespace {
 
-baryonyx::result
+struct write_parameters
+{
+    std::shared_ptr<baryonyx::context> ctx;
+
+    write_parameters(std::shared_ptr<baryonyx::context> ctx_)
+      : ctx(ctx_)
+    {
+    }
+};
+
+} // anonymous namespace
+
+static const char* file_format_error_format(
+  baryonyx::file_format_error_tag) noexcept;
+static const char* problem_definition_error_format(
+  baryonyx::problem_definition_error_tag) noexcept;
+static const char* solver_error_format(baryonyx::solver_error_tag) noexcept;
+static std::ostream&
+operator<<(std::ostream& os, const write_parameters& wp);
+static baryonyx::result
 solve_or_optimize(std::shared_ptr<baryonyx::context> ctx,
                   baryonyx::problem& pb);
 
@@ -89,20 +105,22 @@ main(int argc, char* argv[])
             auto now = std::chrono::system_clock::now();
             auto in_time_t = std::chrono::system_clock::to_time_t(now);
 
-            ofs << baryonyx::resume(pb) << "start: "
+            ofs << baryonyx::resume(pb) << "\\ solver starts: "
                 << std::put_time(std::localtime(&in_time_t), "%Y-%m-%d %X")
-                << std::endl;
+                << "\n\\ parameters:\n"
+                << ::write_parameters(ctx);
 
             auto ret = solve_or_optimize(ctx, pb);
 
             in_time_t = std::chrono::system_clock::to_time_t(now);
-            ofs << std::put_time(std::localtime(&in_time_t), "%Y-%m-%d %X")
+            ofs << "\\ solver finishes: "
+                << std::put_time(std::localtime(&in_time_t), "%Y-%m-%d %X")
                 << '\n';
 
             if (ret.status == baryonyx::result_status::success) {
-                ofs << "Solution found: " << ret.value << '\n' << ret;
+                ofs << "\\ Solution found: " << ret.value << '\n' << ret;
             } else {
-                ofs << "Solution not found. Missing constraints: "
+                ofs << "\\ Solution not found. Missing constraints: "
                     << ret.remaining_constraints << '\n';
             }
         } catch (const baryonyx::precondition_failure& e) {
@@ -136,7 +154,7 @@ main(int argc, char* argv[])
     return EXIT_SUCCESS;
 }
 
-const char*
+static const char*
 file_format_error_format(baryonyx::file_format_error_tag failure) noexcept
 {
     static const char* const tag[] = {
@@ -176,7 +194,7 @@ file_format_error_format(baryonyx::file_format_error_tag failure) noexcept
     return nullptr;
 }
 
-const char*
+static const char*
 problem_definition_error_format(
   baryonyx::problem_definition_error_tag failure) noexcept
 {
@@ -204,7 +222,7 @@ problem_definition_error_format(
     return nullptr;
 }
 
-const char*
+static const char*
 solver_error_format(baryonyx::solver_error_tag failure) noexcept
 {
     static const char* const tag[] = { "no solver available",
@@ -223,7 +241,35 @@ solver_error_format(baryonyx::solver_error_tag failure) noexcept
     return nullptr;
 }
 
-baryonyx::result
+static std::ostream&
+operator<<(std::ostream& os, const write_parameters& wp)
+{
+    if (not wp.ctx)
+        return os;
+
+    const auto& params = wp.ctx->get_parameters();
+    for (auto it = params.begin(), et = params.end(); it != et; ++it) {
+        os << "\\ " << it->first << " = ";
+
+        switch (it->second.type) {
+        case baryonyx::parameter::tag::string:
+            os << it->second.s;
+            break;
+        case baryonyx::parameter::tag::integer:
+            os << it->second.l;
+            break;
+        case baryonyx::parameter::tag::real:
+            os << it->second.d;
+            break;
+        }
+
+        os << '\n';
+    }
+
+    return os;
+}
+
+static baryonyx::result
 solve_or_optimize(std::shared_ptr<baryonyx::context> ctx,
                   baryonyx::problem& pb)
 {

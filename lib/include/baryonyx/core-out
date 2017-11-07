@@ -137,21 +137,22 @@ struct resume
 inline std::ostream&
 operator<<(std::ostream& os, const resume& pb)
 {
-    return os << "nb variables: "
+    return os << "\\ problem stats:\n"
+              << "\\  nb variables: "
               << std::accumulate(pb.variables.begin(), pb.variables.end(), 0)
               << '\n'
-              << "  ..... real: " << pb.variables[0] << '\n'
-              << "  ... binary: " << pb.variables[1] << '\n'
-              << "  .. general: " << pb.variables[2] << '\n'
-              << "nb constraints: " << std::accumulate(pb.constraints.begin(),
-                                                       pb.constraints.end(),
-                                                       0)
+              << "\\   ..... real: " << pb.variables[0] << '\n'
+              << "\\   ... binary: " << pb.variables[1] << '\n'
+              << "\\   .. general: " << pb.variables[2] << '\n'
+              << "\\  nb constraints: "
+              << std::accumulate(
+                   pb.constraints.begin(), pb.constraints.end(), 0)
               << '\n'
-              << "  ........ =  : " << pb.constraints[0] << '\n'
-              << "  ........ >= : " << pb.constraints[1] << '\n'
-              << "  ........ <= : " << pb.constraints[2] << '\n'
-              << "minimal value.: " << std::get<0>(pb.minmax) << '\n'
-              << "maximal value.: " << std::get<1>(pb.minmax) << '\n';
+              << "\\   ........ =  : " << pb.constraints[0] << '\n'
+              << "\\   ........ >= : " << pb.constraints[1] << '\n'
+              << "\\   ........ <= : " << pb.constraints[2] << '\n'
+              << "\\  minimal value.: " << std::get<0>(pb.minmax) << '\n'
+              << "\\  maximal value.: " << std::get<1>(pb.minmax) << '\n';
 }
 
 } // namespace baryonyx

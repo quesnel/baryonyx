@@ -666,6 +666,11 @@ public:
              const char* format,
              ...) const noexcept BARYONYX_FORMAT(6, 7);
 
+    std::unordered_map<std::string, parameter> get_parameters() const noexcept
+    {
+        return m_parameters;
+    }
+
 private:
     std::unordered_map<std::string, parameter> m_parameters;
     std::unique_ptr<logger> m_logger;
