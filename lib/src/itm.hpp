@@ -156,7 +156,7 @@ struct parameters
       , pushing_iteration_limit(
           ctx->get_integer_parameter("pushing-iteration-limit", 20))
       , limit(ctx->get_integer_parameter("limit", 1000))
-      , w(ctx->get_integer_parameter("w", 20))
+      , w(ctx->get_integer_parameter("w", 500))
       , serialize(ctx->get_integer_parameter("serialize", 0))
       , order(get_constraint_order(ctx))
       , float_type(get_floating_point_type(ctx))

@@ -71,7 +71,7 @@ struct bound
     int max;
 };
 
-template<typename floatingpointT>
+template <typename floatingpointT>
 struct r_data
 {
     r_data() = default;
@@ -100,19 +100,19 @@ struct c_data
     int id_r; // index in r matrix
 };
 
-template<typename floatingpointT>
+template <typename floatingpointT>
 using AP_type = bx::SparseArray<int8_t, floatingpointT>;
 
 using b_type = baryonyx::fixed_array<bound>;
 
-template<typename floatingpointT>
+template <typename floatingpointT>
 using c_type = baryonyx::fixed_array<floatingpointT>;
 using x_type = baryonyx::fixed_array<std::int8_t>;
 
-template<typename floatingpointT>
+template <typename floatingpointT>
 using pi_type = baryonyx::fixed_array<floatingpointT>;
 
-template<typename iteratorT, typename randomT>
+template <typename iteratorT, typename randomT>
 static void
 random_shuffle_unique(iteratorT begin, iteratorT end, randomT& rng) noexcept
 {
@@ -127,7 +127,7 @@ random_shuffle_unique(iteratorT begin, iteratorT end, randomT& rng) noexcept
     std::shuffle(ret, begin, rng);
 }
 
-template<typename iteratorT, typename randomT>
+template <typename iteratorT, typename randomT>
 static void
 calculator_sort(iteratorT begin, iteratorT end, randomT& rng, minimize_tag)
 {
@@ -147,7 +147,7 @@ calculator_sort(iteratorT begin, iteratorT end, randomT& rng, minimize_tag)
     }
 }
 
-template<typename iteratorT, typename randomT>
+template <typename iteratorT, typename randomT>
 static void
 calculator_sort(iteratorT begin, iteratorT end, randomT& rng, maximize_tag)
 {
@@ -167,21 +167,21 @@ calculator_sort(iteratorT begin, iteratorT end, randomT& rng, maximize_tag)
     }
 }
 
-template<typename floatingpointT>
+template <typename floatingpointT>
 static inline bool
 stop_iterating(floatingpointT value, minimize_tag) noexcept
 {
     return value > 0;
 }
 
-template<typename floatingpointT>
+template <typename floatingpointT>
 static inline bool
 stop_iterating(floatingpointT value, maximize_tag) noexcept
 {
     return value < 0;
 }
 
-template<typename floatingpointT>
+template <typename floatingpointT>
 static inline bool
 is_better_solution(floatingpointT lhs,
                    floatingpointT rhs,
@@ -190,7 +190,7 @@ is_better_solution(floatingpointT lhs,
     return lhs < rhs;
 }
 
-template<typename floatingpointT>
+template <typename floatingpointT>
 static inline bool
 is_better_solution(floatingpointT lhs,
                    floatingpointT rhs,
@@ -211,7 +211,7 @@ init_x(int v, maximize_tag) noexcept
     return v >= 0;
 }
 
-template<typename apT, typename xT, typename bT>
+template <typename apT, typename xT, typename bT>
 bool
 is_valid_solution(const apT& ap, const xT& x, const bT& b) noexcept
 {
@@ -233,7 +233,7 @@ is_valid_solution(const apT& ap, const xT& x, const bT& b) noexcept
     return true;
 }
 
-template<typename apT, typename xT, typename bT, typename C>
+template <typename apT, typename xT, typename bT, typename C>
 int
 compute_missing_constraint(const apT& ap,
                            const xT& x,
@@ -260,7 +260,7 @@ compute_missing_constraint(const apT& ap,
     return length(r);
 }
 
-template<typename floatingpointT, typename modeT, typename randomT>
+template <typename floatingpointT, typename modeT, typename randomT>
 struct solver
 {
     using floatingpoint_type = floatingpointT;
@@ -408,13 +408,6 @@ struct solver
         std::fill(ap.P().begin(), ap.P().end(), 0);
         std::fill(pi.begin(), pi.end(), 0);
 
-        init();
-    }
-
-    void reinit()
-    {
-        std::fill(ap.P().begin(), ap.P().end(), 0);
-        std::fill(pi.begin(), pi.end(), 0);
         init();
     }
 
@@ -644,7 +637,7 @@ struct solver
     // preference values for the current row. > 0 will keep former decision in
     // mind.
     //
-    template<typename iteratorT>
+    template <typename iteratorT>
     void decrease_preference(iteratorT begin,
                              iteratorT end,
                              floatingpoint_type theta) noexcept
@@ -656,7 +649,7 @@ struct solver
     //
     // Compute the reduced costs and return the size of the newly R vector.
     //
-    template<typename iteratorT>
+    template <typename iteratorT>
     int compute_reduced_costs(iteratorT begin, iteratorT end) noexcept
     {
         int r_size = 0;
@@ -868,7 +861,7 @@ struct solver
 // }
 // #endif
 
-template<typename floatingpointT, typename randomT>
+template <typename floatingpointT, typename randomT>
 struct compute_none
 {
     using random_type = randomT;
@@ -876,7 +869,7 @@ struct compute_none
     std::shared_ptr<bx::context> m_ctx;
     std::vector<int> R;
 
-    template<typename solverT>
+    template <typename solverT>
     compute_none(std::shared_ptr<bx::context> ctx, const solverT& s, randomT&)
       : m_ctx(ctx)
       , R(s.m)
@@ -884,7 +877,7 @@ struct compute_none
         compute_missing_constraint(s.ap, s.x, s.b, R);
     }
 
-    template<typename solverT>
+    template <typename solverT>
     int push_and_run(solverT& solver,
                      floatingpointT kappa,
                      floatingpointT delta,
@@ -898,7 +891,7 @@ struct compute_none
         return compute_missing_constraint(solver.ap, solver.x, solver.b, R);
     }
 
-    template<typename solverT>
+    template <typename solverT>
     int run(solverT& solver,
             floatingpointT kappa,
             floatingpointT delta,
@@ -911,7 +904,7 @@ struct compute_none
     }
 };
 
-template<typename floatingpointT, typename randomT>
+template <typename floatingpointT, typename randomT>
 struct compute_reversing
 {
     using random_type = randomT;
@@ -920,7 +913,7 @@ struct compute_reversing
     std::vector<int> R;
     int nb = 0;
 
-    template<typename solverT>
+    template <typename solverT>
     compute_reversing(std::shared_ptr<bx::context> ctx, solverT& s, randomT&)
       : m_ctx(ctx)
       , R(s.m)
@@ -928,7 +921,7 @@ struct compute_reversing
         compute_missing_constraint(s.ap, s.x, s.b, R);
     }
 
-    template<typename solverT>
+    template <typename solverT>
     int push_and_run(solverT& solver,
                      floatingpointT kappa,
                      floatingpointT delta,
@@ -942,7 +935,7 @@ struct compute_reversing
         return compute_missing_constraint(solver.ap, solver.x, solver.b, R);
     }
 
-    template<typename solverT>
+    template <typename solverT>
     int run(solverT& solver,
             floatingpointT kappa,
             floatingpointT delta,
@@ -955,7 +948,7 @@ struct compute_reversing
     }
 };
 
-template<typename floatingpointT, typename randomT>
+template <typename floatingpointT, typename randomT>
 struct compute_random
 {
     using random_type = randomT;
@@ -964,7 +957,7 @@ struct compute_random
     std::vector<int> R;
     random_type& rng;
 
-    template<typename solverT>
+    template <typename solverT>
     compute_random(std::shared_ptr<bx::context> ctx,
                    solverT& s,
                    random_type& rng_)
@@ -975,7 +968,7 @@ struct compute_random
         compute_missing_constraint(s.ap, s.x, s.b, R);
     }
 
-    template<typename solverT>
+    template <typename solverT>
     int push_and_run(solverT& solver,
                      floatingpointT kappa,
                      floatingpointT delta,
@@ -989,7 +982,7 @@ struct compute_random
         return compute_missing_constraint(solver.ap, solver.x, solver.b, R);
     }
 
-    template<typename solverT>
+    template <typename solverT>
     int run(solverT& solver,
             floatingpointT kappa,
             floatingpointT delta,
@@ -1012,7 +1005,7 @@ struct compute_infeasibility_decr
 {
 };
 
-template<typename iteratorT>
+template <typename iteratorT>
 static void
 sort(iteratorT begin, iteratorT end, compute_infeasibility_incr)
 {
@@ -1021,7 +1014,7 @@ sort(iteratorT begin, iteratorT end, compute_infeasibility_incr)
     });
 }
 
-template<typename iteratorT>
+template <typename iteratorT>
 static void
 sort(iteratorT begin, iteratorT end, compute_infeasibility_decr)
 {
@@ -1030,7 +1023,7 @@ sort(iteratorT begin, iteratorT end, compute_infeasibility_decr)
     });
 }
 
-template<typename floatingpointT, typename randomT, typename directionT>
+template <typename floatingpointT, typename randomT, typename directionT>
 struct compute_infeasibility
 {
     using random_type = randomT;
@@ -1040,7 +1033,7 @@ struct compute_infeasibility
     std::vector<std::pair<int, int>> R;
     random_type& rng;
 
-    template<typename solverT>
+    template <typename solverT>
     compute_infeasibility(std::shared_ptr<bx::context> ctx,
                           solverT& s,
                           random_type& rng_)
@@ -1051,7 +1044,7 @@ struct compute_infeasibility
         local_compute_missing_constraint(s);
     }
 
-    template<typename solverT>
+    template <typename solverT>
     int local_compute_missing_constraint(solverT& solver)
     {
         R.clear();
@@ -1073,7 +1066,7 @@ struct compute_infeasibility
         return length(R);
     }
 
-    template<typename solverT>
+    template <typename solverT>
     int push_and_run(solverT& solver,
                      floatingpointT kappa,
                      floatingpointT delta,
@@ -1087,7 +1080,7 @@ struct compute_infeasibility
         return local_compute_missing_constraint(solver);
     }
 
-    template<typename solverT>
+    template <typename solverT>
     int run(solverT& solver,
             floatingpointT kappa,
             floatingpointT delta,
@@ -1102,10 +1095,10 @@ struct compute_infeasibility
     }
 };
 
-template<typename floatingpointT,
-         typename modeT,
-         typename constraintOrderT,
-         typename randomT>
+template <typename floatingpointT,
+          typename modeT,
+          typename constraintOrderT,
+          typename randomT>
 struct solver_functor
 {
     using floatingpoint_type = floatingpointT;
@@ -1117,14 +1110,19 @@ struct solver_functor
     std::chrono::time_point<std::chrono::steady_clock> m_end;
 
     std::shared_ptr<bx::context> m_ctx;
-    std::vector<std::string> m_names;
+    const std::vector<std::string>& m_variable_names;
+    const bx::affected_variables& m_affected_vars;
+
     x_type m_best_x;
     bx::result m_best;
 
     solver_functor(std::shared_ptr<bx::context> ctx,
-                   const std::vector<std::string>& names)
+                   const std::vector<std::string>& variable_names,
+                   const bx::affected_variables& affected_vars)
+
       : m_ctx(ctx)
-      , m_names(names)
+      , m_variable_names(variable_names)
+      , m_affected_vars(affected_vars)
     {
     }
 
@@ -1140,11 +1138,11 @@ struct solver_functor
         m_begin = std::chrono::steady_clock::now();
         m_end = m_begin;
 
-        int i{ 0 };
-        int i2{ 0 };
-        floatingpoint_type kappa_old = p.kappa_min;
+        int i = 0;
+        int pushed = -1;
+        int best_remaining = -1;
+        int pushing_iteration = p.pushing_iteration_limit;
         floatingpoint_type kappa = p.kappa_min;
-        int best_remaining{ -1 };
 
         solver<floatingpoint_type, mode_type, random_type> slv(
           rng, variables, norm_costs, constraints);
@@ -1165,7 +1163,6 @@ struct solver_functor
                   std::chrono::duration_cast<std::chrono::duration<double>>(
                     m_end - m_begin)
                     .count();
-                ;
 
                 m_ctx->info(
                   "  - constraints remaining: %d/%d at %fs (loop: %d)\n",
@@ -1180,32 +1177,64 @@ struct solver_functor
 #endif
 
             if (m_best.status == bx::result_status::success) {
-                m_ctx->info("  - Solution found: %f\n", m_best.value);
-                return m_best;
+                ++pushing_iteration;
+
+                if (pushed == -1)
+                    m_ctx->info("  - start push system:\n");
+
+                if (pushing_iteration >= p.pushing_iteration_limit) {
+                    pushed++;
+                    pushing_iteration = 0;
+
+                    m_ctx->info(
+                      "    - push %d: kappa * k: %f objective amplifier: %f\n",
+                      pushed,
+                      static_cast<double>(p.pushing_k_factor * kappa),
+                      static_cast<double>(p.pushing_objective_amplifier));
+
+                    remaining =
+                      compute.push_and_run(slv,
+                                           p.pushing_k_factor * kappa,
+                                           p.delta,
+                                           p.theta,
+                                           p.pushing_objective_amplifier);
+
+                    if (remaining == 0) {
+                        auto current =
+                          slv.results(original_costs, cost_constant);
+                        current.loop = i;
+                        current.remaining_constraints = 0;
+
+                        if (store_if_better(current))
+                            m_best_x = slv.x;
+                    }
+                }
+
+                if (pushed > p.pushes_limit) {
+                    m_ctx->info(
+                      "    - Push system limit reached. Solution found: %f\n",
+                      m_best.value);
+                    return m_best;
+                }
             }
 
-            if (i2 <= p.w) {
-                kappa = p.kappa_min;
-                i2++;
-            } else {
-                i2 = 0;
-                kappa = kappa_old +
-                        p.kappa_step *
-                          std::pow(static_cast<floatingpointT>(remaining) /
-                                     static_cast<floatingpointT>(slv.m),
-                                   p.alpha);
-                kappa_old = kappa;
-            }
+            if (i > p.w)
+                kappa += p.kappa_step *
+                         std::pow(static_cast<floatingpointT>(remaining) /
+                                    static_cast<floatingpointT>(slv.m),
+                                  p.alpha);
 
             if (++i > p.limit) {
                 m_ctx->info("  - Loop limit reached: %d\n", i);
-                m_best.status = bx::result_status::limit_reached;
+                if (pushed == -1)
+                    m_best.status = bx::result_status::limit_reached;
                 return m_best;
             }
 
             if (kappa > p.kappa_max) {
                 m_ctx->info("  - Kappa max reached: %+.6f\n", (double)kappa);
-                m_best.status = bx::result_status::kappa_max_reached;
+                if (pushed == -1)
+                    m_best.status = bx::result_status::kappa_max_reached;
                 return m_best;
             }
 
@@ -1213,17 +1242,59 @@ struct solver_functor
             if (bx::is_time_limit(p.time_limit, m_begin, m_end)) {
                 m_ctx->info(
                   "  - Time limit reached: %d %+.6f\n", i, (double)kappa);
-                m_best.status = bx::result_status::time_limit_reached;
+                if (pushed == -1)
+                    m_best.status = bx::result_status::time_limit_reached;
                 return m_best;
             }
         }
     }
+
+private:
+    bool store_if_better(const bx::result& current) noexcept
+    {
+        if (current.status != bx::result_status::success)
+            return false;
+
+        if (m_best.status != bx::result_status::success or
+            is_better_solution(current.value, m_best.value, mode_type())) {
+
+            double t =
+              std::chrono::duration_cast<std::chrono::duration<double>>(
+                m_end - m_begin)
+                .count();
+
+            m_ctx->info("  - Solution found: %f (i=%d t=%fs)\n",
+                        current.value,
+                        current.loop,
+                        t);
+
+            m_best = current;
+            m_best.duration = t;
+
+            std::ofstream ofs("temp.sol");
+            ofs << m_best;
+
+            std::size_t i, e;
+
+            for (i = 0, e = m_affected_vars.names.size(); i != e; ++i)
+                ofs << m_affected_vars.names[i] << ':'
+                    << m_affected_vars.values[i] << '\n';
+
+            for (i = 0, e = m_variable_names.size(); i != e; ++i)
+                ofs << m_variable_names[i] << ':' << m_best.variable_value[i]
+                    << '\n';
+
+            return true;
+        }
+
+        return false;
+    }
 };
 
-template<typename floatingpointT,
-         typename modeT,
-         typename constraintOrderT,
-         typename randomT>
+template <typename floatingpointT,
+          typename modeT,
+          typename constraintOrderT,
+          typename randomT>
 struct optimize_functor
 {
     using floatingpoint_type = floatingpointT;
@@ -1264,13 +1335,10 @@ struct optimize_functor
         m_begin = std::chrono::steady_clock::now();
         m_end = m_begin;
 
-        int i{ 0 };
-        int i2{ 0 };
-        floatingpoint_type kappa_old = p.kappa_min;
+        int i = 0;
+        int pushed = -1;
+        int pushing_iteration = 0;
         floatingpoint_type kappa = p.kappa_min;
-
-        int pushed{ -1 };
-        int pushing_iteration{ 0 };
 
         solver<floatingpoint_type, mode_type, random_type> slv(
           rng, variables, norm_costs, constraints);
@@ -1292,31 +1360,17 @@ struct optimize_functor
                 }
             }
 
-            if (i2 <= p.w) {
-                kappa = p.kappa_min;
-                i2++;
-            } else {
-                i2 = 0;
-                kappa =
-                  kappa_old +
+            if (i > p.w)
+                kappa +=
                   p.kappa_step * std::pow(static_cast<double>(remaining) /
                                             static_cast<double>(slv.m),
                                           p.alpha);
 
-                kappa_old = kappa;
-            }
-
             if (i >= p.limit or kappa > p.kappa_max or
                 pushed > p.pushes_limit) {
-                if (m_best.status == bx::result_status::success) {
-                    slv.reinit(m_best_x);
-                } else {
-                    slv.reinit();
-                }
+                slv.reinit(m_best_x);
 
                 i = 0;
-                i2 = 0;
-                kappa_old = p.kappa_min;
                 kappa = p.kappa_min;
                 pushed = -1;
                 pushing_iteration = 0;
@@ -1344,10 +1398,8 @@ struct optimize_functor
                         current.loop = i;
                         current.remaining_constraints = 0;
 
-                        if (store_if_better(current)) {
-                            lp_debug(m_ctx, "  `-> push found new solution\n");
+                        if (store_if_better(current))
                             m_best_x = slv.x;
-                        }
                     }
                 }
             }
@@ -1399,7 +1451,7 @@ private:
     }
 };
 
-template<typename floatingpointT, typename iteratorT, typename randomT>
+template <typename floatingpointT, typename iteratorT, typename randomT>
 static void
 random_epsilon_unique(iteratorT begin,
                       iteratorT end,
@@ -1415,7 +1467,7 @@ random_epsilon_unique(iteratorT begin,
         begin->second += distribution(rng);
 }
 
-template<typename floatingpointT, typename randomT>
+template <typename floatingpointT, typename randomT>
 static c_type<floatingpointT>
 rng_normalize_costs(const c_type<floatingpointT>& c, randomT& rng)
 {
@@ -1475,7 +1527,7 @@ rng_normalize_costs(const c_type<floatingpointT>& c, randomT& rng)
  * Normalizes the cost vector, i.e. divides it by its l{1,2, +oo}norm. If the
  * input vector is too small or with infinity value, the c is unchanged.
  */
-template<typename floatingpointT, typename randomT>
+template <typename floatingpointT, typename randomT>
 static c_type<floatingpointT>
 normalize_costs(std::shared_ptr<bx::context> ctx,
                 const std::string& norm,
@@ -1515,7 +1567,7 @@ normalize_costs(std::shared_ptr<bx::context> ctx,
     return ret;
 }
 
-template<typename floatingpointT>
+template <typename floatingpointT>
 static inline c_type<floatingpointT>
 make_objective_function(const bx::objective_function& obj, int n)
 {
@@ -1527,10 +1579,10 @@ make_objective_function(const bx::objective_function& obj, int n)
     return ret;
 }
 
-template<typename floatingpointT,
-         typename modeT,
-         typename constraintOrderT,
-         typename randomT>
+template <typename floatingpointT,
+          typename modeT,
+          typename constraintOrderT,
+          typename randomT>
 static bx::result
 solve(std::shared_ptr<bx::context> ctx,
       bx::problem& pb,
@@ -1554,7 +1606,7 @@ solve(std::shared_ptr<bx::context> ctx,
         bx::clear(pb);
 
         solver_functor<floatingpointT, modeT, constraintOrderT, randomT> slv(
-          ctx, names);
+          ctx, names, affected_vars);
 
         ret =
           slv(constraints, variables, cost, norm_costs, cost_constant, p, rng);
@@ -1569,10 +1621,10 @@ solve(std::shared_ptr<bx::context> ctx,
     return ret;
 }
 
-template<typename floatingpointT,
-         typename modeT,
-         typename constraintOrderT,
-         typename randomT>
+template <typename floatingpointT,
+          typename modeT,
+          typename constraintOrderT,
+          typename randomT>
 static bx::result
 optimize(std::shared_ptr<bx::context> ctx,
          bx::problem& pb,
@@ -1650,7 +1702,7 @@ optimize(std::shared_ptr<bx::context> ctx,
     return ret;
 }
 
-template<typename realT, typename modeT, typename randomT>
+template <typename realT, typename modeT, typename randomT>
 static bx::result
 dispatch_solve(std::shared_ptr<bx::context> ctx,
                bx::problem& pb,
@@ -1685,7 +1737,7 @@ dispatch_solve(std::shared_ptr<bx::context> ctx,
     return {};
 }
 
-template<typename realT, typename modeT, typename randomT>
+template <typename realT, typename modeT, typename randomT>
 static bx::result
 dispatch_optimize(std::shared_ptr<bx::context> ctx,
                   bx::problem& pb,
