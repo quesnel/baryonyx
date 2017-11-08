@@ -431,20 +431,21 @@ struct solver
             x(i) = init_x(c(i), mode_type());
     }
 
-    void serialize(std::shared_ptr<bx::context> ctx,
-                   const std::vector<std::string>& names,
-                   int serialize_id) const
+    void print(std::shared_ptr<bx::context> ctx,
+               floatingpoint_type kappa,
+               const std::vector<std::string>& names,
+               int print_level) const
     {
-        if (serialize_id <= 0)
+        if (print_level <= 0)
             return;
 
         ctx->debug("X: ");
-        for (std::size_t i{ 0 }, e{ x.size() }; i != e; ++i)
+        for (int i = 0, e = length(x); i != e; ++i)
             ctx->debug("%s=%d ", names[i].c_str(), static_cast<int>(x[i]));
         ctx->debug("\n");
 
-        for (int k{ 0 }, ek{ m }; k != ek; ++k) {
-            auto ak{ ap.row(k) };
+        for (int k = 0, ek = m; k != ek; ++k) {
+            auto ak = ap.row(k);
             int v = 0;
 
             for (; std::get<0>(ak) != std::get<1>(ak); ++std::get<0>(ak))
@@ -452,8 +453,7 @@ struct solver
                      x(std::get<0>(ak)->position);
 
             bool valid = b(k).min <= v and v <= b(k).max;
-
-            ctx->debug("C %d:%s\n", k, (valid ? "   valid: " : "violated:"));
+            ctx->debug("C %d:%s\n", k, (valid ? "   valid" : "violated"));
         }
     }
 
@@ -832,7 +832,7 @@ struct solver
 //          int rows,
 //          int cols)
 // {
-//     int level = ctx->get_integer_parameter("serialize", 0l);
+//     int level = ctx->get_integer_parameter("print-level", 0l);
 //     if (level <= 1)
 //         return;
 
@@ -1173,7 +1173,7 @@ struct solver_functor
             }
 
 #ifndef BARYONYX_FULL_OPTIMIZATION
-            slv.serialize(m_ctx, m_names, p.serialize);
+            slv.print(m_ctx, kappa, m_variable_names, p.print_level);
 #endif
 
             if (m_best.status == bx::result_status::success) {

@@ -157,7 +157,7 @@ struct parameters
           ctx->get_integer_parameter("pushing-iteration-limit", 20))
       , limit(ctx->get_integer_parameter("limit", 1000))
       , w(ctx->get_integer_parameter("w", 500))
-      , serialize(ctx->get_integer_parameter("serialize", 0))
+      , print_level(ctx->get_integer_parameter("print-level", 0))
       , order(get_constraint_order(ctx))
       , float_type(get_floating_point_type(ctx))
     {
@@ -175,7 +175,7 @@ struct parameters
                   "  - alpha: %.10g\n"
                   "  - w: %d\n"
                   "  - norm: %s\n"
-                  "  - serialise: %d\n"
+                  "  - print-level: %d\n"
                   "  - float-point-type: %s\n",
                   preprocessing.c_str(),
                   constraint_order_to_string(order),
@@ -189,7 +189,7 @@ struct parameters
                   alpha,
                   w,
                   norm.c_str(),
-                  serialize,
+                  print_level,
                   floating_point_type_to_string(float_type));
 
         if (ctx->optimize())
@@ -219,7 +219,7 @@ struct parameters
     int pushing_iteration_limit;
     int limit;
     int w;
-    int serialize;
+    int print_level;
     constraint_order order;
     floating_point_type float_type;
 };

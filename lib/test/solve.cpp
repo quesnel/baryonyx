@@ -464,7 +464,7 @@ test_aim_50_1_6_yes1_2()
 //     ctx->set_parameter("kappa-max", 1.0);
 //     ctx->set_parameter("alpha", 1.0);
 //     ctx->set_parameter("w", 60);
-//     ctx->set_parameter("serialize", 1);
+//     ctx->set_parameter("print-level", 1);
 //     ctx->set_parameter("constraint-order", std::string("random-sorting"));
 //     ctx->set_parameter("time-limit", -1.0);
 //     ctx->set_parameter("preprocessing", std::string("none"));

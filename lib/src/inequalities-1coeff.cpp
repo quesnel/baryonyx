@@ -639,11 +639,11 @@ struct solver
             row_updaters[k].reinit();
     }
 
-    void serialize(std::shared_ptr<bx::context> ctx,
+    void print(std::shared_ptr<bx::context> ctx,
                    const std::vector<std::string>& names,
-                   int serialize_id) const
+                   int print_level) const
     {
-        if (serialize_id <= 0)
+        if (print_level <= 0)
             return;
 
         ctx->debug("X: ");
@@ -864,7 +864,7 @@ print_AP(std::shared_ptr<bx::context> ctx,
          int rows,
          int cols)
 {
-    int level = ctx->get_integer_parameter("serialize", 0l);
+    int level = ctx->get_integer_parameter("print-level", 0l);
     if (level <= 1)
         return;
 
@@ -1278,7 +1278,7 @@ struct solver_functor
             }
 
 #ifndef BARYONYX_FULL_OPTIMIZATION
-            slv.serialize(m_ctx, m_names, p.serialize);
+            slv.print(m_ctx, m_names, p.print_level);
 #endif
 
             if (current.status == bx::result_status::success) {

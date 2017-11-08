@@ -147,7 +147,7 @@ help(baryonyx::context* ctx) noexcept
               "  - alpha: integer [0, 2]\n"
               "  - w: integer [0, +oo[\n"
               "  - norm: l1 l2 inf none rng\n"
-              "  - serialise: [0, 2]\n"
+              "  - print-level: [0, 2]\n"
               "  - floating-point-type: float, double, longdouble\n"
               "optimizer parameters:\n"
               "  - pushes-limit: integer [0, +oo[\n"
