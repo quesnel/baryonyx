@@ -202,7 +202,6 @@ Apply rgenoud to found best parameters:
 ````
 library(rbaryonyx)
 library(rgenoud)
-library(rilp)
 library(parallel)
 
 optim_gen_lp <- function(x) {

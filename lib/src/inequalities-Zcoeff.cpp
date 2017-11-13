@@ -71,7 +71,7 @@ struct bound
     int max;
 };
 
-template <typename floatingpointT>
+template<typename floatingpointT>
 struct r_data
 {
     r_data() = default;
@@ -100,19 +100,19 @@ struct c_data
     int id_r; // index in r matrix
 };
 
-template <typename floatingpointT>
+template<typename floatingpointT>
 using AP_type = bx::SparseArray<int8_t, floatingpointT>;
 
 using b_type = baryonyx::fixed_array<bound>;
 
-template <typename floatingpointT>
+template<typename floatingpointT>
 using c_type = baryonyx::fixed_array<floatingpointT>;
 using x_type = baryonyx::fixed_array<std::int8_t>;
 
-template <typename floatingpointT>
+template<typename floatingpointT>
 using pi_type = baryonyx::fixed_array<floatingpointT>;
 
-template <typename iteratorT, typename randomT>
+template<typename iteratorT, typename randomT>
 static void
 random_shuffle_unique(iteratorT begin, iteratorT end, randomT& rng) noexcept
 {
@@ -127,7 +127,7 @@ random_shuffle_unique(iteratorT begin, iteratorT end, randomT& rng) noexcept
     std::shuffle(ret, begin, rng);
 }
 
-template <typename iteratorT, typename randomT>
+template<typename iteratorT, typename randomT>
 static void
 calculator_sort(iteratorT begin, iteratorT end, randomT& rng, minimize_tag)
 {
@@ -147,7 +147,7 @@ calculator_sort(iteratorT begin, iteratorT end, randomT& rng, minimize_tag)
     }
 }
 
-template <typename iteratorT, typename randomT>
+template<typename iteratorT, typename randomT>
 static void
 calculator_sort(iteratorT begin, iteratorT end, randomT& rng, maximize_tag)
 {
@@ -167,21 +167,21 @@ calculator_sort(iteratorT begin, iteratorT end, randomT& rng, maximize_tag)
     }
 }
 
-template <typename floatingpointT>
+template<typename floatingpointT>
 static inline bool
 stop_iterating(floatingpointT value, minimize_tag) noexcept
 {
     return value > 0;
 }
 
-template <typename floatingpointT>
+template<typename floatingpointT>
 static inline bool
 stop_iterating(floatingpointT value, maximize_tag) noexcept
 {
     return value < 0;
 }
 
-template <typename floatingpointT>
+template<typename floatingpointT>
 static inline bool
 is_better_solution(floatingpointT lhs,
                    floatingpointT rhs,
@@ -190,7 +190,7 @@ is_better_solution(floatingpointT lhs,
     return lhs < rhs;
 }
 
-template <typename floatingpointT>
+template<typename floatingpointT>
 static inline bool
 is_better_solution(floatingpointT lhs,
                    floatingpointT rhs,
@@ -211,7 +211,7 @@ init_x(int v, maximize_tag) noexcept
     return v >= 0;
 }
 
-template <typename apT, typename xT, typename bT>
+template<typename apT, typename xT, typename bT>
 bool
 is_valid_solution(const apT& ap, const xT& x, const bT& b) noexcept
 {
@@ -233,7 +233,7 @@ is_valid_solution(const apT& ap, const xT& x, const bT& b) noexcept
     return true;
 }
 
-template <typename apT, typename xT, typename bT, typename C>
+template<typename apT, typename xT, typename bT, typename C>
 int
 compute_missing_constraint(const apT& ap,
                            const xT& x,
@@ -260,7 +260,7 @@ compute_missing_constraint(const apT& ap,
     return length(r);
 }
 
-template <typename floatingpointT, typename modeT, typename randomT>
+template<typename floatingpointT, typename modeT, typename randomT>
 struct solver
 {
     using floatingpoint_type = floatingpointT;
@@ -432,7 +432,6 @@ struct solver
     }
 
     void print(std::shared_ptr<bx::context> ctx,
-               floatingpoint_type kappa,
                const std::vector<std::string>& names,
                int print_level) const
     {
@@ -637,7 +636,7 @@ struct solver
     // preference values for the current row. > 0 will keep former decision in
     // mind.
     //
-    template <typename iteratorT>
+    template<typename iteratorT>
     void decrease_preference(iteratorT begin,
                              iteratorT end,
                              floatingpoint_type theta) noexcept
@@ -649,7 +648,7 @@ struct solver
     //
     // Compute the reduced costs and return the size of the newly R vector.
     //
-    template <typename iteratorT>
+    template<typename iteratorT>
     int compute_reduced_costs(iteratorT begin, iteratorT end) noexcept
     {
         int r_size = 0;
@@ -861,7 +860,7 @@ struct solver
 // }
 // #endif
 
-template <typename floatingpointT, typename randomT>
+template<typename floatingpointT, typename randomT>
 struct compute_none
 {
     using random_type = randomT;
@@ -869,7 +868,7 @@ struct compute_none
     std::shared_ptr<bx::context> m_ctx;
     std::vector<int> R;
 
-    template <typename solverT>
+    template<typename solverT>
     compute_none(std::shared_ptr<bx::context> ctx, const solverT& s, randomT&)
       : m_ctx(ctx)
       , R(s.m)
@@ -877,7 +876,7 @@ struct compute_none
         compute_missing_constraint(s.ap, s.x, s.b, R);
     }
 
-    template <typename solverT>
+    template<typename solverT>
     int push_and_run(solverT& solver,
                      floatingpointT kappa,
                      floatingpointT delta,
@@ -891,7 +890,7 @@ struct compute_none
         return compute_missing_constraint(solver.ap, solver.x, solver.b, R);
     }
 
-    template <typename solverT>
+    template<typename solverT>
     int run(solverT& solver,
             floatingpointT kappa,
             floatingpointT delta,
@@ -904,7 +903,7 @@ struct compute_none
     }
 };
 
-template <typename floatingpointT, typename randomT>
+template<typename floatingpointT, typename randomT>
 struct compute_reversing
 {
     using random_type = randomT;
@@ -913,7 +912,7 @@ struct compute_reversing
     std::vector<int> R;
     int nb = 0;
 
-    template <typename solverT>
+    template<typename solverT>
     compute_reversing(std::shared_ptr<bx::context> ctx, solverT& s, randomT&)
       : m_ctx(ctx)
       , R(s.m)
@@ -921,7 +920,7 @@ struct compute_reversing
         compute_missing_constraint(s.ap, s.x, s.b, R);
     }
 
-    template <typename solverT>
+    template<typename solverT>
     int push_and_run(solverT& solver,
                      floatingpointT kappa,
                      floatingpointT delta,
@@ -935,7 +934,7 @@ struct compute_reversing
         return compute_missing_constraint(solver.ap, solver.x, solver.b, R);
     }
 
-    template <typename solverT>
+    template<typename solverT>
     int run(solverT& solver,
             floatingpointT kappa,
             floatingpointT delta,
@@ -948,7 +947,7 @@ struct compute_reversing
     }
 };
 
-template <typename floatingpointT, typename randomT>
+template<typename floatingpointT, typename randomT>
 struct compute_random
 {
     using random_type = randomT;
@@ -957,7 +956,7 @@ struct compute_random
     std::vector<int> R;
     random_type& rng;
 
-    template <typename solverT>
+    template<typename solverT>
     compute_random(std::shared_ptr<bx::context> ctx,
                    solverT& s,
                    random_type& rng_)
@@ -968,7 +967,7 @@ struct compute_random
         compute_missing_constraint(s.ap, s.x, s.b, R);
     }
 
-    template <typename solverT>
+    template<typename solverT>
     int push_and_run(solverT& solver,
                      floatingpointT kappa,
                      floatingpointT delta,
@@ -982,7 +981,7 @@ struct compute_random
         return compute_missing_constraint(solver.ap, solver.x, solver.b, R);
     }
 
-    template <typename solverT>
+    template<typename solverT>
     int run(solverT& solver,
             floatingpointT kappa,
             floatingpointT delta,
@@ -1005,7 +1004,7 @@ struct compute_infeasibility_decr
 {
 };
 
-template <typename iteratorT>
+template<typename iteratorT>
 static void
 sort(iteratorT begin, iteratorT end, compute_infeasibility_incr)
 {
@@ -1014,7 +1013,7 @@ sort(iteratorT begin, iteratorT end, compute_infeasibility_incr)
     });
 }
 
-template <typename iteratorT>
+template<typename iteratorT>
 static void
 sort(iteratorT begin, iteratorT end, compute_infeasibility_decr)
 {
@@ -1023,7 +1022,7 @@ sort(iteratorT begin, iteratorT end, compute_infeasibility_decr)
     });
 }
 
-template <typename floatingpointT, typename randomT, typename directionT>
+template<typename floatingpointT, typename randomT, typename directionT>
 struct compute_infeasibility
 {
     using random_type = randomT;
@@ -1033,7 +1032,7 @@ struct compute_infeasibility
     std::vector<std::pair<int, int>> R;
     random_type& rng;
 
-    template <typename solverT>
+    template<typename solverT>
     compute_infeasibility(std::shared_ptr<bx::context> ctx,
                           solverT& s,
                           random_type& rng_)
@@ -1044,7 +1043,7 @@ struct compute_infeasibility
         local_compute_missing_constraint(s);
     }
 
-    template <typename solverT>
+    template<typename solverT>
     int local_compute_missing_constraint(solverT& solver)
     {
         R.clear();
@@ -1066,7 +1065,7 @@ struct compute_infeasibility
         return length(R);
     }
 
-    template <typename solverT>
+    template<typename solverT>
     int push_and_run(solverT& solver,
                      floatingpointT kappa,
                      floatingpointT delta,
@@ -1080,7 +1079,7 @@ struct compute_infeasibility
         return local_compute_missing_constraint(solver);
     }
 
-    template <typename solverT>
+    template<typename solverT>
     int run(solverT& solver,
             floatingpointT kappa,
             floatingpointT delta,
@@ -1095,10 +1094,10 @@ struct compute_infeasibility
     }
 };
 
-template <typename floatingpointT,
-          typename modeT,
-          typename constraintOrderT,
-          typename randomT>
+template<typename floatingpointT,
+         typename modeT,
+         typename constraintOrderT,
+         typename randomT>
 struct solver_functor
 {
     using floatingpoint_type = floatingpointT;
@@ -1173,7 +1172,7 @@ struct solver_functor
             }
 
 #ifndef BARYONYX_FULL_OPTIMIZATION
-            slv.print(m_ctx, kappa, m_variable_names, p.print_level);
+            slv.print(m_ctx, m_variable_names, p.print_level);
 #endif
 
             if (m_best.status == bx::result_status::success) {
@@ -1291,10 +1290,10 @@ private:
     }
 };
 
-template <typename floatingpointT,
-          typename modeT,
-          typename constraintOrderT,
-          typename randomT>
+template<typename floatingpointT,
+         typename modeT,
+         typename constraintOrderT,
+         typename randomT>
 struct optimize_functor
 {
     using floatingpoint_type = floatingpointT;
@@ -1451,7 +1450,7 @@ private:
     }
 };
 
-template <typename floatingpointT, typename iteratorT, typename randomT>
+template<typename floatingpointT, typename iteratorT, typename randomT>
 static void
 random_epsilon_unique(iteratorT begin,
                       iteratorT end,
@@ -1467,7 +1466,7 @@ random_epsilon_unique(iteratorT begin,
         begin->second += distribution(rng);
 }
 
-template <typename floatingpointT, typename randomT>
+template<typename floatingpointT, typename randomT>
 static c_type<floatingpointT>
 rng_normalize_costs(const c_type<floatingpointT>& c, randomT& rng)
 {
@@ -1527,7 +1526,7 @@ rng_normalize_costs(const c_type<floatingpointT>& c, randomT& rng)
  * Normalizes the cost vector, i.e. divides it by its l{1,2, +oo}norm. If the
  * input vector is too small or with infinity value, the c is unchanged.
  */
-template <typename floatingpointT, typename randomT>
+template<typename floatingpointT, typename randomT>
 static c_type<floatingpointT>
 normalize_costs(std::shared_ptr<bx::context> ctx,
                 const std::string& norm,
@@ -1567,7 +1566,7 @@ normalize_costs(std::shared_ptr<bx::context> ctx,
     return ret;
 }
 
-template <typename floatingpointT>
+template<typename floatingpointT>
 static inline c_type<floatingpointT>
 make_objective_function(const bx::objective_function& obj, int n)
 {
@@ -1579,10 +1578,10 @@ make_objective_function(const bx::objective_function& obj, int n)
     return ret;
 }
 
-template <typename floatingpointT,
-          typename modeT,
-          typename constraintOrderT,
-          typename randomT>
+template<typename floatingpointT,
+         typename modeT,
+         typename constraintOrderT,
+         typename randomT>
 static bx::result
 solve(std::shared_ptr<bx::context> ctx,
       bx::problem& pb,
@@ -1621,10 +1620,10 @@ solve(std::shared_ptr<bx::context> ctx,
     return ret;
 }
 
-template <typename floatingpointT,
-          typename modeT,
-          typename constraintOrderT,
-          typename randomT>
+template<typename floatingpointT,
+         typename modeT,
+         typename constraintOrderT,
+         typename randomT>
 static bx::result
 optimize(std::shared_ptr<bx::context> ctx,
          bx::problem& pb,
@@ -1702,7 +1701,7 @@ optimize(std::shared_ptr<bx::context> ctx,
     return ret;
 }
 
-template <typename realT, typename modeT, typename randomT>
+template<typename realT, typename modeT, typename randomT>
 static bx::result
 dispatch_solve(std::shared_ptr<bx::context> ctx,
                bx::problem& pb,
@@ -1737,7 +1736,7 @@ dispatch_solve(std::shared_ptr<bx::context> ctx,
     return {};
 }
 
-template <typename realT, typename modeT, typename randomT>
+template<typename realT, typename modeT, typename randomT>
 static bx::result
 dispatch_optimize(std::shared_ptr<bx::context> ctx,
                   bx::problem& pb,
