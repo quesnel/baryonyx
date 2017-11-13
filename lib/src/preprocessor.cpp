@@ -353,22 +353,31 @@ try_remove_assigned_variable(std::shared_ptr<baryonyx::context> ctx,
         case baryonyx::operator_type::undefined:
             break;
         case baryonyx::operator_type::equal:
-            variable_index = cst.elements.front().variable_index;
-            variable_value = cst.value / cst.elements.front().factor;
+            // 1 x = 0 or 1 x = 1
+            if (cst.value == 0 or cst.value == 1) {
+                variable_index = cst.elements.front().variable_index;
+                variable_value = cst.value;
+            } else {
+                assert(false and "1x = -1: error");
+            }
             break;
         case baryonyx::operator_type::greater:
+            // 1 x >= 1
             if (cst.value == 1) {
                 variable_index = cst.elements.front().variable_index;
-                variable_value = cst.value / cst.elements.front().factor;
-            } else if (cst.value == 0)
-                return true;
+                variable_value = 1;
+            } else
+                return true; // 1x >= 0 or 1x >= -1
             break;
         case baryonyx::operator_type::less:
+            // 1 x <= 0
             if (cst.value == 0) {
                 variable_index = cst.elements.front().variable_index;
-                variable_value = cst.value / cst.elements.front().factor;
+                variable_value = 0;
             } else if (cst.value == 1)
                 return true;
+            else
+                assert(false and "1x <= -1");
             break;
         }
     } else {
@@ -381,31 +390,28 @@ try_remove_assigned_variable(std::shared_ptr<baryonyx::context> ctx,
                 variable_value = 0;
             } else if (cst.value == -1) { // -x = -1 -> x = 1
                 variable_index = cst.elements.front().variable_index;
-                variable_value = 0;
+                variable_value = 1;
             } else {
-                // -x = 1 -> impossible
-                assert(cst.value != 1);
+                assert(false and "-1x = 1");
             }
             break;
         case baryonyx::operator_type::greater:
-            assert(cst.value != 1); // -x >= 1 impossible
-
             if (cst.value == 0) { // -x >= 0 -> x = 0
                 variable_index = cst.elements.front().variable_index;
                 variable_value = 0;
-            } else if (cst.value == -1) { // -x >= -1 -> x = 1
-                variable_index = cst.elements.front().variable_index;
-                variable_value = 0;
-            }
-            return true;
+            } else if (cst.value == -1) // -x >= -1 -> x = 1
+                return true;
+            else
+                assert(false and "-1x >= 1");
             break;
         case baryonyx::operator_type::less:
-            if (cst.value == 0 or cst.value == 1) // -x <= {0,1} -> normal
+            // -x <= -1 -> x = 1
+            if (cst.value >= 0)
                 return true;
 
-            // -x <= -1 -> x = 1
             variable_index = cst.elements.front().variable_index;
             variable_value = 1;
+            break;
         }
     }
 
@@ -556,10 +562,8 @@ try_remove_assigned_variables_101(std::shared_ptr<baryonyx::context> ctx,
 }
 
 //
-// Try to removed the current constraint by affecting variables. For
-// example,
-// if a constraint is defined as: x + y = 0, with x and y >= 0 then,
-// variable x
+// Try to remove the current constraint by affecting variables. For example,
+// if a constraint is defined as: x + y = 0, with x and y >= 0 then, variable x
 // and y are equals to 0 and the constraint can be removed.
 //
 static bool
@@ -757,12 +761,9 @@ remove_unused_variables(std::shared_ptr<baryonyx::context> ctx,
           "      unused variable %s %d\n", pb.vars.names[var].c_str(), var);
 
         //
-        // Here, we are sur that variables are not in constraint vectors so
-        // we
-        // only remove the variables from the objective function but, we
-        // need
-        // to know the factor and compute the correct value of this
-        // variable
+        // Here, we are sur that variables are not in constraint vectors so we
+        // only remove the variables from the objective function but, we need
+        // to know the factor and compute the correct value of this variable
         // according to the cost.
         //
 

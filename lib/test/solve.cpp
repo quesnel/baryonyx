@@ -46,7 +46,7 @@ test_preprocessor()
         ctx->set_parameter("norm", "infinity");
         auto result = baryonyx::solve(ctx, pb);
 
-        Ensures(result.affected_vars.names.size() == 20);
+        Ensures(result.affected_vars.names.size() == 21);
         Ensures(result.affected_vars.values[0] == 0);
         Ensures(result.affected_vars.values[1] == 0);
         Ensures(result.affected_vars.values[2] == 1);
