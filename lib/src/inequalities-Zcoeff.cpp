@@ -735,7 +735,7 @@ struct solver
                 x(R[i].id) = 0;
                 ap.add_p(k, R[i].id, -delta);
             }
-        } else if (selected >= r_size) {
+        } else if (selected + 1 >= r_size) {
             for (int i = 0; i != r_size; ++i) {
                 x(R[i].id) = 1;
                 ap.add_p(k, R[i].id, delta);
