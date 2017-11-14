@@ -251,13 +251,48 @@ compute_missing_constraint(const apT& ap,
         int v = 0;
 
         for (; it != et; ++it)
-            v += va[it->value] * x(it->position);
+            v += va[it->value] * x[it->position];
 
         if (not(b(k).min <= v and v <= b(k).max))
             r.emplace_back(k);
     }
 
     return length(r);
+}
+
+template<typename apT, typename xT, typename bT>
+void
+print_missing_constraint(std::shared_ptr<baryonyx::context> ctx,
+                         const apT& ap,
+                         const xT& x,
+                         const bT& b,
+                         const std::vector<std::string>& names) noexcept
+{
+    std::vector<int> R;
+
+    compute_missing_constraint(ap, x, b, R);
+    ctx->info("Constraints remaining %d:\n", length(R));
+
+    typename apT::const_iterator it, et;
+    const auto& va = ap.A();
+
+    for (auto k : R) {
+        std::tie(it, et) = ap.row(k);
+        int v = 0;
+
+        ctx->info("%d: %d <= ", k, b(k).min);
+
+        for (; it != et; ++it) {
+            v += va[it->value] * x[it->position];
+
+            ctx->info("%+d [%s (%d)] ",
+                      va[it->value],
+                      names[it->position].c_str(),
+                      x[it->position]);
+        }
+
+        ctx->info(" <= %d | value: %d\n", b(k).max, v);
+    }
 }
 
 template<typename floatingpointT, typename modeT, typename randomT>
@@ -1227,6 +1262,14 @@ struct solver_functor
                 m_ctx->info("  - Loop limit reached: %d\n", i);
                 if (pushed == -1)
                     m_best.status = bx::result_status::limit_reached;
+
+                if (m_ctx->get_integer_parameter("print-level", 0) > 0)
+                    print_missing_constraint(m_ctx,
+                                             slv.ap,
+                                             m_best.variable_value,
+                                             slv.b,
+                                             m_variable_names);
+
                 return m_best;
             }
 
@@ -1234,6 +1277,14 @@ struct solver_functor
                 m_ctx->info("  - Kappa max reached: %+.6f\n", (double)kappa);
                 if (pushed == -1)
                     m_best.status = bx::result_status::kappa_max_reached;
+
+                if (m_ctx->get_integer_parameter("print-level", 0) > 0)
+                    print_missing_constraint(m_ctx,
+                                             slv.ap,
+                                             m_best.variable_value,
+                                             slv.b,
+                                             m_variable_names);
+
                 return m_best;
             }
 
@@ -1243,6 +1294,14 @@ struct solver_functor
                   "  - Time limit reached: %d %+.6f\n", i, (double)kappa);
                 if (pushed == -1)
                     m_best.status = bx::result_status::time_limit_reached;
+
+                if (m_ctx->get_integer_parameter("print-level", 0) > 0)
+                    print_missing_constraint(m_ctx,
+                                             slv.ap,
+                                             m_best.variable_value,
+                                             slv.b,
+                                             m_variable_names);
+
                 return m_best;
             }
         }
