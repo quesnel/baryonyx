@@ -1,10 +1,22 @@
 library(rbaryonyx)
 library(sensitivity)
 
-factors = c("theta", "delta", "constraint_order", "kappa_min", "kappa_step",
-  "kappa_max", "alpha", "w", "norm", "pushing_k_factor",
-  "pushing_objective_amplifier", "pushes_limit", "pushing_iteration_limit",
-  "float_type")
+factors = c(
+  "theta",
+  "delta",
+  "constraint_order",
+  "kappa_min",
+  "kappa_step",
+  "kappa_max",
+  "alpha",
+  "w",
+  "norm",
+  "pushing_k_factor",
+  "pushing_objective_amplifier",
+  "pushes_limit",
+  "pushing_iteration_limit",
+  "float_type"
+  )
 
 bounds = data.frame(
   min=c(
@@ -21,7 +33,8 @@ bounds = data.frame(
     1.0,   # pushing_objective_amplifier
     10,    # pushes_limit
     20,    # pushing_iteration_limit
-    0),    # float_type
+    0
+    ),    # float_type
 max=c(
     1,     # theta
     0,     # delta
@@ -42,8 +55,8 @@ rownames(bounds) <- factors
 
 morrisDesign <- morris(model = NULL,
                 factors = factors,
-                r = 100,
-                design=list(type="oat", levels=20, grid.jump=5),
+                r = 10,
+                design=list(type="oat", levels=10, grid.jump=5),
                 binf = bounds$min,
                 bsup = bounds$max,
                 scale=TRUE)
@@ -77,7 +90,11 @@ solve_lp <- function(x, file_path, limit=10000, time_limit=10, seed=123456789, t
   return(r)
 }
 
-r = apply(morrisDesign$X, 1, solve_lp, file_path="flat30-7.lp", thread=1, limit=10000, time_limit=10, seed=123456789)
+r = apply(morrisDesign$X, 1, solve_lp, file_path="verger_5_5.lp", thread=1, limit=10000, time_limit=10, seed=123456789)
 
-tell(morrisDesign, r)
-plot(morrisDesign)
+morrisDesign$Y <- r
+mu <- apply(morrisDesign$X,2,mean)
+mu.star <- apply(morrisDesign$X, 2, function(x) mean(abs(x)))
+sigma <- apply(morrisDesign$ee, 2, sd)
+
+apply(morrisDesign$X, 2, function(v) plot(factor(v), r))

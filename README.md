@@ -90,7 +90,7 @@ The baryonyx solver have many parameters. To assign it, use the `-p
 * `constraint_order` **order**: `none`, `reversing`, `random-sorting`, `infeasibility-decr`, `infeasibility-incr`.
 * `string` **preprocessing**: `none`,  `variables-number`, `variables-weight`m `constraints-weight`, `implied`.
 * `string` **norm**: `none`, `l1`, `l2`, `rng`, `infinity`
-* `bool` **serialize**: true to store for each loop, constraint and variable states.
+* `integer` **print-level**: show debug information if greater than 0.
 
 For example:
 
@@ -137,123 +137,142 @@ The R rbaryonyx package requires several packages. Then, under a R terminal:
     library(rbaryonyx)
     ?rbaryonyx
 
-# Usage
+## API
 
-Apply morris method to found parameters:
+Two functions are provided to solve or optimize 01 linear programming problem. Parameters are the same as `C++ API`. These function returns a scalar:
 
-````
+- If a solution is found:
+  - if the problem is a minimization: the value of the solution found.
+  - if the problem is a maximization: the inverse of the solution found.
+- If no solution is found, we use the limits of the objective
+  function (minimal and maximal value possible.
+  - if the problem is a minimization: the maximal value possible + the remaining constraints.
+  - if the problem is a maximization: the inverse of the minimal value possible + the remaining constraints.
+- If a error occurred (not enough memory, problem error etc.):
+  - if the problem is a minimization: the maximal value possible + the number of constraints .
+  - if the problem is a maximization: the inverse of the minimal value possible + the number of constraints.
+
+```R
+solve_01lp_problem <- function(file_path, limit = 1000L, theta = 0.5,
+  delta = 1e-4, constraint_order = 0L, kappa_min = 0.1, kappa_step = 1e-4,
+  kappa_max = 1.0, alpha = 1.0, w = 500L, time_limit = 10.0, seed = -1L,
+  thread = 1L, norm = 4L, pushing_k_factor = 0.9,
+  pushing_objective_amplifier = 5.0, pushes_limit = 10L,
+  pushing_iteration_limit = 20L, float_type = 1L, verbose = TRUE)
+
+optimize_01lp_problem <- function(file_path, limit = 1000L, theta = 0.5,
+  delta = 1e-4, constraint_order = 0L, kappa_min = 0.1, kappa_step = 1e-4,
+  kappa_max = 1.0, alpha = 1.0, w = 500L, time_limit = 10.0, seed = -1L,
+  thread = 1L, norm = 4L, pushing_k_factor = 0.9,
+  pushing_objective_amplifier = 5.0, pushes_limit = 10L,
+  pushing_iteration_limit = 20L, float_type = 1L, verbose = TRUE)
+
+```
+
+## Usage
+
+Apply morris method to found useful parameters:
+
+```R
 library(rbaryonyx)
 library(sensitivity)
 
-factors=c("theta", "delta", "constraint_order", "kappa_min",
-                   "kappa_step", "kappa_max", "alpha", "w")
-bounds = data.frame(min=c(0,   0, 0, 0.0,    0,  1.0, 1.0, 50),
-                    max=c(1, 0.1, 4, 0.25, 0.1,  1.0, 1.0, 50))
+factors = c("theta", "delta", "constraint_order", "kappa_min", "kappa_step",
+  "kappa_max", "alpha", "w", "norm", "pushing_k_factor",
+  "pushing_objective_amplifier", "pushes_limit", "pushing_iteration_limit",
+  "float_type")
+
+bounds = data.frame(
+  min=c(
+    0,     # theta
+    0,     # delta
+    0,     # constraint_order
+    0,     # kappa_min
+    1e-16, # kappa_step
+    1.0,   # kappa_max
+    0.0,   # alpha
+    50,    # w
+    0,     # norm
+    0.1,   # pushing_k_factor
+    1.0,   # pushing_objective_amplifier
+    10,    # pushes_limit
+    20,    # pushing_iteration_limit
+    0
+    ),    # float_type
+max=c(
+    1,     # theta
+    0,     # delta
+    4,     # constraint_order
+    0.1,   # kappa_min
+    1e-1,  # kappa_step
+    1.0,   # kappa_max
+    2.0,   # alpha
+    500,   # w
+    4,     # norm
+    1,     # pushing_k_factor
+    10.0,  # pushing_objective_amplifier
+    100,   # pushes_limit
+    200,   # pushing_iteration_limit
+    2))    # float_type
+
 rownames(bounds) <- factors
 
 morrisDesign <- morris(model = NULL,
                 factors = factors,
-                r = 100,
-                design=list(type="oat", levels=20, grid.jump=5),
+                r = 10,
+                design=list(type="oat", levels=10, grid.jump=5),
                 binf = bounds$min,
                 bsup = bounds$max,
                 scale=TRUE)
 
-# morrisDesign$X: # 20 * (8 + 1)
-
-solve_lp <- function(x, file_path, thread=1, limit=10000, time_limit=10) {
-  theta <- x["theta"]
-  delta <- x["delta"]
-  constraint_order <- x["constraint_order"]
-  kappa_min <- x["kappa_min"]
-  kappa_step <- x["kappa_step"]
-  kappa_max <- x["kappa_max"]
-  alpha <- x["alpha"]
-  w <- x["w"]
-
-  r <- rbaryonyx::optimize_01lp_problem(file_path = file_path,
-           limit = limit,
-           theta = theta,
-           delta = delta,
-           constraint_order = constraint_order,
-           kappa_min = kappa_min,
-           kappa_step = kappa_step,
-           kappa_max = kappa_max,
-           alpha = alpha,
-           w = w,
-           time_limit = time_limit,
-           seed = 123654785,
-           thread = 1L,
-           verbose = FALSE)
+solve_lp <- function(x, file_path, limit=10000, time_limit=10, seed=123456789, thread=1) {
+  r <- rbaryonyx::solve_01lp_problem(file_path = file_path,
+                   limit = limit,
+                   theta = x["theta"],
+                   delta = x["delta"],
+                   constraint_order = x["constraint_order"],
+                   kappa_min = x["kappa_min"],
+                   kappa_step = x["kappa_step"],
+                   kappa_max = x["kappa_max"],
+                   alpha = x["alpha"],
+                   w = x["w"],
+                   time_limit = time_limit,
+                   seed = seed,
+                   thread = thread,
+                   norm = x["norm"],
+                   pushing_k_factor = x["pushing_k_factor"],
+                   pushing_objective_amplifier = x["pushing_objective_amplifier,"],
+                   pushes_limit = x["pushes_limit"],
+                   pushing_iteration_limit = x["pushing_iteration_limit"],
+                   float_type = x["float_type"])
 
   return(r)
 }
 
-r = apply(morrisDesign$X, 1, solve_lp, file_path="../lib/test/prevl1.lp")
-mr = matrix(unlist(r), ncol=2, byrow = TRUE)
-mr1 <- mr[,-3]
+r = apply(morrisDesign$X, 1, solve_lp, file_path="verger_5_5.lp", thread=1, limit=10000, time_limit=10, seed=123456789)
 
-tell(morrisDesign, mr1)
-plot(morrisDesign)
-````
+morrisDesign$Y <- r
+mu <- apply(morrisDesign$X,2,mean)
+mu.star <- apply(morrisDesign$X, 2, function(x) mean(abs(x)))
+sigma <- apply(morrisDesign$ee, 2, sd)
 
-Apply rgenoud to found best parameters:
-
-````
-library(rbaryonyx)
-library(rgenoud)
-library(parallel)
-
-optim_gen_lp <- function(x) {
-  r <- rilp::optimize_01lp_problem(
-           file_path="../lib/test/prevl1.lp",
-           limit = 4000,
-           theta = x[1],
-           delta = x[2],
-           constraint_order = 1,
-           kappa_min = x[3],
-           kappa_step = x[4],
-           kappa_max = 1.0,
-           alpha = 1.0,
-           w = 60,
-           time_limit = 30,
-           seed = 123654785,
-           thread = 1L,
-           verbose = FALSE)
-
-  return(r)
-}
-
-d = matrix(c(0.0, 1e-10, 0.0, 1e-9,
-             0.9,  1e-5, 0.9, 1e-7),
-             nrow=4, ncol=2)
-
-s = c(0.1, 1e-5, 0.2, 1e-8)
-
-no_cores <- detectCores() - 1
-cl <- makeCluster(no_cores, outfile="debug.txt")
-
-claw1 <- genoud(optim_gen_lp, nvars=4,
-                Domains=d,
-                starting.values=s,
-                cluster=cl,
-                max=FALSE, pop.size=10)
-````
-
+apply(morrisDesign$X, 2, function(v) plot(factor(v), r))
+```
 
 # Upgrade
 
 To upgrade to the latest version of rbaryonyx, under bash (or equivalent):
 
-    cd baryonyx
-    git pull -r
-    cd build
-    make install
-    R CMD REMOVE rbaryonyx
-    cd rbaryonyx
-    Rscript -e 'library(Rcpp); compileAttributes(".")'
-    Rscript -e 'library(devtools); devtools::document()'
-    cd ..
-    R CMD build rbaryonyx
-    R CMD INSTALL rbaryonyx_1.0.tar.gz
-
+```bash
+cd baryonyx
+git pull -r
+cd build
+make install
+R CMD REMOVE rbaryonyx
+cd rbaryonyx
+Rscript -e 'library(Rcpp); compileAttributes(".")'
+Rscript -e 'library(devtools); devtools::document()'
+cd ..
+R CMD build rbaryonyx
+R CMD INSTALL rbaryonyx_1.0.tar.gz
+```
