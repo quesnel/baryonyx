@@ -33,6 +33,18 @@
 #include <baryonyx/core-out>
 #include <baryonyx/core>
 
+template<typename T>
+inline bool
+is_essentially_equal(const T v1, const T v2, const T epsilon)
+{
+    static_assert(std::is_floating_point<T>::value,
+                  "is_essentially_equal required a float/double "
+                  "as template arguement");
+
+    return fabs((v1) - (v2)) <=
+           ((fabs(v1) > fabs(v2) ? fabs(v2) : fabs(v1)) * (epsilon));
+}
+
 static void
 test_preprocessor()
 {
@@ -57,6 +69,8 @@ test_preprocessor()
         Ensures(result.status == baryonyx::result_status::success);
         Ensures(baryonyx::is_valid_solution(pb, result.variable_value) ==
                 true);
+
+        Ensures(is_essentially_equal(result.value, 1000.45, 0.01));
 
         ss << result;
         if (not ss.good())
@@ -111,6 +125,39 @@ test_preprocessor_2()
         Ensures(baryonyx::is_valid_solution(pb, result));
         Ensures(baryonyx::compute_solution(pb, result) == r);
     }
+}
+
+static void
+test_real_cost()
+{
+    auto ctx = std::make_shared<baryonyx::context>();
+    ctx->set_standard_stream_logger();
+
+    const char* str_pb = "minimize\n"
+                         "- 0.1 a - 0.5 b - 0.9 c - 1e-7 d\n"
+                         "Subject to:\n"
+                         "-a -b -c <= -1\n"
+                         "-a -b -c >= -3\n"
+                         "-a -c >= -2\n"
+                         "-a -c <= -1\n"
+                         "a + c >= 1\n"
+                         "+ b + c +d >= 2\n"
+                         "Binaries\n"
+                         "a b c d\n"
+                         "End\n";
+
+    std::istringstream iss(str_pb);
+
+    auto pb = baryonyx::make_problem(ctx, iss);
+    auto result = baryonyx::solve(ctx, pb);
+
+    Ensures(result.status == baryonyx::result_status::success);
+
+    Ensures(is_essentially_equal(result.value, -0.6, 0.01));
+
+    if (result)
+        Ensures(baryonyx::is_valid_solution(pb, result.variable_value) ==
+                true);
 }
 
 static void
@@ -481,6 +528,7 @@ main(int /* argc */, char* /* argv */ [])
 {
     test_preprocessor();
     test_preprocessor_2();
+    test_real_cost();
     test_assignment_problem();
     test_assignment_problem_random_coast();
     test_negative_coeff();

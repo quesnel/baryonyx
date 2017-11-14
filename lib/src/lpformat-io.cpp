@@ -501,43 +501,71 @@ read_operator(parser_stack& stack)
 static inline int
 read_integer(parser_stack& stack)
 {
-    std::string str = stack.top();
+    std::string str = stack.pop();
+    bool negative = false;
 
-    bool negative{ false };
-    int ret{ 0 };
-    std::string::size_type i{ 0 };
-
-    if (str[i] == '-') {
+    if (str[0] == '-') {
         negative = true;
 
         if (str.size() > 1) {
-            i = 1;
+            str = str.substr(1);
         } else {
-            stack.pop();
-            str = stack.top();
+            str = stack.pop();
         }
     }
 
-    if (std::isdigit(str[i])) {
-        ret = str[i] - '0';
-        ++i;
+    char* endptr;
+    errno = 0;
+    long value = std::strtol(str.c_str(), &endptr, 10);
 
-        std::string::size_type e{ str.length() };
-        for (; i != e; ++i) {
-            if (std::isdigit(str[i])) {
-                ret *= 10;
-                ret += str[i] - '0';
-            } else {
-                break;
-            }
+    if ((errno == ERANGE and (value == LONG_MIN or value == LONG_MAX)) or
+        (value == 0 and endptr == str.c_str()))
+        throw file_format_failure(
+          file_format_error_tag::bad_integer, stack.line(), stack.column());
+
+    if (value < INT_MIN)
+        throw file_format_failure(
+          file_format_error_tag::bad_integer, stack.line(), stack.column());
+
+    if (value > INT_MAX)
+        throw file_format_failure(
+          file_format_error_tag::bad_integer, stack.line(), stack.column());
+
+    if (*endptr != '\0')
+        stack.push_front(endptr);
+
+    return (negative) ? -value : value;
+}
+
+static inline double
+read_double(parser_stack& stack)
+{
+    std::string str = stack.pop();
+
+    bool negative = false;
+
+    if (str[0] == '-') {
+        negative = true;
+
+        if (str.size() > 1) {
+            str = str.substr(1);
+        } else {
+            str = stack.pop();
         }
-
-        stack.substr_front(i);
-        return negative ? -ret : ret;
     }
 
-    throw file_format_failure(
-      file_format_error_tag::bad_integer, stack.line(), stack.column());
+    char* endptr;
+    errno = 0;
+    double value = std::strtod(str.c_str(), &endptr);
+    if ((errno == ERANGE and (value == HUGE_VAL or value == -HUGE_VAL)) or
+        (value == 0.0 and endptr == str.c_str()))
+        throw file_format_failure(
+          file_format_error_tag::bad_integer, stack.line(), stack.column());
+
+    if (*endptr != '\0')
+        stack.push_front(endptr);
+
+    return (negative) ? -value : value;
 }
 
 static inline std::tuple<std::string, int>
@@ -566,6 +594,46 @@ read_function_element(parser_stack& stack)
                 std::get<1>(ret) *= -1;
         } else if (negative) {
             std::get<1>(ret) = -1;
+        }
+    }
+
+    if (stack.is_topic())
+        return ret;
+
+    str = stack.top();
+
+    if (std::isalpha(str[0]))
+        std::get<0>(ret) = read_name(stack);
+
+    return ret;
+}
+
+static inline std::tuple<std::string, double>
+read_objective_function_element(parser_stack& stack)
+{
+    bool negative{ false };
+    std::tuple<std::string, double> ret{ std::string(), { 1.0 } };
+
+    std::string str = stack.pop();
+
+    if (str[0] == '-' or str[0] == '+') {
+        negative = (str[0] == '-');
+
+        if (str.length() != 1)
+            stack.push_front(str.substr(1, std::string::npos));
+    } else {
+        stack.push_front(str);
+    }
+
+    str = stack.top();
+
+    {
+        if (std::isdigit(str[0])) {
+            std::get<1>(ret) = read_double(stack);
+            if (negative)
+                std::get<1>(ret) *= -1.0;
+        } else if (negative) {
+            std::get<1>(ret) = -1.0;
         }
     }
 
@@ -634,7 +702,7 @@ read_objective_function(parser_stack& stack, problem& p)
     }
 
     while (not stack.is_topic()) {
-        auto elem = read_function_element(stack);
+        auto elem = read_objective_function_element(stack);
 
         if (std::get<0>(elem).empty()) // we read a constant
             ret.value += std::get<1>(elem);
@@ -945,7 +1013,8 @@ private:
         }
     }
 
-    void write_function_element(const std::vector<function_element>& f) const
+    template<typename C>
+    void write_function_element(const C& f) const
     {
         for (auto& elem : f) {
             os << ((elem.factor < 0) ? "- " : "+ ");

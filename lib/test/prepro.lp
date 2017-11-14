@@ -1,7 +1,7 @@
 minimize
 
-a + b + c + d + 1000 e + 1000 t + x + y + z + w + c1 + c2 + c3 + c4 + c5 + c6
- + d1 + d2 + d3 + d4 + d5 + d6 - 950 t - 75 t + 15 t + 25 t + 1000 - 998 e + ZZ
+a + b + c + d + 1000.5 e + 1000 t + x + y + z + w + c1 + c2 + c3 + c4 + c5 + c6
+ + d1 + d2 + d3 + d4 + d5 + d6 - 950 t - 75 t + 15 t + 25 t + 1000.45 - 998 e - 0.5 ZZ
 
 subject to
   w = 0

@@ -457,13 +457,13 @@ struct solver
     }
 
     bx::result results(const c_type<floatingpoint_type>& original_costs,
-                       const int cost_constant) const
+                       const double cost_constant) const
     {
         bx::result ret;
 
         if (is_valid_solution(ap, x, b)) {
             ret.status = bx::result_status::success;
-            int value = cost_constant;
+            double value = cost_constant;
 
             for (int i{ 0 }, ei{ n }; i != ei; ++i)
                 value += original_costs[i] * x[i];
@@ -1130,7 +1130,7 @@ struct solver_functor
       int variables,
       const c_type<floatingpointT>& original_costs,
       const c_type<floatingpointT>& norm_costs,
-      int cost_constant,
+      double cost_constant,
       const bx::itm::parameters& p,
       randomT& rng)
     {
@@ -1327,7 +1327,7 @@ struct optimize_functor
       int variables,
       const c_type<floatingpointT>& original_costs,
       const c_type<floatingpointT>& norm_costs,
-      int cost_constant,
+      double cost_constant,
       const bx::itm::parameters& p,
       randomT& rng)
     {

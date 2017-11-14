@@ -726,6 +726,18 @@ struct function_element
     index variable_index{ -1 };
 };
 
+struct objective_function_element
+{
+    objective_function_element(double factor_, index variable_index_) noexcept
+      : factor(factor_)
+      , variable_index(variable_index_)
+    {
+    }
+
+    double factor = { 0 };
+    index variable_index{ -1 };
+};
+
 struct constraint
 {
     std::string label;
@@ -736,8 +748,8 @@ struct constraint
 
 struct objective_function
 {
-    std::vector<function_element> elements;
-    int value = { 0 };
+    std::vector<objective_function_element> elements;
+    double value = { 0 };
 };
 
 struct affected_variables
@@ -789,7 +801,7 @@ size(const baryonyx::problem& pb) noexcept
 inline void
 clear(baryonyx::problem& pb) noexcept
 {
-    std::vector<function_element>().swap(pb.objective.elements);
+    std::vector<objective_function_element>().swap(pb.objective.elements);
 
     std::vector<constraint>().swap(pb.equal_constraints);
     std::vector<constraint>().swap(pb.greater_constraints);

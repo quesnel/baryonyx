@@ -53,6 +53,21 @@ operator==(const function_element& lhs, const function_element& rhs) noexcept
 }
 
 inline bool
+operator<(const objective_function_element& lhs,
+          const objective_function_element& rhs)
+{
+    return lhs.variable_index < rhs.variable_index;
+}
+
+inline bool
+operator==(const objective_function_element& lhs,
+           const objective_function_element& rhs) noexcept
+{
+    return lhs.factor == rhs.factor and
+           lhs.variable_index == rhs.variable_index;
+}
+
+inline bool
 operator==(const constraint& lhs, const constraint& rhs) noexcept
 {
     return lhs.elements == rhs.elements and lhs.value == rhs.value and
