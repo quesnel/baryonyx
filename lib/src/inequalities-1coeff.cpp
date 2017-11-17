@@ -41,6 +41,7 @@
 #include "utils.hpp"
 
 #include <cassert>
+#include <utility>
 
 namespace bx = baryonyx;
 
@@ -413,7 +414,7 @@ struct constraint_calculator
         //
 
         int i{ 0 }, selected{ -1 }, first, second;
-        const int endi = static_cast<int>(r.size());
+        const auto endi = static_cast<int>(r.size());
         int sum{ 0 };
 
         for (; i != endi; ++i) {
@@ -528,14 +529,14 @@ struct solver
 
     solver(random_generator_type& rng_,
            int n_,
-           const c_type<floatingpoint_type>& c_,
+           c_type<floatingpoint_type> c_,
            const std::vector<bx::itm::merged_constraint>& csts)
       : rng(rng_)
       , m(csts.size())
       , n(n_)
       , ap(m, n)
       , b(m)
-      , c(c_)
+      , c(std::move(c_))
       , x(n)
       , pi(m)
     {
@@ -640,8 +641,8 @@ struct solver
     }
 
     void print(std::shared_ptr<bx::context> ctx,
-                   const std::vector<std::string>& names,
-                   int print_level) const
+               const std::vector<std::string>& names,
+               int print_level) const
     {
         if (print_level <= 0)
             return;
@@ -767,19 +768,16 @@ struct cycle_avoidance
 
     std::vector<std::size_t> history;
     std::size_t limit;
-    int nb;
+    int nb{ 0 };
 
     cycle_avoidance(std::size_t limit_ = 48l)
       : history(limit_)
       , limit(limit_)
-      , nb(0)
     {
         history.clear();
     }
 
-    ~cycle_avoidance()
-    {
-    }
+    ~cycle_avoidance() = default;
 
     bool have_cycle()
     {
@@ -904,7 +902,7 @@ struct compute_reversing
     int nb = 0;
 
     compute_reversing(std::shared_ptr<bx::context> ctx, randomT&)
-      : m_ctx(ctx)
+      : m_ctx(std::move(ctx))
     {
     }
 
@@ -955,7 +953,7 @@ struct compute_none
     no_cycle_avoidance<int> detect_infeasability_cycle;
 
     compute_none(std::shared_ptr<bx::context> ctx, randomT&)
-      : m_ctx(ctx)
+      : m_ctx(std::move(ctx))
     {
     }
 
@@ -1007,7 +1005,7 @@ struct compute_random
 
     compute_random(std::shared_ptr<bx::context> ctx,
                    random_generator_type& rng_)
-      : m_ctx(ctx)
+      : m_ctx(std::move(ctx))
       , rng(rng_)
     {
     }
@@ -1091,7 +1089,7 @@ struct compute_infeasibility
 
     compute_infeasibility(std::shared_ptr<bx::context> ctx,
                           random_generator_type& rng_)
-      : m_ctx(ctx)
+      : m_ctx(std::move(ctx))
       , rng(rng_)
     {
     }
@@ -1224,9 +1222,9 @@ struct solver_functor
     bx::result m_best;
 
     solver_functor(std::shared_ptr<bx::context> ctx,
-                   const std::vector<std::string>& names)
-      : m_ctx(ctx)
-      , m_names(names)
+                   std::vector<std::string> names)
+      : m_ctx(std::move(ctx))
+      , m_names(std::move(names))
     {
     }
 
@@ -1349,7 +1347,7 @@ struct optimize_functor
                      int thread_id,
                      const std::vector<std::string>& variable_names,
                      const bx::affected_variables& affected_vars)
-      : m_ctx(ctx)
+      : m_ctx(std::move(ctx))
       , m_thread_id(thread_id)
       , m_variable_names(variable_names)
       , m_affected_vars(affected_vars)

@@ -67,11 +67,7 @@ public:
 
     struct access
     {
-        access()
-          : position(-1)
-          , value(-1)
-        {
-        }
+        access() = default;
 
         access(index_type position_, index_type value_)
           : position(position_)
@@ -79,8 +75,8 @@ public:
         {
         }
 
-        index_type position;
-        index_type value;
+        index_type position{ -1 };
+        index_type value{ -1 };
     };
 
     struct access_compare

@@ -50,12 +50,12 @@ operator<<(std::ostream& os, const result& result)
     auto store = os.flags();
 
     os.flags(store | os.boolalpha);
-    os << "\\ solver................: " << result.method << '\n'
-       << "\\ constraints...........: " << result.constraints << '\n'
-       << "\\ variables.............: " << result.variables << '\n'
-       << "\\ duration..............: " << result.duration << "s\n"
-       << "\\ loop..................: " << result.loop << '\n'
-       << "\\ status................: ";
+    os << R"(\ solver................: )" << result.method << '\n'
+       << R"(\ constraints...........: )" << result.constraints << '\n'
+       << R"(\ variables.............: )" << result.variables << '\n'
+       << R"(\ duration..............: )" << result.duration << "s\n"
+       << R"(\ loop..................: )" << result.loop << '\n'
+       << R"(\ status................: )";
 
     switch (result.status) {
     case result_status::uninitialized:
@@ -63,7 +63,7 @@ operator<<(std::ostream& os, const result& result)
         break;
     case result_status::success:
         os << "solution found\n"
-           << "\\ value.................: " << result.value << '\n'
+           << R"(\ value.................: )" << result.value << '\n'
            << "\\ variables.............: \n";
 
         for (std::size_t i{ 0 }, e{ result.affected_vars.names.size() };
@@ -78,17 +78,17 @@ operator<<(std::ostream& os, const result& result)
         break;
     case result_status::time_limit_reached:
         os << "time limit reached\n"
-           << "\\ remaining constraints.: " << result.remaining_constraints
+           << R"(\ remaining constraints.: )" << result.remaining_constraints
            << '\n';
         break;
     case result_status::kappa_max_reached:
         os << "kappa max reached\n"
-           << "\\ remaining constraints.: " << result.remaining_constraints
+           << R"(\ remaining constraints.: )" << result.remaining_constraints
            << '\n';
         break;
     case result_status::limit_reached:
         os << "limit reached\n"
-           << "\\ remaining constraints.: " << result.remaining_constraints
+           << R"(\ remaining constraints.: )" << result.remaining_constraints
            << '\n';
         break;
     }
@@ -138,21 +138,21 @@ inline std::ostream&
 operator<<(std::ostream& os, const resume& pb)
 {
     return os << "\\ problem stats:\n"
-              << "\\  nb variables: "
+              << R"(\  nb variables: )"
               << std::accumulate(pb.variables.begin(), pb.variables.end(), 0)
               << '\n'
-              << "\\   ..... real: " << pb.variables[0] << '\n'
-              << "\\   ... binary: " << pb.variables[1] << '\n'
-              << "\\   .. general: " << pb.variables[2] << '\n'
-              << "\\  nb constraints: "
+              << R"(\   ..... real: )" << pb.variables[0] << '\n'
+              << R"(\   ... binary: )" << pb.variables[1] << '\n'
+              << R"(\   .. general: )" << pb.variables[2] << '\n'
+              << R"(\  nb constraints: )"
               << std::accumulate(
                    pb.constraints.begin(), pb.constraints.end(), 0)
               << '\n'
-              << "\\   ........ =  : " << pb.constraints[0] << '\n'
-              << "\\   ........ >= : " << pb.constraints[1] << '\n'
-              << "\\   ........ <= : " << pb.constraints[2] << '\n'
-              << "\\  minimal value.: " << std::get<0>(pb.minmax) << '\n'
-              << "\\  maximal value.: " << std::get<1>(pb.minmax) << '\n';
+              << R"(\   ........ =  : )" << pb.constraints[0] << '\n'
+              << R"(\   ........ >= : )" << pb.constraints[1] << '\n'
+              << R"(\   ........ <= : )" << pb.constraints[2] << '\n'
+              << R"(\  minimal value.: )" << std::get<0>(pb.minmax) << '\n'
+              << R"(\  maximal value.: )" << std::get<1>(pb.minmax) << '\n';
 }
 
 } // namespace baryonyx

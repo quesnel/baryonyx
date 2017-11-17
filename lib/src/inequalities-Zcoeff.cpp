@@ -33,6 +33,7 @@
 #include <set>
 #include <thread>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 #include "fixed_array.hpp"
@@ -905,7 +906,7 @@ struct compute_none
 
     template<typename solverT>
     compute_none(std::shared_ptr<bx::context> ctx, const solverT& s, randomT&)
-      : m_ctx(ctx)
+      : m_ctx(std::move(ctx))
       , R(s.m)
     {
         compute_missing_constraint(s.ap, s.x, s.b, R);
@@ -949,7 +950,7 @@ struct compute_reversing
 
     template<typename solverT>
     compute_reversing(std::shared_ptr<bx::context> ctx, solverT& s, randomT&)
-      : m_ctx(ctx)
+      : m_ctx(std::move(ctx))
       , R(s.m)
     {
         compute_missing_constraint(s.ap, s.x, s.b, R);
@@ -995,7 +996,7 @@ struct compute_random
     compute_random(std::shared_ptr<bx::context> ctx,
                    solverT& s,
                    random_type& rng_)
-      : m_ctx(ctx)
+      : m_ctx(std::move(ctx))
       , R(s.m)
       , rng(rng_)
     {
@@ -1071,7 +1072,7 @@ struct compute_infeasibility
     compute_infeasibility(std::shared_ptr<bx::context> ctx,
                           solverT& s,
                           random_type& rng_)
-      : m_ctx(ctx)
+      : m_ctx(std::move(ctx))
       , R(s.m)
       , rng(rng_)
     {
@@ -1154,7 +1155,7 @@ struct solver_functor
                    const std::vector<std::string>& variable_names,
                    const bx::affected_variables& affected_vars)
 
-      : m_ctx(ctx)
+      : m_ctx(std::move(ctx))
       , m_variable_names(variable_names)
       , m_affected_vars(affected_vars)
     {
@@ -1374,7 +1375,7 @@ struct optimize_functor
                      int thread_id,
                      const std::vector<std::string>& variable_names,
                      const bx::affected_variables& affected_vars)
-      : m_ctx(ctx)
+      : m_ctx(std::move(ctx))
       , m_thread_id(thread_id)
       , m_variable_names(variable_names)
       , m_affected_vars(affected_vars)

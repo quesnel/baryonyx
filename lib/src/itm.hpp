@@ -25,6 +25,7 @@
 
 #include <baryonyx/core-compare>
 #include <baryonyx/core-out>
+#include <utility>
 
 namespace baryonyx {
 namespace itm {
@@ -226,11 +227,11 @@ struct parameters
 
 struct merged_constraint
 {
-    merged_constraint(const std::vector<function_element>& elements_,
+    merged_constraint(std::vector<function_element>  elements_,
                       int min_,
                       int max_,
                       int id_)
-      : elements(elements_)
+      : elements(std::move(elements_))
       , min(min_)
       , max(max_)
       , id(id_)

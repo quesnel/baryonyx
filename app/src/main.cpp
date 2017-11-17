@@ -30,6 +30,7 @@
 
 #include <cmath>
 #include <cstring>
+#include <utility>
 
 #ifndef __WIN32
 #include <unistd.h>
@@ -42,7 +43,7 @@ struct write_parameters
     std::shared_ptr<baryonyx::context> ctx;
 
     write_parameters(std::shared_ptr<baryonyx::context> ctx_)
-      : ctx(ctx_)
+      : ctx(std::move(ctx_))
     {
     }
 };
@@ -105,7 +106,7 @@ main(int argc, char* argv[])
             auto now = std::chrono::system_clock::now();
             auto in_time_t = std::chrono::system_clock::to_time_t(now);
 
-            ofs << baryonyx::resume(pb) << "\\ solver starts: "
+            ofs << baryonyx::resume(pb) << R"(\ solver starts: )"
                 << std::put_time(std::localtime(&in_time_t), "%Y-%m-%d %X")
                 << "\n\\ parameters:\n"
                 << ::write_parameters(ctx);
@@ -113,14 +114,14 @@ main(int argc, char* argv[])
             auto ret = solve_or_optimize(ctx, pb);
 
             in_time_t = std::chrono::system_clock::to_time_t(now);
-            ofs << "\\ solver finishes: "
+            ofs << R"(\ solver finishes: )"
                 << std::put_time(std::localtime(&in_time_t), "%Y-%m-%d %X")
                 << '\n';
 
             if (ret.status == baryonyx::result_status::success) {
-                ofs << "\\ Solution found: " << ret.value << '\n' << ret;
+                ofs << R"(\ Solution found: )" << ret.value << '\n' << ret;
             } else {
-                ofs << "\\ Solution not found. Missing constraints: "
+                ofs << R"(\ Solution not found. Missing constraints: )"
                     << ret.remaining_constraints << '\n';
             }
         } catch (const baryonyx::precondition_failure& e) {
@@ -248,18 +249,18 @@ operator<<(std::ostream& os, const write_parameters& wp)
         return os;
 
     const auto& params = wp.ctx->get_parameters();
-    for (auto it = params.begin(), et = params.end(); it != et; ++it) {
-        os << "\\ " << it->first << " = ";
+    for (const auto & param : params) {
+        os << R"(\ )" << param.first << " = ";
 
-        switch (it->second.type) {
+        switch (param.second.type) {
         case baryonyx::parameter::tag::string:
-            os << it->second.s;
+            os << param.second.s;
             break;
         case baryonyx::parameter::tag::integer:
-            os << it->second.l;
+            os << param.second.l;
             break;
         case baryonyx::parameter::tag::real:
-            os << it->second.d;
+            os << param.second.d;
             break;
         }
 

@@ -32,6 +32,7 @@
 #include <cmath>
 #include <cstdarg>
 #include <cstdio>
+#include <utility>
 
 namespace baryonyx {
 
@@ -81,6 +82,8 @@ template<class T, size_t N>
 constexpr int
 length(const T (&array)[N]) noexcept
 {
+    (void)array;
+
     assert(N <= INT_MAX);
 
     return static_cast<int>(N);
@@ -136,7 +139,7 @@ class timer_profiler
 {
 public:
     timer_profiler(std::shared_ptr<baryonyx::context> ctx)
-      : m_ctx(ctx)
+      : m_ctx(std::move(ctx))
       , m_s(std::chrono::steady_clock::now())
     {
     }

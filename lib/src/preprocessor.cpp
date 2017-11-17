@@ -436,7 +436,7 @@ try_remove_assigned_variables_01(std::shared_ptr<baryonyx::context> ctx,
                                  baryonyx::operator_type type,
                                  int& variable)
 {
-    int nb = baryonyx::numeric_cast<int>(cst.elements.size());
+    auto nb = baryonyx::numeric_cast<int>(cst.elements.size());
     int value{ -1 };
     bool found{ false };
 
@@ -595,7 +595,7 @@ remove_assigned_variables(std::shared_ptr<baryonyx::context> ctx,
     bool modify = false;
 
     int i = 0;
-    int e = baryonyx::numeric_cast<int>(pb.vars.values.size());
+    auto e = baryonyx::numeric_cast<int>(pb.vars.values.size());
     while (i != e) {
         if (pb.vars.values[i].min == pb.vars.values[i].max) {
             ctx->debug("      bound: variable %s = %d must be removed\n",

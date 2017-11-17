@@ -245,7 +245,7 @@ context::parse(int argc, char* argv[]) noexcept
         { "optimize", 0, nullptr, 'O' }, { "check", 1, nullptr, 'C' },
         { "help", 0, nullptr, 'h' },     { "param", 1, nullptr, 'p' },
         { "limit", 1, nullptr, 'l' },    { "quiet", 0, nullptr, 'q' },
-        { "verbose", 1, nullptr, 'v' },  { 0, 0, nullptr, 0 }
+        { "verbose", 1, nullptr, 'v' },  { nullptr, 0, nullptr, 0 }
     };
 
     int opt_index;

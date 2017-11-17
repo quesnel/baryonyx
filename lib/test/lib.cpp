@@ -87,7 +87,7 @@ check_numeric_cast()
     EnsuresThrow(baryonyx::numeric_cast<short int>(v.max_size()),
                  std::exception);
 
-    unsigned int checked_size = baryonyx::numeric_cast<unsigned int>(v.size());
+    auto checked_size = baryonyx::numeric_cast<unsigned int>(v.size());
     Ensures(0 == checked_size);
 }
 

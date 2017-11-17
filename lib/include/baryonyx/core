@@ -31,6 +31,7 @@
 #include <string>
 #include <tuple>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 #include <cstdarg>
@@ -349,9 +350,17 @@ public:
         string
     };
 
+    union
+    {
+        int l;
+        double d;
+        std::string s;
+    };
+
+    tag type{ tag::integer };
+
     parameter()
       : l(0)
-      , type(tag::integer)
     {
     }
 
@@ -367,8 +376,8 @@ public:
     {
     }
 
-    explicit parameter(const std::string& value_)
-      : s(value_)
+    explicit parameter(std::string value_)
+      : s(std::move(value_))
       , type(tag::string)
     {
     }
@@ -538,15 +547,6 @@ public:
         *this = p;
         p = copy;
     }
-
-    union
-    {
-        int l;
-        double d;
-        std::string s;
-    };
-
-    tag type;
 };
 
 /**
