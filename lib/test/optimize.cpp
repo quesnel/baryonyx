@@ -35,7 +35,7 @@
 #include <baryonyx/core>
 
 void
-test_qap(std::shared_ptr<baryonyx::context> ctx)
+test_qap(const std::shared_ptr<baryonyx::context>& ctx)
 {
     auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/small4.lp");
 
@@ -70,7 +70,7 @@ test_qap(std::shared_ptr<baryonyx::context> ctx)
 }
 
 void
-test_n_queens_problem(std::shared_ptr<baryonyx::context> ctx)
+test_n_queens_problem(const std::shared_ptr<baryonyx::context>& ctx)
 {
     std::vector<bool> valid_solutions(30, false);
     std::vector<double> solutions(30, 0.0);

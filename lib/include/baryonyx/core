@@ -282,7 +282,7 @@ struct problem_definition_failure : std::runtime_error
     problem_definition_failure(std::string element,
                                problem_definition_error_tag failure)
       : std::runtime_error("problem_definition_failure")
-      , m_error{ element, failure }
+      , m_error{ std::move(element), failure }
     {
     }
 
@@ -869,7 +869,7 @@ compute_min_max_objective_function(const problem& pb) noexcept
  */
 BARYONYX_API
 problem
-make_problem(std::shared_ptr<baryonyx::context> ctx,
+make_problem(const std::shared_ptr<baryonyx::context>& ctx,
              const std::string& filename);
 
 /**
@@ -880,16 +880,16 @@ make_problem(std::shared_ptr<baryonyx::context> ctx,
  */
 BARYONYX_API
 problem
-make_problem(std::shared_ptr<baryonyx::context> ctx, std::istream& is);
+make_problem(const std::shared_ptr<baryonyx::context>& ctx, std::istream& is);
 
 BARYONYX_API
 result
-make_result(std::shared_ptr<baryonyx::context> ctx,
+make_result(const std::shared_ptr<baryonyx::context>& ctx,
             const std::string& filename);
 
 BARYONYX_API
 result
-make_result(std::shared_ptr<baryonyx::context> ctx, std::istream& is);
+make_result(const std::shared_ptr<baryonyx::context>& ctx, std::istream& is);
 
 /**
  * Write @e lp problem into a stream.

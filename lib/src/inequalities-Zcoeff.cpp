@@ -263,7 +263,7 @@ compute_missing_constraint(const apT& ap,
 
 template<typename apT, typename xT, typename bT>
 void
-print_missing_constraint(std::shared_ptr<baryonyx::context> ctx,
+print_missing_constraint(const std::shared_ptr<baryonyx::context>& ctx,
                          const apT& ap,
                          const xT& x,
                          const bT& b,
@@ -467,7 +467,7 @@ struct solver
             x(i) = init_x(c(i), mode_type());
     }
 
-    void print(std::shared_ptr<bx::context> ctx,
+    void print(const std::shared_ptr<bx::context>& ctx,
                const std::vector<std::string>& names,
                int print_level) const
     {
@@ -1588,7 +1588,7 @@ rng_normalize_costs(const c_type<floatingpointT>& c, randomT& rng)
  */
 template<typename floatingpointT, typename randomT>
 static c_type<floatingpointT>
-normalize_costs(std::shared_ptr<bx::context> ctx,
+normalize_costs(const std::shared_ptr<bx::context>& ctx,
                 const std::string& norm,
                 const c_type<floatingpointT>& c,
                 randomT& rng)
@@ -1839,7 +1839,7 @@ namespace baryonyx {
 namespace itm {
 
 result
-inequalities_Zcoeff_wedelin_solve(std::shared_ptr<baryonyx::context> ctx,
+inequalities_Zcoeff_wedelin_solve(const std::shared_ptr<baryonyx::context>& ctx,
                                   problem& pb)
 {
     ctx->info("inequalities_Zcoeff_wedelin_solve\n");
@@ -1880,7 +1880,7 @@ inequalities_Zcoeff_wedelin_solve(std::shared_ptr<baryonyx::context> ctx,
 }
 
 result
-inequalities_Zcoeff_wedelin_optimize(std::shared_ptr<baryonyx::context> ctx,
+inequalities_Zcoeff_wedelin_optimize(const std::shared_ptr<baryonyx::context>& ctx,
                                      problem& pb,
                                      int thread)
 {

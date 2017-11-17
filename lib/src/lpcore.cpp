@@ -33,6 +33,7 @@
 #include <cmath>
 #include <cstdio>
 #include <cstring>
+#include <utility>
 
 #include <getopt.h>
 
@@ -334,7 +335,7 @@ context::set_parameter(const std::string& name, std::string p) noexcept
     if (not std::isalnum(name[0]))
         return;
 
-    m_parameters[name] = std::move(p);
+    m_parameters[name] = p;
 }
 
 double
@@ -586,7 +587,7 @@ context::error(const char*, va_list) const noexcept
 #endif
 
 problem
-make_problem(std::shared_ptr<baryonyx::context> ctx,
+make_problem(const std::shared_ptr<baryonyx::context>& ctx,
              const std::string& filename)
 {
     ctx->info("problem reads from file `%s'\n", filename.c_str());
@@ -599,7 +600,7 @@ make_problem(std::shared_ptr<baryonyx::context> ctx,
 }
 
 problem
-make_problem(std::shared_ptr<baryonyx::context> ctx, std::istream& is)
+make_problem(const std::shared_ptr<baryonyx::context>& ctx, std::istream& is)
 {
     ctx->info("problem reads from stream\n");
 
@@ -609,7 +610,7 @@ make_problem(std::shared_ptr<baryonyx::context> ctx, std::istream& is)
 }
 
 result
-make_result(std::shared_ptr<baryonyx::context> ctx,
+make_result(const std::shared_ptr<baryonyx::context>& ctx,
             const std::string& filename)
 {
     ctx->info("solution reads from file `%s'\n", filename.c_str());
@@ -622,7 +623,7 @@ make_result(std::shared_ptr<baryonyx::context> ctx,
 }
 
 result
-make_result(std::shared_ptr<baryonyx::context> ctx, std::istream& is)
+make_result(const std::shared_ptr<baryonyx::context>& ctx, std::istream& is)
 {
     ctx->info("solution reads from stream\n");
 
@@ -653,7 +654,7 @@ optimize(std::shared_ptr<baryonyx::context> ctx, problem& pb)
 {
     baryonyx_private::check_consistency(pb);
 
-    return baryonyx_private::optimize(ctx, pb);
+    return baryonyx_private::optimize(std::move(ctx), pb);
 }
 
 template<typename functionT, typename variablesT>

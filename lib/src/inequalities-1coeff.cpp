@@ -47,7 +47,6 @@ namespace bx = baryonyx;
 
 namespace {
 
-using bx::length;
 
 struct maximize_tag
 {
@@ -640,7 +639,7 @@ struct solver
             row_updaters[k].reinit();
     }
 
-    void print(std::shared_ptr<bx::context> ctx,
+    void print(const std::shared_ptr<bx::context>& ctx,
                const std::vector<std::string>& names,
                int print_level) const
     {
@@ -856,7 +855,7 @@ compute_missing_constraint(solverT& solver, std::vector<int>& R)
 #ifndef BARYONYX_FULL_OPTIMIZATION
 template<typename floatingpointT>
 static void
-print_AP(std::shared_ptr<bx::context> ctx,
+print_AP(const std::shared_ptr<bx::context>& ctx,
          const AP_type<floatingpointT>& ap,
          int k,
          int rows,
@@ -1573,7 +1572,7 @@ rng_normalize_costs(const c_type<floatingpointT>& c, randomT& rng)
  */
 template<typename floatingpointT, typename randomT>
 static c_type<floatingpointT>
-normalize_costs(std::shared_ptr<bx::context> ctx,
+normalize_costs(const std::shared_ptr<bx::context>& ctx,
                 const std::string& norm,
                 const c_type<floatingpointT>& c,
                 randomT& rng)
@@ -1814,7 +1813,7 @@ namespace baryonyx {
 namespace itm {
 
 result
-inequalities_1coeff_wedelin_solve(std::shared_ptr<baryonyx::context> ctx,
+inequalities_1coeff_wedelin_solve(const std::shared_ptr<baryonyx::context>& ctx,
                                   problem& pb)
 {
     parameters p(ctx);
@@ -1860,7 +1859,7 @@ inequalities_1coeff_wedelin_solve(std::shared_ptr<baryonyx::context> ctx,
 }
 
 result
-inequalities_1coeff_wedelin_optimize(std::shared_ptr<baryonyx::context> ctx,
+inequalities_1coeff_wedelin_optimize(const std::shared_ptr<baryonyx::context>& ctx,
                                      problem& pb,
                                      int thread)
 {

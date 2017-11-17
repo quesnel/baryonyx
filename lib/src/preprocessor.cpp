@@ -236,7 +236,7 @@ struct hashed_constraints
 // duplicated constraints and build an index vector with constraints preserved.
 //
 static void
-remove_duplicated_constraints(std::shared_ptr<baryonyx::context> ctx,
+remove_duplicated_constraints(const std::shared_ptr<baryonyx::context>& ctx,
                               std::vector<baryonyx::constraint>& cst,
                               baryonyx::operator_type type,
                               int& constraint_nb)
@@ -308,7 +308,7 @@ remove_duplicated_constraints(std::shared_ptr<baryonyx::context> ctx,
 }
 
 static void
-remove_duplicated_constraints(std::shared_ptr<baryonyx::context> ctx,
+remove_duplicated_constraints(const std::shared_ptr<baryonyx::context>& ctx,
                               baryonyx::problem& pb,
                               int& constraint)
 {
@@ -337,7 +337,7 @@ get_factor_type(const std::vector<baryonyx::function_element>& elems)
 }
 
 static bool
-try_remove_assigned_variable(std::shared_ptr<baryonyx::context> ctx,
+try_remove_assigned_variable(const std::shared_ptr<baryonyx::context>& ctx,
                              baryonyx::problem& pb,
                              const baryonyx::constraint& cst,
                              baryonyx::operator_type type,
@@ -430,7 +430,7 @@ try_remove_assigned_variable(std::shared_ptr<baryonyx::context> ctx,
 }
 
 static bool
-try_remove_assigned_variables_01(std::shared_ptr<baryonyx::context> ctx,
+try_remove_assigned_variables_01(const std::shared_ptr<baryonyx::context>& ctx,
                                  baryonyx::problem& pb,
                                  const baryonyx::constraint& cst,
                                  baryonyx::operator_type type,
@@ -493,7 +493,7 @@ try_remove_assigned_variables_01(std::shared_ptr<baryonyx::context> ctx,
 }
 
 static bool
-try_remove_assigned_variables_101(std::shared_ptr<baryonyx::context> ctx,
+try_remove_assigned_variables_101(const std::shared_ptr<baryonyx::context>& ctx,
                                   baryonyx::problem& pb,
                                   const baryonyx::constraint& cst,
                                   baryonyx::operator_type type,
@@ -567,7 +567,7 @@ try_remove_assigned_variables_101(std::shared_ptr<baryonyx::context> ctx,
 // and y are equals to 0 and the constraint can be removed.
 //
 static bool
-try_remove_assigned_variables(std::shared_ptr<baryonyx::context> ctx,
+try_remove_assigned_variables(const std::shared_ptr<baryonyx::context>& ctx,
                               baryonyx::problem& pb,
                               const baryonyx::constraint& cst,
                               baryonyx::operator_type type,
@@ -587,7 +587,7 @@ try_remove_assigned_variables(std::shared_ptr<baryonyx::context> ctx,
 }
 
 static void
-remove_assigned_variables(std::shared_ptr<baryonyx::context> ctx,
+remove_assigned_variables(const std::shared_ptr<baryonyx::context>& ctx,
                           baryonyx::problem& pb,
                           int& variable,
                           int& constraint_nb)
@@ -711,7 +711,7 @@ is_use_variable(baryonyx::problem& pb, int i)
 }
 
 void
-remove_unused_variables(std::shared_ptr<baryonyx::context> ctx,
+remove_unused_variables(const std::shared_ptr<baryonyx::context>& ctx,
                         baryonyx::problem& pb,
                         int& variable)
 {
@@ -792,7 +792,7 @@ remove_unused_variables(std::shared_ptr<baryonyx::context> ctx,
 namespace baryonyx_private {
 
 void
-preprocess(std::shared_ptr<baryonyx::context> ctx, baryonyx::problem& pb)
+preprocess(const std::shared_ptr<baryonyx::context>& ctx, baryonyx::problem& pb)
 {
     ctx->info("preprocessing:\n");
 

@@ -50,7 +50,7 @@ struct merged_constraint_hash
 //
 template<typename cacheT, typename retT>
 static void
-fill_merged_constraints(std::shared_ptr<bx::context> ctx,
+fill_merged_constraints(const std::shared_ptr<bx::context>& ctx,
                         cacheT& cache,
                         bx::operator_type op,
                         const bx::problem& pb,
@@ -134,7 +134,7 @@ operator_from_string(const std::string& op) noexcept
 // process).
 //
 static std::vector<bx::itm::merged_constraint>
-make_unsorted_merged_constraints(std::shared_ptr<bx::context> ctx,
+make_unsorted_merged_constraints(const std::shared_ptr<bx::context>& ctx,
                                  const bx::problem& pb)
 {
     ctx->info("  - merge constraints without any sort\n");
@@ -165,7 +165,7 @@ make_unsorted_merged_constraints(std::shared_ptr<bx::context> ctx,
 // unsorted_merged_constraints.
 //
 static std::vector<bx::itm::merged_constraint>
-make_ordered_merged_constraints(std::shared_ptr<bx::context> ctx,
+make_ordered_merged_constraints(const std::shared_ptr<bx::context>& ctx,
                                 const bx::problem& pb,
                                 const bx::itm::parameters& p)
 {
@@ -224,7 +224,7 @@ make_ordered_merged_constraints(std::shared_ptr<bx::context> ctx,
 // unsorted_merged_constraints.
 //
 static std::vector<bx::itm::merged_constraint>
-make_special_merged_constraints(std::shared_ptr<bx::context> ctx,
+make_special_merged_constraints(const std::shared_ptr<bx::context>& ctx,
                                 const bx::problem& pb,
                                 const bx::itm::parameters& p)
 {
@@ -359,7 +359,7 @@ namespace baryonyx {
 namespace itm {
 
 std::vector<merged_constraint>
-make_merged_constraints(std::shared_ptr<context> ctx,
+make_merged_constraints(const std::shared_ptr<context>& ctx,
                         const problem& pb,
                         const parameters& p)
 {

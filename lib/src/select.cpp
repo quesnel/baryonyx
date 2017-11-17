@@ -105,7 +105,7 @@ is_101_coefficient(const bx::problem& pb) noexcept
 namespace baryonyx_private {
 
 bx::result
-solve(std::shared_ptr<bx::context> ctx, bx::problem& pb)
+solve(const std::shared_ptr<bx::context>& ctx, bx::problem& pb)
 {
     baryonyx_private::preprocess(ctx, pb);
 

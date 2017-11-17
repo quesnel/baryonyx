@@ -31,18 +31,18 @@ namespace baryonyx {
 namespace itm {
 
 result
-inequalities_1coeff_wedelin_solve(std::shared_ptr<context> ctx, problem& pb);
+inequalities_1coeff_wedelin_solve(const std::shared_ptr<context>& ctx, problem& pb);
 
 result
-inequalities_1coeff_wedelin_optimize(std::shared_ptr<context> ctx,
+inequalities_1coeff_wedelin_optimize(const std::shared_ptr<context>& ctx,
                                      problem& pb,
                                      int thread);
 
 result
-inequalities_Zcoeff_wedelin_solve(std::shared_ptr<context> ctx, problem& pb);
+inequalities_Zcoeff_wedelin_solve(const std::shared_ptr<context>& ctx, problem& pb);
 
 result
-inequalities_Zcoeff_wedelin_optimize(std::shared_ptr<context> ctx,
+inequalities_Zcoeff_wedelin_optimize(const std::shared_ptr<context>& ctx,
                                      problem& pb,
                                      int thread);
 
@@ -73,7 +73,7 @@ floating_point_type_to_string(floating_point_type type) noexcept
 }
 
 inline floating_point_type
-get_floating_point_type(std::shared_ptr<context> ctx) noexcept
+get_floating_point_type(const std::shared_ptr<context>& ctx) noexcept
 {
     auto str = ctx->get_string_parameter("floating-point-type", "double");
 
@@ -122,7 +122,7 @@ constraint_order_to_string(constraint_order type) noexcept
 }
 
 inline constraint_order
-get_constraint_order(std::shared_ptr<context> ctx) noexcept
+get_constraint_order(const std::shared_ptr<context>& ctx) noexcept
 {
     auto str = ctx->get_string_parameter("constraint-order", "none");
 
@@ -140,7 +140,7 @@ get_constraint_order(std::shared_ptr<context> ctx) noexcept
 
 struct parameters
 {
-    parameters(std::shared_ptr<context> ctx)
+    parameters(const std::shared_ptr<context>& ctx)
       : preprocessing(ctx->get_string_parameter("preprocessing", "none"))
       , norm(ctx->get_string_parameter("norm", "inf"))
       , time_limit(ctx->get_real_parameter("time-limit", -1.0))
@@ -245,7 +245,7 @@ struct merged_constraint
 };
 
 std::vector<merged_constraint>
-make_merged_constraints(std::shared_ptr<context> ctx,
+make_merged_constraints(const std::shared_ptr<context>& ctx,
                         const problem& pb,
                         const parameters& p);
 }

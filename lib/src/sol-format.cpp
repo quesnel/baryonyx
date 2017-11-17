@@ -53,7 +53,7 @@ read_result(std::istream& is)
         if (i != e and buffer[i] == '\\')
             continue;
 
-        auto it = buffer.find("=", 0);
+        auto it = buffer.find('=', 0);
         if (it == std::string::npos)
             throw baryonyx::file_format_failure(
               baryonyx::file_format_error_tag::bad_name, line, 0);

@@ -58,7 +58,7 @@ static const char* solver_error_format(baryonyx::solver_error_tag) noexcept;
 static std::ostream&
 operator<<(std::ostream& os, const write_parameters& wp);
 static baryonyx::result
-solve_or_optimize(std::shared_ptr<baryonyx::context> ctx,
+solve_or_optimize(const std::shared_ptr<baryonyx::context>& ctx,
                   baryonyx::problem& pb);
 
 int
@@ -271,7 +271,7 @@ operator<<(std::ostream& os, const write_parameters& wp)
 }
 
 static baryonyx::result
-solve_or_optimize(std::shared_ptr<baryonyx::context> ctx,
+solve_or_optimize(const std::shared_ptr<baryonyx::context>& ctx,
                   baryonyx::problem& pb)
 {
     if (ctx->optimize())

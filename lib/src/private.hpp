@@ -83,10 +83,10 @@ bool
 check_consistency(const baryonyx::problem& pb);
 
 void
-preprocess(std::shared_ptr<baryonyx::context> ctx, baryonyx::problem& pb);
+preprocess(const std::shared_ptr<baryonyx::context>& ctx, baryonyx::problem& pb);
 
 baryonyx::result
-solve(std::shared_ptr<baryonyx::context> ctx, baryonyx::problem& pb);
+solve(const std::shared_ptr<baryonyx::context>& ctx, baryonyx::problem& pb);
 
 baryonyx::result
 optimize(std::shared_ptr<baryonyx::context> ctx, baryonyx::problem& pb);

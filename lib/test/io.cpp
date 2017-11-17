@@ -31,6 +31,7 @@
 #include <baryonyx/core-compare>
 #include <baryonyx/core-out>
 #include <baryonyx/core>
+#include <utility>
 
 void
 test_examples_1(std::shared_ptr<baryonyx::context> ctx)
@@ -105,7 +106,7 @@ test_examples_1(std::shared_ptr<baryonyx::context> ctx)
 }
 
 void
-test_examples_2(std::shared_ptr<baryonyx::context> ctx)
+test_examples_2(const std::shared_ptr<baryonyx::context>& ctx)
 {
     std::ifstream ifs;
 
