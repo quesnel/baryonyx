@@ -1,6 +1,13 @@
-= baryonyx v0.2.2.0
+= baryonyx v0.2.3
 Gauthier Quesnel <gauthier.quesnel@inra.fr>
-v0.2.2.0, 2017-10-13
+
+== baryonyx v0.2.3.0, 2017-11-20
+
+preprocesor::
+
+* Improve the remove unused variable function
+
+== baryonyx v0.2.2.0, 2017-10-13
 
 preprocessor::
 
