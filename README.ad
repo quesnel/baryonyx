@@ -1,0 +1,397 @@
+= Baryonyx
+Gauthier Quesnel <gauthier.quesnel@inra.fr>
+v0.3, 201?-??-??
+:toc:
+:homepage: https://github.com/quesnel/baryonyx/
+
+https://en.wikipedia.org/wiki/Baryonyx[Baryonyx] is an integer and binary linear
+programming solver based on the http://www.cse.chalmers.se/~dag/[Dag Wedelin]
+heuristic.
+
+https://travis-ci.org/quesnel/baryonyx[image:https://travis-ci.org/quesnel/baryonyx.png?branch=master[Build Status]]
+
+Copyright © 2017 http://www.inra.fr/en[INRA]
+
+The software is released under the MIT license. See the LICENSE file.
+
+
+
+== Baryonyx
+
+=== Requirements
+
+* `cmake` (≥ 3)
+* c++ compiler with c++14 support (`gcc` ≥ 5, `clang` ≥ 3.5)
+
+For recent Debian and Ubuntu derivatives (remove clang to only use gcc):
+
+[source,bash]
+....
+apt-get install build-essential cmake clang
+....
+
+=== Installation
+
+Default, baryonyx provides a shared library `libbaryonyx-0.2.so`, a static
+library `libbaryonyx-0.2.a` and an executable `baryonyx-0.2`. To compile and
+install in default cmake's install directory:
+
+....
+cd baryonyx
+mkdir build
+cd build
+cmake -DCMAKE_BUILD_TYPE=Release ..
+make install
+....
+
+Previous command line install baryonyx program and library into the
+`/usr/local` prefix. If you install into another directory, you need to define
+three environment variables (into your `.bashrc` or equivalent). If you install
+into `$HOME/usr` for example, you need to define in your `.bashrc`:
+
+....
+export PATH=$PATH:$HOME/usr
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME/usr/lib
+export PKG_CONFIG_PATH=$PKG_CONFIX_PATH:$HOME/usr/lib/pkgconfig
+....
+
+Then run the following commands:
+
+....
+cd baryonyx
+mkdir build
+cd build
+cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$HOME/usr ..
+make install
+....
+
+To override the default build flags, remove the `CMAKE_BUILD_TYPE`
+parameter and override the `CXXFLAGS` as follow:
+
+....
+export CC=gcc-7
+export CXX=g++-7
+export CXXFLAGS='-Wall -Wextra -Werror -ftree-vectorize -mmmx -msse -msse2 -msse3 -O3'
+cmake -DCMAKE_INSTALL_PREFIX=$HOME/usr ..
+....
+
+=== Usage
+
+To run baryonyx in solver mode (ie. trying to valid all constraints):
+
+....
+baryonyx-0.2 file.lp
+....
+
+To run baryonyx into the heuristic model (ie. trying to valid all
+constraints and optimize the solution), add a `-o` or `--optimize`
+option to the command line:
+
+....
+baryonyx-0.2 file.lp
+....
+
+The baryonyx solver have many parameters. To assign it, use the
+`-p [name]:value` syntax in the command line:
+
+
+.Table Command line parameters
+[cols="1,1,5a", options="header"]
+|===
+|name| type| summary
+
+| time-limit
+| real
+| time in second to stop algorithm or stop the optimize mode
+
+| limit
+| integer
+| number of loop to stop algorithm
+
+| w
+| integer
+| warmup-iterator (number of loop without updating kappa)
+
+| theta
+| real
+| history parameters [0, 1[
+
+| delta
+| real
+| influence parameters [0, +oo[
+
+| kappa-min
+| real
+| kappa minimal value  [0, kappa-max
+
+| kappa-step
+| real
+| kappa updater [0, +oo[
+
+| kappa-max
+| real
+| kappa maximal value ]kappa-min, +oo[ to stop algorithm
+
+| alpha
+| real
+| adaptiveness parameter
+
+| pushing-k-factor
+| integer
+| use to lower the kappa using the push system
+
+| pushes-limit
+| integer
+| number of push before stopping the algorithm
+
+| pushing-objective-amplifier
+| real
+| use to make r more similar to costs
+
+| pushing-iteration-limit
+| integer
+| number of loop before trying a new push
+
+| norm
+| string
+| Select the cost normalization function
+
+* `none`  let unmodified costs.
+* `l1` use the l1-norm function
+* `l2` use the l2-norm function
+* `rng` (experimental)
+* `inf` (default): use the infinity norm.
+
+| constraint-order
+| string
+| Remaining constraints order. Values are:
+
+* `none` (default): use the lp format constraint order
+* `reversing`: reverse the lp format constraint order
+* `random-sorting`: random the remaining constraint list.
+* `infeasibility-decr`: compute infeasibility constraint in decremental order
+* `infeasibility-incr`: compute infeasibility constraint in incremental order.
+
+| preprocessing
+| string
+| Constraints matrix A order. Values are:
+
+* `none` (default): use the lp format constraint order.
+* `less,greater,equal` or `greater,less,equal` or any other form: use the type of operator
+* `variables-number` (experimental): use number variable links.
+* `variables-weight` (experimental): sort variables weights (sum variable appearance in all constraints).
+* `constraints-weight` (experimental): use number constraint links.
+
+| print-level
+| integer
+| show information if greater than 0
+|===
+
+For example:
+
+....
+baryonyx -p limit:1000000 lib/test/prevl1.lp
+baryonyx -p limit:-1 -p kappa-min:0.2 lib/test/prevl1.lp
+....
+
+=== Upgrade
+
+To upgrade to the latest version of baryonyx, under bash (or
+equivalent):
+
+....
+cd baryonyx
+git pull -r
+cd build
+make -j4
+make install install
+....
+
+== R
+
+To use rbaryonyx, you must compile and install the baryonyx library.
+Follow the previous section and install R.
+
+=== Installation
+
+The R rbaryonyx package requires several packages. Then, under a R terminal:
+
+....
+cd baryonyx/rbaryonyx
+R CMD REMOVE rbaryonyx <1>
+
+install.packages("roxygen2") <2>
+install.packages("Rcpp")
+install.packages("devtools")
+
+library(Rcpp) <3>
+compileAttributes(".")
+library(devtools)
+devtools::document()
+devtools::build()
+devtools::install()
+
+library(rbaryonyx) <4>
+?rbaryonyx <5>
+....
+
+<1> Remove previous installed version of rbaryonyx
+<2> Install the dependencies of rbaryonyx
+<3> Build the rbaryonyx package
+<4> Load the package
+<5> The help
+
+=== API
+
+Two functions are provided to solve or optimize 01 linear programming
+problem. Parameters are the same as `C++ API`. These function returns a
+scalar:
+
+* If a solution is found:
+** if the problem is a minimization: the value of the solution found.
+** if the problem is a maximization: the inverse of the solution found.
+* If no solution is found, we use the limits of the objective function (minimal
+  and maximal value possible.
+** if the problem is a minimization: the maximal value possible + the remaining
+   constraints.
+** if the problem is a maximization: the inverse of the minimal value possible
+   + the remaining constraints.
+* If a error occurred (not enough memory, problem error etc.):
+** if the problem is a minimization: the maximal value possible + the number of
+   constraints .
+** if the problem is a maximization: the inverse of the minimal value possible
+   + the number of constraints.
+
+[source,R]
+----
+solve_01lp_problem <- function(file_path, limit = 1000L, theta = 0.5,
+  delta = 1e-4, constraint_order = 0L, kappa_min = 0.1, kappa_step = 1e-4,
+  kappa_max = 1.0, alpha = 1.0, w = 500L, time_limit = 10.0, seed = -1L,
+  thread = 1L, norm = 4L, pushing_k_factor = 0.9,
+  pushing_objective_amplifier = 5.0, pushes_limit = 10L,
+  pushing_iteration_limit = 20L, float_type = 1L, verbose = TRUE)
+
+optimize_01lp_problem <- function(file_path, limit = 1000L, theta = 0.5,
+  delta = 1e-4, constraint_order = 0L, kappa_min = 0.1, kappa_step = 1e-4,
+  kappa_max = 1.0, alpha = 1.0, w = 500L, time_limit = 10.0, seed = -1L,
+  thread = 1L, norm = 4L, pushing_k_factor = 0.9,
+  pushing_objective_amplifier = 5.0, pushes_limit = 10L,
+  pushing_iteration_limit = 20L, float_type = 1L, verbose = TRUE)
+----
+
+=== Usage
+
+Apply morris method to found useful parameters:
+
+[source,R]
+----
+library(rbaryonyx)
+library(sensitivity)
+
+factors = c("theta", "delta", "constraint_order", "kappa_min", "kappa_step",
+  "kappa_max", "alpha", "w", "norm", "pushing_k_factor",
+  "pushing_objective_amplifier", "pushes_limit", "pushing_iteration_limit",
+  "float_type")
+
+bounds = data.frame(
+  min=c(
+    0,     # theta
+    0,     # delta
+    0,     # constraint_order
+    0,     # kappa_min
+    1e-16, # kappa_step
+    1.0,   # kappa_max
+    0.0,   # alpha
+    50,    # w
+    0,     # norm
+    0.1,   # pushing_k_factor
+    1.0,   # pushing_objective_amplifier
+    10,    # pushes_limit
+    20,    # pushing_iteration_limit
+    0
+    ),    # float_type
+max=c(
+    1,     # theta
+    0,     # delta
+    4,     # constraint_order
+    0.1,   # kappa_min
+    1e-1,  # kappa_step
+    1.0,   # kappa_max
+    2.0,   # alpha
+    500,   # w
+    4,     # norm
+    1,     # pushing_k_factor
+    10.0,  # pushing_objective_amplifier
+    100,   # pushes_limit
+    200,   # pushing_iteration_limit
+    2))    # float_type
+
+rownames(bounds) <- factors
+
+morrisDesign <- morris(model = NULL,
+                factors = factors,
+                r = 10,
+                design=list(type="oat", levels=10, grid.jump=5),
+                binf = bounds$min,
+                bsup = bounds$max,
+                scale=TRUE)
+
+solve_lp <- function(x, file_path, limit=10000, time_limit=10, seed=123456789, thread=1) {
+  r <- rbaryonyx::solve_01lp_problem(file_path = file_path,
+                   limit = limit,
+                   theta = x["theta"],
+                   delta = x["delta"],
+                   constraint_order = x["constraint_order"],
+                   kappa_min = x["kappa_min"],
+                   kappa_step = x["kappa_step"],
+                   kappa_max = x["kappa_max"],
+                   alpha = x["alpha"],
+                   w = x["w"],
+                   time_limit = time_limit,
+                   seed = seed,
+                   thread = thread,
+                   norm = x["norm"],
+                   pushing_k_factor = x["pushing_k_factor"],
+                   pushing_objective_amplifier = x["pushing_objective_amplifier,"],
+                   pushes_limit = x["pushes_limit"],
+                   pushing_iteration_limit = x["pushing_iteration_limit"],
+                   float_type = x["float_type"])
+
+  return(r)
+}
+
+r = apply(morrisDesign$X, 1, solve_lp, file_path="verger_5_5.lp", thread=1, limit=10000, time_limit=10, seed=123456789)
+
+morrisDesign$Y <- r
+mu <- apply(morrisDesign$X,2,mean)
+mu.star <- apply(morrisDesign$X, 2, function(x) mean(abs(x)))
+sigma <- apply(morrisDesign$ee, 2, sd)
+
+apply(morrisDesign$X, 2, function(v) plot(factor(v), r))
+----
+
+=== Upgrade
+
+To upgrade to the latest version of rbaryonyx, under bash (or
+equivalent):
+
+[source,bash]
+----
+cd baryonyx
+git pull -r <1>
+cd build
+make -j4 <2>
+make install
+R CMD REMOVE rbaryonyx <3>
+cd rbaryonyx
+Rscript -e 'library(Rcpp); compileAttributes(".")'
+Rscript -e 'library(devtools); devtools::document()'
+cd ..
+R CMD build rbaryonyx <4>
+R CMD INSTALL rbaryonyx_1.0.tar.gz
+----
+
+<1> Update the baryonyx and rbaryonyx from Git
+<2> Build and install baryonyx
+<3> Remove old rbaryonyx package
+<4> Build and install
