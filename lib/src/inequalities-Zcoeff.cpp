@@ -1121,7 +1121,7 @@ struct compute_infeasibility
             floatingpointT delta,
             floatingpointT theta)
     {
-        sort(R.begin(), R.end(), direction_type());
+        ::sort(R.begin(), R.end(), direction_type());
 
         for (auto it = R.begin(), et = R.end(); it != et; ++it)
             solver.compute_update_row(it->first, kappa, delta, theta);
