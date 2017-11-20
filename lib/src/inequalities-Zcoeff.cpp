@@ -453,12 +453,16 @@ struct solver
         std::fill(pi.begin(), pi.end(), 0);
         init();
 
-        x = best_previous;
-        std::bernoulli_distribution d(0.5);
+        if (not best_previous.empty()) {
+            x = best_previous;
+            std::bernoulli_distribution d(0.5);
 
-        for (int i = 0; i != n; ++i)
-            if (d(rng))
-                x(i) = !x(i);
+            for (int i = 0; i != n; ++i)
+                if (d(rng))
+                    x(i) = !x(i);
+        } else {
+            init();
+        }
     }
 
     void init()
