@@ -31,7 +31,8 @@ namespace baryonyx {
 namespace itm {
 
 result
-inequalities_1coeff_wedelin_solve(const std::shared_ptr<context>& ctx, problem& pb);
+inequalities_1coeff_wedelin_solve(const std::shared_ptr<context>& ctx,
+                                  problem& pb);
 
 result
 inequalities_1coeff_wedelin_optimize(const std::shared_ptr<context>& ctx,
@@ -39,7 +40,8 @@ inequalities_1coeff_wedelin_optimize(const std::shared_ptr<context>& ctx,
                                      int thread);
 
 result
-inequalities_Zcoeff_wedelin_solve(const std::shared_ptr<context>& ctx, problem& pb);
+inequalities_Zcoeff_wedelin_solve(const std::shared_ptr<context>& ctx,
+                                  problem& pb);
 
 result
 inequalities_Zcoeff_wedelin_optimize(const std::shared_ptr<context>& ctx,
@@ -195,10 +197,10 @@ struct parameters
 
         if (ctx->optimize())
             ctx->info("optimizer parameters:\n"
-                      "  - pushed limit: %d\n"
-                      "  - pushing objective amplifier: %.10g\n"
-                      "  - pushing iteration limit: %d\n"
-                      "  - pushing k factor: %.10g\n",
+                      "  - pushed-limit: %d\n"
+                      "  - pushing-objective-amplifier: %.10g\n"
+                      "  - pushing-iteration-limit: %d\n"
+                      "  - pushing-k-factor: %.10g\n",
                       pushes_limit,
                       pushing_objective_amplifier,
                       pushing_iteration_limit,
@@ -227,7 +229,7 @@ struct parameters
 
 struct merged_constraint
 {
-    merged_constraint(std::vector<function_element>  elements_,
+    merged_constraint(std::vector<function_element> elements_,
                       int min_,
                       int max_,
                       int id_)
