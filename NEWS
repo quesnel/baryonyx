@@ -1,6 +1,7 @@
 = baryonyx
 Gauthier Quesnel <gauthier.quesnel@inra.fr>
-v0.3.0.0, 2017-??-??
+
+== baryonyx v0.3.0.0 - 2017-??-??
 
 solver::
 
@@ -9,21 +10,29 @@ solver::
   preference matrix etc. Default is the use of double. To change the solver
   internal representation use the following command:
 
-```
---param floating-point-type=float|double|longdouble
-```
+   $ baryonyx [...] --param floating-point-type=float|double|longdouble
 
-in-the-middle::
-
-* add new static order for constraints (`-p preprocessing=option`) where option
-  is defined:
+* For constraints matrix A, add new static order for constraints (`-p
+  preprocessing=option`) where option is defined as:
 ** `none` (default): use the lp format constraint order.
 ** `less,greater,equal` or `greater,less,equal` or any other form: use the type
-  of operator to order
+   of operator
 ** `variables-number` (experimental): use number variable links.
-** `variables-weight`(experimental): sort variables weights (sum variable
+** `variables-weight` (experimental): sort variables weights (sum variable
    appearance in all constraints).
 ** `constraints-weight` (experimental): use number constraint links.
+
+* Add push system for solving process
+* Add parameters in solution file
+* Show violated constraints in solve mode
+
+core::
+
+* Objective function now use double instead of integer.
+
+* Replace `serialize` with `print-level` in option to show information (e.g.
+  with `print-level=1` with the solve mode, violated constraints are displayed.
+
 
 == baryonyx v0.2.2.0 - 2017-10-13
 
