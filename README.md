@@ -86,9 +86,17 @@ The baryonyx solver have many parameters. To assign it, use the `-p
 * `integer` **pushing_objective_amplifier**:
 * `integer` **pushing_iteration_limit**:
 * `integer` **limit**: number of loop to stop the solver or the heuristic
-* `integer` **w**:
+* `integer` **w**: warmup-iterator (number of loop without updating kappa)
 * `constraint_order` **order**: `none`, `reversing`, `random-sorting`, `infeasibility-decr`, `infeasibility-incr`.
-* `string` **preprocessing**: `none`,  `variables-number`, `variables-weight`m `constraints-weight`, `implied`.
+* `string` **preprocessing**: For constraints matrix A, add new static order
+  for constraints (`-p preprocessing=option`) where option is defined as:
+** `none` (default): use the lp format constraint order.
+** `less,greater,equal` or `greater,less,equal` or any other form: use the type
+   of operator
+** `variables-number` (experimental): use number variable links.
+** `variables-weight` (experimental): sort variables weights (sum variable
+   appearance in all constraints).
+** `constraints-weight` (experimental): use number constraint links.
 * `string` **norm**: `none`, `l1`, `l2`, `rng`, `infinity`
 * `integer` **print-level**: show debug information if greater than 0.
 
