@@ -32,37 +32,58 @@
 #include <cassert>
 
 //
-// Remove empty constraints, where the function does not have element from the
-// problem.
+// Remove empty constraint, ie. where the function element is empty and returns
+// number of elements removed.
 //
-static void
-remove_empty_constraints(baryonyx::problem& pb, int& constraint_nb)
+template<typename constraintsT>
+static int
+remove_if_empty_constraints(constraintsT& c) noexcept
 {
-    constraint_nb +=
-      (pb.equal_constraints.size() + pb.less_constraints.size() +
-       pb.greater_constraints.size());
+    auto size = baryonyx::length(c);
 
-    pb.equal_constraints.erase(
-      std::remove_if(pb.equal_constraints.begin(),
-                     pb.equal_constraints.end(),
-                     [](const auto& v) { return v.elements.empty(); }),
-      pb.equal_constraints.end());
+    c.erase(std::remove_if(
+              c.begin(),
+              c.end(),
+              [](const auto& function) { return function.elements.empty(); }),
+            c.end());
 
-    pb.less_constraints.erase(
-      std::remove_if(pb.less_constraints.begin(),
-                     pb.less_constraints.end(),
-                     [](const auto& v) { return v.elements.empty(); }),
-      pb.less_constraints.end());
+    return size - baryonyx::length(c);
+}
 
-    pb.greater_constraints.erase(
-      std::remove_if(pb.greater_constraints.begin(),
-                     pb.greater_constraints.end(),
-                     [](const auto& v) { return v.elements.empty(); }),
-      pb.greater_constraints.end());
+//
+// Remove function element where factor equal 0 and returns number of function
+// elements removed.
+//
+template<typename functionT>
+static int
+remove_zero_factor_function_element(functionT& c) noexcept
+{
+    auto size = baryonyx::length(c);
 
-    constraint_nb -=
-      (pb.equal_constraints.size() + pb.less_constraints.size() +
-       pb.greater_constraints.size());
+    c.erase(
+      std::remove_if(c.begin(),
+                     c.end(),
+                     [](const auto& element) { return element.factor == 0; }),
+      c.end());
+
+    return size - baryonyx::length(c);
+}
+
+//
+// Remove empty constraints in equal, less and greater constraints vector.
+// Empty constraints are constraints with empty function element vector. This
+// function returns number of elements removed.
+//
+static int
+remove_empty_constraints(baryonyx::problem& pb) noexcept
+{
+    int constraint_removed = 0;
+
+    constraint_removed += remove_if_empty_constraints(pb.equal_constraints);
+    constraint_removed += remove_if_empty_constraints(pb.less_constraints);
+    constraint_removed += remove_if_empty_constraints(pb.greater_constraints);
+
+    return constraint_removed;
 }
 
 //
@@ -72,52 +93,35 @@ remove_empty_constraints(baryonyx::problem& pb, int& constraint_nb)
 // For example:
 // x + 0 y + z + z will now equal to x + 2 z
 //
-// TODO take into account function with -x +x ... : x must be removed.
-//
 template<typename functionT>
-static functionT
-cleanup_function_element(functionT& fct, int& nb)
+static int
+cleanup_function_element(functionT& c)
 {
-    std::size_t fct_size{ fct.size() };
-
-    {
-        auto it = std::remove_if(fct.begin(), fct.end(), [](const auto& elem) {
-            return elem.factor == 0;
+    if (c.size() > 1) {
+        std::sort(c.begin(), c.end(), [](const auto& lhs, const auto& rhs) {
+            return lhs.variable_index < rhs.variable_index;
         });
-        nb += std::distance(it, fct.end());
-        fct.erase(it, fct.end());
-    }
 
-    if (fct.size() <= 1)
-        return fct;
+        auto prev = c.begin();
+        auto it = prev + 1;
+        auto end = c.end();
 
-    std::sort(fct.begin(), fct.end(), [](const auto& lhs, const auto& rhs) {
-        return lhs.variable_index < rhs.variable_index;
-    });
+        while (it != end) {
+            if (it->variable_index == prev->variable_index) {
+                prev->factor += it->factor;
 
-    functionT ret;
-    auto prev = fct.begin();
-    auto it = prev + 1;
-    auto end = fct.end();
+                // element will be delete when we call the remove zero factor
+                // function element.
 
-    ret.emplace_back(*prev);
-
-    while (it != end) {
-        if (it->variable_index == prev->variable_index) {
-            assert(ret.back().variable_index == it->variable_index &&
-                   "parser error to assign variable index.");
-
-            ret.back().factor += it->factor;
-        } else {
-            prev = it;
-            ret.emplace_back(*it);
+                it->factor = 0;
+            } else {
+                prev = it;
+            }
+            ++it;
         }
-        ++it;
     }
 
-    nb += baryonyx::numeric_cast<int>(fct_size - ret.size());
-
-    return ret;
+    return remove_zero_factor_function_element(c);
 }
 
 //
@@ -563,8 +567,8 @@ try_remove_assigned_variables_101(
 }
 
 //
-// Try to remove the current constraint by affecting variables. For example,
-// if a constraint is defined as: x + y = 0, with x and y >= 0 then, variable x
+// Try to remove the current constraint by affecting variables. For example, if
+// a constraint is defined as: x + y = 0, with x and y >= 0 then, variable x
 // and y are equals to 0 and the constraint can be removed.
 //
 static bool
@@ -615,7 +619,7 @@ remove_assigned_variables(const std::shared_ptr<baryonyx::context>& ctx,
     }
 
     if (modify)
-        remove_empty_constraints(pb, constraint_nb);
+        constraint_nb += remove_empty_constraints(pb);
 
     do {
         modify = false;
@@ -685,7 +689,7 @@ remove_assigned_variables(const std::shared_ptr<baryonyx::context>& ctx,
         }
 
         if (modify)
-            remove_empty_constraints(pb, constraint_nb);
+            constraint_nb += remove_empty_constraints(pb);
 
     } while (modify);
 }
@@ -764,7 +768,7 @@ remove_unused_variables(const std::shared_ptr<baryonyx::context>& ctx,
           "      unused variable %s %d\n", pb.vars.names[var].c_str(), var);
 
         //
-        // Here, we are sur that variables are not in constraint vectors so we
+        // Here, we are sure that variables are not in constraint vectors so we
         // only remove the variables from the objective function but, we need
         // to know the factor and compute the correct value of this variable
         // according to the cost.
@@ -807,19 +811,29 @@ preprocess(const std::shared_ptr<baryonyx::context>& ctx,
     {
         ctx->info("  - cleaning functions (merge variables, remove zero) "
                   "coefficient:\n");
-        int clean{ 0 };
+
+        int clean = 0;
 
         for (auto& elem : pb.equal_constraints)
-            elem.elements = cleanup_function_element(elem.elements, clean);
+            clean += cleanup_function_element(elem.elements);
         for (auto& elem : pb.greater_constraints)
-            elem.elements = cleanup_function_element(elem.elements, clean);
+            clean += cleanup_function_element(elem.elements);
         for (auto& elem : pb.less_constraints)
-            elem.elements = cleanup_function_element(elem.elements, clean);
+            clean += cleanup_function_element(elem.elements);
 
-        pb.objective.elements =
-          cleanup_function_element(pb.objective.elements, clean);
+        if (clean > 1)
+            ctx->info("    `-> %d function elements merged in constraints.\n",
+                      clean);
+        else if (clean == 1)
+            ctx->info("    `-> one function element merged in constraints.\n");
 
-        ctx->info("    `-> %d function element(s) merged.\n", clean);
+        clean = cleanup_function_element(pb.objective.elements);
+
+        if (clean > 1)
+            ctx->info("    `-> %d function elements merged in objective.\n",
+                      clean);
+        else if (clean == 1)
+            ctx->info("    `-> one function element merged in objective.\n");
     }
 
     {
