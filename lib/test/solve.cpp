@@ -469,31 +469,31 @@ test_aim_50_1_6_yes1_2()
     Ensures(baryonyx::is_valid_solution(pb, result.variable_value) == true);
 }
 
-// static void
-// test_Z_coefficient_1()
-// {
-//     auto ctx = std::make_shared<baryonyx::context>();
-// ctx->set_standard_stream_logger();
+static void
+test_Z_coefficient_1()
+{
+    auto ctx = std::make_shared<baryonyx::context>();
+    ctx->set_standard_stream_logger();
 
-//     const char* str_pb = "minimize\n"
-//                          "x1 x2 x3 x4 x5\n"
-//                          "Subject to:\n"
-//                          "x1 + x2 + 4x3 + x4 + x5 = 4\n"
-//                          "Binaries\n"
-//                          "x1 x2 x3 x4 x5\n"
-//                          "End\n";
+    const char* str_pb = "minimize\n"
+                         "x1 x2 x3 x4 x5\n"
+                         "Subject to:\n"
+                         "x1 + x2 + 4x3 + x4 + x5 = 4\n"
+                         "Binaries\n"
+                         "x1 x2 x3 x4 x5\n"
+                         "End\n";
 
-//     std::istringstream iss(str_pb);
+    std::istringstream iss(str_pb);
 
-//     auto pb = baryonyx::make_problem(ctx, iss);
-//     auto result = baryonyx::solve(ctx, pb);
+    auto pb = baryonyx::make_problem(ctx, iss);
+    auto result = baryonyx::solve(ctx, pb);
 
-//     Ensures(result.status == baryonyx::result_status::success);
+    Ensures(result.status == baryonyx::result_status::success);
 
-//     if (result)
-//         Ensures(baryonyx::is_valid_solution(pb, result.variable_value) ==
-//                 true);
-// }
+    if (result)
+        Ensures(baryonyx::is_valid_solution(pb, result.variable_value) ==
+                true);
+}
 
 // static void
 // test_bibd1n()
@@ -524,26 +524,29 @@ test_aim_50_1_6_yes1_2()
 // }
 
 int
-main(int /* argc */, char* /* argv */ [])
+main(int argc, char* /* argv */ [])
 {
-    test_preprocessor();
-    test_preprocessor_2();
-    test_real_cost();
-    test_assignment_problem();
-    test_assignment_problem_random_coast();
-    test_negative_coeff();
-    test_negative_coeff2();
-    test_negative_coeff3();
-    test_negative_coeff4();
-    test_negative_coeff5();
-    test_8_queens_puzzle_fixed_cost();
-    test_8_queens_puzzle_random_cost();
-    test_qap();
-    test_uf50_0448();
-    test_flat30_7();
-    test_aim_50_1_6_yes1_2();
+    if (argc != 1) {
+        test_preprocessor();
+        test_preprocessor_2();
+        test_real_cost();
+        test_assignment_problem();
+        test_assignment_problem_random_coast();
+        test_negative_coeff();
+        test_negative_coeff2();
+        test_negative_coeff3();
+        test_negative_coeff4();
+        test_negative_coeff5();
+        test_8_queens_puzzle_fixed_cost();
+        test_8_queens_puzzle_random_cost();
+        test_qap();
+        test_uf50_0448();
+        test_flat30_7();
+        test_aim_50_1_6_yes1_2();
+    } else {
+        test_Z_coefficient_1();
+    }
 
-    // test_Z_coefficient_1();
     // test_bibd1n();
 
     return unit_test::report_errors();
