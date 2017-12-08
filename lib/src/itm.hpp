@@ -44,6 +44,15 @@ inequalities_1coeff_wedelin_optimize(const std::shared_ptr<context>& ctx,
                                      int thread);
 
 result
+inequalities_101coeff_wedelin_solve(const std::shared_ptr<context>& ctx,
+                                    problem& pb);
+
+result
+inequalities_101coeff_wedelin_optimize(const std::shared_ptr<context>& ctx,
+                                       problem& pb,
+                                       int thread);
+
+result
 inequalities_Zcoeff_wedelin_solve(const std::shared_ptr<context>& ctx,
                                   problem& pb);
 

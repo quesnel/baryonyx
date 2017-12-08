@@ -29,12 +29,27 @@
 
 #include <algorithm>
 #include <limits>
+#include <queue>
 #include <vector>
 
 #include <cassert>
 
 namespace baryonyx {
 namespace details {
+
+template<typename floatingpointT>
+inline bool
+stop_iterating(floatingpointT value, minimize_tag) noexcept
+{
+    return value > 0;
+}
+
+template<typename floatingpointT>
+inline bool
+stop_iterating(floatingpointT value, maximize_tag) noexcept
+{
+    return value < 0;
+}
 
 template<typename modeT, typename floatingpointT>
 struct branch_and_bound_solver
@@ -48,6 +63,16 @@ struct branch_and_bound_solver
 
     struct node
     {
+        node(floatingpointT _z,
+             floatingpointT _sumr,
+             int _sumfactor,
+             int _level)
+          : z(_z)
+          , sumr(_sumr)
+          , sumfactor(_sumfactor)
+          , level(_level)
+        {}
+
         std::vector<int> variables;
         floatingpointT z = 0.0;
         floatingpointT sumr = 0.0;
@@ -61,36 +86,39 @@ struct branch_and_bound_solver
     branch_and_bound_solver(std::size_t size_, int bound_)
       : items(size_)
       , bound(bound_)
-    {
-    }
+    {}
 
     template<typename iteratorT>
-    static inline void sort(iteratorT begin, iteratorT end, maximize_tag)
+    static inline void sort_r_items(iteratorT begin,
+                                    iteratorT end,
+                                    maximize_tag)
     {
         std::sort(begin, end, [](const auto& lhs, const auto& rhs) {
-            return lhs.value < rhs.value;
+            return rhs.r < lhs.r;
         });
     }
 
     template<typename iteratorT>
-    static inline void sort(iteratorT begin, iteratorT end, minimize_tag)
+    static inline void sort_r_items(iteratorT begin,
+                                    iteratorT end,
+                                    minimize_tag)
     {
         std::sort(begin, end, [](const auto& lhs, const auto& rhs) {
-            return rhs.value < lhs.value;
+            return lhs.r < rhs.r;
         });
     }
 
     static inline void sort_items(fixed_array<item>& c, maximize_tag) noexcept
     {
         std::sort(c.begin(), c.end(), [](const auto& lhs, const auto& rhs) {
-            return (lhs.r / lhs.factor) < (rhs.r / rhs.factor);
+            return (lhs.r / lhs.factor) > (rhs.r / rhs.factor);
         });
     }
 
     static inline void sort_items(fixed_array<item>& c, minimize_tag) noexcept
     {
         std::sort(c.begin(), c.end(), [](const auto& lhs, const auto& rhs) {
-            return (rhs.r / rhs.factor) < (lhs.r / lhs.factor);
+            return (rhs.r / rhs.factor) > (lhs.r / lhs.factor);
         });
     }
 
@@ -112,22 +140,25 @@ struct branch_and_bound_solver
                               int W,
                               const fixed_array<item>& items) noexcept
     {
-        if (u.sumfactor > W)
-            return 0.0;
+        if (u.sumfactor >= W)
+            return init(modeT());
 
-        auto n = length(items);
         auto bound = u.sumr;
-        auto j = u.level + 1;
-        auto factor = u.sumfactor;
+        auto sumf = u.sumfactor;
 
-        while ((j < n) and (factor + items[j].factor <= W)) {
-            factor += items[j].factor;
+        int j = u.level + 1;
+        int n = length(items);
+
+        for (; j != n; ++j) {
+            if (sumf + items[j].factor > W)
+                break;
+
             bound += items[j].r;
-            ++j;
+            sumf += items[j].factor;
         }
 
         if (j < n)
-            bound += (W - factor) * items[j].r / items[j].factor;
+            bound += (W - sumf) * (items[j].r / items[j].factor);
 
         return bound;
     }
@@ -145,50 +176,48 @@ struct branch_and_bound_solver
     template<typename R>
     int solve(R& reduced_cost)
     {
-        assert(std::find_if(items.cbegin(),
-                            items.cend(),
-                            [](auto elem) { return elem.factor <= 0; }) ==
-                 items.cend() &&
-               "No negative factor.");
+        std::queue<node> queue;
 
-        node best;
-        best.sumr = init(modeT());
+        node best(0, 0, 0, -1);
 
         sort_items(items, modeT());
 
-        std::vector<node> queue;
-        queue.emplace_back();
-        queue.back().z = bound_node(best, bound, items);
+        queue.emplace(bound_node(best, bound, items), 0.0, 0, -1);
+        best.sumr = init(modeT());
 
         while (not queue.empty()) {
-            node u = std::move(queue.back());
-            queue.pop_back();
+            node u = queue.front();
+            queue.pop();
 
-            if ((std::size_t)u.level == items.size())
+            int next_level = u.level + 1;
+            if (u.level == -1)
+                next_level = 0;
+
+            if (u.level == length(items) - 1)
                 continue;
 
-            node next_added = u;
-            next_added.variables.emplace_back(items[u.level].variable);
-            next_added.level += 1;
-            next_added.sumfactor += items[u.level].factor;
-            next_added.sumr += items[u.level].r;
-
             if (is_best(u.z, best.sumr, modeT())) {
+                node next_added = u;
+                next_added.variables.emplace_back(items[next_level].variable);
+                next_added.level = next_level;
+                next_added.sumfactor += items[next_level].factor;
+                next_added.sumr += items[next_level].r;
+
                 if (next_added.sumfactor <= bound) {
                     if (is_best(next_added.sumr, best.sumr, modeT()))
                         best = next_added;
 
                     if (is_best(next_added.z, best.sumr, modeT()))
-                        queue.emplace_back(next_added);
+                        queue.push(next_added);
                 }
+
+                node next_not_added = u;
+                next_not_added.level += 1;
+                next_not_added.z = bound_node(next_not_added, bound, items);
+
+                if (is_best(next_not_added.z, best.sumr, modeT()))
+                    queue.push(next_not_added);
             }
-
-            node next_not_added = u;
-            next_not_added.level += 1;
-            next_not_added.z = bound_node(next_not_added, bound, items);
-
-            if (is_best(next_not_added.z, best.sumr, modeT()))
-                queue.emplace_back(next_not_added);
         }
 
         // Finally, according to the items and reduced_cost vectors, we sort
@@ -201,24 +230,55 @@ struct branch_and_bound_solver
         // Otherwise, swap reduced cost elements that appear in best solution
         // with the no selected elements.
 
-        int nb = length(best.variables);
+        int selected = length(best.variables);
         int i = 0;
+        const int e = length(items);
 
         for (auto elem : best.variables) {
+            auto it =
+              std::find_if(items.begin(), items.end(), [elem](const auto& r) {
+                  return r.variable == elem;
+              });
+
+            std::swap(*it, items[i]);
+            ++i;
+        }
+
+        sort_r_items(items.begin() + selected, items.end(), modeT());
+
+        int sum = 0;
+        for (i = 0; i != selected; ++i)
+            sum += items[i].factor;
+
+        if (i == 0 and sum > bound)
+            return -1;
+
+        for (; i != e; ++i) {
+            sum += items[i].factor;
+
+            if (sum > bound or stop_iterating(items[i].r, modeT()))
+                break;
+        }
+
+        if (i == e)
+            return length(items);
+
+        selected = i;
+
+        // Sort reduced cost according to the items vector order.
+
+        for (i = 0; i != e; ++i) {
+            int elem = items[i].variable;
+
             auto it =
               std::find_if(reduced_cost.begin(),
                            reduced_cost.begin() + items.size(),
                            [elem](const auto& r) { return r.id == elem; });
 
-            std::swap(*it, reduced_cost[i]);
-            ++i;
+            std::swap(reduced_cost[i], *it);
         }
 
-        branch_and_bound_solver::sort(reduced_cost.begin() + nb,
-                                      reduced_cost.begin() + items.size(),
-                                      modeT());
-
-        return nb;
+        return selected;
     }
 };
 

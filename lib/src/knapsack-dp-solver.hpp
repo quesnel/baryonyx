@@ -47,27 +47,31 @@ struct knapsack_dp_solver
     fixed_2darray<floatingpointT> best;
     int capacity;
 
+    template<typename iteratorT>
+    static inline void sort_r_items(iteratorT begin,
+                                    iteratorT end,
+                                    maximize_tag)
+    {
+        std::sort(begin, end, [](const auto& lhs, const auto& rhs) {
+            return rhs.r < lhs.r;
+        });
+    }
+
+    template<typename iteratorT>
+    static inline void sort_r_items(iteratorT begin,
+                                    iteratorT end,
+                                    minimize_tag)
+    {
+        std::sort(begin, end, [](const auto& lhs, const auto& rhs) {
+            return lhs.r < rhs.r;
+        });
+    }
+
     knapsack_dp_solver(std::size_t size_, int capacity_)
       : items(size_)
       , best(size_ + 1, capacity_ + 1, 0)
       , capacity(capacity_)
     {
-    }
-
-    template<typename iteratorT>
-    void sort_rc(iteratorT begin, iteratorT end, maximize_tag)
-    {
-        std::sort(begin, end, [](const auto& lhs, const auto& rhs) {
-            return lhs.value < rhs.value;
-        });
-    }
-
-    template<typename iteratorT>
-    void sort_rc(iteratorT begin, iteratorT end, minimize_tag)
-    {
-        std::sort(begin, end, [](const auto& lhs, const auto& rhs) {
-            return rhs.value < lhs.value;
-        });
     }
 
     floatingpointT get_best(floatingpointT lhs,
@@ -84,6 +88,16 @@ struct knapsack_dp_solver
         return std::min(lhs, rhs);
     }
 
+    floatingpointT init(maximize_tag)
+    {
+        return -std::numeric_limits<floatingpointT>::infinity();
+    }
+
+    floatingpointT init(minimize_tag)
+    {
+        return +std::numeric_limits<floatingpointT>::infinity();
+    }
+
     template<typename R>
     int solve(R& reduced_cost)
     {
@@ -91,13 +105,18 @@ struct knapsack_dp_solver
         const std::size_t W = static_cast<size_t>(capacity);
         std::size_t i, j;
 
+        for (j = 1; j <= W; ++j)
+            best(0, j) = init(modeT());
+
         for (i = 1; i <= n; ++i) {
             for (j = 1; j <= W; ++j) {
                 if (items[i - 1].factor <= (int)j)
-                    best(i, j) = get_best(
-                      best(i - 1, j),
-                      items[i - 1].r + best(i - 1, j - items[i - 1].factor),
-                      modeT());
+                    best(i, j) =
+                      get_best(best(i - 1, j),
+                               items[i - 1].r + best(i - 1,
+
+                                                     j - items[i - 1].factor),
+                               modeT());
                 else
                     best(i, j) = best(i - 1, j);
             }
@@ -108,9 +127,9 @@ struct knapsack_dp_solver
 
         std::vector<int> variables;
 
-        for (; i > 0; --i) {
+        for (; i > 0 and j > 0; --i) {
             if (best(i, j) != best(i - 1, j)) {
-                variables.emplace_back(static_cast<int>(i - 1));
+                variables.emplace_back(items[i - 1].variable);
                 j -= items[i - 1].factor;
             }
         }
@@ -125,24 +144,57 @@ struct knapsack_dp_solver
         // Otherwise, swap reduced cost elements that appear in best solution
         // with the no selected elements.
 
-        int nb = length(variables);
-        int sol = 0;
+        {
+            int selected = length(variables);
+            int i = 0;
+            const int e = length(items);
 
-        for (auto elem : variables) {
-            auto it =
-              std::find_if(reduced_cost.begin(),
-                           reduced_cost.begin() + items.size(),
-                           [elem](const auto& r) { return r.id == elem; });
+            for (auto elem : variables) {
+                auto it = std::find_if(
+                  items.begin(), items.end(), [elem](const auto& r) {
+                      return r.variable == elem;
+                  });
 
-            std::swap(*it, reduced_cost[sol]);
-            ++sol;
+                std::swap(*it, items[i]);
+                ++i;
+            }
+
+            sort_r_items(items.begin() + selected, items.end(), modeT());
+
+            int sum = 0;
+            for (i = 0; i != selected; ++i)
+                sum += items[i].factor;
+
+            if (i == 0 and sum > capacity)
+                return -1;
+
+            for (; i != e; ++i) {
+                sum += items[i].factor;
+
+                if (sum > capacity or stop_iterating(items[i].r, modeT()))
+                    break;
+            }
+
+            if (i == e)
+                return length(items);
+
+            selected = i;
+
+            // Sort reduced cost according to the items vector order.
+
+            for (i = 0; i != e; ++i) {
+                int elem = items[i].variable;
+
+                auto it =
+                  std::find_if(reduced_cost.begin(),
+                               reduced_cost.begin() + items.size(),
+                               [elem](const auto& r) { return r.id == elem; });
+
+                std::swap(reduced_cost[i], *it);
+            }
+
+            return selected;
         }
-
-        sort_rc(reduced_cost.begin() + nb,
-                reduced_cost.begin() + items.size(),
-                modeT());
-
-        return nb;
     }
 };
 

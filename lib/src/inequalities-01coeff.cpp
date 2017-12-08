@@ -36,10 +36,8 @@
 #include <utility>
 #include <vector>
 
-#include "branch-and-bound-solver.hpp"
 #include "fixed_array.hpp"
 #include "itm.hpp"
-#include "knapsack-dp-solver.hpp"
 #include "matrix.hpp"
 #include "private.hpp"
 #include "utils.hpp"
@@ -53,10 +51,12 @@ namespace {
 using bx::length;
 
 struct maximize_tag
-{};
+{
+};
 
 struct minimize_tag
-{};
+{
+};
 
 struct bound
 {
@@ -65,7 +65,8 @@ struct bound
     bound(int min_, int max_)
       : min(min_)
       , max(max_)
-    {}
+    {
+    }
 
     int min;
     int max;
@@ -79,7 +80,8 @@ struct r_data
     r_data(floatingpointT value_, int index_)
       : value(value_)
       , id(index_)
-    {}
+    {
+    }
 
     floatingpointT value; // reduced cost value
     int id;               // index in AP matrix
@@ -92,14 +94,15 @@ struct c_data
     c_data(int id_A_, int id_r_)
       : id_A(id_A_)
       , id_r(id_r_)
-    {}
+    {
+    }
 
     int id_A; // index in AP matrix
     int id_r; // index in r matrix
 };
 
 template<typename floatingpointT>
-using AP_type = bx::SparseArray<int, floatingpointT>;
+using AP_type = bx::SparseArray<int8_t, floatingpointT>;
 
 using b_type = baryonyx::fixed_array<bound>;
 
@@ -127,7 +130,7 @@ random_shuffle_unique(iteratorT begin, iteratorT end, randomT& rng) noexcept
 
 template<typename iteratorT, typename randomT>
 static void
-calculator_sort(iteratorT begin, iteratorT end, randomT& rng, bx::minimize_tag)
+calculator_sort(iteratorT begin, iteratorT end, randomT& rng, minimize_tag)
 {
     if (std::distance(begin, end) > 1) {
 
@@ -147,7 +150,7 @@ calculator_sort(iteratorT begin, iteratorT end, randomT& rng, bx::minimize_tag)
 
 template<typename iteratorT, typename randomT>
 static void
-calculator_sort(iteratorT begin, iteratorT end, randomT& rng, bx::maximize_tag)
+calculator_sort(iteratorT begin, iteratorT end, randomT& rng, maximize_tag)
 {
     if (std::distance(begin, end) > 1) {
 
@@ -167,14 +170,14 @@ calculator_sort(iteratorT begin, iteratorT end, randomT& rng, bx::maximize_tag)
 
 template<typename floatingpointT>
 static inline bool
-stop_iterating(floatingpointT value, bx::minimize_tag) noexcept
+stop_iterating(floatingpointT value, minimize_tag) noexcept
 {
     return value > 0;
 }
 
 template<typename floatingpointT>
 static inline bool
-stop_iterating(floatingpointT value, bx::maximize_tag) noexcept
+stop_iterating(floatingpointT value, maximize_tag) noexcept
 {
     return value < 0;
 }
@@ -183,7 +186,7 @@ template<typename floatingpointT>
 static inline bool
 is_better_solution(floatingpointT lhs,
                    floatingpointT rhs,
-                   bx::minimize_tag) noexcept
+                   minimize_tag) noexcept
 {
     return lhs < rhs;
 }
@@ -192,19 +195,19 @@ template<typename floatingpointT>
 static inline bool
 is_better_solution(floatingpointT lhs,
                    floatingpointT rhs,
-                   bx::maximize_tag) noexcept
+                   maximize_tag) noexcept
 {
     return lhs > rhs;
 }
 
 static inline bool
-init_x(int v, bx::minimize_tag) noexcept
+init_x(int v, minimize_tag) noexcept
 {
     return v <= 0;
 }
 
 static inline bool
-init_x(int v, bx::maximize_tag) noexcept
+init_x(int v, maximize_tag) noexcept
 {
     return v >= 0;
 }
@@ -311,10 +314,6 @@ struct solver
     // Vector for each constraint with negative coefficients.
     bx::fixed_array<bx::fixed_array<c_data>> C;
 
-    // Vector of boolean where true informs a Z coefficient in the equation or
-    // inequation.
-    std::vector<bool> Z;
-
     // Bound vector.
     b_type b;
     const c_type<floatingpoint_type>& c;
@@ -330,7 +329,6 @@ struct solver
       : rng(rng_)
       , ap(length(csts), n_)
       , C(length(csts))
-      , Z(length(csts), false)
       , b(length(csts))
       , c(c_)
       , x(n_)
@@ -371,13 +369,10 @@ struct solver
                     ap.set(i, cst.variable_index, cst.factor, 0.0);
 
                     if (cst.factor > 0)
-                        upper += cst.factor;
+                        ++upper;
 
                     if (cst.factor < 0)
-                        lower += cst.factor;
-
-                    if (std::abs(cst.factor) > 1)
-                        Z[i] = true;
+                        --lower;
                 }
 
                 if (csts[i].min == csts[i].max) {
@@ -449,26 +444,31 @@ struct solver
         std::fill(ap.P().begin(), ap.P().end(), 0);
         std::fill(pi.begin(), pi.end(), 0);
 
-        for (int i = 0, e = n; i != e; ++i)
-            x(i) = init_x(c(i), mode_type());
+        init();
     }
 
-    void reinit(const x_type& best_previous, double reverse_solution)
+    void reinit(const x_type& best_previous)
     {
         std::fill(ap.P().begin(), ap.P().end(), 0);
         std::fill(pi.begin(), pi.end(), 0);
+        init();
 
         if (not best_previous.empty()) {
             x = best_previous;
-            std::bernoulli_distribution d(reverse_solution);
+            std::bernoulli_distribution d(0.5);
 
             for (int i = 0; i != n; ++i)
                 if (d(rng))
                     x(i) = !x(i);
         } else {
-            for (int i = 0, e = n; i != e; ++i)
-                x(i) = init_x(c(i), mode_type());
+            init();
         }
+    }
+
+    void init()
+    {
+        for (int i = 0, e = n; i != e; ++i)
+            x(i) = init_x(c(i), mode_type());
     }
 
     void print(const std::shared_ptr<bx::context>& ctx,
@@ -520,100 +520,6 @@ struct solver
         ret.constraints = m;
 
         return ret;
-    }
-
-    void compute_update_row_Z_eq(int k,
-                                 int bk,
-                                 floatingpoint_type kappa,
-                                 floatingpoint_type delta,
-                                 floatingpoint_type theta)
-    {
-        typename AP_type<floatingpoint_type>::const_iterator it, et;
-        std::tie(it, et) = ap.row(k);
-
-        decrease_preference(it, et, theta);
-
-        const auto& ck = C[k];
-        const int c_size = length(ck);
-        const int r_size = compute_reduced_costs(it, et);
-        int bk_move = 0;
-
-        //
-        // Negate reduced costs and coefficients of these variables. We need to
-        // parse the row Ak[i] because we need to use r[i] not available in C.
-        //
-
-        for (int i = 0; i != c_size; ++i) {
-            R[ck[i].id_r].value = -R[ck[i].id_r].value;
-            ap.invert_p(k, ck[i].id_A);
-            bk_move += ap.A()[ck[i].id_A];
-        }
-
-        bk += std::abs(bk_move);
-
-        int selected =
-          baryonyx::branch_and_bound_solver<modeT, floatingpoint_type>(
-            ap, R, it, et, bk);
-
-        affect_variables(k, selected, r_size, kappa, delta);
-
-        //
-        // Clean up: correct negated costs and adjust value of negated
-        // variables.
-        //
-
-        for (int i = 0; i != c_size; ++i) {
-            ap.invert_p(k, ck[i].id_A);
-            x[ck[i].id_A] = 1 - x[ck[i].id_A];
-        }
-    }
-
-    void compute_update_row_Z_ineq(int k,
-                                   int bkmin,
-                                   int bkmax,
-                                   floatingpoint_type kappa,
-                                   floatingpoint_type delta,
-                                   floatingpoint_type theta)
-    {
-        typename AP_type<floatingpoint_type>::const_iterator it, et;
-        std::tie(it, et) = ap.row(k);
-
-        decrease_preference(it, et, theta);
-
-        const auto& ck = C[k];
-        const int c_size = (ck) ? length(ck) : 0;
-        const int r_size = compute_reduced_costs(it, et);
-        int bk_move = 0;
-
-        //
-        // Negate reduced costs and coefficients of these variables. We need to
-        // parse the row Ak[i] because we need to use r[i] not available in C.
-        //
-
-        for (int i = 0; i != c_size; ++i) {
-            R[ck[i].id_r].value = -R[ck[i].id_r].value;
-            ap.invert_p(k, ck[i].id_A);
-            bk_move += ap.A()[ck[i].id_A];
-        }
-
-        bkmin += std::abs(bk_move);
-        bkmax += std::abs(bk_move);
-
-        int selected =
-          baryonyx::branch_and_bound_solver<modeT, floatingpoint_type>(
-            ap, R, it, et, bkmax);
-
-        affect_variables(k, selected, r_size, kappa, delta);
-
-        //
-        // Clean up: correct negated costs and adjust value of negated
-        // variables.
-        //
-
-        for (int i = 0; i != c_size; ++i) {
-            ap.invert_p(k, ck[i].id_A);
-            x[ck[i].id_A] = 1 - x[ck[i].id_A];
-        }
     }
 
     void compute_update_row_01_eq(int k,
@@ -750,13 +656,7 @@ struct solver
                             floatingpoint_type delta,
                             floatingpoint_type theta)
     {
-        if (Z[k]) {
-            if (b(k).min == b(k).max)
-                compute_update_row_Z_eq(k, b(k).min, kappa, delta, theta);
-            else
-                compute_update_row_Z_ineq(
-                  k, b(k).min, b(k).max, kappa, delta, theta);
-        } else if (!C[k]) {
+        if (!C[k]) {
             if (b(k).min == b(k).max)
                 compute_update_row_01_eq(k, b(k).min, kappa, delta, theta);
             else
@@ -1137,10 +1037,12 @@ struct compute_random
 };
 
 struct compute_infeasibility_incr
-{};
+{
+};
 
 struct compute_infeasibility_decr
-{};
+{
+};
 
 template<typename iteratorT>
 static void
@@ -1260,7 +1162,8 @@ struct solver_functor
       : m_ctx(std::move(ctx))
       , m_variable_names(variable_names)
       , m_affected_vars(affected_vars)
-    {}
+    {
+    }
 
     bx::result operator()(
       const std::vector<bx::itm::merged_constraint>& constraints,
@@ -1480,7 +1383,8 @@ struct optimize_functor
       , m_thread_id(thread_id)
       , m_variable_names(variable_names)
       , m_affected_vars(affected_vars)
-    {}
+    {
+    }
 
     bx::result operator()(
       const std::vector<bx::itm::merged_constraint>& constraints,
@@ -1527,7 +1431,7 @@ struct optimize_functor
 
             if (i >= p.limit or kappa > p.kappa_max or
                 pushed > p.pushes_limit) {
-                slv.reinit(m_best_x, p.reverse_solution);
+                slv.reinit(m_best_x);
 
                 i = 0;
                 kappa = p.kappa_min;
@@ -1770,7 +1674,7 @@ solve(std::shared_ptr<bx::context> ctx,
         ret =
           slv(constraints, variables, cost, norm_costs, cost_constant, p, rng);
 
-        ret.method = "inequalities_Zcoeff solver";
+        ret.method = "inequalities_01coeff solver";
         ret.variable_name = std::move(names);
     } else {
         ret.status = bx::result_status::success;
@@ -1851,7 +1755,7 @@ optimize(std::shared_ptr<bx::context> ctx,
             }
         }
 
-        ret.method = "inequalities_Zcoeff optimizer";
+        ret.method = "inequalities_01coeff optimizer";
         ret.variable_name = std::move(names);
     } else {
         ret.status = bx::result_status::success;
@@ -1939,11 +1843,11 @@ namespace baryonyx {
 namespace itm {
 
 result
-inequalities_Zcoeff_wedelin_solve(
+inequalities_01coeff_wedelin_solve(
   const std::shared_ptr<baryonyx::context>& ctx,
   problem& pb)
 {
-    ctx->info("inequalities_Zcoeff_wedelin_solve\n");
+    ctx->info("inequalities_01coeff_wedelin_solve\n");
     parameters p(ctx);
 
     using random_type = std::default_random_engine;
@@ -1954,25 +1858,25 @@ inequalities_Zcoeff_wedelin_solve(
     if (pb.type == baryonyx::objective_function_type::maximize) {
         switch (p.float_type) {
         case floating_point_type::float_type:
-            return dispatch_solve<float, maximize_tag, random_type>(
+            return dispatch_solve<float, ::maximize_tag, random_type>(
               ctx, pb, p, rng);
         case floating_point_type::double_type:
-            return dispatch_solve<double, maximize_tag, random_type>(
+            return dispatch_solve<double, ::maximize_tag, random_type>(
               ctx, pb, p, rng);
         case floating_point_type::longdouble_type:
-            return dispatch_solve<long double, maximize_tag, random_type>(
+            return dispatch_solve<long double, ::maximize_tag, random_type>(
               ctx, pb, p, rng);
         }
     } else {
         switch (p.float_type) {
         case floating_point_type::float_type:
-            return dispatch_solve<float, minimize_tag, random_type>(
+            return dispatch_solve<float, ::minimize_tag, random_type>(
               ctx, pb, p, rng);
         case floating_point_type::double_type:
-            return dispatch_solve<double, minimize_tag, random_type>(
+            return dispatch_solve<double, ::minimize_tag, random_type>(
               ctx, pb, p, rng);
         case floating_point_type::longdouble_type:
-            return dispatch_solve<long double, minimize_tag, random_type>(
+            return dispatch_solve<long double, ::minimize_tag, random_type>(
               ctx, pb, p, rng);
         }
     }
@@ -1981,12 +1885,12 @@ inequalities_Zcoeff_wedelin_solve(
 }
 
 result
-inequalities_Zcoeff_wedelin_optimize(
+inequalities_01coeff_wedelin_optimize(
   const std::shared_ptr<baryonyx::context>& ctx,
   problem& pb,
   int thread)
 {
-    ctx->info("inequalities_Zcoeff_wedelin_optimize\n");
+    ctx->info("inequalities_01coeff_wedelin_optimize\n");
     parameters p(ctx);
 
     using random_type = std::default_random_engine;
@@ -1998,25 +1902,25 @@ inequalities_Zcoeff_wedelin_optimize(
     if (pb.type == baryonyx::objective_function_type::maximize) {
         switch (p.float_type) {
         case floating_point_type::float_type:
-            return dispatch_optimize<float, maximize_tag, random_type>(
+            return dispatch_optimize<float, ::maximize_tag, random_type>(
               ctx, pb, p, rng, thread);
         case floating_point_type::double_type:
-            return dispatch_optimize<double, maximize_tag, random_type>(
+            return dispatch_optimize<double, ::maximize_tag, random_type>(
               ctx, pb, p, rng, thread);
         case floating_point_type::longdouble_type:
-            return dispatch_optimize<long double, maximize_tag, random_type>(
+            return dispatch_optimize<long double, ::maximize_tag, random_type>(
               ctx, pb, p, rng, thread);
         }
     } else {
         switch (p.float_type) {
         case floating_point_type::float_type:
-            return dispatch_optimize<float, minimize_tag, random_type>(
+            return dispatch_optimize<float, ::minimize_tag, random_type>(
               ctx, pb, p, rng, thread);
         case floating_point_type::double_type:
-            return dispatch_optimize<double, minimize_tag, random_type>(
+            return dispatch_optimize<double, ::minimize_tag, random_type>(
               ctx, pb, p, rng, thread);
         case floating_point_type::longdouble_type:
-            return dispatch_optimize<long double, minimize_tag, random_type>(
+            return dispatch_optimize<long double, ::minimize_tag, random_type>(
               ctx, pb, p, rng, thread);
         }
     }

@@ -475,77 +475,102 @@ test_Z_coefficient_1()
     auto ctx = std::make_shared<baryonyx::context>();
     ctx->set_standard_stream_logger();
 
-    const char* str_pb = "minimize\n"
-                         "15 x1 19 x2 13 x3 12 x4\n"
-                         "Subject to:\n"
-                         "2 x1 + 1 x2 + 3 x3 + 2 x4 <= 3\n"
-                         "Binaries\n"
-                         "x1 x2 x3 x4\n"
-                         "End\n";
+    // #if 0
+    {
+        const char* str_pb = "minimize\n"
+                             "15 x1 19 x2 13 x3 12 x4\n"
+                             "Subject to:\n"
+                             "2 x1 + 1 x2 + 3 x3 + 2 x4 <= 3\n"
+                             "Binaries\n"
+                             "x1 x2 x3 x4\n"
+                             "End\n";
 
-    std::istringstream iss(str_pb);
+        std::istringstream iss(str_pb);
 
-    auto pb = baryonyx::make_problem(ctx, iss);
+        auto pb = baryonyx::make_problem(ctx, iss);
+        auto result = baryonyx::solve(ctx, pb);
+
+        Ensures(result.status == baryonyx::result_status::success);
+
+        if (result)
+            Ensures(baryonyx::is_valid_solution(pb, result.variable_value) ==
+                    true);
+    }
+
+    // #else
+    {
+        const char* str_pb = "minimize\n"
+                             "Subject to:\n"
+                             "2a + 3b -5c + 7d <= 0\n"
+                             "-2b + 2c >= 1\n"
+                             "Binaries\n"
+                             "a b c d\n"
+                             "End\n";
+
+        std::istringstream iss(str_pb);
+
+        auto pb = baryonyx::make_problem(ctx, iss);
+        auto result = baryonyx::solve(ctx, pb);
+
+        Ensures(result.status == baryonyx::result_status::success);
+
+        if (result)
+            Ensures(baryonyx::is_valid_solution(pb, result.variable_value) ==
+                    true);
+    }
+    // #endif
+}
+
+#if 0
+static void
+test_bibd1n()
+{
+    auto ctx = std::make_shared<baryonyx::context>();
+    ctx->set_standard_stream_logger();
+
+    auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/bibd1n.lp");
+
+    ctx->set_parameter("limit", -1);
+    ctx->set_parameter("theta", 0.5);
+    ctx->set_parameter("delta", 1e-7);
+    ctx->set_parameter("kappa-min", 0.05);
+    ctx->set_parameter("kappa-step", 1e-17);
+    ctx->set_parameter("kappa-max", 1.0);
+    ctx->set_parameter("alpha", 1.0);
+    ctx->set_parameter("w", 60);
+    ctx->set_parameter("print-level", 1);
+    ctx->set_parameter("constraint-order", std::string("random-sorting"));
+    ctx->set_parameter("time-limit", -1.0);
+    ctx->set_parameter("preprocessing", std::string("none"));
+    ctx->set_parameter("floating-point-type", std::string("float"));
+
     auto result = baryonyx::solve(ctx, pb);
 
     Ensures(result.status == baryonyx::result_status::success);
-
-    if (result)
-        Ensures(baryonyx::is_valid_solution(pb, result.variable_value) ==
-                true);
+    Ensures(baryonyx::is_valid_solution(pb, result.variable_value) == true);
 }
-
-// static void
-// test_bibd1n()
-// {
-//     auto ctx = std::make_shared<baryonyx::context>();
-//     ctx->set_standard_stream_logger();
-
-//     auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/bibd1n.lp");
-
-//     ctx->set_parameter("limit", -1);
-//     ctx->set_parameter("theta", 0.5);
-//     ctx->set_parameter("delta", 1e-7);
-//     ctx->set_parameter("kappa-min", 0.05);
-//     ctx->set_parameter("kappa-step", 1e-17);
-//     ctx->set_parameter("kappa-max", 1.0);
-//     ctx->set_parameter("alpha", 1.0);
-//     ctx->set_parameter("w", 60);
-//     ctx->set_parameter("print-level", 1);
-//     ctx->set_parameter("constraint-order", std::string("random-sorting"));
-//     ctx->set_parameter("time-limit", -1.0);
-//     ctx->set_parameter("preprocessing", std::string("none"));
-//     ctx->set_parameter("floating-point-type", std::string("float"));
-
-//     auto result = baryonyx::solve(ctx, pb);
-
-//     Ensures(result.status == baryonyx::result_status::success);
-//     Ensures(baryonyx::is_valid_solution(pb, result.variable_value) == true);
-// }
+#endif
 
 int
-main(int argc, char* /* argv */ [])
+main(int /*argc*/, char* /* argv */ [])
 {
-    if (argc != 1) {
-        test_preprocessor();
-        test_preprocessor_2();
-        test_real_cost();
-        test_assignment_problem();
-        test_assignment_problem_random_coast();
-        test_negative_coeff();
-        test_negative_coeff2();
-        test_negative_coeff3();
-        test_negative_coeff4();
-        test_negative_coeff5();
-        test_8_queens_puzzle_fixed_cost();
-        test_8_queens_puzzle_random_cost();
-        test_qap();
-        test_uf50_0448();
-        test_flat30_7();
-        test_aim_50_1_6_yes1_2();
-    } else {
-        test_Z_coefficient_1();
-    }
+    test_preprocessor();
+    test_preprocessor_2();
+    test_real_cost();
+    test_assignment_problem();
+    test_assignment_problem_random_coast();
+    test_negative_coeff();
+    test_negative_coeff2();
+    test_negative_coeff3();
+    test_negative_coeff4();
+    test_negative_coeff5();
+    test_8_queens_puzzle_fixed_cost();
+    test_8_queens_puzzle_random_cost();
+    test_qap();
+    test_uf50_0448();
+    test_flat30_7();
+    test_aim_50_1_6_yes1_2();
+    test_Z_coefficient_1();
 
     // test_bibd1n();
 
