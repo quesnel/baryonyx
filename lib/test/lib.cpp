@@ -392,17 +392,13 @@ check_knapsack_solver()
     // maximize: 16x1 + 19x2 + 23x3 + 26x4
     // st: 2x1 + 3x2 +4x3 + 5x4 <= 7
 
-    std::vector<rc> reduced_cost{ { 16, 0 }, { 19, 1 }, { 23, 2 }, { 26, 3 } };
+    std::vector<rc> reduced_cost{ { 15, 0 }, { 19, 1 }, { 23, 2 }, { 26, 3 } };
     std::vector<int> factors{ 2, 3, 4, 5 };
 
     int selected = baryonyx::knapsack_dp_solver<baryonyx::maximize_tag, float>(
       reduced_cost, factors.begin(), factors.end(), 7);
 
-    for (auto elem : reduced_cost)
-        printf("[%f %d] ", elem.value, elem.id);
-    printf("\n");
-
-    Ensures(selected = 2);
+    Ensures(selected == 2);
     Ensures(reduced_cost[0].id == 1 or reduced_cost[1].id == 1);
     Ensures(reduced_cost[0].id == 2 or reduced_cost[1].id == 2);
 
@@ -422,14 +418,13 @@ check_branch_and_bound_solver()
         // maximize: 16x1 + 19x2 + 23x3 + 26x4
         // st: 2x1 + 3x2 +4x3 + 5x4 <= 7
 
-        std::vector<rc> R{ { 16, 0 }, { 19, 1 }, { 23, 2 }, { 26, 3 } };
+        std::vector<rc> R{ { 15, 0 }, { 19, 1 }, { 23, 2 }, { 26, 3 } };
         std::vector<int> factors{ 2, 3, 4, 5 };
-
         int selected =
           baryonyx::branch_and_bound_solver<baryonyx::maximize_tag, float>(
             R, factors.begin(), factors.end(), 7);
 
-        Ensures(selected = 2);
+        Ensures(selected == 2);
         Ensures(R[0].id == 1 or R[1].id == 1);
         Ensures(R[0].id == 2 or R[1].id == 2);
 
@@ -439,6 +434,25 @@ check_branch_and_bound_solver()
                                 [](float init, const rc& elem) {
                                     return init + elem.value;
                                 }) == 42.0f);
+    }
+
+    {
+        std::vector<rc> R{ { 15, 0 }, { 19, 1 }, { 13, 2 }, { 12, 3 } };
+        std::vector<int> factors{ 2, 1, 3, 2 };
+
+        int selected =
+          baryonyx::branch_and_bound_solver<baryonyx::minimize_tag, float>(
+            R, factors.begin(), factors.end(), 3);
+
+        Ensures(selected == 1);
+        Ensures(R[0].id == 3 or R[1].id == 3);
+
+        Ensures(std::accumulate(R.begin(),
+                                R.begin() + selected,
+                                0.0f,
+                                [](float init, const rc& elem) {
+                                    return init + elem.value;
+                                }) == 12.0f);
     }
 
     {

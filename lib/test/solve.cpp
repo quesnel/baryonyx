@@ -476,11 +476,11 @@ test_Z_coefficient_1()
     ctx->set_standard_stream_logger();
 
     const char* str_pb = "minimize\n"
-                         "x1 x2 x3 x4 x5\n"
+                         "15 x1 19 x2 13 x3 12 x4\n"
                          "Subject to:\n"
-                         "x1 + x2 + 4x3 + x4 + x5 = 4\n"
+                         "2 x1 + 1 x2 + 3 x3 + 2 x4 <= 3\n"
                          "Binaries\n"
-                         "x1 x2 x3 x4 x5\n"
+                         "x1 x2 x3 x4\n"
                          "End\n";
 
     std::istringstream iss(str_pb);
