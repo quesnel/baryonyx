@@ -370,6 +370,58 @@ sigma <- apply(morrisDesign$ee, 2, sd)
 apply(morrisDesign$X, 2, function(v) plot(factor(v), r))
 ----
 
+Use RGenoud method to found best paramter values:
+
+[source,R]
+----
+library(rgenoud)
+library(rbaryonyx)
+library(parallel)
+
+optim_gen_lp <- function(x) {
+  r <- rbaryonyx::optimize_01lp_problem(
+           file_path = "rail507pre.lp",
+           limit = -1,
+           theta = x[1],
+           delta = x[2],
+           constraint_order = 0,
+           kappa_min = x[3],
+           kappa_step = x[4],
+           kappa_max = 1.0,
+           alpha = 1.0,
+           w = 60,
+           time_limit = 10,
+           seed = 123654785,
+           thread = 4,
+           norm = 0,
+           pushing_k_factor = 1,
+           pushing_objective_amplifier = 10,
+           pushes_limit = 20,
+           pushing_iteration_limit = 50,
+           float_type = 1,
+           verbose = FALSE)
+
+  return(r)
+}
+
+d = matrix(c(0.0, 0.00001, 0.0, 1e-10,
+             1.0, 0.001,   0.2, 1e-4),
+             nrow=4, ncol=2)
+
+s = c(0.5, 0.003226, 0.1, 1e-8)
+
+no_cores <- detectCores() - 1
+cl <- makeCluster(no_cores, outfile="debug.txt")
+
+claw1 <- genoud(optim_gen_lp, nvars=4,
+                Domains=d,
+                starting.values=s,
+                cluster=cl,
+                boundary.enforcement=1,
+                max=FALSE, pop.size=10)
+----
+
+
 === Upgrade
 
 To upgrade to the latest version of rbaryonyx, under bash (or
