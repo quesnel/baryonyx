@@ -179,7 +179,7 @@ struct parameters
                   "  - w: %d\n"
                   "  - norm: %s\n"
                   "  - print-level: %d\n"
-                  "  - float-point-type: %s\n",
+                  "  - floating-point-type: %s\n",
                   preprocessing.c_str(),
                   constraint_order_to_string(order),
                   time_limit,
@@ -197,7 +197,7 @@ struct parameters
 
         if (ctx->optimize())
             ctx->info("optimizer parameters:\n"
-                      "  - pushed-limit: %d\n"
+                      "  - pushes-limit: %d\n"
                       "  - pushing-objective-amplifier: %.10g\n"
                       "  - pushing-iteration-limit: %d\n"
                       "  - pushing-k-factor: %.10g\n",
