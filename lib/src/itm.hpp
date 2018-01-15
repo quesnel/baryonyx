@@ -25,6 +25,10 @@
 
 #include <baryonyx/core-compare>
 #include <baryonyx/core-out>
+
+#include "utils.hpp"
+
+#include <algorithm>
 #include <utility>
 
 namespace baryonyx {
@@ -59,7 +63,9 @@ inline const char*
 floating_point_type_to_string(floating_point_type type) noexcept
 {
     static const char* ret[] = {
-        "float", "double", "longdouble",
+        "float",
+        "double",
+        "longdouble",
     };
 
     switch (type) {
@@ -152,6 +158,7 @@ struct parameters
       , kappa_step(ctx->get_real_parameter("kappa-step", 1.e-3))
       , kappa_max(ctx->get_real_parameter("kappa-max", 0.6))
       , alpha(ctx->get_real_parameter("alpha", 1.0))
+      , reverse_solution(ctx->get_real_parameter("reverse-solution", 0.5))
       , pushing_k_factor(ctx->get_real_parameter("pushing-k-factor", 0.9))
       , pushing_objective_amplifier(
           ctx->get_real_parameter("pushing-objective-amplifier", 5))
@@ -166,6 +173,8 @@ struct parameters
     {
         if (limit < 0)
             limit = std::numeric_limits<int>::max();
+
+        reverse_solution = clamp(reverse_solution, 0.0, 1.0);
 
         ctx->info("solver parameters:\n"
                   "  - preprocessing: %s\n"
@@ -197,10 +206,12 @@ struct parameters
 
         if (ctx->optimize())
             ctx->info("optimizer parameters:\n"
+                      "  - reverse-solution: %.10g\n"
                       "  - pushes-limit: %d\n"
                       "  - pushing-objective-amplifier: %.10g\n"
                       "  - pushing-iteration-limit: %d\n"
                       "  - pushing-k-factor: %.10g\n",
+                      reverse_solution,
                       pushes_limit,
                       pushing_objective_amplifier,
                       pushing_iteration_limit,
@@ -216,6 +227,7 @@ struct parameters
     double kappa_step;
     double kappa_max;
     double alpha;
+    double reverse_solution;
     double pushing_k_factor;
     double pushing_objective_amplifier;
     int pushes_limit;
@@ -237,8 +249,7 @@ struct merged_constraint
       , min(min_)
       , max(max_)
       , id(id_)
-    {
-    }
+    {}
 
     std::vector<function_element> elements;
     int min;

@@ -151,6 +151,7 @@ help(baryonyx::context* ctx) noexcept
               "  - print-level: [0, 2]\n"
               "  - floating-point-type: float, double, longdouble\n"
               "optimizer parameters:\n"
+              "  - reverse-solution: real [0, 1]\n"
               "  - pushes-limit: integer [0, +oo[\n"
               "  - pushing-objective-amplifier: real [0, +oo[\n"
               "  - pushing-iteration-limit: integer [0, +oo[\n"
@@ -556,34 +557,28 @@ context::error(const char* format, ...) const noexcept
 #else
 void
 context::log(message_type, const char*, va_list) const noexcept
-{
-}
+{}
 
 void
 context::log(int, const char*, int, const char*, const char*, va_list) const
   noexcept
-{
-}
+{}
 
 void
 context::info(const char*, va_list) const noexcept
-{
-}
+{}
 
 void
 context::warning(const char*, va_list) const noexcept
-{
-}
+{}
 
 void
 context::debug(const char*, va_list) const noexcept
-{
-}
+{}
 
 void
 context::error(const char*, va_list) const noexcept
-{
-}
+{}
 #endif
 
 problem
