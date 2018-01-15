@@ -51,12 +51,10 @@ namespace {
 using bx::length;
 
 struct maximize_tag
-{
-};
+{};
 
 struct minimize_tag
-{
-};
+{};
 
 struct bound
 {
@@ -65,8 +63,7 @@ struct bound
     bound(int min_, int max_)
       : min(min_)
       , max(max_)
-    {
-    }
+    {}
 
     int min;
     int max;
@@ -80,8 +77,7 @@ struct r_data
     r_data(floatingpointT value_, int index_)
       : value(value_)
       , id(index_)
-    {
-    }
+    {}
 
     floatingpointT value; // reduced cost value
     int id;               // index in AP matrix
@@ -94,8 +90,7 @@ struct c_data
     c_data(int id_A_, int id_r_)
       : id_A(id_A_)
       , id_r(id_r_)
-    {
-    }
+    {}
 
     int id_A; // index in AP matrix
     int id_r; // index in r matrix
@@ -444,31 +439,26 @@ struct solver
         std::fill(ap.P().begin(), ap.P().end(), 0);
         std::fill(pi.begin(), pi.end(), 0);
 
-        init();
+        for (int i = 0, e = n; i != e; ++i)
+            x(i) = init_x(c(i), mode_type());
     }
 
-    void reinit(const x_type& best_previous)
+    void reinit(const x_type& best_previous, double reverse_solution)
     {
         std::fill(ap.P().begin(), ap.P().end(), 0);
         std::fill(pi.begin(), pi.end(), 0);
-        init();
 
         if (not best_previous.empty()) {
             x = best_previous;
-            std::bernoulli_distribution d(0.5);
+            std::bernoulli_distribution d(reverse_solution);
 
             for (int i = 0; i != n; ++i)
                 if (d(rng))
                     x(i) = !x(i);
         } else {
-            init();
+            for (int i = 0, e = n; i != e; ++i)
+                x(i) = init_x(c(i), mode_type());
         }
-    }
-
-    void init()
-    {
-        for (int i = 0, e = n; i != e; ++i)
-            x(i) = init_x(c(i), mode_type());
     }
 
     void print(const std::shared_ptr<bx::context>& ctx,
@@ -1037,12 +1027,10 @@ struct compute_random
 };
 
 struct compute_infeasibility_incr
-{
-};
+{};
 
 struct compute_infeasibility_decr
-{
-};
+{};
 
 template<typename iteratorT>
 static void
@@ -1162,8 +1150,7 @@ struct solver_functor
       : m_ctx(std::move(ctx))
       , m_variable_names(variable_names)
       , m_affected_vars(affected_vars)
-    {
-    }
+    {}
 
     bx::result operator()(
       const std::vector<bx::itm::merged_constraint>& constraints,
@@ -1383,8 +1370,7 @@ struct optimize_functor
       , m_thread_id(thread_id)
       , m_variable_names(variable_names)
       , m_affected_vars(affected_vars)
-    {
-    }
+    {}
 
     bx::result operator()(
       const std::vector<bx::itm::merged_constraint>& constraints,
@@ -1431,7 +1417,7 @@ struct optimize_functor
 
             if (i >= p.limit or kappa > p.kappa_max or
                 pushed > p.pushes_limit) {
-                slv.reinit(m_best_x);
+                slv.reinit(m_best_x, p.reverse_solution);
 
                 i = 0;
                 kappa = p.kappa_min;
@@ -1843,8 +1829,9 @@ namespace baryonyx {
 namespace itm {
 
 result
-inequalities_Zcoeff_wedelin_solve(const std::shared_ptr<baryonyx::context>& ctx,
-                                  problem& pb)
+inequalities_Zcoeff_wedelin_solve(
+  const std::shared_ptr<baryonyx::context>& ctx,
+  problem& pb)
 {
     ctx->info("inequalities_Zcoeff_wedelin_solve\n");
     parameters p(ctx);
@@ -1884,9 +1871,10 @@ inequalities_Zcoeff_wedelin_solve(const std::shared_ptr<baryonyx::context>& ctx,
 }
 
 result
-inequalities_Zcoeff_wedelin_optimize(const std::shared_ptr<baryonyx::context>& ctx,
-                                     problem& pb,
-                                     int thread)
+inequalities_Zcoeff_wedelin_optimize(
+  const std::shared_ptr<baryonyx::context>& ctx,
+  problem& pb,
+  int thread)
 {
     ctx->info("inequalities_Zcoeff_wedelin_optimize\n");
     parameters p(ctx);
