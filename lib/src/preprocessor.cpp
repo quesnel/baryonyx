@@ -757,7 +757,9 @@ remove_unused_variables(const std::shared_ptr<baryonyx::context>& ctx,
 
     const bool max = pb.type == baryonyx::objective_function_type::maximize;
 
-    for (auto var : unused_variable) {
+    for (std::size_t i = 0, e = unused_variable.size(); i != e; ++i) {
+        int var = unused_variable[i];
+
         ctx->debug(
           "      unused variable %s %d\n", pb.vars.names[var].c_str(), var);
 
@@ -785,6 +787,10 @@ remove_unused_variables(const std::shared_ptr<baryonyx::context>& ctx,
         }
 
         remove_variable(pb, var, value);
+
+        for (std::size_t j = 0; j != e; ++j)
+            if (unused_variable[j] > var)
+                --unused_variable[j];
     }
 
     variable += (int)unused_variable.size();
@@ -820,8 +826,13 @@ preprocess(const std::shared_ptr<baryonyx::context>& ctx,
         ctx->info("  - cleaning already assigned variables:\n");
         int variable{ 0 }, constraint{ 0 };
 
+        ctx->info("    - remove assigned variables.\n");
         remove_assigned_variables(ctx, pb, variable, constraint);
+
+        ctx->info("    - remove duplicated constraints.\n");
         remove_duplicated_constraints(ctx, pb, constraint);
+
+        ctx->info("    - remove unused variables.\n");
         remove_unused_variables(ctx, pb, variable);
 
         ctx->info("    `-> %d variable(s) - %d constraint(s) removed.\n",
