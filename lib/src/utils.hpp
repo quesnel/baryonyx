@@ -63,6 +63,35 @@ length(const C& c) noexcept
 }
 
 /**
+ * @details Reference to @c lo if @c v is less than @c lo, reference to @c hi
+ *     if @c hi is less than @c v, otherwise reference to @c v.
+ *
+ * @code
+ * assert(baryonyx::clamp(0.0, 0.0, 1.0) == 0.0);
+ * assert(baryonyx::clamp(1.0, 0.0, 1.0) == 1.0);
+ * assert(baryonyx::clamp(-0.5, 0.0, 1.0) == 0.0);
+ * assert(baryonyx::clamp(1.5, 0.0, 1.0) == 1.0);
+ * assert(baryonyx::clamp(168, -128, +127) == 127);
+ * assert(baryonyx::clamp(168, 0, +255) == 168);
+ * assert(baryonyx::clamp(128, -128, +127) == 127);
+ * assert(baryonyx::clamp(128, 0, +255) == 128);
+ * @endcode
+ *
+ * @param v The value to clamp.
+ * @param lo The low value to compare.
+ * @param hi The high value to compare.
+ * @return value, low or high.
+ */
+template<class T>
+constexpr const T&
+clamp(const T& v, const T& lo, const T& hi)
+{
+    assert(lo < hi);
+
+    return v < lo ? lo : v > hi ? hi : v;
+}
+
+/**
  * @brief Compute the length of the C array.
  * @details Return the size of the C array but cast it into a @c int. This is a
  *     specific baryonyx function, we know that number of variables and
@@ -141,13 +170,11 @@ public:
     timer_profiler(std::shared_ptr<baryonyx::context> ctx)
       : m_ctx(std::move(ctx))
       , m_s(std::chrono::steady_clock::now())
-    {
-    }
+    {}
 
     timer_profiler()
       : m_s(std::chrono::steady_clock::now())
-    {
-    }
+    {}
 
     ~timer_profiler()
     {
@@ -197,8 +224,8 @@ is_time_limit(double limit,
               std::chrono::steady_clock::time_point begin,
               std::chrono::steady_clock::time_point end) noexcept
 {
-    using std::chrono::duration_cast;
     using std::chrono::duration;
+    using std::chrono::duration_cast;
 
     if (limit <= 0)
         return false;

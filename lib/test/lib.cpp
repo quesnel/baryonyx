@@ -34,6 +34,19 @@
 #include <numeric>
 
 void
+check_clamp()
+{
+    Ensures(baryonyx::clamp(0.0, 0.0, 1.0) == 0.0);
+    Ensures(baryonyx::clamp(1.0, 0.0, 1.0) == 1.0);
+    Ensures(baryonyx::clamp(-0.5, 0.0, 1.0) == 0.0);
+    Ensures(baryonyx::clamp(1.5, 0.0, 1.0) == 1.0);
+    Ensures(baryonyx::clamp(168, -128, +127) == 127);
+    Ensures(baryonyx::clamp(168, 0, +255) == 168);
+    Ensures(baryonyx::clamp(128, -128, +127) == 127);
+    Ensures(baryonyx::clamp(128, 0, +255) == 128);
+}
+
+void
 check_numeric_cast()
 {
     int small_positive = 1;
@@ -388,6 +401,7 @@ check_knapsack_solver()
 int
 main(int /* argc */, char* /* argv */ [])
 {
+    check_clamp();
     check_numeric_cast();
     check_parameter();
     check_matrix();
