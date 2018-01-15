@@ -125,9 +125,9 @@ cleanup_function_element(functionT& fct, int& nb)
 // * factor` to the constant of the objective function.
 //
 static void
-remove_variable(baryonyx::objective_function& obj,
-                int variable_id,
-                int variable_value)
+remove_variable_from_objective(baryonyx::objective_function& obj,
+                               int variable_id,
+                               int variable_value)
 {
     auto it = std::find_if(obj.elements.begin(),
                            obj.elements.end(),
@@ -137,7 +137,7 @@ remove_variable(baryonyx::objective_function& obj,
 
     if (it != obj.elements.end()) {
         obj.value += (it->factor * variable_value);
-        obj.elements.erase(it, obj.elements.end());
+        obj.elements.erase(it);
     }
 
     assert(std::find_if(obj.elements.begin(),
@@ -153,7 +153,7 @@ remove_variable(baryonyx::objective_function& obj,
 
 //
 // Remove the variable from the constraint and add the `factor * value`  to the
-// value of the constaints.
+// value of the constraints.
 //
 static void
 remove_variable(baryonyx::constraint& cst, int variable_id, int variable_value)
@@ -187,12 +187,13 @@ remove_variable(baryonyx::constraint& cst, int variable_id, int variable_value)
 static void
 remove_variable(baryonyx::problem& pb, int variable_id, int variable_value)
 {
+    printf("remove variable %d value %d\n", variable_id, variable_value);
     pb.affected_vars.push_back(pb.vars.names[variable_id], variable_value);
 
     pb.vars.names.erase(pb.vars.names.begin() + variable_id);
     pb.vars.values.erase(pb.vars.values.begin() + variable_id);
 
-    remove_variable(pb.objective, variable_id, variable_value);
+    remove_variable_from_objective(pb.objective, variable_id, variable_value);
 
     for (auto& elem : pb.equal_constraints)
         remove_variable(elem, variable_id, variable_value);
@@ -221,8 +222,7 @@ struct hashed_constraints
                        int index_)
       : hash(hash_constraint(elems))
       , index(index_)
-    {
-    }
+    {}
 
     std::size_t hash;
     int index;
@@ -493,11 +493,12 @@ try_remove_assigned_variables_01(const std::shared_ptr<baryonyx::context>& ctx,
 }
 
 static bool
-try_remove_assigned_variables_101(const std::shared_ptr<baryonyx::context>& ctx,
-                                  baryonyx::problem& pb,
-                                  const baryonyx::constraint& cst,
-                                  baryonyx::operator_type type,
-                                  int& variable)
+try_remove_assigned_variables_101(
+  const std::shared_ptr<baryonyx::context>& ctx,
+  baryonyx::problem& pb,
+  const baryonyx::constraint& cst,
+  baryonyx::operator_type type,
+  int& variable)
 {
     int min = 0, max = 0;
     for (const auto& elem : cst.elements)
@@ -792,7 +793,8 @@ remove_unused_variables(const std::shared_ptr<baryonyx::context>& ctx,
 namespace baryonyx_private {
 
 void
-preprocess(const std::shared_ptr<baryonyx::context>& ctx, baryonyx::problem& pb)
+preprocess(const std::shared_ptr<baryonyx::context>& ctx,
+           baryonyx::problem& pb)
 {
     ctx->info("preprocessing:\n");
 
