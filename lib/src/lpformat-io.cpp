@@ -22,6 +22,7 @@
 
 #include <baryonyx/core>
 
+
 #include "utils.hpp"
 
 #include <deque>
@@ -694,7 +695,7 @@ read_objective_function(parser_stack& stack, problem& p)
     if (std::isalpha(stack.peek()) or stack.peek() == '_') {
         auto tmp = read_name(stack);
 
-        if (iequals(tmp, "obj") and stack.peek() == ':') {
+        if (stack.peek() == ':') {
             stack.substr_front(1);
         } else {
             stack.push_front(tmp);
