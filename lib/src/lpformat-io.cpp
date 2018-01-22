@@ -434,7 +434,7 @@ read_name(parser_stack& stack)
     std::string::size_type i = { 0 }, e = { str.length() };
     std::string ret;
 
-    if (std::isalpha(str[i])) {
+    if (std::isalpha(str[i]) or str[i] == '_') {
         ret += str[i];
         ++i;
 
@@ -602,7 +602,7 @@ read_function_element(parser_stack& stack)
 
     str = stack.top();
 
-    if (std::isalpha(str[0]))
+    if (std::isalpha(str[0]) or str[0] == '_')
         std::get<0>(ret) = read_name(stack);
 
     return ret;
@@ -642,7 +642,7 @@ read_objective_function_element(parser_stack& stack)
 
     str = stack.top();
 
-    if (std::isalpha(str[0]))
+    if (std::isalpha(str[0]) or str[0] == '_')
         std::get<0>(ret) = read_name(stack);
 
     return ret;
@@ -691,7 +691,7 @@ read_objective_function(parser_stack& stack, problem& p)
     // Forget the `obj:' string append by cplex.
     //
 
-    if (std::isalpha(stack.peek())) {
+    if (std::isalpha(stack.peek()) or stack.peek() == '_') {
         auto tmp = read_name(stack);
 
         if (iequals(tmp, "obj") and stack.peek() == ':') {
@@ -721,7 +721,7 @@ read_constraint(parser_stack& stack, problem& p)
     constraint cst;
     std::string label;
 
-    if (std::isalpha(stack.peek())) {
+    if (std::isalpha(stack.peek()) or stack.peek() == '_') {
         auto tmp = read_name(stack);
 
         if (stack.peek() == ':') {
