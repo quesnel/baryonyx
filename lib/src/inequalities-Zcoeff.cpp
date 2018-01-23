@@ -468,13 +468,22 @@ struct solver
         std::fill(ap.P().begin(), ap.P().end(), 0);
         std::fill(pi.begin(), pi.end(), 0);
 
-        if (not best_previous.empty()) {
+        if (reverse_solution == 0 or reverse_solution == 1) {
+            for (int i = 0; i != n; ++i)
+                x(i) = reverse_solution;
+        } else if (not best_previous.empty() and
+                   0 < reverse_solution and reverse_solution < 1) {
             x = best_previous;
             std::bernoulli_distribution d(reverse_solution);
 
             for (int i = 0; i != n; ++i)
                 if (d(rng))
                     x(i) = !x(i);
+        } else if (-1 < reverse_solution and reverse_solution < 0) {
+            std::bernoulli_distribution d(std::abs(reverse_solution));
+
+            for (int i = 0; i != n; ++i)
+                x(i) = d(rng);
         } else {
             for (int i = 0, e = n; i != e; ++i)
                 x(i) = init_x(c(i), mode_type());

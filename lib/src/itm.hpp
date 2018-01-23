@@ -167,7 +167,7 @@ struct parameters
       , kappa_step(ctx->get_real_parameter("kappa-step", 1.e-3))
       , kappa_max(ctx->get_real_parameter("kappa-max", 0.6))
       , alpha(ctx->get_real_parameter("alpha", 1.0))
-      , reverse_solution(ctx->get_real_parameter("reverse-solution", 0.5))
+      , reverse_solution(ctx->get_real_parameter("reverse-solution", -0.5))
       , pushing_k_factor(ctx->get_real_parameter("pushing-k-factor", 0.9))
       , pushing_objective_amplifier(
           ctx->get_real_parameter("pushing-objective-amplifier", 5))
@@ -182,8 +182,6 @@ struct parameters
     {
         if (limit < 0)
             limit = std::numeric_limits<int>::max();
-
-        reverse_solution = clamp(reverse_solution, 0.0, 1.0);
 
         ctx->info("solver parameters:\n"
                   "  - preprocessing: %s\n"
@@ -221,10 +219,11 @@ struct parameters
                   pushing_iteration_limit,
                   pushing_k_factor);
 
-        if (ctx->optimize())
+        if (ctx->optimize()) {
             ctx->info("optimizer parameters:\n"
                       "  - reverse-solution: %.10g\n",
                       reverse_solution);
+        }
     }
 
     std::string preprocessing;
