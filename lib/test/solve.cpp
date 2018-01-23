@@ -475,10 +475,9 @@ test_Z_coefficient_1()
     auto ctx = std::make_shared<baryonyx::context>();
     ctx->set_standard_stream_logger();
 
-    // #if 0
     {
         const char* str_pb = "minimize\n"
-                             "15 x1 19 x2 13 x3 12 x4\n"
+                             "15 x1 + 19 x2 + 13 x3 + 12 x4\n"
                              "Subject to:\n"
                              "2 x1 + 1 x2 + 3 x3 + 2 x4 <= 3\n"
                              "Binaries\n"
@@ -497,7 +496,6 @@ test_Z_coefficient_1()
                     true);
     }
 
-    // #else
     {
         const char* str_pb = "minimize\n"
                              "Subject to:\n"
@@ -518,7 +516,6 @@ test_Z_coefficient_1()
             Ensures(baryonyx::is_valid_solution(pb, result.variable_value) ==
                     true);
     }
-    // #endif
 }
 
 #if 0
