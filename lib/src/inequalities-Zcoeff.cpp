@@ -165,17 +165,27 @@ calculator_sort(iteratorT begin, iteratorT end, randomT& rng, bx::maximize_tag)
     }
 }
 
-template<typename floatingpointT>
+template<typename floatingpointT, typename randomT>
 static inline bool
-stop_iterating(floatingpointT value, bx::minimize_tag) noexcept
+stop_iterating(floatingpointT value, randomT& rng, bx::minimize_tag) noexcept
 {
+    if (value == 0) {
+        std::bernoulli_distribution d(0.5);
+        return d(rng);
+    }
+
     return value > 0;
 }
 
-template<typename floatingpointT>
+template<typename floatingpointT, typename randomT>
 static inline bool
-stop_iterating(floatingpointT value, bx::maximize_tag) noexcept
+stop_iterating(floatingpointT value, randomT& rng, bx::maximize_tag) noexcept
 {
+    if (value == 0) {
+        std::bernoulli_distribution d(0.5);
+        return d(rng);
+    }
+
     return value < 0;
 }
 
@@ -846,7 +856,7 @@ struct solver
                 sum += 1;
 
                 if (sum <= bkmax) {
-                    if (stop_iterating(R[i].value, mode_type()))
+                    if (stop_iterating(R[i].value, rng, mode_type()))
                         break;
                     ++selected;
                 } else
