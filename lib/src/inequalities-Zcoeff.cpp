@@ -1288,6 +1288,7 @@ struct solver_functor
     std::chrono::time_point<std::chrono::steady_clock> m_end;
 
     std::shared_ptr<bx::context> m_ctx;
+    randomT& m_rng;
     const std::vector<std::string>& m_variable_names;
     const bx::affected_variables& m_affected_vars;
 
@@ -1295,10 +1296,11 @@ struct solver_functor
     bx::result m_best;
 
     solver_functor(std::shared_ptr<bx::context> ctx,
+                   randomT& rng,
                    const std::vector<std::string>& variable_names,
                    const bx::affected_variables& affected_vars)
-
       : m_ctx(std::move(ctx))
+      , m_rng(rng)
       , m_variable_names(variable_names)
       , m_affected_vars(affected_vars)
     {}
@@ -1309,8 +1311,7 @@ struct solver_functor
       const c_type<floatingpointT>& original_costs,
       const c_type<floatingpointT>& norm_costs,
       double cost_constant,
-      const bx::itm::parameters& p,
-      randomT& rng)
+      const bx::itm::parameters& p)
     {
         m_begin = std::chrono::steady_clock::now();
         m_end = m_begin;
@@ -1322,9 +1323,9 @@ struct solver_functor
         floatingpoint_type kappa = p.kappa_min;
 
         solver<floatingpoint_type, mode_type, random_type> slv(
-          rng, variables, norm_costs, constraints);
+          m_rng, variables, norm_costs, constraints);
 
-        constraint_order_type compute(m_ctx, slv, rng);
+        constraint_order_type compute(m_ctx, slv, m_rng);
 
         m_ctx->info("* solver starts:\n");
 
@@ -1507,6 +1508,7 @@ struct optimize_functor
     std::chrono::time_point<std::chrono::steady_clock> m_end;
 
     std::shared_ptr<bx::context> m_ctx;
+    randomT m_rng;
     int m_thread_id;
     const std::vector<std::string>& m_variable_names;
     const bx::affected_variables& m_affected_vars;
@@ -1515,9 +1517,11 @@ struct optimize_functor
 
     optimize_functor(std::shared_ptr<bx::context> ctx,
                      int thread_id,
+                     typename random_type::result_type seed,
                      const std::vector<std::string>& variable_names,
                      const bx::affected_variables& affected_vars)
       : m_ctx(std::move(ctx))
+      , m_rng(seed)
       , m_thread_id(thread_id)
       , m_variable_names(variable_names)
       , m_affected_vars(affected_vars)
@@ -1529,8 +1533,7 @@ struct optimize_functor
       const c_type<floatingpointT>& original_costs,
       const c_type<floatingpointT>& norm_costs,
       double cost_constant,
-      const bx::itm::parameters& p,
-      randomT& rng)
+      const bx::itm::parameters& p)
     {
         m_begin = std::chrono::steady_clock::now();
         m_end = m_begin;
@@ -1541,9 +1544,9 @@ struct optimize_functor
         floatingpoint_type kappa = p.kappa_min;
 
         solver<floatingpoint_type, mode_type, random_type> slv(
-          rng, variables, norm_costs, constraints);
+          m_rng, variables, norm_costs, constraints);
 
-        constraint_order_type compute(m_ctx, slv, rng);
+        constraint_order_type compute(m_ctx, slv, m_rng);
 
         for (; not bx::is_time_limit(p.time_limit, m_begin, m_end);
              m_end = std::chrono::steady_clock::now(), ++i) {
@@ -1786,8 +1789,7 @@ template<typename floatingpointT,
 static bx::result
 solve(std::shared_ptr<bx::context> ctx,
       bx::problem& pb,
-      const bx::itm::parameters& p,
-      randomT& rng)
+      const bx::itm::parameters& p)
 {
     ctx->info("Solver initializing\n");
 
@@ -1796,6 +1798,10 @@ solve(std::shared_ptr<bx::context> ctx,
 
     auto constraints{ bx::itm::make_merged_constraints(ctx, pb, p) };
     if (not constraints.empty() and not pb.vars.values.empty()) {
+        randomT rng(ctx->get_integer_parameter(
+          "seed",
+          std::chrono::system_clock::now().time_since_epoch().count()));
+
         auto variables = bx::numeric_cast<int>(pb.vars.values.size());
         auto cost =
           make_objective_function<floatingpointT>(pb.objective, variables);
@@ -1806,10 +1812,9 @@ solve(std::shared_ptr<bx::context> ctx,
         bx::clear(pb);
 
         solver_functor<floatingpointT, modeT, constraintOrderT, randomT> slv(
-          ctx, names, affected_vars);
+          ctx, rng, names, affected_vars);
 
-        ret =
-          slv(constraints, variables, cost, norm_costs, cost_constant, p, rng);
+        ret = slv(constraints, variables, cost, norm_costs, cost_constant, p);
 
         ret.method = "inequalities_Zcoeff solver";
         ret.variable_name = std::move(names);
@@ -1829,7 +1834,6 @@ static bx::result
 optimize(std::shared_ptr<bx::context> ctx,
          bx::problem& pb,
          const bx::itm::parameters& p,
-         randomT& rng,
          int thread)
 {
     bx::Expects(thread >= 1, "optimize: bad thread number");
@@ -1841,6 +1845,11 @@ optimize(std::shared_ptr<bx::context> ctx,
 
     auto constraints{ bx::itm::make_merged_constraints(ctx, pb, p) };
     if (not constraints.empty() and not pb.vars.values.empty()) {
+
+        randomT rng(ctx->get_integer_parameter(
+          "seed",
+          std::chrono::system_clock::now().time_since_epoch().count()));
+
         auto variables = bx::numeric_cast<int>(pb.vars.values.size());
         auto cost =
           make_objective_function<floatingpointT>(pb.objective, variables);
@@ -1860,19 +1869,24 @@ optimize(std::shared_ptr<bx::context> ctx,
         else
             ctx->info("Optimizer starts with %d threads\n", thread);
 
+        std::uniform_int_distribution<typename randomT::result_type> dst(
+          std::numeric_limits<typename randomT::result_type>::min(),
+          std::numeric_limits<typename randomT::result_type>::max());
+
         for (int i{ 0 }; i != thread; ++i) {
+            auto seed = bx::numeric_cast<typename randomT::result_type>(dst(rng));
+
             std::packaged_task<bx::result()> task(std::bind(
               optimize_functor<floatingpointT,
                                modeT,
                                constraintOrderT,
-                               randomT>(ctx, i, names, affected_vars),
+                               randomT>(ctx, i, seed, names, affected_vars),
               std::ref(constraints),
               variables,
               std::ref(cost),
               std::ref(norm_costs),
               cost_constant,
-              std::ref(p),
-              std::ref(rng)));
+              std::ref(p)));
 
             results.emplace_back(task.get_future());
 
@@ -1906,32 +1920,31 @@ template<typename realT, typename modeT, typename randomT>
 static bx::result
 dispatch_solve(std::shared_ptr<bx::context> ctx,
                bx::problem& pb,
-               const bx::itm::parameters& p,
-               randomT& rng)
+               const bx::itm::parameters& p)
 {
     switch (p.order) {
     case bx::itm::constraint_order::none:
         return ::solve<realT, modeT, ::compute_none<realT, randomT>, randomT>(
-          ctx, pb, p, rng);
+          ctx, pb, p);
     case bx::itm::constraint_order::reversing:
         return ::
           solve<realT, modeT, ::compute_reversing<realT, randomT>, randomT>(
-            ctx, pb, p, rng);
+            ctx, pb, p);
     case bx::itm::constraint_order::random_sorting:
-        return ::solve<realT, modeT, ::compute_random<realT, randomT>>(
-          ctx, pb, p, rng);
+        return ::solve<realT, modeT, ::compute_random<realT, randomT>, randomT>(
+          ctx, pb, p);
     case bx::itm::constraint_order::infeasibility_decr:
         return ::solve<
           realT,
           modeT,
-          ::compute_infeasibility<realT, randomT, compute_infeasibility_decr>>(
-          ctx, pb, p, rng);
+          ::compute_infeasibility<realT, randomT, ::compute_infeasibility_decr>, randomT>(
+          ctx, pb, p);
     case bx::itm::constraint_order::infeasibility_incr:
         return ::solve<
           realT,
           modeT,
-          ::compute_infeasibility<realT, randomT, compute_infeasibility_incr>>(
-          ctx, pb, p, rng);
+          ::compute_infeasibility<realT, randomT, ::compute_infeasibility_incr>, randomT>(
+          ctx, pb, p);
     }
 
     return {};
@@ -1942,33 +1955,32 @@ static bx::result
 dispatch_optimize(std::shared_ptr<bx::context> ctx,
                   bx::problem& pb,
                   const bx::itm::parameters& p,
-                  randomT& rng,
                   int thread)
 {
     switch (p.order) {
     case bx::itm::constraint_order::none:
         return ::
           optimize<realT, modeT, ::compute_none<realT, randomT>, randomT>(
-            ctx, pb, p, rng, thread);
+            ctx, pb, p, thread);
     case bx::itm::constraint_order::reversing:
         return ::
           optimize<realT, modeT, ::compute_reversing<realT, randomT>, randomT>(
-            ctx, pb, p, rng, thread);
+            ctx, pb, p, thread);
     case bx::itm::constraint_order::random_sorting:
-        return ::optimize<realT, modeT, ::compute_random<realT, randomT>>(
-          ctx, pb, p, rng, thread);
+        return ::optimize<realT, modeT, ::compute_random<realT, randomT>, randomT>(
+          ctx, pb, p, thread);
     case bx::itm::constraint_order::infeasibility_decr:
         return ::optimize<
           realT,
           modeT,
-          ::compute_infeasibility<realT, randomT, compute_infeasibility_decr>>(
-          ctx, pb, p, rng, thread);
+          ::compute_infeasibility<realT, randomT, ::compute_infeasibility_decr>, randomT>(
+          ctx, pb, p, thread);
     case bx::itm::constraint_order::infeasibility_incr:
         return ::optimize<
           realT,
           modeT,
-          ::compute_infeasibility<realT, randomT, compute_infeasibility_incr>>(
-          ctx, pb, p, rng, thread);
+          ::compute_infeasibility<realT, randomT, ::compute_infeasibility_incr>, randomT>(
+          ctx, pb, p, thread);
     }
 
     return {};
@@ -1988,33 +2000,31 @@ inequalities_Zcoeff_wedelin_solve(
     parameters p(ctx);
 
     using random_type = std::default_random_engine;
-    random_type::result_type seed = ctx->get_integer_parameter(
-      "seed", std::chrono::system_clock::now().time_since_epoch().count());
-    random_type rng(seed);
+    // using random_type = std::mt19937;
 
     if (pb.type == baryonyx::objective_function_type::maximize) {
         switch (p.float_type) {
         case floating_point_type::float_type:
             return dispatch_solve<float, maximize_tag, random_type>(
-              ctx, pb, p, rng);
+              ctx, pb, p);
         case floating_point_type::double_type:
             return dispatch_solve<double, maximize_tag, random_type>(
-              ctx, pb, p, rng);
+              ctx, pb, p);
         case floating_point_type::longdouble_type:
             return dispatch_solve<long double, maximize_tag, random_type>(
-              ctx, pb, p, rng);
+              ctx, pb, p);
         }
     } else {
         switch (p.float_type) {
         case floating_point_type::float_type:
             return dispatch_solve<float, minimize_tag, random_type>(
-              ctx, pb, p, rng);
+              ctx, pb, p);
         case floating_point_type::double_type:
             return dispatch_solve<double, minimize_tag, random_type>(
-              ctx, pb, p, rng);
+              ctx, pb, p);
         case floating_point_type::longdouble_type:
             return dispatch_solve<long double, minimize_tag, random_type>(
-              ctx, pb, p, rng);
+              ctx, pb, p);
         }
     }
 
@@ -2031,34 +2041,31 @@ inequalities_Zcoeff_wedelin_optimize(
     parameters p(ctx);
 
     using random_type = std::default_random_engine;
-    random_type::result_type seed = ctx->get_integer_parameter(
-      "seed", std::chrono::system_clock::now().time_since_epoch().count());
-
-    random_type rng(seed);
+    // using random_type = std::mt19937;
 
     if (pb.type == baryonyx::objective_function_type::maximize) {
         switch (p.float_type) {
         case floating_point_type::float_type:
             return dispatch_optimize<float, maximize_tag, random_type>(
-              ctx, pb, p, rng, thread);
+              ctx, pb, p, thread);
         case floating_point_type::double_type:
             return dispatch_optimize<double, maximize_tag, random_type>(
-              ctx, pb, p, rng, thread);
+              ctx, pb, p, thread);
         case floating_point_type::longdouble_type:
             return dispatch_optimize<long double, maximize_tag, random_type>(
-              ctx, pb, p, rng, thread);
+              ctx, pb, p, thread);
         }
     } else {
         switch (p.float_type) {
         case floating_point_type::float_type:
             return dispatch_optimize<float, minimize_tag, random_type>(
-              ctx, pb, p, rng, thread);
+              ctx, pb, p, thread);
         case floating_point_type::double_type:
             return dispatch_optimize<double, minimize_tag, random_type>(
-              ctx, pb, p, rng, thread);
+              ctx, pb, p, thread);
         case floating_point_type::longdouble_type:
             return dispatch_optimize<long double, minimize_tag, random_type>(
-              ctx, pb, p, rng, thread);
+              ctx, pb, p, thread);
         }
     }
 
