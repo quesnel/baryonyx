@@ -197,7 +197,11 @@ struct parameters
                   "  - w: %d\n"
                   "  - norm: %s\n"
                   "  - print-level: %d\n"
-                  "  - floating-point-type: %s\n",
+                  "  - floating-point-type: %s\n"
+                  "  - pushes-limit: %d\n"
+                  "  - pushing-objective-amplifier: %.10g\n"
+                  "  - pushing-iteration-limit: %d\n"
+                  "  - pushing-k-factor: %.10g\n",
                   preprocessing.c_str(),
                   constraint_order_to_string(order),
                   time_limit,
@@ -211,20 +215,16 @@ struct parameters
                   w,
                   norm.c_str(),
                   print_level,
-                  floating_point_type_to_string(float_type));
+                  floating_point_type_to_string(float_type),
+                  pushes_limit,
+                  pushing_objective_amplifier,
+                  pushing_iteration_limit,
+                  pushing_k_factor);
 
         if (ctx->optimize())
             ctx->info("optimizer parameters:\n"
-                      "  - reverse-solution: %.10g\n"
-                      "  - pushes-limit: %d\n"
-                      "  - pushing-objective-amplifier: %.10g\n"
-                      "  - pushing-iteration-limit: %d\n"
-                      "  - pushing-k-factor: %.10g\n",
-                      reverse_solution,
-                      pushes_limit,
-                      pushing_objective_amplifier,
-                      pushing_iteration_limit,
-                      pushing_k_factor);
+                      "  - reverse-solution: %.10g\n",
+                      reverse_solution);
     }
 
     std::string preprocessing;

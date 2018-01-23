@@ -150,12 +150,12 @@ help(baryonyx::context* ctx) noexcept
               "  - norm: l1 l2 inf none rng\n"
               "  - print-level: [0, 2]\n"
               "  - floating-point-type: float, double, longdouble\n"
-              "optimizer parameters:\n"
-              "  - reverse-solution: real [0, 1]\n"
               "  - pushes-limit: integer [0, +oo[\n"
               "  - pushing-objective-amplifier: real [0, +oo[\n"
               "  - pushing-iteration-limit: integer [0, +oo[\n"
-              "  - pushing-k-factor: real [0, +oo[\n");
+              "  - pushing-k-factor: real [0, +oo[\n"
+              "optimizer parameters:\n"
+              "  - reverse-solution: real [0, 1]\n");
 }
 }
 
