@@ -536,7 +536,8 @@ struct solver
                                  int bk,
                                  floatingpoint_type kappa,
                                  floatingpoint_type delta,
-                                 floatingpoint_type theta)
+                                 floatingpoint_type theta,
+                                 floatingpoint_type objective_amplifier)
     {
         typename AP_type<floatingpoint_type>::const_iterator it, et;
         std::tie(it, et) = ap.row(k);
@@ -547,6 +548,15 @@ struct solver
         const int c_size = length(ck);
         const int r_size = compute_reduced_costs(it, et);
         int bk_move = 0;
+
+        //
+        // Before sort and select variables, we apply the push method: for each
+        // reduces cost, we had the cost multiply with an objective amplifier.
+        //
+
+        if (objective_amplifier)
+            for (int i = 0; i != r_size; ++i)
+                R[i].value += objective_amplifier * c[R[i].id];
 
         //
         // Negate reduced costs and coefficients of these variables. We need to
@@ -583,7 +593,8 @@ struct solver
                                    int bkmax,
                                    floatingpoint_type kappa,
                                    floatingpoint_type delta,
-                                   floatingpoint_type theta)
+                                   floatingpoint_type theta,
+                                   floatingpoint_type objective_amplifier)
     {
         typename AP_type<floatingpoint_type>::const_iterator it, et;
         std::tie(it, et) = ap.row(k);
@@ -594,6 +605,15 @@ struct solver
         const int c_size = (ck) ? length(ck) : 0;
         const int r_size = compute_reduced_costs(it, et);
         int bk_move = 0;
+
+        //
+        // Before sort and select variables, we apply the push method: for each
+        // reduces cost, we had the cost multiply with an objective amplifier.
+        //
+
+        if (objective_amplifier)
+            for (int i = 0; i != r_size; ++i)
+                R[i].value += objective_amplifier * c[R[i].id];
 
         //
         // Negate reduced costs and coefficients of these variables. We need to
@@ -630,7 +650,8 @@ struct solver
                                   int bk,
                                   floatingpoint_type kappa,
                                   floatingpoint_type delta,
-                                  floatingpoint_type theta)
+                                  floatingpoint_type theta,
+                                  floatingpoint_type objective_amplifier)
     {
         typename AP_type<floatingpoint_type>::const_iterator it, et;
         std::tie(it, et) = ap.row(k);
@@ -638,6 +659,16 @@ struct solver
         decrease_preference(it, et, theta);
 
         const int r_size = compute_reduced_costs(it, et);
+
+        //
+        // Before sort and select variables, we apply the push method: for each
+        // reduces cost, we had the cost multiply with an objective amplifier.
+        //
+
+        if (objective_amplifier)
+            for (int i = 0; i != r_size; ++i)
+                R[i].value += objective_amplifier * c[R[i].id];
+
         calculator_sort(R.begin(), R.begin() + r_size, rng, mode_type());
 
         int selected = select_variables_equality(r_size, bk);
@@ -650,7 +681,8 @@ struct solver
                                     int bkmax,
                                     floatingpoint_type kappa,
                                     floatingpoint_type delta,
-                                    floatingpoint_type theta)
+                                    floatingpoint_type theta,
+                                    floatingpoint_type objective_amplifier)
     {
         typename AP_type<floatingpoint_type>::const_iterator it, et;
         std::tie(it, et) = ap.row(k);
@@ -658,6 +690,16 @@ struct solver
         decrease_preference(it, et, theta);
 
         const int r_size = compute_reduced_costs(it, et);
+
+        //
+        // Before sort and select variables, we apply the push method: for each
+        // reduces cost, we had the cost multiply with an objective amplifier.
+        //
+
+        if (objective_amplifier)
+            for (int i = 0; i != r_size; ++i)
+                R[i].value += objective_amplifier * c[R[i].id];
+
         calculator_sort(R.begin(), R.begin() + r_size, rng, mode_type());
 
         int selected = select_variables_inequality(r_size, bkmin, bkmax);
@@ -669,7 +711,8 @@ struct solver
                                    int bk,
                                    floatingpoint_type kappa,
                                    floatingpoint_type delta,
-                                   floatingpoint_type theta)
+                                   floatingpoint_type theta,
+                                   floatingpoint_type objective_amplifier)
     {
         typename AP_type<floatingpoint_type>::const_iterator it, et;
         std::tie(it, et) = ap.row(k);
@@ -679,6 +722,15 @@ struct solver
         const auto& ck = C[k];
         const int c_size = length(ck);
         const int r_size = compute_reduced_costs(it, et);
+
+        //
+        // Before sort and select variables, we apply the push method: for each
+        // reduces cost, we had the cost multiply with an objective amplifier.
+        //
+
+        if (objective_amplifier)
+            for (int i = 0; i != r_size; ++i)
+                R[i].value += objective_amplifier * c[R[i].id];
 
         //
         // Negate reduced costs and coefficients of these variables. We need to
@@ -714,7 +766,8 @@ struct solver
                                      int bkmax,
                                      floatingpoint_type kappa,
                                      floatingpoint_type delta,
-                                     floatingpoint_type theta)
+                                     floatingpoint_type theta,
+                                     floatingpoint_type objective_amplifier)
     {
         typename AP_type<floatingpoint_type>::const_iterator it, et;
         std::tie(it, et) = ap.row(k);
@@ -724,6 +777,15 @@ struct solver
         const auto& ck = C[k];
         const int c_size = (ck) ? length(ck) : 0;
         const int r_size = compute_reduced_costs(it, et);
+
+        //
+        // Before sort and select variables, we apply the push method: for each
+        // reduces cost, we had the cost multiply with an objective amplifier.
+        //
+
+        if (objective_amplifier)
+            for (int i = 0; i != r_size; ++i)
+                R[i].value += objective_amplifier * c[R[i].id];
 
         //
         // Negate reduced costs and coefficients of these variables. We need to
@@ -752,32 +814,6 @@ struct solver
         for (int i = 0; i != c_size; ++i) {
             ap.invert_p(k, ck[i].id_A);
             x[ck[i].id_A] = 1 - x[ck[i].id_A];
-        }
-    }
-
-    void compute_update_row(int k,
-                            floatingpoint_type kappa,
-                            floatingpoint_type delta,
-                            floatingpoint_type theta)
-    {
-        if (Z[k]) {
-            if (b(k).min == b(k).max)
-                compute_update_row_Z_eq(k, b(k).min, kappa, delta, theta);
-            else
-                compute_update_row_Z_ineq(
-                  k, b(k).min, b(k).max, kappa, delta, theta);
-        } else if (!C[k]) {
-            if (b(k).min == b(k).max)
-                compute_update_row_01_eq(k, b(k).min, kappa, delta, theta);
-            else
-                compute_update_row_01_ineq(
-                  k, b(k).min, b(k).max, kappa, delta, theta);
-        } else {
-            if (b(k).min == b(k).max)
-                compute_update_row_101_eq(k, b(k).min, kappa, delta, theta);
-            else
-                compute_update_row_101_ineq(
-                  k, b(k).min, b(k).max, kappa, delta, theta);
         }
     }
 
@@ -910,64 +946,59 @@ struct solver
         }
     }
 
-    void push_and_compute_update_row(
-      int k,
-      floatingpoint_type kappa,
-      floatingpoint_type delta,
-      floatingpoint_type theta,
-      floatingpoint_type objective_amplifier) noexcept
+    void push_and_compute_update_row(int k,
+                                     floatingpoint_type kappa,
+                                     floatingpoint_type delta,
+                                     floatingpoint_type theta,
+                                     floatingpoint_type obj_amp)
     {
-        typename AP_type<floatingpoint_type>::const_iterator it, et;
-        std::tie(it, et) = ap.row(k);
-
-        decrease_preference(it, et, theta);
-
-        const int r_size = compute_reduced_costs(it, et);
-
-        //
-        // Before sort and select variables, we apply the push method: for each
-        // reduces cost, we had the cost multiply with an objective amplifier.
-        //
-
-        for (int i = 0; i != r_size; ++i)
-            R[i].value += objective_amplifier * c[R[i].id];
-
-        const auto& ck = C[k];
-        const int c_size = (ck) ? length(ck) : 0;
-
-        //
-        // Negate reduced costs and coefficients of these variables. We need to
-        // parse the row Ak[i] because we need to use r[i] not available in C.
-        //
-
-        for (int i = 0; i != c_size; ++i) {
-            R[ck[i].id_r].value = -R[ck[i].id_r].value;
-            ap.invert_p(k, ck[i].id_A);
+        if (Z[k]) {
+            if (b(k).min == b(k).max)
+                compute_update_row_Z_eq(
+                  k, b(k).min, kappa, delta, theta, obj_amp);
+            else
+                compute_update_row_Z_ineq(
+                  k, b(k).min, b(k).max, kappa, delta, theta, obj_amp);
+        } else if (!C[k]) {
+            if (b(k).min == b(k).max)
+                compute_update_row_01_eq(
+                  k, b(k).min, kappa, delta, theta, obj_amp);
+            else
+                compute_update_row_01_ineq(
+                  k, b(k).min, b(k).max, kappa, delta, theta, obj_amp);
+        } else {
+            if (b(k).min == b(k).max)
+                compute_update_row_101_eq(
+                  k, b(k).min, kappa, delta, theta, obj_amp);
+            else
+                compute_update_row_101_ineq(
+                  k, b(k).min, b(k).max, kappa, delta, theta, obj_amp);
         }
+    }
 
-        const int bkmin = b(k).min + c_size;
-        const int bkmax = b(k).max + c_size;
-
-        //
-        // Sort the reduced cost.
-        //
-
-        calculator_sort(R.begin(), R.begin() + r_size, rng, mode_type());
-
-        int selected = (bkmin == bkmax)
-                         ? select_variables_equality(r_size, bkmin)
-                         : select_variables_inequality(r_size, bkmin, bkmax);
-
-        affect_variables(k, selected, r_size, kappa, delta);
-
-        //
-        // Clean up: correct negated costs and adjust value of negated
-        // variables.
-        //
-
-        for (int i = 0; i != c_size; ++i) {
-            ap.invert_p(k, ck[i].id_A);
-            x[ck[i].id_A] = 1 - x[ck[i].id_A];
+    void compute_update_row(int k,
+                            floatingpoint_type kappa,
+                            floatingpoint_type delta,
+                            floatingpoint_type theta)
+    {
+        if (Z[k]) {
+            if (b(k).min == b(k).max)
+                compute_update_row_Z_eq(k, b(k).min, kappa, delta, theta, 0);
+            else
+                compute_update_row_Z_ineq(
+                  k, b(k).min, b(k).max, kappa, delta, theta, 0);
+        } else if (!C[k]) {
+            if (b(k).min == b(k).max)
+                compute_update_row_01_eq(k, b(k).min, kappa, delta, theta, 0);
+            else
+                compute_update_row_01_ineq(
+                  k, b(k).min, b(k).max, kappa, delta, theta, 0);
+        } else {
+            if (b(k).min == b(k).max)
+                compute_update_row_101_eq(k, b(k).min, kappa, delta, theta, 0);
+            else
+                compute_update_row_101_ineq(
+                  k, b(k).min, b(k).max, kappa, delta, theta, 0);
         }
     }
 };
