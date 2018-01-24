@@ -2,3 +2,6 @@
 - Add the integer algorithm (integer and inequalities)
 - Provides a cuda implementation of the binary and inequalities
   solver.
+
+- check random generator has a different seed for each thread
+(long) std::clock() + (long) std::hash<std::thread::id>{}(std::this_thread::get_id())
