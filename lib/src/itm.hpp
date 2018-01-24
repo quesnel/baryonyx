@@ -44,6 +44,15 @@ inequalities_1coeff_wedelin_optimize(const std::shared_ptr<context>& ctx,
                                      int thread);
 
 result
+inequalities_101coeff_wedelin_solve(const std::shared_ptr<context>& ctx,
+                                    problem& pb);
+
+result
+inequalities_101coeff_wedelin_optimize(const std::shared_ptr<context>& ctx,
+                                       problem& pb,
+                                       int thread);
+
+result
 inequalities_Zcoeff_wedelin_solve(const std::shared_ptr<context>& ctx,
                                   problem& pb);
 
@@ -158,7 +167,7 @@ struct parameters
       , kappa_step(ctx->get_real_parameter("kappa-step", 1.e-3))
       , kappa_max(ctx->get_real_parameter("kappa-max", 0.6))
       , alpha(ctx->get_real_parameter("alpha", 1.0))
-      , reverse_solution(ctx->get_real_parameter("reverse-solution", 0.5))
+      , reverse_solution(ctx->get_real_parameter("reverse-solution", -0.5))
       , pushing_k_factor(ctx->get_real_parameter("pushing-k-factor", 0.9))
       , pushing_objective_amplifier(
           ctx->get_real_parameter("pushing-objective-amplifier", 5))
@@ -174,8 +183,6 @@ struct parameters
         if (limit < 0)
             limit = std::numeric_limits<int>::max();
 
-        reverse_solution = clamp(reverse_solution, 0.0, 1.0);
-
         ctx->info("solver parameters:\n"
                   "  - preprocessing: %s\n"
                   "  - constraint-order: %s\n"
@@ -188,7 +195,11 @@ struct parameters
                   "  - w: %d\n"
                   "  - norm: %s\n"
                   "  - print-level: %d\n"
-                  "  - floating-point-type: %s\n",
+                  "  - floating-point-type: %s\n"
+                  "  - pushes-limit: %d\n"
+                  "  - pushing-objective-amplifier: %.10g\n"
+                  "  - pushing-iteration-limit: %d\n"
+                  "  - pushing-k-factor: %.10g\n",
                   preprocessing.c_str(),
                   constraint_order_to_string(order),
                   time_limit,
@@ -202,20 +213,17 @@ struct parameters
                   w,
                   norm.c_str(),
                   print_level,
-                  floating_point_type_to_string(float_type));
+                  floating_point_type_to_string(float_type),
+                  pushes_limit,
+                  pushing_objective_amplifier,
+                  pushing_iteration_limit,
+                  pushing_k_factor);
 
-        if (ctx->optimize())
+        if (ctx->optimize()) {
             ctx->info("optimizer parameters:\n"
-                      "  - reverse-solution: %.10g\n"
-                      "  - pushes-limit: %d\n"
-                      "  - pushing-objective-amplifier: %.10g\n"
-                      "  - pushing-iteration-limit: %d\n"
-                      "  - pushing-k-factor: %.10g\n",
-                      reverse_solution,
-                      pushes_limit,
-                      pushing_objective_amplifier,
-                      pushing_iteration_limit,
-                      pushing_k_factor);
+                      "  - reverse-solution: %.10g\n",
+                      reverse_solution);
+        }
     }
 
     std::string preprocessing;

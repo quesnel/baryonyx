@@ -23,6 +23,8 @@
 #ifndef ORG_VLEPROJECT_BARYONYX_SOLVER_PRIVATE_HPP
 #define ORG_VLEPROJECT_BARYONYX_SOLVER_PRIVATE_HPP
 
+#include <baryonyx/core>
+
 static inline void
 #if defined(__GNUC__)
   __attribute__((always_inline, format(printf, 2, 3)))
@@ -68,6 +70,18 @@ static inline void
             op((first));                                                      \
     } while (0);
 
+namespace baryonyx {
+
+struct maximize_tag
+{
+};
+
+struct minimize_tag
+{
+};
+
+} // namespace baryonyx
+
 namespace baryonyx_private {
 
 baryonyx::problem
@@ -83,7 +97,8 @@ bool
 check_consistency(const baryonyx::problem& pb);
 
 void
-preprocess(const std::shared_ptr<baryonyx::context>& ctx, baryonyx::problem& pb);
+preprocess(const std::shared_ptr<baryonyx::context>& ctx,
+           baryonyx::problem& pb);
 
 baryonyx::result
 solve(const std::shared_ptr<baryonyx::context>& ctx, baryonyx::problem& pb);
