@@ -192,51 +192,55 @@ struct parameters
         if (limit < 0)
             limit = std::numeric_limits<int>::max();
 
-        ctx->info(" * Global parameters:\n"
-                  "  - limit: %d\n"
-                  "  - time-limit: %.10g\n"
-                  "  - floating-point-type: %s\n"
-                  "  - print-level: %d\n",
-                  limit,
-                  time_limit,
-                  floating_point_type_to_string(float_type),
-                  print_level);
+        info(ctx,
+             " * Global parameters:\n"
+             "  - limit: {}\n"
+             "  - time-limit: {:.10g}\n"
+             "  - floating-point-type: {}\n"
+             "  - print-level: {}\n",
+             limit,
+             time_limit,
+             floating_point_type_to_string(float_type),
+             print_level);
 
-        ctx->info(" * In The Middle parameters:\n"
-                  "  - preprocessing: %s\n"
-                  "  - constraint-order: %s\n"
-                  "  - theta: %.10g\n"
-                  "  - delta: %.10g\n"
-                  "  - kappa: %.10g %.10g %.10g\n"
-                  "  - alpha: %.10g\n"
-                  "  - w: %d\n"
-                  "  - norm: %s\n",
-                  preprocessing.c_str(),
-                  constraint_order_to_string(order),
-                  theta,
-                  delta,
-                  kappa_min,
-                  kappa_step,
-                  kappa_max,
-                  alpha,
-                  w,
-                  norm.c_str());
+        info(ctx,
+             " * In The Middle parameters:\n"
+             "  - preprocessing: {}\n"
+             "  - constraint-order: {}\n"
+             "  - theta: {:.10g}\n"
+             "  - delta: {:.10g}\n"
+             "  - kappa: {:.10g} {:.10g} {:.10g}\n"
+             "  - alpha: {:.10g}\n"
+             "  - w: {}\n"
+             "  - norm: {}\n",
+             preprocessing,
+             constraint_order_to_string(order),
+             theta,
+             delta,
+             kappa_min,
+             kappa_step,
+             kappa_max,
+             alpha,
+             w,
+             norm);
 
-        ctx->info(" * Pushes system parameters:\n"
-                  "  - pushes-limit: %d\n"
-                  "  - pushing-objective-amplifier: %.10g\n"
-                  "  - pushing-iteration-limit: %d\n"
-                  "  - pushing-k-factor: %.10g\n",
-                  pushes_limit,
-                  pushing_objective_amplifier,
-                  pushing_iteration_limit,
-                  pushing_k_factor);
+        info(ctx,
+             " * Pushes system parameters:\n"
+             "  - pushes-limit: {}\n"
+             "  - pushing-objective-amplifier: {:.10g}\n"
+             "  - pushing-iteration-limit: {}\n"
+             "  - pushing-k-factor: {:.10g}\n",
+             pushes_limit,
+             pushing_objective_amplifier,
+             pushing_iteration_limit,
+             pushing_k_factor);
 
-        ctx->info(" * Initialization parameters:\n"
-                  "  - init-policy: %s\n"
-                  "  - init-random: %.10g\n",
-                  init_policy_type_to_string(init_policy),
-                  init_random);
+        info(ctx,
+             " * Initialization parameters:\n"
+             "  - init-policy: {}\n"
+             "  - init-random: {:.10g}\n",
+             init_policy_type_to_string(init_policy),
+             init_random);
     }
 
     std::string preprocessing;

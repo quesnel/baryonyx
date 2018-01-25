@@ -23,6 +23,8 @@
 #include <baryonyx/core-out>
 #include <baryonyx/core>
 
+#include <fmt/printf.h>
+
 #include <fstream>
 #include <iomanip>
 #include <limits>
@@ -44,8 +46,7 @@ struct write_parameters
 
     write_parameters(std::shared_ptr<baryonyx::context> ctx_)
       : ctx(std::move(ctx_))
-    {
-    }
+    {}
 };
 
 } // anonymous namespace
@@ -65,7 +66,6 @@ int
 main(int argc, char* argv[])
 {
     auto ctx = std::make_shared<baryonyx::context>();
-    ctx->set_standard_stream_logger();
     int i = ctx->parse(argc, argv);
 
     if (i < 0)
@@ -75,14 +75,10 @@ main(int argc, char* argv[])
         try {
             auto pb = baryonyx::make_problem(ctx, argv[i]);
 
-            std::string filename(argv[i]);
-            filename += '-';
-            filename += std::to_string(::getpid());
-            filename += '_';
-            filename += std::to_string(i);
-            filename += ".sol";
+            auto filename =
+              fmt::format("{}-{}_{}.sol", argv[i], ::getpid(), i);
 
-            ctx->info("Output file: %s\n", filename.c_str());
+            fmt::print("Output file: {}\n", filename);
 
             if (ctx->check()) {
                 auto filename =
@@ -91,10 +87,10 @@ main(int argc, char* argv[])
                 auto result = baryonyx::make_result(ctx, filename);
                 if (result) {
                     auto valid = baryonyx::is_valid_solution(pb, result);
-                    ctx->info("Check %s with %s: %s",
-                              argv[i],
-                              filename.c_str(),
-                              (valid ? "success" : "failure"));
+                    fmt::print("Check {} with {}: {}",
+                               argv[i],
+                               filename,
+                               (valid ? "success" : "failure"));
                 }
             }
 
@@ -125,30 +121,34 @@ main(int argc, char* argv[])
                     << ret.remaining_constraints << '\n';
             }
         } catch (const baryonyx::precondition_failure& e) {
-            ctx->error("internal failure\n");
+            fmt::print(stderr, "internal failure\n");
         } catch (const baryonyx::postcondition_failure& e) {
-            ctx->error("internal failure\n");
+            fmt::print(stderr, "internal failure\n");
         } catch (const baryonyx::numeric_cast_failure& e) {
-            ctx->error("numeric cast interal failure\n");
+            fmt::print(stderr, "numeric cast interal failure\n");
         } catch (const baryonyx::file_access_failure& e) {
-            ctx->error("file `%s' fail %d: %s\n",
-                       e.file().c_str(),
+            fmt::print(stderr,
+                       "file `{}' fail {}: {}\n",
+                       e.file(),
                        e.error(),
                        std::strerror(e.error()));
         } catch (const baryonyx::file_format_failure& e) {
-            ctx->error("file format error at line %d column %d "
+            fmt::print(stderr,
+                       "file format error at line {} column {} "
                        "%s\n",
                        e.line(),
                        e.column(),
                        file_format_error_format(e.failure()));
         } catch (const baryonyx::problem_definition_failure& e) {
-            ctx->error("definition problem error at %s: %s\n",
-                       e.element().c_str(),
+            fmt::print(stderr,
+                       "definition problem error at {}: {}\n",
+                       e.element(),
                        problem_definition_error_format(e.failure()));
         } catch (const baryonyx::solver_failure& e) {
-            ctx->error("solver error: %s\n", solver_error_format(e.failure()));
+            fmt::print(
+              stderr, "solver error: {}\n", solver_error_format(e.failure()));
         } catch (const std::exception& e) {
-            ctx->error("failure: %s.\n", e.what());
+            fmt::print(stderr, "failure: {}.\n", e.what());
         }
     }
 
@@ -167,32 +167,7 @@ file_format_error_format(baryonyx::file_format_error_tag failure) noexcept
         "bad constraint"
     };
 
-    switch (failure) {
-    case baryonyx::file_format_error_tag::end_of_file:
-        return tag[0];
-    case baryonyx::file_format_error_tag::unknown:
-        return tag[1];
-    case baryonyx::file_format_error_tag::already_defined:
-        return tag[2];
-    case baryonyx::file_format_error_tag::incomplete:
-        return tag[3];
-    case baryonyx::file_format_error_tag::bad_name:
-        return tag[4];
-    case baryonyx::file_format_error_tag::bad_operator:
-        return tag[5];
-    case baryonyx::file_format_error_tag::bad_integer:
-        return tag[6];
-    case baryonyx::file_format_error_tag::bad_objective_function_type:
-        return tag[7];
-    case baryonyx::file_format_error_tag::bad_bound:
-        return tag[8];
-    case baryonyx::file_format_error_tag::bad_function_element:
-        return tag[9];
-    case baryonyx::file_format_error_tag::bad_constraint:
-        return tag[10];
-    }
-
-    return nullptr;
+    return tag[static_cast<int>(failure)];
 }
 
 static const char*
@@ -207,20 +182,7 @@ problem_definition_error_format(
         "multiple constraints with different value"
     };
 
-    switch (failure) {
-    case baryonyx::problem_definition_error_tag::empty_variables:
-        return tag[0];
-    case baryonyx::problem_definition_error_tag::empty_objective_function:
-        return tag[1];
-    case baryonyx::problem_definition_error_tag::variable_not_used:
-        return tag[2];
-    case baryonyx::problem_definition_error_tag::bad_bound:
-        return tag[3];
-    case baryonyx::problem_definition_error_tag::multiple_constraint:
-        return tag[4];
-    }
-
-    return nullptr;
+    return tag[static_cast<int>(failure)];
 }
 
 static const char*
@@ -230,16 +192,7 @@ solver_error_format(baryonyx::solver_error_tag failure) noexcept
                                        "unrealisable constraint",
                                        "not enough memory" };
 
-    switch (failure) {
-    case baryonyx::solver_error_tag::no_solver_available:
-        return tag[0];
-    case baryonyx::solver_error_tag::unrealisable_constraint:
-        return tag[1];
-    case baryonyx::solver_error_tag::not_enough_memory:
-        return tag[2];
-    }
-
-    return nullptr;
+    return tag[static_cast<int>(failure)];
 }
 
 static std::ostream&
@@ -249,7 +202,7 @@ operator<<(std::ostream& os, const write_parameters& wp)
         return os;
 
     const auto& params = wp.ctx->get_parameters();
-    for (const auto & param : params) {
+    for (const auto& param : params) {
         os << R"(\ )" << param.first << " = ";
 
         switch (param.second.type) {

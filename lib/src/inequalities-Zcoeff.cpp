@@ -23,6 +23,8 @@
 #include <baryonyx/core-compare>
 #include <baryonyx/core-out>
 
+#include <fmt/format.h>
+
 #include <algorithm>
 #include <chrono>
 #include <fstream>
@@ -291,7 +293,7 @@ print_missing_constraint(const std::shared_ptr<baryonyx::context>& ctx,
     std::vector<int> R;
 
     compute_missing_constraint(ap, x, b, R);
-    ctx->info("Constraints remaining %d:\n", length(R));
+    info(ctx, "Constraints remaining {}:\n", length(R));
 
     typename apT::const_iterator it, et;
     const auto& va = ap.A();
@@ -300,18 +302,19 @@ print_missing_constraint(const std::shared_ptr<baryonyx::context>& ctx,
         std::tie(it, et) = ap.row(k);
         int v = 0;
 
-        ctx->info("%d: %d <= ", k, b(k).min);
+        info(ctx, "{}: {} <= ", k, b(k).min);
 
         for (; it != et; ++it) {
             v += va[it->value] * x[it->position];
 
-            ctx->info("%+d [%s (%d)] ",
-                      va[it->value],
-                      names[it->position].c_str(),
-                      x[it->position]);
+            info(ctx,
+                 "{:+d} [{} ({})] ",
+                 va[it->value],
+                 names[it->position],
+                 x[it->position]);
         }
 
-        ctx->info(" <= %d | value: %d\n", b(k).max, v);
+        info(ctx, " <= {} | value: {}\n", b(k).max, v);
     }
 }
 
@@ -521,10 +524,10 @@ struct solver
         if (print_level <= 0)
             return;
 
-        ctx->debug("X: ");
+        debug(ctx, "X: ");
         for (int i = 0, e = length(x); i != e; ++i)
-            ctx->debug("%s=%d ", names[i].c_str(), static_cast<int>(x[i]));
-        ctx->debug("\n");
+            debug(ctx, "{}={} ", names[i], static_cast<int>(x[i]));
+        debug(ctx, "\n");
 
         for (int k = 0, ek = m; k != ek; ++k) {
             auto ak = ap.row(k);
@@ -535,7 +538,7 @@ struct solver
                      x(std::get<0>(ak)->position);
 
             bool valid = b(k).min <= v and v <= b(k).max;
-            ctx->debug("C %d:%s\n", k, (valid ? "   valid" : "violated"));
+            debug(ctx, "C {}:{}\n", k, (valid ? "   valid" : "violated"));
         }
     }
 
@@ -1049,7 +1052,7 @@ struct solver
 //     if (level <= 1)
 //         return;
 
-//     ctx->debug("P after constraint %d computation:\n", k);
+//     debug(ctx,"P after constraint {} computation:\n", k);
 //     std::vector<floatingpointT> to_show(cols);
 
 //     for (int i{ 0 }; i != rows; ++i) {
@@ -1065,11 +1068,11 @@ struct solver
 
 //         for (auto elem : to_show)
 //             if (elem == std::numeric_limits<floatingpointT>::infinity())
-//                 ctx->debug("          ");
+//                 debug(ctx,"          ");
 //             else
-//                 ctx->debug("%+.6f ", (double)elem);
+//                 debug(ctx,"%+.6f ", (double)elem);
 
-//         ctx->debug("\n");
+//         debug(ctx,"\n");
 //     }
 // }
 // #endif
@@ -1364,7 +1367,7 @@ struct solver_functor
 
         constraint_order_type compute(m_ctx, slv, m_rng);
 
-        m_ctx->info("* solver starts:\n");
+        info(m_ctx, "* solver starts:\n");
 
         for (;;) {
             int remaining = compute.run(slv, kappa, p.delta, p.theta);
@@ -1379,12 +1382,12 @@ struct solver_functor
                     m_end - m_begin)
                     .count();
 
-                m_ctx->info(
-                  "  - constraints remaining: %d/%d at %fs (loop: %d)\n",
-                  remaining,
-                  m_best.constraints,
-                  m_best.duration,
-                  i);
+                info(m_ctx,
+                     "  - constraints remaining: {}/{} at {}s (loop: {})\n",
+                     remaining,
+                     m_best.constraints,
+                     m_best.duration,
+                     i);
             }
 
 #ifndef BARYONYX_FULL_OPTIMIZATION
@@ -1395,14 +1398,15 @@ struct solver_functor
                 ++pushing_iteration;
 
                 if (pushed == -1)
-                    m_ctx->info("  - start push system:\n");
+                    info(m_ctx, "  - start push system:\n");
 
                 if (pushing_iteration >= p.pushing_iteration_limit) {
                     pushed++;
                     pushing_iteration = 0;
 
-                    m_ctx->info(
-                      "    - push %d: kappa * k: %f objective amplifier: %f\n",
+                    info(
+                      m_ctx,
+                      "    - push {}: kappa * k: {} objective amplifier: {}\n",
                       pushed,
                       static_cast<double>(p.pushing_k_factor * kappa),
                       static_cast<double>(p.pushing_objective_amplifier));
@@ -1426,8 +1430,9 @@ struct solver_functor
                 }
 
                 if (pushed > p.pushes_limit) {
-                    m_ctx->info(
-                      "    - Push system limit reached. Solution found: %f\n",
+                    info(
+                      m_ctx,
+                      "    - Push system limit reached. Solution found: {}\n",
                       m_best.value);
                     return m_best;
                 }
@@ -1440,7 +1445,7 @@ struct solver_functor
                                   p.alpha);
 
             if (++i > p.limit) {
-                m_ctx->info("  - Loop limit reached: %d\n", i);
+                info(m_ctx, "  - Loop limit reached: {}\n", i);
                 if (pushed == -1)
                     m_best.status = bx::result_status::limit_reached;
 
@@ -1455,7 +1460,7 @@ struct solver_functor
             }
 
             if (kappa > p.kappa_max) {
-                m_ctx->info("  - Kappa max reached: %+.6f\n", (double)kappa);
+                info(m_ctx, "  - Kappa max reached: {:+.6f}\n", kappa);
                 if (pushed == -1)
                     m_best.status = bx::result_status::kappa_max_reached;
 
@@ -1471,8 +1476,7 @@ struct solver_functor
 
             m_end = std::chrono::steady_clock::now();
             if (bx::is_time_limit(p.time_limit, m_begin, m_end)) {
-                m_ctx->info(
-                  "  - Time limit reached: %d %+.6f\n", i, (double)kappa);
+                info(m_ctx, "  - Time limit reached: {} {:+.6f}\n", i, kappa);
                 if (pushed == -1)
                     m_best.status = bx::result_status::time_limit_reached;
 
@@ -1502,10 +1506,11 @@ private:
                 m_end - m_begin)
                 .count();
 
-            m_ctx->info("  - Solution found: %f (i=%d t=%fs)\n",
-                        current.value,
-                        current.loop,
-                        t);
+            info(m_ctx,
+                 "  - Solution found: {} (i={} t={}s)\n",
+                 current.value,
+                 current.loop,
+                 t);
 
             m_best = current;
             m_best.duration = t;
@@ -1666,16 +1671,17 @@ private:
                 m_end - m_begin)
                 .count();
 
-            m_ctx->info("  - Solution found: %f (i=%d t=%fs thread:%d)\n",
-                        current.value,
-                        current.loop,
-                        t,
-                        m_thread_id);
+            info(m_ctx,
+                 "  - Solution found: {} (i={} t={}s thread:{})\n",
+                 current.value,
+                 current.loop,
+                 t,
+                 m_thread_id);
 
             m_best = current;
             m_best.duration = t;
 
-            std::ofstream ofs(bx::stringf("temp-%d.sol", m_thread_id));
+            std::ofstream ofs(fmt::format("temp-{}.sol", m_thread_id));
             ofs << m_best;
 
             std::size_t i, e;
@@ -1779,12 +1785,12 @@ normalize_costs(const std::shared_ptr<bx::context>& ctx,
                 randomT& rng)
 {
     if (norm == "none") {
-        ctx->info("  - No norm");
+        info(ctx, "  - No norm");
         return c;
     }
 
     if (norm == "rng") {
-        ctx->info("  - Compute random norm\n");
+        info(ctx, "  - Compute random norm\n");
         return rng_normalize_costs(c, rng);
     }
 
@@ -1792,15 +1798,15 @@ normalize_costs(const std::shared_ptr<bx::context>& ctx,
     double div{ 0 };
 
     if (norm == "l1") {
-        ctx->info("  - Compute l1 norm\n");
+        info(ctx, "  - Compute l1 norm\n");
         for (auto elem : ret)
             div += std::abs(elem);
     } else if (norm == "l2") {
-        ctx->info("  - Compute l2 norm\n");
+        info(ctx, "  - Compute l2 norm\n");
         for (auto elem : ret)
             div += elem * elem;
     } else {
-        ctx->info("  - Compute infinity-norm (default)\n");
+        info(ctx, "  - Compute infinity-norm (default)\n");
         div = *std::max_element(c.cbegin(), c.cend());
     }
 
@@ -1832,7 +1838,7 @@ solve(std::shared_ptr<bx::context> ctx,
       bx::problem& pb,
       const bx::itm::parameters& p)
 {
-    ctx->info("Solver initializing\n");
+    info(ctx, "Solver initializing\n");
 
     bx::result ret;
     auto affected_vars = std::move(pb.affected_vars);
@@ -1879,7 +1885,7 @@ optimize(std::shared_ptr<bx::context> ctx,
 {
     bx::Expects(thread >= 1, "optimize: bad thread number");
 
-    ctx->info("Optimizer initializing\n");
+    info(ctx, "Optimizer initializing\n");
 
     bx::result ret;
     auto affected_vars = std::move(pb.affected_vars);
@@ -1906,9 +1912,9 @@ optimize(std::shared_ptr<bx::context> ctx,
         results.clear();
 
         if (thread == 1)
-            ctx->info("optimizer starts with one thread\n");
+            info(ctx, "optimizer starts with one thread\n");
         else
-            ctx->info("Optimizer starts with %d threads\n", thread);
+            info(ctx, "Optimizer starts with {} threads\n", thread);
 
         std::uniform_int_distribution<typename randomT::result_type> dst(
           std::numeric_limits<typename randomT::result_type>::min(),
@@ -2046,7 +2052,7 @@ inequalities_Zcoeff_wedelin_solve(
   const std::shared_ptr<baryonyx::context>& ctx,
   problem& pb)
 {
-    ctx->info("inequalities_Zcoeff_wedelin_solve\n");
+    info(ctx, "inequalities_Zcoeff_wedelin_solve\n");
     parameters p(ctx);
 
     using random_type = std::default_random_engine;
@@ -2087,7 +2093,7 @@ inequalities_Zcoeff_wedelin_optimize(
   problem& pb,
   int thread)
 {
-    ctx->info("inequalities_Zcoeff_wedelin_optimize\n");
+    info(ctx, "inequalities_Zcoeff_wedelin_optimize\n");
     parameters p(ctx);
 
     using random_type = std::default_random_engine;

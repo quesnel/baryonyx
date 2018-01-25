@@ -28,61 +28,34 @@
 
 using namespace Rcpp;
 
-namespace {
-
-class Rcontext : public baryonyx::context::logger
+static void
+r_write(baryonyx::context::message_type level, std::string msg)
 {
-public:
-    Rcontext() = default;
-    ~Rcontext() noexcept override = default;
 
-    void write(int priority,
-               const char* file,
-               int line,
-               const char* fn,
-               const char* format,
-               va_list args) noexcept override final
-    {
-        Rprintf("baryonyx: %d at %d in function %s form file %s: ",
-                priority,
-                line,
-                fn,
-                file);
-
-        Rvprintf(format, args);
+    switch (level) {
+    case baryonyx::context::message_type::emerg:
+        Rprintf("baryonyx: System is unusable: ");
+        break;
+    case baryonyx::context::message_type::alert:
+        Rprintf("baryonyx: Action must be taken immediately: ");
+        break;
+    case baryonyx::context::message_type::crit:
+        Rprintf("baryonyx: critical conditions: ");
+        break;
+    case baryonyx::context::message_type::err:
+        Rprintf("baryonyx: error conditions: ");
+        break;
+    case baryonyx::context::message_type::warning:
+        Rprintf("baryonyx: warning conditions: ");
+        break;
+    case baryonyx::context::message_type::notice:
+    case baryonyx::context::message_type::info:
+    case baryonyx::context::message_type::debug:
+        break;
     }
 
-    void write(baryonyx::context::message_type m,
-               const char* format,
-               va_list args) noexcept override final
-    {
-        switch (m) {
-        case baryonyx::context::message_type::emerg:
-            Rprintf("baryonyx: System is unusable: ");
-            break;
-        case baryonyx::context::message_type::alert:
-            Rprintf("baryonyx: Action must be taken immediately: ");
-            break;
-        case baryonyx::context::message_type::crit:
-            Rprintf("baryonyx: critical conditions: ");
-            break;
-        case baryonyx::context::message_type::err:
-            Rprintf("baryonyx: error conditions: ");
-            break;
-        case baryonyx::context::message_type::warning:
-            Rprintf("baryonyx: warning conditions: ");
-            break;
-        case baryonyx::context::message_type::notice:
-        case baryonyx::context::message_type::info:
-        case baryonyx::context::message_type::debug:
-            break;
-        }
-
-        Rvprintf(format, args);
-    }
+    Rprintf("%s", msg.c_str());
 };
-
-} // anonymous namespace
 
 static void
 assign_parameters(std::shared_ptr<baryonyx::context> ctx,
@@ -274,9 +247,10 @@ solve_01lp_problem(std::string file_path,
     double ret{ 0 };
 
     try {
-        auto ctx = std::make_shared<baryonyx::context>();
-        ctx->set_logger(std::make_unique<Rcontext>());
-        ctx->set_log_priority(!verbose ? 6 : 3);
+        auto ctx = std::make_shared<baryonyx::context>(r_write);
+        ctx->set_log_priority(verbose
+                                ? baryonyx::context::message_type::info
+                                : baryonyx::context::message_type::warning);
 
         auto pb = baryonyx::make_problem(ctx, file_path);
         auto mm = baryonyx::compute_min_max_objective_function(pb);
@@ -412,9 +386,10 @@ optimize_01lp_problem(std::string file_path,
     double ret{ 0 };
 
     try {
-        auto ctx = std::make_shared<baryonyx::context>();
-        ctx->set_logger(std::make_unique<Rcontext>());
-        ctx->set_log_priority(verbose ? 6 : 3);
+        auto ctx = std::make_shared<baryonyx::context>(r_write);
+        ctx->set_log_priority(verbose
+                                ? baryonyx::context::message_type::info
+                                : baryonyx::context::message_type::warning);
 
         auto pb = baryonyx::make_problem(ctx, file_path);
         auto mm = baryonyx::compute_min_max_objective_function(pb);

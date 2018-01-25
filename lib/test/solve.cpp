@@ -50,7 +50,6 @@ static void
 test_preprocessor()
 {
     auto ctx = std::make_shared<baryonyx::context>();
-    ctx->set_standard_stream_logger();
 
     std::stringstream ss;
 
@@ -92,7 +91,6 @@ static void
 test_preprocessor_2()
 {
     auto ctx = std::make_shared<baryonyx::context>();
-    ctx->set_standard_stream_logger();
 
     std::stringstream ss;
     double r;
@@ -132,7 +130,6 @@ static void
 test_real_cost()
 {
     auto ctx = std::make_shared<baryonyx::context>();
-    ctx->set_standard_stream_logger();
 
     const char* str_pb = "minimize\n"
                          "- 0.1 a - 0.5 b - 0.9 c - 1e-7 d\n"
@@ -165,7 +162,6 @@ static void
 test_assignment_problem()
 {
     auto ctx = std::make_shared<baryonyx::context>();
-    ctx->set_standard_stream_logger();
 
     auto pb =
       baryonyx::make_problem(ctx, EXAMPLES_DIR "/assignment_problem_1.lp");
@@ -180,7 +176,6 @@ static void
 test_assignment_problem_random_coast()
 {
     auto ctx = std::make_shared<baryonyx::context>();
-    ctx->set_standard_stream_logger();
 
     ctx->set_parameter("limit", 1000000);
     ctx->set_parameter("theta", 0.5);
@@ -213,7 +208,6 @@ static void
 test_negative_coeff()
 {
     auto ctx = std::make_shared<baryonyx::context>();
-    ctx->set_standard_stream_logger();
 
     auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/negative-coeff.lp");
 
@@ -229,7 +223,6 @@ static void
 test_negative_coeff2()
 {
     auto ctx = std::make_shared<baryonyx::context>();
-    ctx->set_standard_stream_logger();
 
     auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/negative-coeff2.lp");
 
@@ -245,7 +238,6 @@ static void
 test_negative_coeff3()
 {
     auto ctx = std::make_shared<baryonyx::context>();
-    ctx->set_standard_stream_logger();
 
     auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/negative-coeff3.lp");
 
@@ -261,7 +253,6 @@ static void
 test_negative_coeff4()
 {
     auto ctx = std::make_shared<baryonyx::context>();
-    ctx->set_standard_stream_logger();
 
     auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/negative-coeff4.lp");
 
@@ -277,7 +268,6 @@ static void
 test_negative_coeff5()
 {
     auto ctx = std::make_shared<baryonyx::context>();
-    ctx->set_standard_stream_logger();
 
     const char* str_pb = "minimize\n"
                          "a b c d\n"
@@ -308,7 +298,6 @@ static void
 test_8_queens_puzzle_fixed_cost()
 {
     auto ctx = std::make_shared<baryonyx::context>();
-    ctx->set_standard_stream_logger();
 
     auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/8_queens_puzzle.lp");
 
@@ -348,7 +337,6 @@ static void
 test_8_queens_puzzle_random_cost()
 {
     auto ctx = std::make_shared<baryonyx::context>();
-    ctx->set_standard_stream_logger();
 
     std::map<std::string, baryonyx::parameter> params;
     ctx->set_parameter("limit", -1);
@@ -384,7 +372,6 @@ static void
 test_qap()
 {
     auto ctx = std::make_shared<baryonyx::context>();
-    ctx->set_standard_stream_logger();
 
     auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/small4.lp");
 
@@ -405,7 +392,6 @@ static void
 test_flat30_7()
 {
     auto ctx = std::make_shared<baryonyx::context>();
-    ctx->set_standard_stream_logger();
 
     auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/flat30-7.lp");
 
@@ -426,7 +412,6 @@ static void
 test_uf50_0448()
 {
     auto ctx = std::make_shared<baryonyx::context>();
-    ctx->set_standard_stream_logger();
 
     auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/uf50-0448.lp");
 
@@ -451,7 +436,6 @@ static void
 test_aim_50_1_6_yes1_2()
 {
     auto ctx = std::make_shared<baryonyx::context>();
-    ctx->set_standard_stream_logger();
 
     auto pb =
       baryonyx::make_problem(ctx, EXAMPLES_DIR "/aim-50-1_6-yes1-2.lp");
@@ -474,7 +458,6 @@ static void
 test_Z_coefficient_1()
 {
     auto ctx = std::make_shared<baryonyx::context>();
-    ctx->set_standard_stream_logger();
 
     {
         const char* str_pb = "minimize\n"
@@ -524,7 +507,7 @@ static void
 test_bibd1n()
 {
     auto ctx = std::make_shared<baryonyx::context>();
-    ctx->set_standard_stream_logger();
+
 
     auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/bibd1n.lp");
 

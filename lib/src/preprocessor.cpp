@@ -191,7 +191,6 @@ remove_variable(baryonyx::constraint& cst, int variable_id, int variable_value)
 static void
 remove_variable(baryonyx::problem& pb, int variable_id, int variable_value)
 {
-    printf("remove variable %d value %d\n", variable_id, variable_value);
     pb.affected_vars.push_back(pb.vars.names[variable_id], variable_value);
 
     pb.vars.names.erase(pb.vars.names.begin() + variable_id);
@@ -271,25 +270,28 @@ remove_duplicated_constraints(const std::shared_ptr<baryonyx::context>& ctx,
                 baryonyx::Expects(cst[t[i].index].value ==
                                   cst[t[j].index].value);
 
-                ctx->debug("      = constraints %s = %s must be removed\n",
-                           cst[t[j].index].label.c_str(),
-                           cst[t[i].index].label.c_str());
+                debug(ctx,
+                      "      = constraints {} = {} must be removed\n",
+                      cst[t[j].index].label,
+                      cst[t[i].index].label);
                 break;
             case baryonyx::operator_type::greater:
                 cst[t[i].index].value =
                   std::max(cst[t[i].index].value, cst[t[j].index].value);
 
-                ctx->debug("      >= constraints %s = %s must be removed\n",
-                           cst[t[j].index].label.c_str(),
-                           cst[t[i].index].label.c_str());
+                debug(ctx,
+                      "      >= constraints {} = {} must be removed\n",
+                      cst[t[j].index].label,
+                      cst[t[i].index].label);
                 break;
             case baryonyx::operator_type::less:
                 cst[t[i].index].value =
                   std::min(cst[t[i].index].value, cst[t[j].index].value);
 
-                ctx->debug("      <= constraints %s = %s must be removed\n",
-                           cst[t[j].index].label.c_str(),
-                           cst[t[i].index].label.c_str());
+                debug(ctx,
+                      "      <= constraints {} = {} must be removed\n",
+                      cst[t[j].index].label,
+                      cst[t[i].index].label);
                 break;
             default:
                 break;
@@ -422,9 +424,10 @@ try_remove_assigned_variable(const std::shared_ptr<baryonyx::context>& ctx,
     if (variable_index < 0)
         return false;
 
-    ctx->debug("      variable %s = %d must be removed\n",
-               pb.vars.names[variable_index].c_str(),
-               variable_value);
+    debug(ctx,
+          "      variable {} = {} must be removed\n",
+          pb.vars.names[variable_index],
+          variable_value);
 
     remove_variable(pb, variable_index, variable_value);
 
@@ -479,9 +482,10 @@ try_remove_assigned_variables_01(const std::shared_ptr<baryonyx::context>& ctx,
         id.push_back(cst.elements[i].variable_index);
 
     while (not id.empty()) {
-        ctx->debug("      variable %s = %d must be removed (2)\n",
-                   pb.vars.names[id.back()].c_str(),
-                   value);
+        debug(ctx,
+              "      variable {} = {} must be removed (2)\n",
+              pb.vars.names[id.back()],
+              value);
 
         remove_variable(pb, id.back(), value);
 
@@ -549,9 +553,10 @@ try_remove_assigned_variables_101(
         return false;
 
     while (not id.empty()) {
-        ctx->debug("      variable %s = %d must be removed (2)\n",
-                   pb.vars.names[id.back().first].c_str(),
-                   id.back().second);
+        debug(ctx,
+              "      variable {} = {} must be removed (2)\n",
+              pb.vars.names[id.back().first],
+              id.back().second);
 
         remove_variable(pb, id.back().first, id.back().second);
 
@@ -603,9 +608,10 @@ remove_assigned_variables(const std::shared_ptr<baryonyx::context>& ctx,
     auto e = baryonyx::numeric_cast<int>(pb.vars.values.size());
     while (i != e) {
         if (pb.vars.values[i].min == pb.vars.values[i].max) {
-            ctx->debug("      bound: variable %s = %d must be removed\n",
-                       pb.vars.names[i].c_str(),
-                       pb.vars.values[i].max);
+            debug(ctx,
+                  "      bound: variable {} = {} must be removed\n",
+                  pb.vars.names[i],
+                  pb.vars.values[i].max);
 
             remove_variable(pb, i, pb.vars.values[i].max);
 
@@ -633,8 +639,9 @@ remove_assigned_variables(const std::shared_ptr<baryonyx::context>& ctx,
                                               baryonyx::operator_type::equal,
                                               variable)) {
 
-                ctx->debug("      = constraint: %s must be removed\n",
-                           pb.equal_constraints[i].label.c_str());
+                debug(ctx,
+                      "      = constraint: {} must be removed\n",
+                      pb.equal_constraints[i].label);
                 pb.equal_constraints.erase(pb.equal_constraints.begin() + i);
                 modify = true;
                 ++constraint_nb;
@@ -654,8 +661,9 @@ remove_assigned_variables(const std::shared_ptr<baryonyx::context>& ctx,
                                               baryonyx::operator_type::less,
                                               variable)) {
 
-                ctx->debug("      <= constraint: %s must be removed\n",
-                           pb.less_constraints[i].label.c_str());
+                debug(ctx,
+                      "      <= constraint: {} must be removed\n",
+                      pb.less_constraints[i].label);
                 pb.less_constraints.erase(pb.less_constraints.begin() + i);
                 modify = true;
                 ++constraint_nb;
@@ -675,8 +683,9 @@ remove_assigned_variables(const std::shared_ptr<baryonyx::context>& ctx,
                                               baryonyx::operator_type::greater,
                                               variable)) {
 
-                ctx->debug("      >= constraint: %s must be removed\n",
-                           pb.greater_constraints[i].label.c_str());
+                debug(ctx,
+                      "      >= constraint: {} must be removed\n",
+                      pb.greater_constraints[i].label);
                 pb.greater_constraints.erase(pb.greater_constraints.begin() +
                                              i);
                 modify = true;
@@ -764,8 +773,7 @@ remove_unused_variables(const std::shared_ptr<baryonyx::context>& ctx,
     for (std::size_t i = 0, e = unused_variable.size(); i != e; ++i) {
         int var = unused_variable[i];
 
-        ctx->debug(
-          "      unused variable %s %d\n", pb.vars.names[var].c_str(), var);
+        debug(ctx, "      unused variable {} {}\n", pb.vars.names[var], var);
 
         //
         // Here, we are sure that variables are not in constraint vectors so we
@@ -806,11 +814,12 @@ void
 preprocess(const std::shared_ptr<baryonyx::context>& ctx,
            baryonyx::problem& pb)
 {
-    ctx->info("preprocessing:\n");
+    info(ctx, "preprocessing:\n");
 
     {
-        ctx->info("  - cleaning functions (merge variables, remove zero) "
-                  "coefficient:\n");
+        info(ctx,
+             "  - cleaning functions (merge variables, remove zero) "
+             "coefficient:\n");
 
         int clean = 0;
 
@@ -822,49 +831,52 @@ preprocess(const std::shared_ptr<baryonyx::context>& ctx,
             clean += cleanup_function_element(elem.elements);
 
         if (clean > 1)
-            ctx->info("    `-> %d function elements merged in constraints.\n",
-                      clean);
+            info(ctx,
+                 "    `-> {} function elements merged in constraints.\n",
+                 clean);
         else if (clean == 1)
-            ctx->info("    `-> one function element merged in constraints.\n");
+            info(ctx, "    `-> one function element merged in constraints.\n");
 
         clean = cleanup_function_element(pb.objective.elements);
 
         if (clean > 1)
-            ctx->info("    `-> %d function elements merged in objective.\n",
-                      clean);
+            info(ctx,
+                 "    `-> {} function elements merged in objective.\n",
+                 clean);
         else if (clean == 1)
-            ctx->info("    `-> one function element merged in objective.\n");
+            info(ctx, "    `-> one function element merged in objective.\n");
     }
 
     {
-        ctx->info("  - cleaning already assigned variables:\n");
+        info(ctx, "  - cleaning already assigned variables:\n");
         int variable{ 0 }, constraint{ 0 };
 
-        ctx->info("    - remove assigned variables.\n");
+        info(ctx, "    - remove assigned variables.\n");
         remove_assigned_variables(ctx, pb, variable, constraint);
 
-        ctx->info("    - remove duplicated constraints.\n");
+        info(ctx, "    - remove duplicated constraints.\n");
         remove_duplicated_constraints(ctx, pb, constraint);
 
-        ctx->info("    - remove unused variables.\n");
+        info(ctx, "    - remove unused variables.\n");
         remove_unused_variables(ctx, pb, variable);
 
-        ctx->info("    `-> %d variable(s) - %d constraint(s) removed.\n",
-                  variable,
-                  constraint);
+        info(ctx,
+             "    `-> {} variable(s) - {} constraint(s) removed.\n",
+             variable,
+             constraint);
     }
 
 #ifndef BARYONYX_FULL_OPTIMIZATION
     {
-        ctx->info("  - write preprocessed.lp: ");
+        info(ctx, "  - write preprocessed.lp: ");
         std::ofstream ofs("preprocessed.lp");
         if (ofs.is_open()) {
             if (baryonyx_private::write_problem(ofs, pb))
-                ctx->info("writing done\n");
+                info(ctx, "writing done\n");
             else
-                ctx->info("writing fail\n");
+                info(ctx, "writing fail\n");
         } else {
-            ctx->info("opening failed\n");
+            info(ctx, "opening failed\n");
         }
     }
 #endif

@@ -564,25 +564,19 @@ public:
         debug,   ///< debug-level message
     };
 
-    class logger
+    enum class logger_type
     {
-    public:
-        logger() = default;
-        virtual ~logger() = default;
-
-        virtual void write(int priority,
-                           const char* file,
-                           int line,
-                           const char* fn,
-                           const char* fornmat,
-                           va_list args) noexcept = 0;
-
-        virtual void write(context::message_type type,
-                           const char* format,
-                           va_list args) noexcept = 0;
+        c_file,
+        // std_ostream,
+        string
     };
 
-    context() = default;
+    using string_logger_functor =
+      std::function<void(message_type, std::string)>;
+
+    context();
+    context(FILE* f);
+    context(string_logger_functor logger);
 
     context(const context&) = delete;
     context& operator=(const context&) = delete;
@@ -632,38 +626,53 @@ public:
     std::string get_string_parameter(const std::string& name,
                                      std::string def) const noexcept;
 
-    void set_log_priority(int priority) noexcept;
-    int get_log_priority() const noexcept;
+    bool optimize() const noexcept
+    {
+        return m_optimize;
+    }
 
-    bool optimize() const noexcept;
-    bool check() const noexcept;
-
-    void set_standard_stream_logger() noexcept;
-    void set_logger(std::unique_ptr<logger> function) noexcept;
-
-    void info(const char* format, ...) const noexcept BARYONYX_FORMAT(2, 3);
-    void debug(const char* format, ...) const noexcept BARYONYX_FORMAT(2, 3);
-    void warning(const char* format, ...) const noexcept BARYONYX_FORMAT(2, 3);
-    void error(const char* format, ...) const noexcept BARYONYX_FORMAT(2, 3);
-
-    void log(message_type, const char* format, ...) const
-      noexcept BARYONYX_FORMAT(3, 4);
-    void log(int priority,
-             const char* file,
-             int line,
-             const char* fn,
-             const char* format,
-             ...) const noexcept BARYONYX_FORMAT(6, 7);
+    bool check() const noexcept
+    {
+        return m_check;
+    }
 
     std::unordered_map<std::string, parameter> get_parameters() const noexcept
     {
         return m_parameters;
     }
 
+    FILE* cfile_logger() const noexcept
+    {
+        return m_cfile_logger;
+    }
+
+    const string_logger_functor& string_logger() const noexcept
+    {
+        return m_string_logger;
+    }
+
+    void set_log_priority(message_type type) noexcept
+    {
+        m_log_priority = type;
+    }
+
+    message_type log_priority() const noexcept
+    {
+        return m_log_priority;
+    }
+
+    logger_type logger() const noexcept
+    {
+        return m_logger;
+    }
+
 private:
     std::unordered_map<std::string, parameter> m_parameters;
-    std::unique_ptr<logger> m_logger;
-    int m_log_priority = 7;
+    string_logger_functor m_string_logger;
+    FILE* m_cfile_logger = stdout;
+    message_type m_log_priority = context::message_type::info;
+    logger_type m_logger = context::logger_type::c_file;
+
     bool m_optimize = false;
     bool m_check = false;
 };

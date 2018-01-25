@@ -25,60 +25,13 @@
 
 #include <baryonyx/core>
 
-static inline void
-#if defined(__GNUC__)
-  __attribute__((always_inline, format(printf, 2, 3)))
-#endif
-  lp_log_null(const std::shared_ptr<baryonyx::context>&, const char*, ...)
-{
-}
-
-static inline void
-#if defined(__GNUC__)
-  __attribute__((always_inline, format(printf, 2, 3)))
-#endif
-  lp_log_null(const baryonyx::context*, const char*, ...)
-{
-}
-
-#define lp_log_cond(ctx, prio, arg...)                                        \
-    do {                                                                      \
-        if (ctx->get_log_priority() >= prio) {                                \
-            ctx->log(prio, __FILE__, __LINE__, __FUNCTION__, ##arg);          \
-        }                                                                     \
-    } while (0)
-
-#ifndef BARYONYX_FULL_OPTIMIZATION
-#ifndef BARYONYX_DISABLE_DEBUG
-#define lp_debug(ctx, arg...) lp_log_cond(ctx, 7, ##arg)
-#else
-#define lp_debug(ctx, arg...) lp_log_null(ctx, ##arg)
-#endif
-#else
-#define lp_debug(ctx, arg...) lp_log_null(ctx, ##arg)
-#endif
-
-#define BARYONYX_UNROLL_PTR(first, last, op)                                  \
-    do {                                                                      \
-        for (; (last) - (first) >= 4; (first) += 4) {                         \
-            op(((first) + 0));                                                \
-            op(((first) + 1));                                                \
-            op(((first) + 2));                                                \
-            op(((first) + 3));                                                \
-        }                                                                     \
-        for (; (first) != (last); ++(first))                                  \
-            op((first));                                                      \
-    } while (0);
-
 namespace baryonyx {
 
 struct maximize_tag
-{
-};
+{};
 
 struct minimize_tag
-{
-};
+{};
 
 } // namespace baryonyx
 

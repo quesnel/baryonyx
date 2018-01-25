@@ -25,6 +25,9 @@
 
 #include <baryonyx/core>
 
+#include <fmt/format.h>
+#include <fmt/printf.h>
+
 #include <chrono>
 
 #include <cassert>
@@ -35,6 +38,233 @@
 #include <utility>
 
 namespace baryonyx {
+
+inline bool
+is_loggable(context::message_type current_level,
+            context::message_type level) noexcept
+{
+    return static_cast<int>(current_level) >= static_cast<int>(level);
+}
+
+template<typename... Args>
+void
+log(std::shared_ptr<baryonyx::context> ctx,
+    context::message_type level,
+    const char* fmt,
+    const Args&... args)
+{
+    if (not is_loggable(ctx->log_priority(), level))
+        return;
+
+    if (ctx->logger() == context::logger_type::c_file) {
+        fmt::print(ctx->cfile_logger(), fmt, args...);
+    } else {
+        ctx->string_logger()(level, fmt::format(fmt, args...));
+    }
+}
+
+template<typename... Args>
+void
+log(std::shared_ptr<baryonyx::context> ctx,
+    context::message_type level,
+    const char* msg)
+{
+    if (not is_loggable(ctx->log_priority(), level))
+        return;
+
+    if (ctx->logger() == context::logger_type::c_file) {
+        fmt::print(ctx->cfile_logger(), msg);
+    } else {
+        ctx->string_logger()(level, fmt::format(msg));
+    }
+}
+
+template<typename... Args>
+void
+log(baryonyx::context* ctx,
+    context::message_type level,
+    const char* fmt,
+    const Args&... args)
+{
+    if (not is_loggable(ctx->log_priority(), level))
+        return;
+
+    if (ctx->logger() == context::logger_type::c_file) {
+        fmt::print(ctx->cfile_logger(), fmt, args...);
+    } else {
+        ctx->string_logger()(level, fmt::format(fmt, args...));
+    }
+}
+
+template<typename... Args>
+void
+log(baryonyx::context* ctx, context::message_type level, const char* msg)
+{
+    if (not is_loggable(ctx->log_priority(), level))
+        return;
+
+    if (ctx->logger() == context::logger_type::c_file) {
+        fmt::print(ctx->cfile_logger(), msg);
+    } else {
+        ctx->string_logger()(level, fmt::format(msg));
+    }
+}
+
+template<typename... Args>
+void
+info(std::shared_ptr<baryonyx::context> ctx,
+     const char* fmt,
+     const Args&... args)
+{
+    log(ctx, context::message_type::info, fmt, args...);
+}
+
+template<typename... Args>
+void
+debug(std::shared_ptr<baryonyx::context> ctx,
+      const char* fmt,
+      const Args&... args)
+{
+    log(ctx, context::message_type::debug, fmt, args...);
+}
+
+template<typename... Args>
+void
+warning(std::shared_ptr<baryonyx::context> ctx,
+        const char* fmt,
+        const Args&... args)
+{
+    log(ctx, context::message_type::warning, fmt, args...);
+}
+
+template<typename... Args>
+void
+error(std::shared_ptr<baryonyx::context> ctx,
+      const char* fmt,
+      const Args&... args)
+{
+    log(ctx, context::message_type::err, fmt, args...);
+}
+
+template<typename Arg1, typename... Args>
+void
+info(std::shared_ptr<baryonyx::context> ctx,
+     const char* fmt,
+     const Arg1& arg1,
+     const Args&... args)
+{
+    log(ctx, context::message_type::info, fmt, arg1, args...);
+}
+
+template<typename Arg1, typename... Args>
+void
+debug(std::shared_ptr<baryonyx::context> ctx,
+      const char* fmt,
+      const Arg1& arg1,
+      const Args&... args)
+{
+#ifndef BARYONYX_DISABLE_LOGGING
+    //
+    // Default, the logging system is active and the call to the @c log
+    // function are send to the logger functor. Define
+    // BARYONYX_DISABLE_LOGGING as preprocessor value to hide all logging
+    // message..
+    //
+    log(ctx, context::message_type::debug, fmt, arg1, args...);
+#else
+    (void)ctx;
+    (void)fmt;
+    (void)arg1;
+#endif
+}
+
+template<typename Arg1, typename... Args>
+void
+warning(std::shared_ptr<baryonyx::context> ctx,
+        const char* fmt,
+        const Arg1& arg1,
+        const Args&... args)
+{
+    log(ctx, context::message_type::warning, fmt, arg1, args...);
+}
+
+template<typename Arg1, typename... Args>
+void
+error(std::shared_ptr<baryonyx::context> ctx,
+      const char* fmt,
+      const Arg1& arg1,
+      const Args&... args)
+{
+    log(ctx, context::message_type::err, fmt, arg1, args...);
+}
+
+template<typename T>
+void
+log(std::shared_ptr<baryonyx::context> ctx,
+    context::message_type level,
+    const T& msg)
+{
+    if (not is_loggable(ctx->log_priority(), level))
+        return;
+
+    if (ctx->logger() == context::logger_type::c_file) {
+        fmt::print(ctx->cfile_logger(), "{}", msg);
+    } else {
+        ctx->string_logger()(level, fmt::format("{}", msg));
+    }
+}
+
+template<typename T>
+void
+log(baryonyx::context* ctx, context::message_type level, const T& msg)
+{
+    if (not is_loggable(ctx->log_priority(), level))
+        return;
+
+    if (ctx->logger() == context::logger_type::c_file) {
+        fmt::print(ctx->cfile_logger(), "{}", msg);
+    } else {
+        ctx->string_logger()(level, fmt::format("{}", msg));
+    }
+}
+
+template<typename T>
+void
+info(std::shared_ptr<baryonyx::context> ctx, const T& msg)
+{
+    log(ctx, context::message_type::info, msg);
+}
+
+template<typename T>
+void
+debug(std::shared_ptr<baryonyx::context> ctx, const T& msg)
+{
+#ifndef BARYONYX_DISABLE_LOGGING
+    //
+    // Default, the logging system is active and the call to the @c log
+    // function are send to the logger functor. Define
+    // BARYONYX_DISABLE_LOGGING as preprocessor value to hide all logging
+    // message..
+    //
+    log(ctx, context::message_type::debug, msg);
+#else
+    (void)msg;
+#endif
+}
+
+template<typename T>
+void
+warning(std::shared_ptr<baryonyx::context> ctx, const T& msg)
+{
+    log(ctx, context::message_type::warning, msg);
+}
+
+template<typename T>
+void
+error(std::shared_ptr<baryonyx::context> ctx, const T& msg)
+{
+    log(ctx, context::message_type::err, msg);
+}
 
 /**
  * @brief Compute the length of the @c container.
@@ -158,17 +388,11 @@ is_essentially_equal(const T v1, const T v2, const T epsilon)
            ((fabs(v1) > fabs(v2) ? fabs(v2) : fabs(v1)) * (epsilon));
 }
 
-std::string
-stringf(const char* format, ...) noexcept BARYONYX_FORMAT(1, 2);
-
-std::string
-vstringf(const char* format, va_list ap) noexcept;
-
 class timer_profiler
 {
 public:
     timer_profiler(std::shared_ptr<baryonyx::context> ctx)
-      : m_ctx(std::move(ctx))
+      : ctx(std::move(ctx))
       , m_s(std::chrono::steady_clock::now())
     {}
 
@@ -180,25 +404,25 @@ public:
     {
         auto end = std::chrono::steady_clock::now();
 
-        if (m_ctx.get())
-            m_ctx->info(
-              "%fs\n",
+        if (ctx.get())
+            info(ctx,
+                 "{}s\n",
+                 std::chrono::duration_cast<std::chrono::duration<double>>(
+                   end - m_s)
+                   .count());
+        else
+            fmt::print(
+              stderr,
+              "{}s\n",
               std::chrono::duration_cast<std::chrono::duration<double>>(end -
                                                                         m_s)
                 .count());
-        else
-            fprintf(stderr,
-                    "%fs\n",
-                    std::chrono::duration_cast<std::chrono::duration<double>>(
-                      end - m_s)
-                      .count());
     }
 
 private:
-    std::shared_ptr<baryonyx::context> m_ctx;
+    std::shared_ptr<baryonyx::context> ctx;
     std::chrono::time_point<std::chrono::steady_clock> m_s;
 };
-
 /**
  * @brief Check if the duration between @c begin and @c end is greater than @c
  *     limit in second.

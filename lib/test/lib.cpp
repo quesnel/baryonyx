@@ -36,6 +36,8 @@
 #include <functional>
 #include <numeric>
 
+#include <iostream>
+
 static void
 check_clamp()
 {

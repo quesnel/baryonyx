@@ -72,10 +72,10 @@ fill_merged_constraints(const std::shared_ptr<bx::context>& ctx,
                     ret[it->second].min = elem.value;
                     ret[it->second].max = elem.value;
                 } else {
-                    ctx->error(
-                      "Constraint %d: is inconsistent with previous %d.\n",
-                      elem.id,
-                      ret[it->second].id);
+                    error(ctx,
+                          "Constraint {}: is inconsistent with previous {}.\n",
+                          elem.id,
+                          ret[it->second].id);
                 }
             }
         }
@@ -137,7 +137,7 @@ static std::vector<bx::itm::merged_constraint>
 make_unsorted_merged_constraints(const std::shared_ptr<bx::context>& ctx,
                                  const bx::problem& pb)
 {
-    ctx->info("  - merge constraints without any sort\n");
+    info(ctx, "  - merge constraints without any sort\n");
 
     std::unordered_map<std::vector<bx::function_element>,
                        std::size_t,
@@ -169,7 +169,7 @@ make_ordered_merged_constraints(const std::shared_ptr<bx::context>& ctx,
                                 const bx::problem& pb,
                                 const bx::itm::parameters& p)
 {
-    ctx->info("  - merge constraints with ordered sort\n");
+    info(ctx, "  - merge constraints with ordered sort\n");
 
     auto first = p.preprocessing.find(',', 0);
     if (first != std::string::npos) {
@@ -210,9 +210,10 @@ make_ordered_merged_constraints(const std::shared_ptr<bx::context>& ctx,
             }
         }
 
-        ctx->warning("    Bad preprocessing order mode: `%s`. Falling back "
-                     "to the unsorted merged constraint\n",
-                     p.preprocessing.c_str());
+        warning(ctx,
+                "    Bad preprocessing order mode: `{}`. Falling back "
+                "to the unsorted merged constraint\n",
+                p.preprocessing);
     }
 
     return make_unsorted_merged_constraints(ctx, pb);
@@ -228,8 +229,9 @@ make_special_merged_constraints(const std::shared_ptr<bx::context>& ctx,
                                 const bx::problem& pb,
                                 const bx::itm::parameters& p)
 {
-    ctx->info("  - merge constraint according to the `%s` algorithm\n",
-              p.preprocessing.c_str());
+    info(ctx,
+         "  - merge constraint according to the `{}` algorithm\n",
+         p.preprocessing);
 
     auto ret = make_unsorted_merged_constraints(ctx, pb);
 
@@ -378,8 +380,9 @@ make_merged_constraints(const std::shared_ptr<context>& ctx,
         ret = make_special_merged_constraints(ctx, pb, p);
     }
 
-    ctx->info("  - merged constraints removed: %d\n",
-              original_nb - static_cast<int>(ret.size()));
+    info(ctx,
+         "  - merged constraints removed: {}\n",
+         original_nb - static_cast<int>(ret.size()));
 
     return ret;
 }

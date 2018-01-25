@@ -27,13 +27,15 @@
 
 #include <algorithm>
 #include <fstream>
+#include <utility>
+
+#include <fmt/ostream.h>
+#include <fmt/printf.h>
 
 #include <cerrno>
 #include <climits>
 #include <cmath>
-#include <cstdio>
 #include <cstring>
-#include <utility>
 
 #include <getopt.h>
 
@@ -115,132 +117,81 @@ split_param(const char* param) noexcept
 void
 help(baryonyx::context* ctx) noexcept
 {
-    ctx->info(
-      "Baryonyx v%d.%d.%d", VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH);
+    baryonyx::log(ctx,
+                  baryonyx::context::message_type::info,
+                  "Baryonyx v{}.{}.{}",
+                  VERSION_MAJOR,
+                  VERSION_MINOR,
+                  VERSION_PATCH);
 
     if (VERSION_TWEAK)
-        ctx->info("-%d", VERSION_TWEAK);
+        baryonyx::log(
+          ctx, baryonyx::context::message_type::info, "-{}", VERSION_TWEAK);
 
-    ctx->info("\nGeneral options:\n"
-              "  --help|-h                   This help message\n"
-              "  --param|-p [name][:|=][value]   Add a new parameter (name is"
-              " [a-z][A-Z]_) value can be a double, an integer otherwise a"
-              " string.\n"
-              "  --optimize|-O               Optimize model (default "
-              "feasibility search only)\n"
-              "  --check filename.sol        Check if the solution is correct."
-              "\n"
-              "  --quiet                     Remove any verbose message\n"
-              "  --verbose|-v int            Set verbose level\n\n"
-              "Parameter list for in the middle heuristic\n"
-              " * Global parameters"
-              "  - limit: integer ]-oo, +oo[ in loop number\n"
-              "  - time-limit: real [0, +oo[ in seconds\n"
-              "  - floating-point-type: float double longdouble\n"
-              "  - print-level: [0, 2]\n"
-              " * In The Middle parameters\n"
-              "  - preprocessing: none variables-number variables-weight "
-              "constraints-weight implied\n"
-              "  - constraint-order: none reversing random-sorting "
-              "infeasibility-decr infeasibility-incr\n"
-              "  - theta: real [0, 1]\n"
-              "  - delta: real [0, +oo[\n"
-              "  - kappa-min: real [0, 1[\n"
-              "  - kappa-step: real [0, 1[\n"
-              "  - kappa-max: real [0, 1[\n"
-              "  - alpha: integer [0, 2]\n"
-              "  - w: integer [0, +oo[\n"
-              "  - norm: l1 l2 inf none rng\n"
-              " * Pushes system parameters\n"
-              "  - pushes-limit: integer [0, +oo[\n"
-              "  - pushing-objective-amplifier: real [0, +oo[\n"
-              "  - pushing-iteration-limit: integer [0, +oo[\n"
-              "  - pushing-k-factor: real [0, +oo[\n"
-              " * Initialization parameters\n"
-              "  - init-policy: bastert random best\n"
-              "  - init-random: real [0, 1]\n");
+    baryonyx::log(
+      ctx,
+      baryonyx::context::message_type::info,
+      "\nGeneral options:\n"
+      "  --help|-h                   This help message\n"
+      "  --param|-p [name][:|=][value]   Add a new parameter (name is"
+      " [a-z][A-Z]_) value can be a double, an integer otherwise a"
+      " string.\n"
+      "  --optimize|-O               Optimize model (default "
+      "feasibility search only)\n"
+      "  --check filename.sol        Check if the solution is correct."
+      "\n"
+      "  --quiet                     Remove any verbose message\n"
+      "  --verbose|-v int            Set verbose level\n\n"
+      "Parameter list for in the middle heuristic\n"
+      " * Global parameters"
+      "  - limit: integer ]-oo, +oo[ in loop number\n"
+      "  - time-limit: real [0, +oo[ in seconds\n"
+      "  - floating-point-type: float double longdouble\n"
+      "  - print-level: [0, 2]\n"
+      " * In The Middle parameters\n"
+      "  - preprocessing: none variables-number variables-weight "
+      "constraints-weight implied\n"
+      "  - constraint-order: none reversing random-sorting "
+      "infeasibility-decr infeasibility-incr\n"
+      "  - theta: real [0, 1]\n"
+      "  - delta: real [0, +oo[\n"
+      "  - kappa-min: real [0, 1[\n"
+      "  - kappa-step: real [0, 1[\n"
+      "  - kappa-max: real [0, 1[\n"
+      "  - alpha: integer [0, 2]\n"
+      "  - w: integer [0, +oo[\n"
+      "  - norm: l1 l2 inf none rng\n"
+      " * Pushes system parameters\n"
+      "  - pushes-limit: integer [0, +oo[\n"
+      "  - pushing-objective-amplifier: real [0, +oo[\n"
+      "  - pushing-iteration-limit: integer [0, +oo[\n"
+      "  - pushing-k-factor: real [0, +oo[\n"
+      " * Initialization parameters\n"
+      "  - init-policy: bastert random best\n"
+      "  - init-random: real [0, 1]\n");
 }
 }
 
 namespace baryonyx {
 
-class standard_stream_logger : public context::logger
-{
-public:
-    void write(int priority,
-               const char* file,
-               int line,
-               const char* fn,
-               const char* format,
-               va_list args) noexcept override
-    {
-        if (priority > 5)
-            vfprintf(stdout, format, args);
-        else {
-            fprintf(stderr,
-                    "lp: %d at %d in function '%s' from file %s: ",
-                    priority,
-                    line,
-                    fn,
-                    file);
-            vfprintf(stderr, format, args);
-        }
-    }
+context::context()
+  : m_cfile_logger(stdout)
+  , m_log_priority(context::message_type::info)
+  , m_logger(context::logger_type::c_file)
+{}
 
-    void write(baryonyx::context::message_type m,
-               const char* format,
-               va_list args) noexcept override
-    {
-#ifndef __WIN32
-        if (::isatty(STDOUT_FILENO)) {
-            switch (m) {
-            case context::message_type::emerg:
-            case context::message_type::alert:
-            case context::message_type::crit:
-            case context::message_type::err:
-                ::printf("\033[30m\033[2m");
-                break;
-            case context::message_type::warning:
-                ::printf("\033[32m\033[1m");
-                break;
-            case context::message_type::notice:
-                break;
-            case context::message_type::info:
-                break;
-            case context::message_type::debug:
-                ::printf("\033[33m\033[1m");
-                break;
-            }
+context::context(FILE* f)
+  : m_cfile_logger(f ? f : stdout)
+  , m_log_priority(context::message_type::info)
+  , m_logger(context::logger_type::c_file)
+{}
 
-            vfprintf(stdout, format, args);
-
-            switch (m) {
-            case context::message_type::emerg:
-            case context::message_type::alert:
-            case context::message_type::crit:
-            case context::message_type::err:
-                ::printf("\033[30m\033[0m");
-                break;
-            case context::message_type::warning:
-                ::printf("\033[30m\033[0m");
-                break;
-            case context::message_type::notice:
-                break;
-            case context::message_type::info:
-                break;
-            case context::message_type::debug:
-                ::printf("\033[30m\033[0m");
-                break;
-            }
-
-        } else {
-            vfprintf(stdout, format, args);
-        }
-#else
-        vfprintf(stdout, format, args);
-#endif
-    }
-};
+context::context(string_logger_functor logger)
+  : m_string_logger(logger)
+  , m_cfile_logger(nullptr)
+  , m_log_priority(context::message_type::info)
+  , m_logger(context::logger_type::string)
+{}
 
 int
 context::parse(int argc, char* argv[]) noexcept
@@ -293,15 +244,17 @@ context::parse(int argc, char* argv[]) noexcept
             break;
         case '?':
         default:
-            error("Unknown command line option\n");
+            baryonyx::log(this,
+                          baryonyx::context::message_type::err,
+                          "Unknown command line option\n");
             return -1;
         };
     }
 
     if (quiet)
-        set_log_priority(4); // verbose mode.
+        set_log_priority(message_type::notice);
     else if (verbose >= 0 and verbose <= 7)
-        set_log_priority(verbose);
+        set_log_priority(static_cast<message_type>(verbose));
 
     return ::optind;
 }
@@ -355,7 +308,10 @@ context::get_real_parameter(const std::string& name, double def) const noexcept
     if (it->second.type == parameter::tag::integer)
         return static_cast<double>(it->second.l);
 
-    warning("fail to convert parameter %s\n", name.c_str());
+    baryonyx::log(const_cast<baryonyx::context*>(this),
+                  context::message_type::warning,
+                  "fail to convert parameter {}\n",
+                  name);
 
     return def;
 }
@@ -373,7 +329,10 @@ context::get_integer_parameter(const std::string& name, int def) const noexcept
     if (it->second.type == parameter::tag::real)
         return static_cast<int>(it->second.d);
 
-    warning("fail to convert parameter %s\n", name.c_str());
+    baryonyx::log(const_cast<baryonyx::context*>(this),
+                  context::message_type::warning,
+                  "fail to convert parameter {}\n",
+                  name);
 
     return def;
 }
@@ -395,200 +354,19 @@ context::get_string_parameter(const std::string& name, std::string def) const
     if (it->second.type == parameter::tag::integer)
         return std::to_string(it->second.l);
 
-    warning("fail to convert parameter %s\n", name.c_str());
+    baryonyx::log(const_cast<baryonyx::context*>(this),
+                  context::message_type::warning,
+                  "fail to convert parameter {}\n",
+                  name);
 
     return def;
 }
-
-void
-context::set_log_priority(int priority) noexcept
-{
-    m_log_priority = priority < 0 ? 0 : 7 < priority ? 7 : priority;
-}
-
-int
-context::get_log_priority() const noexcept
-{
-    return m_log_priority;
-}
-
-bool
-context::optimize() const noexcept
-{
-    return m_optimize;
-}
-
-bool
-context::check() const noexcept
-{
-    return m_check;
-}
-
-void
-context::set_standard_stream_logger() noexcept
-{
-    set_logger(std::make_unique<standard_stream_logger>());
-}
-
-void
-context::set_logger(std::unique_ptr<logger> function) noexcept
-{
-    m_logger = std::move(function);
-}
-
-#ifndef BARYONYX_DISABLE_LOGGING
-//
-// Default, the logging system is active and the call to the @c log function
-// are send to the logger functor. Define BARYONYX_DISABLE_LOGGING as
-// preprocessor value to hide all logging message..
-//
-void
-context::log(message_type type, const char* format, ...) const noexcept
-{
-    if (not m_logger)
-        return;
-
-    switch (type) {
-    case baryonyx::context::message_type::emerg:
-        break;
-    case baryonyx::context::message_type::alert:
-        if (m_log_priority < 1)
-            return;
-        break;
-    case baryonyx::context::message_type::crit:
-        if (m_log_priority < 2)
-            return;
-        break;
-    case baryonyx::context::message_type::err:
-        if (m_log_priority < 3)
-            return;
-        break;
-    case baryonyx::context::message_type::warning:
-        if (m_log_priority < 4)
-            return;
-        break;
-    case baryonyx::context::message_type::notice:
-        if (m_log_priority < 5)
-            return;
-        break;
-    case baryonyx::context::message_type::info:
-        if (m_log_priority < 6)
-            return;
-        break;
-    case baryonyx::context::message_type::debug:
-        if (m_log_priority < 7)
-            return;
-        break;
-    }
-
-    va_list args;
-
-    va_start(args, format);
-    m_logger->write(type, format, args);
-    va_end(args);
-}
-
-void
-context::log(int priority,
-             const char* file,
-             int line,
-             const char* fn,
-             const char* format,
-             ...) const noexcept
-{
-    if (not m_logger and m_log_priority < priority)
-        return;
-
-    va_list args;
-
-    va_start(args, format);
-    m_logger->write(priority, file, line, fn, format, args);
-    va_end(args);
-}
-
-void
-context::info(const char* format, ...) const noexcept
-{
-    if (not m_logger or m_log_priority < 6)
-        return;
-
-    va_list args;
-
-    va_start(args, format);
-    m_logger->write(context::message_type::info, format, args);
-    va_end(args);
-}
-
-void
-context::debug(const char* format, ...) const noexcept
-{
-    if (not m_logger or m_log_priority < 7)
-        return;
-
-    va_list args;
-
-    va_start(args, format);
-    m_logger->write(context::message_type::debug, format, args);
-    va_end(args);
-}
-
-void
-context::warning(const char* format, ...) const noexcept
-{
-    if (not m_logger and m_log_priority < 4)
-        return;
-
-    va_list args;
-
-    va_start(args, format);
-    m_logger->write(context::message_type::warning, format, args);
-    va_end(args);
-}
-
-void
-context::error(const char* format, ...) const noexcept
-{
-    if (not m_logger and m_log_priority < 3)
-        return;
-
-    va_list args;
-
-    va_start(args, format);
-    m_logger->write(context::message_type::err, format, args);
-    va_end(args);
-}
-#else
-void
-context::log(message_type, const char*, va_list) const noexcept
-{}
-
-void
-context::log(int, const char*, int, const char*, const char*, va_list) const
-  noexcept
-{}
-
-void
-context::info(const char*, va_list) const noexcept
-{}
-
-void
-context::warning(const char*, va_list) const noexcept
-{}
-
-void
-context::debug(const char*, va_list) const noexcept
-{}
-
-void
-context::error(const char*, va_list) const noexcept
-{}
-#endif
 
 problem
 make_problem(const std::shared_ptr<baryonyx::context>& ctx,
              const std::string& filename)
 {
-    ctx->info("problem reads from file `%s'\n", filename.c_str());
+    info(ctx, "problem reads from file `{}'\n", filename);
 
     std::ifstream ifs;
     ifs.exceptions(std::ifstream::badbit);
@@ -600,7 +378,7 @@ make_problem(const std::shared_ptr<baryonyx::context>& ctx,
 problem
 make_problem(const std::shared_ptr<baryonyx::context>& ctx, std::istream& is)
 {
-    ctx->info("problem reads from stream\n");
+    info(ctx, "problem reads from stream\n");
 
     is.exceptions(std::ifstream::badbit);
 
@@ -611,7 +389,7 @@ result
 make_result(const std::shared_ptr<baryonyx::context>& ctx,
             const std::string& filename)
 {
-    ctx->info("solution reads from file `%s'\n", filename.c_str());
+    info(ctx, "solution reads from file {}\n", filename);
 
     std::ifstream ifs;
     ifs.exceptions(std::ifstream::badbit);
@@ -623,7 +401,7 @@ make_result(const std::shared_ptr<baryonyx::context>& ctx,
 result
 make_result(const std::shared_ptr<baryonyx::context>& ctx, std::istream& is)
 {
-    ctx->info("solution reads from stream\n");
+    info(ctx, "solution reads from stream\n");
 
     is.exceptions(std::ifstream::badbit);
 

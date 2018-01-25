@@ -155,7 +155,6 @@ int
 main(int /* argc */, char* /* argv */ [])
 {
     auto ctx = std::make_shared<baryonyx::context>();
-    ctx->set_standard_stream_logger();
 
     test_qap(ctx);
     test_n_queens_problem(ctx);

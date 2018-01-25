@@ -22,6 +22,7 @@
 
 #include <baryonyx/core>
 
+#include <fmt/format.h>
 
 #include "utils.hpp"
 
@@ -92,8 +93,7 @@ struct parser_stack
       , m_line(0)
       , m_column(0)
       , m_eof_reached(is_.eof())
-    {
-    }
+    {}
 
     int peek()
     {
@@ -790,7 +790,7 @@ read_constraints(parser_stack& stack, problem& p)
 
         if (std::get<0>(cst).label.empty())
             std::get<0>(cst).label =
-              stringf("ct%d", stack.current_constraint_id());
+              fmt::format("ct{}", stack.current_constraint_id());
 
         stack.increase_current_constaint_id();
         str = stack.top();

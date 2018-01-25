@@ -120,7 +120,7 @@ solve(const std::shared_ptr<bx::context>& ctx, bx::problem& pb)
         return bx::itm::inequalities_Zcoeff_wedelin_solve(ctx, pb);
     }
 
-    ctx->error("no solver available for integer variable");
+    error(ctx, "no solver available for integer variable");
 
     throw bx::solver_failure(bx::solver_error_tag::no_solver_available);
 }
@@ -142,7 +142,7 @@ optimize(std::shared_ptr<bx::context> ctx, bx::problem& pb)
         return bx::itm::inequalities_Zcoeff_wedelin_optimize(ctx, pb, th);
     }
 
-    ctx->error("no optimizer available for integer variable");
+    error(ctx, "no optimizer available for integer variable");
 
     throw bx::solver_failure(bx::solver_error_tag::no_solver_available);
 }
