@@ -537,7 +537,7 @@ struct solver
 
         ctx->debug("X: ");
         for (int i = 0, e = length(x); i != e; ++i)
-            ctx->debug("%s=%d ", names[i].c_str(), static_cast<int>(x[i]));
+            ctx->debug("%s=%d/%g/%g ", names[i].c_str(), static_cast<int>(x[i]), static_cast<double>(c[i]), static_cast<double>(R[i].value));
         ctx->debug("\n");
 
         for (int k = 0, ek = m; k != ek; ++k) {
@@ -549,7 +549,7 @@ struct solver
                      x(std::get<0>(ak)->position);
 
             bool valid = b(k).min <= v and v <= b(k).max;
-            ctx->debug("C %d:%s\n", k, (valid ? "   valid" : "violated"));
+            ctx->debug("C %d:%s (Lmult: %g)\n", k, (valid ? "   valid" : "violated"), static_cast<double>(pi[k]));
         }
     }
 
