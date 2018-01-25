@@ -50,6 +50,8 @@ namespace bx = baryonyx;
 
 namespace {
 
+static double MaxCost = 0.;
+
 using bx::length;
 
 struct maximize_tag
@@ -488,6 +490,42 @@ struct solver
             for (int i = 0, e = n; i != e; ++i)
                 x(i) = init_x(c(i), mode_type());
         }
+    }
+
+    void print_lower_bound(const std::shared_ptr<bx::context>& ctx, double ub) const
+    {
+	//
+	// Compute a problem lower bound based on Lagrangian multipliers
+	// (valid if there are equality constraints only?)
+	//
+
+	static double bestlb = -1e100;
+	static double bestub = 1e100;
+	double lb = 0.;
+	for (int c = 0; c != m; ++c) {
+	    lb += (double) pi[c] * b(c).min;
+	}
+	for (int j = 0; j != n; ++j) {
+	    floatingpoint_type sum_a_pi = 0.;
+
+	    typename AP_type<floatingpoint_type>::const_iterator ht, hend;
+	    std::tie(ht, hend) = ap.column(j);
+
+	    for (; ht != hend; ++ht) {
+		auto a = ap.A()[ht->value];
+		sum_a_pi += a * pi[ht->position];
+	    }
+
+	    if (c[j] - sum_a_pi < 0.) lb += c[j] - sum_a_pi;
+	}
+	lb *= MaxCost; // restore original cost
+	bool better_gap = (lb > bestlb || ub < bestub);
+	if (ub < bestub) bestub = ub;
+	if (lb > bestlb) bestlb = lb;
+	if (better_gap) {
+		if (bestub==0.) ctx->info("  - Lower bound: %g   (gap: 0%%)\n", bestlb);
+		else ctx->info("  - Lower bound: %g   (gap: %g%%)\n", bestlb, 100.*(bestub - bestlb)/bestub);
+	}
     }
 
     void print(const std::shared_ptr<bx::context>& ctx,
@@ -1351,6 +1389,8 @@ struct solver_functor
                     m_end - m_begin)
                     .count();
 
+		slv.print_lower_bound(m_ctx, (m_best)?m_best.value:1e100);
+
                 m_ctx->info(
                   "  - constraints remaining: %d/%d at %fs (loop: %d)\n",
                   remaining,
@@ -1615,6 +1655,8 @@ struct optimize_functor
                     }
                 }
             }
+
+	    slv.print_lower_bound(m_ctx, (m_best)?m_best.value:1e100);
         }
 
         return m_best;
@@ -1770,6 +1812,7 @@ normalize_costs(const std::shared_ptr<bx::context>& ctx,
     } else {
         ctx->info("  - Compute infinity-norm (default)\n");
         div = *std::max_element(c.cbegin(), c.cend());
+	MaxCost = div;
     }
 
     if (std::isnormal(div))
