@@ -192,48 +192,51 @@ struct parameters
         if (limit < 0)
             limit = std::numeric_limits<int>::max();
 
-        ctx->info("solver parameters:\n"
+        ctx->info(" * Global parameters:\n"
+                  "  - limit: %d\n"
+                  "  - time-limit: %.10g\n"
+                  "  - floating-point-type: %s\n"
+                  "  - print-level: %d\n",
+                  limit,
+                  time_limit,
+                  floating_point_type_to_string(float_type),
+                  print_level);
+
+        ctx->info(" * In The Middle parameters:\n"
                   "  - preprocessing: %s\n"
                   "  - constraint-order: %s\n"
-                  "  - time-limit: %.10g\n"
                   "  - theta: %.10g\n"
                   "  - delta: %.10g\n"
-                  "  - limit: %d\n"
                   "  - kappa: %.10g %.10g %.10g\n"
                   "  - alpha: %.10g\n"
                   "  - w: %d\n"
-                  "  - norm: %s\n"
-                  "  - print-level: %d\n"
-                  "  - floating-point-type: %s\n"
-                  "  - pushes-limit: %d\n"
-                  "  - pushing-objective-amplifier: %.10g\n"
-                  "  - pushing-iteration-limit: %d\n"
-                  "  - pushing-k-factor: %.10g\n",
+                  "  - norm: %s\n",
                   preprocessing.c_str(),
                   constraint_order_to_string(order),
-                  time_limit,
                   theta,
                   delta,
-                  limit,
                   kappa_min,
                   kappa_step,
                   kappa_max,
                   alpha,
                   w,
-                  norm.c_str(),
-                  print_level,
-                  floating_point_type_to_string(float_type),
+                  norm.c_str());
+
+        ctx->info(" * Pushes system parameters:\n"
+                  "  - pushes-limit: %d\n"
+                  "  - pushing-objective-amplifier: %.10g\n"
+                  "  - pushing-iteration-limit: %d\n"
+                  "  - pushing-k-factor: %.10g\n",
                   pushes_limit,
                   pushing_objective_amplifier,
                   pushing_iteration_limit,
                   pushing_k_factor);
 
-        if (ctx->optimize())
-            ctx->info("optimizer parameters:\n"
-                      "  - init-policy: %s\n"
-                      "  - init-random: %.10g\n",
-                      init_policy_type_to_string(init_policy),
-                      init_random);
+        ctx->info(" * Initialization parameters:\n"
+                  "  - init-policy: %s\n"
+                  "  - init-random: %.10g\n",
+                  init_policy_type_to_string(init_policy),
+                  init_random);
     }
 
     std::string preprocessing;
