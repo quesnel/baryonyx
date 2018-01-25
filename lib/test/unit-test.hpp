@@ -23,12 +23,13 @@
 #ifndef ORG_VLEPROJECT_UNIT_TEST_HPP
 #define ORG_VLEPROJECT_UNIT_TEST_HPP
 
-#include <cstdio>
-#include <cstdlib>
+#include <fmt/format.h>
 
 #ifndef __WIN32
 #include <unistd.h>
 #endif
+
+#include <cstdlib>
 
 namespace unit_test {
 namespace detail {
@@ -74,22 +75,22 @@ struct tester
     {
         if (called_report_function == false) {
             if (have_color()) {
-                fprintf(stderr,
-                        RED_TEXT
-                        "unit_test::report_errors() not called.\n\nUsage:\n"
-                        "int main(int argc, char*[] argc)\n"
-                        "{\n"
-                        "    [...]\n"
-                        "    return unit_test::report_errors();\n"
-                        "}\n" COLOR_RESET);
+                fmt::print(stderr,
+                           RED_TEXT
+                           "unit_test::report_errors() not called.\n\nUsage:\n"
+                           "int main(int argc, char*[] argc)\n"
+                           "{\n"
+                           "    [...]\n"
+                           "    return unit_test::report_errors();\n"
+                           "}\n" COLOR_RESET);
             } else {
-                fprintf(stderr,
-                        "unit_test::report_errors() not called.\n\nUsage:\n"
-                        "int main(int argc, char*[] argc)\n"
-                        "{\n"
-                        "    [...]\n"
-                        "    return unit_test::report_errors();\n"
-                        "}\n");
+                fmt::print(stderr,
+                           "unit_test::report_errors() not called.\n\nUsage:\n"
+                           "int main(int argc, char*[] argc)\n"
+                           "{\n"
+                           "    [...]\n"
+                           "    return unit_test::report_errors();\n"
+                           "}\n");
             }
 
             std::abort();
@@ -112,20 +113,20 @@ ensures_impl(const char* expr,
              const char* function)
 {
     if (have_color()) {
-        fprintf(stderr,
-                RED_TEXT
-                "%s (%d): test '%s' failed in function '%s'\n" COLOR_RESET,
-                file,
-                line,
-                expr,
-                function);
+        fmt::print(stderr,
+                   RED_TEXT
+                   "{} ({}): test '{}' failed in function '{}'\n" COLOR_RESET,
+                   file,
+                   line,
+                   expr,
+                   function);
     } else {
-        fprintf(stderr,
-                "%s (%d): test '%s' failed in function '%s'\n",
-                file,
-                line,
-                expr,
-                function);
+        fmt::print(stderr,
+                   "{} ({}): test '{}' failed in function '{}'\n",
+                   file,
+                   line,
+                   expr,
+                   function);
     }
 
     ++test_errors();
@@ -139,23 +140,23 @@ ensures_equal_impl(const char* expr1,
                    const char* function)
 {
     if (have_color()) {
-        fprintf(
+        fmt::print(
           stderr,
           RED_TEXT
-          "%s (%d): test '%s == %s' failed in function '%s'\n" COLOR_RESET,
+          "{} ({}): test '{} == {}' failed in function '{}'\n" COLOR_RESET,
           file,
           line,
           expr1,
           expr2,
           function);
     } else {
-        fprintf(stderr,
-                "%s (%d): test '%s == %s' failed in function '%s'\n",
-                file,
-                line,
-                expr1,
-                expr2,
-                function);
+        fmt::print(stderr,
+                   "{} ({}): test '{} == {}' failed in function '{}'\n",
+                   file,
+                   line,
+                   expr1,
+                   expr2,
+                   function);
     }
 
     ++test_errors();
@@ -169,23 +170,23 @@ ensures_not_equal_impl(const char* expr1,
                        const char* function)
 {
     if (have_color()) {
-        fprintf(
+        fmt::print(
           stderr,
           RED_TEXT
-          "%s (%d): test '%s != %s' failed in function '%s'\n" COLOR_RESET,
+          "{} ({}): test '{} != {}' failed in function '{}'\n" COLOR_RESET,
           file,
           line,
           expr1,
           expr2,
           function);
     } else {
-        fprintf(stderr,
-                "%s (%d): test '%s != %s' failed in function '%s'\n",
-                file,
-                line,
-                expr1,
-                expr2,
-                function);
+        fmt::print(stderr,
+                   "{} ({}): test '{} != {}' failed in function '{}'\n",
+                   file,
+                   line,
+                   expr1,
+                   expr2,
+                   function);
     }
 
     ++test_errors();
@@ -198,20 +199,20 @@ ensures_throw_impl(const char* excep,
                    const char* function)
 {
     if (have_color()) {
-        fprintf(stderr,
-                RED_TEXT "%s (%d): exception '%s' throw failed in function "
-                         "'%s'\n" COLOR_RESET,
-                file,
-                line,
-                excep,
-                function);
+        fmt::print(stderr,
+                   RED_TEXT "{} ({}): exception '{}' throw failed in function "
+                            "'{}'\n" COLOR_RESET,
+                   file,
+                   line,
+                   excep,
+                   function);
     } else {
-        fprintf(stderr,
-                "%s (%d): exception '%s' throw failed in function '%s'\n",
-                file,
-                line,
-                excep,
-                function);
+        fmt::print(stderr,
+                   "{} ({}): exception '{}' throw failed in function '{}'\n",
+                   file,
+                   line,
+                   excep,
+                   function);
     }
 
     ++test_errors();
@@ -224,20 +225,21 @@ ensures_not_throw_impl(const char* excep,
                        const char* function)
 {
     if (have_color()) {
-        fprintf(stderr,
-                RED_TEXT "%s (%d): exception '%s' not throw failed in "
-                         "function '%s'\n" COLOR_RESET,
-                file,
-                line,
-                excep,
-                function);
+        fmt::print(stderr,
+                   RED_TEXT "{} ({}): exception '{}' not throw failed in "
+                            "function '{}'\n" COLOR_RESET,
+                   file,
+                   line,
+                   excep,
+                   function);
     } else {
-        fprintf(stderr,
-                "%s (%d): exception '%s' not throw failed in function '%s'\n",
-                file,
-                line,
-                excep,
-                function);
+        fmt::print(
+          stderr,
+          "{} ({}): exception '{}' not throw failed in function '{}'\n",
+          file,
+          line,
+          excep,
+          function);
     }
 
     ++test_errors();
@@ -253,18 +255,18 @@ report_errors()
     int errors = tester.errors;
 
     if (errors == 0)
-        fprintf(stderr, "No errors detected.\n");
+        fmt::print(stderr, "No errors detected.\n");
     else {
         if (unit_test::detail::have_color()) {
-            fprintf(stderr,
-                    RED_TEXT "%d error%s detected.\n" COLOR_RESET,
-                    errors,
-                    (errors == 1 ? "" : "s"));
+            fmt::print(stderr,
+                       RED_TEXT "{} error{} detected.\n" COLOR_RESET,
+                       errors,
+                       (errors == 1 ? "" : "s"));
         } else {
-            fprintf(stderr,
-                    "%d error%s detected.\n",
-                    errors,
-                    (errors == 1 ? "" : "s"));
+            fmt::print(stderr,
+                       "{} error{} detected.\n",
+                       errors,
+                       (errors == 1 ? "" : "s"));
         }
     }
 

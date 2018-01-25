@@ -23,7 +23,6 @@
 #include "unit-test.hpp"
 
 #include <fstream>
-#include <iostream>
 #include <map>
 #include <numeric>
 #include <random>
@@ -33,6 +32,8 @@
 #include <baryonyx/core-out>
 #include <baryonyx/core-test>
 #include <baryonyx/core>
+
+#include <fmt/printf.h>
 
 void
 test_qap(const std::shared_ptr<baryonyx::context>& ctx)
@@ -134,17 +135,18 @@ test_n_queens_problem(const std::shared_ptr<baryonyx::context>& ctx)
     for (std::size_t i{ 0 }, e{ solutions.size() }; i != e; ++i) {
         double distance =
           ((cplex_solutions[i] - solutions[i]) / cplex_solutions[i]) * 100.0;
-        printf("%zu: %s %f %f %f\n",
-               i,
-               (valid_solutions[i] ? "true" : "false"),
-               solutions[i],
-               cplex_solutions[i],
-               distance);
+
+        fmt::print("{}: {} {} {} {}\n",
+                   i,
+                   valid_solutions[i],
+                   solutions[i],
+                   cplex_solutions[i],
+                   distance);
 
         mean_distance += distance;
     }
 
-    printf("Optimum means: %f\n", mean_distance / solutions.size());
+    fmt::print("Optimum means: {}\n", mean_distance / solutions.size());
 
     Ensures(all_found == valid_solutions.size());
 }

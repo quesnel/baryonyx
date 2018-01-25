@@ -30,8 +30,10 @@
 
 #include <baryonyx/core>
 
+#include <fmt/ostream.h>
+#include <fmt/printf.h>
+
 #include <functional>
-#include <iostream>
 #include <numeric>
 
 static void
@@ -191,7 +193,7 @@ check_matrix()
     m.set(2, 1, 4, 4.0);
     m.sort();
 
-    std::cout << m << '\n';
+    fmt::print("matrix:\n{}\n", m);
 
     Ensures(m.size() == 4);
     EnsuresThrow(m.P(0, 0), std::out_of_range);
@@ -498,11 +500,6 @@ check_branch_and_bound_solver()
         auto selected =
           baryonyx::branch_and_bound_solver<baryonyx::minimize_tag, float>(
             R, factors.begin(), factors.end(), 7);
-
-        printf("Selected: %d\n", selected);
-
-        for (int i = 0; i != selected; ++i)
-            printf("%d ", R[i].id);
 
         Ensures(selected == 1);
         Ensures(R[0].id == 5);

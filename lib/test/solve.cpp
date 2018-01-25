@@ -23,11 +23,12 @@
 #include "unit-test.hpp"
 
 #include <fstream>
-#include <iostream>
 #include <map>
 #include <numeric>
 #include <random>
 #include <sstream>
+
+#include <fmt/printf.h>
 
 #include <baryonyx/core-compare>
 #include <baryonyx/core-out>
@@ -333,10 +334,10 @@ test_8_queens_puzzle_fixed_cost()
     auto result = baryonyx::solve(ctx, pb);
 
     for (int i = 0; i != 8; ++i) {
-        for (int j = 0; j != 8; ++j) {
-            std::cout << result.variable_value[j * 8 + i] << ' ';
-        }
-        std::cout << '\n';
+        for (int j = 0; j != 8; ++j)
+            fmt::print("{} ", result.variable_value[j * 8 + i]);
+
+        fmt::print("\n");
     }
 
     Ensures(result.status == baryonyx::result_status::success);
