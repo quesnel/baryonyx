@@ -210,15 +210,27 @@ is_better_solution(floatingpointT lhs,
 }
 
 static inline bool
-init_x(int v, bx::minimize_tag) noexcept
+init_x(int cost, int value_if_cost_0, bx::minimize_tag) noexcept
 {
-    return v <= 0;
+    if (cost < 0)
+        return true;
+
+    if (cost == 0)
+        return value_if_cost_0;
+
+    return false;
 }
 
 static inline bool
-init_x(int v, bx::maximize_tag) noexcept
+init_x(int cost, int value_if_cost_0, bx::maximize_tag) noexcept
 {
-    return v >= 0;
+    if (cost > 0)
+        return true;
+
+    if (cost == 0)
+        return value_if_cost_0;
+
+    return false;
 }
 
 template<typename apT, typename xT, typename bT>
@@ -338,7 +350,9 @@ struct solver
     solver(random_type& rng_,
            int n_,
            const c_type<floatingpoint_type>& c_,
-           const std::vector<bx::itm::merged_constraint>& csts)
+           const std::vector<bx::itm::merged_constraint>& csts,
+           bx::itm::init_policy_type init_type,
+           double init_random)
       : rng(rng_)
       , ap(length(csts), n_)
       , C(length(csts))
@@ -458,37 +472,47 @@ struct solver
             R = bx::fixed_array<r_data<floatingpoint_type>>(rsizemax);
         }
 
-        std::fill(ap.P().begin(), ap.P().end(), 0);
-        std::fill(pi.begin(), pi.end(), 0);
-
-        for (int i = 0, e = n; i != e; ++i)
-            x(i) = init_x(c(i), mode_type());
+        reinit(x_type(), init_type, init_random);
     }
 
-    void reinit(const x_type& best_previous, double reverse_solution)
+    void reinit(const x_type& best_previous,
+                bx::itm::init_policy_type type,
+                double init_random)
     {
         std::fill(ap.P().begin(), ap.P().end(), 0);
         std::fill(pi.begin(), pi.end(), 0);
 
-        if (reverse_solution == 0 or reverse_solution == 1) {
+        if (best_previous.empty() and type == bx::itm::init_policy_type::best)
+            type = bx::itm::init_policy_type::random;
+
+        init_random = bx::clamp(init_random, 0.0, 1.0);
+
+        std::bernoulli_distribution d(init_random);
+
+        switch (type) {
+        case bx::itm::init_policy_type::bastert:
+            if (init_random == 0.0 or init_random == 1.0) {
+                bool value_if_cost_0 = init_random == 1.0;
+
+                for (int i = 0, e = n; i != e; ++i)
+                    x(i) = init_x(c(i), value_if_cost_0, mode_type());
+            } else {
+                for (int i = 0, e = n; i != e; ++i)
+                    x(i) = init_x(c(i), d(rng), mode_type());
+            }
+            break;
+        case bx::itm::init_policy_type::random:
             for (int i = 0; i != n; ++i)
-                x(i) = reverse_solution;
-        } else if (not best_previous.empty() and
-                   0 < reverse_solution and reverse_solution < 1) {
-            x = best_previous;
-            std::bernoulli_distribution d(reverse_solution);
+                x(i) = d(rng);
+            break;
+        case bx::itm::init_policy_type::best:
+            for (int i = 0; i != n; ++i)
+                x(i) = d(rng);
 
             for (int i = 0; i != n; ++i)
                 if (d(rng))
-                    x(i) = !x(i);
-        } else if (-1 < reverse_solution and reverse_solution < 0) {
-            std::bernoulli_distribution d(std::abs(reverse_solution));
-
-            for (int i = 0; i != n; ++i)
-                x(i) = d(rng);
-        } else {
-            for (int i = 0, e = n; i != e; ++i)
-                x(i) = init_x(c(i), mode_type());
+                    x(i) = best_previous(i);
+            break;
         }
     }
 
@@ -1369,8 +1393,12 @@ struct solver_functor
         int pushing_iteration = p.pushing_iteration_limit;
         floatingpoint_type kappa = p.kappa_min;
 
-        solver<floatingpoint_type, mode_type, random_type> slv(
-          m_rng, variables, norm_costs, constraints);
+        solver<floatingpoint_type, mode_type, random_type> slv(m_rng,
+                                                               variables,
+                                                               norm_costs,
+                                                               constraints,
+                                                               p.init_policy,
+                                                               p.init_random);
 
         constraint_order_type compute(m_ctx, slv, m_rng);
 
@@ -1592,8 +1620,12 @@ struct optimize_functor
         int pushing_iteration = 0;
         floatingpoint_type kappa = p.kappa_min;
 
-        solver<floatingpoint_type, mode_type, random_type> slv(
-          m_rng, variables, norm_costs, constraints);
+        solver<floatingpoint_type, mode_type, random_type> slv(m_rng,
+                                                               variables,
+                                                               norm_costs,
+                                                               constraints,
+                                                               p.init_policy,
+                                                               p.init_random);
 
         constraint_order_type compute(m_ctx, slv, m_rng);
 
@@ -1620,7 +1652,7 @@ struct optimize_functor
 
             if (i >= p.limit or kappa > p.kappa_max or
                 pushed > p.pushes_limit) {
-                slv.reinit(m_best_x, p.reverse_solution);
+                slv.reinit(m_best_x, p.init_policy, p.init_random);
 
                 i = 0;
                 kappa = p.kappa_min;
@@ -1926,7 +1958,8 @@ optimize(std::shared_ptr<bx::context> ctx,
           std::numeric_limits<typename randomT::result_type>::max());
 
         for (int i{ 0 }; i != thread; ++i) {
-            auto seed = bx::numeric_cast<typename randomT::result_type>(dst(rng));
+            auto seed =
+              bx::numeric_cast<typename randomT::result_type>(dst(rng));
 
             std::packaged_task<bx::result()> task(std::bind(
               optimize_functor<floatingpointT,
@@ -1983,20 +2016,23 @@ dispatch_solve(std::shared_ptr<bx::context> ctx,
           solve<realT, modeT, ::compute_reversing<realT, randomT>, randomT>(
             ctx, pb, p);
     case bx::itm::constraint_order::random_sorting:
-        return ::solve<realT, modeT, ::compute_random<realT, randomT>, randomT>(
-          ctx, pb, p);
+        return ::
+          solve<realT, modeT, ::compute_random<realT, randomT>, randomT>(
+            ctx, pb, p);
     case bx::itm::constraint_order::infeasibility_decr:
-        return ::solve<
-          realT,
-          modeT,
-          ::compute_infeasibility<realT, randomT, ::compute_infeasibility_decr>, randomT>(
-          ctx, pb, p);
+        return ::solve<realT,
+                       modeT,
+                       ::compute_infeasibility<realT,
+                                               randomT,
+                                               ::compute_infeasibility_decr>,
+                       randomT>(ctx, pb, p);
     case bx::itm::constraint_order::infeasibility_incr:
-        return ::solve<
-          realT,
-          modeT,
-          ::compute_infeasibility<realT, randomT, ::compute_infeasibility_incr>, randomT>(
-          ctx, pb, p);
+        return ::solve<realT,
+                       modeT,
+                       ::compute_infeasibility<realT,
+                                               randomT,
+                                               ::compute_infeasibility_incr>,
+                       randomT>(ctx, pb, p);
     }
 
     return {};
@@ -2019,20 +2055,25 @@ dispatch_optimize(std::shared_ptr<bx::context> ctx,
           optimize<realT, modeT, ::compute_reversing<realT, randomT>, randomT>(
             ctx, pb, p, thread);
     case bx::itm::constraint_order::random_sorting:
-        return ::optimize<realT, modeT, ::compute_random<realT, randomT>, randomT>(
-          ctx, pb, p, thread);
+        return ::
+          optimize<realT, modeT, ::compute_random<realT, randomT>, randomT>(
+            ctx, pb, p, thread);
     case bx::itm::constraint_order::infeasibility_decr:
         return ::optimize<
           realT,
           modeT,
-          ::compute_infeasibility<realT, randomT, ::compute_infeasibility_decr>, randomT>(
-          ctx, pb, p, thread);
+          ::compute_infeasibility<realT,
+                                  randomT,
+                                  ::compute_infeasibility_decr>,
+          randomT>(ctx, pb, p, thread);
     case bx::itm::constraint_order::infeasibility_incr:
         return ::optimize<
           realT,
           modeT,
-          ::compute_infeasibility<realT, randomT, ::compute_infeasibility_incr>, randomT>(
-          ctx, pb, p, thread);
+          ::compute_infeasibility<realT,
+                                  randomT,
+                                  ::compute_infeasibility_incr>,
+          randomT>(ctx, pb, p, thread);
     }
 
     return {};

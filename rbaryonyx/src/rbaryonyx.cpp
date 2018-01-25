@@ -103,6 +103,8 @@ assign_parameters(std::shared_ptr<baryonyx::context> ctx,
                   double pushing_objective_amplifier,
                   int pushes_limit,
                   int pushing_iteration_limit,
+                  int init_policy,
+                  double init_random,
                   int float_type)
 {
     ctx->set_parameter("limit", limit);
@@ -110,7 +112,6 @@ assign_parameters(std::shared_ptr<baryonyx::context> ctx,
     ctx->set_parameter("delta", delta);
 
     std::string order("none");
-
     switch (constraint_order) {
     case 1:
         order = "reversing";
@@ -154,6 +155,20 @@ assign_parameters(std::shared_ptr<baryonyx::context> ctx,
     ctx->set_parameter("pushes-limit", pushes_limit);
     ctx->set_parameter("pushing-iteration-limit", pushing_iteration_limit);
 
+    std::string policy("bastert");
+    switch (init_policy) {
+    case 1:
+        policy = "random";
+        break;
+    case 2:
+        policy = "best";
+        break;
+    default:
+        break;
+    }
+    ctx->set_parameter("init-policy", policy);
+    ctx->set_parameter("init-random", init_random);
+
     ctx->set_parameter("floating-point-type",
                        (float_type == 1)
                          ? "double"
@@ -196,6 +211,12 @@ linearize_result(const baryonyx::result& r,
 //'    - 2: l1-norm
 //'    - 3: l2-norm
 //'    - 4: infinity-norm
+//'
+//' @param policy_type: the type of (re)initilization used into the solver.
+//'     Default is to use bastert and 0.5 for policy_random.
+//'    - 0: bastert
+//'    - 1: random
+//'    - 2: best
 //'
 //' @param float_type: the type of real used into the solver. Default is to
 //'     use the C/C++ double representation.
@@ -245,6 +266,8 @@ solve_01lp_problem(std::string file_path,
                    double pushing_objective_amplifier = 5.0,
                    int pushes_limit = 10,
                    int pushing_iteration_limit = 20,
+                   int policy_type = 0,
+                   double policy_random = 0.5,
                    int float_type = 1,
                    bool verbose = true) noexcept
 {
@@ -288,6 +311,8 @@ solve_01lp_problem(std::string file_path,
                           pushing_objective_amplifier,
                           pushes_limit,
                           pushing_iteration_limit,
+                          policy_type,
+                          policy_random,
                           float_type);
 
         auto result = baryonyx::solve(ctx, pb);
@@ -323,6 +348,12 @@ solve_01lp_problem(std::string file_path,
 //'    - 2: l1-norm
 //'    - 3: l2-norm
 //'    - 4: infinity-norm
+//'
+//' @param policy_type: the type of (re)initilization used into the solver.
+//'     Default is to use bastert and 0.5 for policy_random.
+//'    - 0: bastert
+//'    - 1: random
+//'    - 2: best
 //'
 //' @param float_type: the type of real used into the solver. Default is to
 //'     use the C/C++ double representation.
@@ -372,6 +403,8 @@ optimize_01lp_problem(std::string file_path,
                       double pushing_objective_amplifier = 5.0,
                       int pushes_limit = 10,
                       int pushing_iteration_limit = 20,
+                      int policy_type = 0,
+                      double policy_random = 0.5,
                       int float_type = 1,
                       bool verbose = true) noexcept
 
@@ -416,6 +449,8 @@ optimize_01lp_problem(std::string file_path,
                           pushing_objective_amplifier,
                           pushes_limit,
                           pushing_iteration_limit,
+                          policy_type,
+                          policy_random,
                           float_type);
 
         auto result = baryonyx::optimize(ctx, pb);

@@ -185,6 +185,18 @@ The baryonyx solver have many parameters. To assign it, use the
 | print-level
 | integer
 | show information if greater than 0
+
+| init-policy
+| string
+| Change the (re)initialization policy of the solution vector. Values are:
+
+* `bastert` (default): use cost values.
+* `random`: use random value.
+* `best`: use best solution found if available (`bastert` otherwise).
+
+| init-random
+| real
+| [0-1] p parameter of the bernoulli's law.
 |===
 
 For example:
@@ -269,14 +281,16 @@ solve_01lp_problem <- function(file_path, limit = 1000L, theta = 0.5,
   kappa_max = 1.0, alpha = 1.0, w = 500L, time_limit = 10.0, seed = -1L,
   thread = 1L, norm = 4L, pushing_k_factor = 0.9,
   pushing_objective_amplifier = 5.0, pushes_limit = 10L,
-  pushing_iteration_limit = 20L, float_type = 1L, verbose = TRUE)
+  pushing_iteration_limit = 20L, init_policy = 0L, init_random = 0.5,
+  float_type = 1L, verbose = TRUE)
 
 optimize_01lp_problem <- function(file_path, limit = 1000L, theta = 0.5,
   delta = 1e-4, constraint_order = 0L, kappa_min = 0.1, kappa_step = 1e-4,
   kappa_max = 1.0, alpha = 1.0, w = 500L, time_limit = 10.0, seed = -1L,
   thread = 1L, norm = 4L, pushing_k_factor = 0.9,
   pushing_objective_amplifier = 5.0, pushes_limit = 10L,
-  pushing_iteration_limit = 20L, float_type = 1L, verbose = TRUE)
+  pushing_iteration_limit = 20L, init_policy = 0L, init_random = 0.5,
+  float_type = 1L, verbose = TRUE)
 ----
 
 === Usage
@@ -308,6 +322,8 @@ bounds = data.frame(
     1.0,   # pushing_objective_amplifier
     10,    # pushes_limit
     20,    # pushing_iteration_limit
+    0,     # init_policy
+    0.0,   # init_random
     0
     ),    # float_type
 max=c(
@@ -324,6 +340,8 @@ max=c(
     10.0,  # pushing_objective_amplifier
     100,   # pushes_limit
     200,   # pushing_iteration_limit
+    2,     # init_policy
+    1.0,   # init_random
     2))    # float_type
 
 rownames(bounds) <- factors
@@ -355,6 +373,8 @@ solve_lp <- function(x, file_path, limit=10000, time_limit=10, seed=123456789, t
                    pushing_objective_amplifier = x["pushing_objective_amplifier,"],
                    pushes_limit = x["pushes_limit"],
                    pushing_iteration_limit = x["pushing_iteration_limit"],
+                   init_policy = x["init_policy"],
+                   init_random = x["init_random"],
                    float_type = x["float_type"])
 
   return(r)
@@ -398,6 +418,8 @@ optim_gen_lp <- function(x) {
            pushing_objective_amplifier = 10,
            pushes_limit = 20,
            pushing_iteration_limit = 50,
+           init_policy = 0,
+           init_random = 0.5,
            float_type = 1,
            verbose = FALSE)
 
