@@ -76,23 +76,21 @@
 
 namespace baryonyx {
 
-/** @c index is used as accessor for all array. */
+/** @c index is used as accessors for all array. */
 using index = int;
 
 struct precondition_failure : std::logic_error
 {
     precondition_failure(const char* msg)
       : std::logic_error(msg)
-    {
-    }
+    {}
 };
 
 struct postcondition_failure : std::logic_error
 {
     postcondition_failure(const char* msg)
       : std::logic_error(msg)
-    {
-    }
+    {}
 };
 
 struct numeric_cast_failure : public std::exception
@@ -181,8 +179,7 @@ struct file_access_failure : std::runtime_error
     file_access_failure(std::string file, int error)
       : std::runtime_error("file_access_failure")
       , m_error{ std::move(file), error }
-    {
-    }
+    {}
 
     std::string file() const
     {
@@ -229,14 +226,12 @@ struct file_format_failure : std::runtime_error
                         int column)
       : std::runtime_error("file_format_failure")
       , m_error{ std::move(element), line, column, failure }
-    {
-    }
+    {}
 
     file_format_failure(file_format_error_tag failure, int line, int column)
       : std::runtime_error("file_format_failure")
       , m_error{ std::string(), line, column, failure }
-    {
-    }
+    {}
 
     std::string element() const
     {
@@ -283,8 +278,7 @@ struct problem_definition_failure : std::runtime_error
                                problem_definition_error_tag failure)
       : std::runtime_error("problem_definition_failure")
       , m_error{ std::move(element), failure }
-    {
-    }
+    {}
 
     std::string element() const
     {
@@ -317,8 +311,7 @@ struct solver_failure : std::runtime_error
     solver_failure(solver_error_tag failure)
       : std::runtime_error("solver_failure")
       , m_error{ failure }
-    {
-    }
+    {}
 
     solver_error_tag failure() const
     {
@@ -330,7 +323,7 @@ private:
 };
 
 /**
- * @brief @c baryonyx::paramter is a simple class to represent a union between
+ * @brief @c baryonyx::parameter is a simple class to represent a union between
  *     an integer, a real and a string (resp. @c int, @c double and @c
  *     std::string).
  *
@@ -361,26 +354,22 @@ public:
 
     parameter()
       : l(0)
-    {
-    }
+    {}
 
     explicit parameter(int value_)
       : l(value_)
       , type(tag::integer)
-    {
-    }
+    {}
 
     explicit parameter(double value_)
       : d(value_)
       , type(tag::real)
-    {
-    }
+    {}
 
     explicit parameter(std::string value_)
       : s(std::move(value_))
       , type(tag::string)
-    {
-    }
+    {}
 
     parameter(const parameter& w)
       : type(w.type)
@@ -719,8 +708,7 @@ struct function_element
     function_element(int factor_, index variable_index_) noexcept
       : factor(factor_)
       , variable_index(variable_index_)
-    {
-    }
+    {}
 
     int factor = { 0 };
     index variable_index{ -1 };
@@ -731,8 +719,7 @@ struct objective_function_element
     objective_function_element(double factor_, index variable_index_) noexcept
       : factor(factor_)
       , variable_index(variable_index_)
-    {
-    }
+    {}
 
     double factor = { 0 };
     index variable_index{ -1 };
@@ -779,7 +766,7 @@ struct problem
 };
 
 /**
- * @details Compute the number of constaints of the @c baryonyx::problem.
+ * @details Compute the number of constraints of the @c baryonyx::problem.
  *
  * @param pb An baryonyx::problem.
  * @return The number of constraints in the @c baryonyx::problem.
