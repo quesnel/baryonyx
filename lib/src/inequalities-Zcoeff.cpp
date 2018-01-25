@@ -1075,7 +1075,178 @@ struct solver
 //         debug(ctx,"\n");
 //     }
 // }
-// #endif
+
+//
+// Compute a problem lower or upper bounds based on Lagrangian multipliers
+// (valid if there are equality constraints only?)
+//
+template<typename floatingpointT, typename modeT>
+struct bounds_printer
+{
+    floatingpointT bestlb;
+    floatingpointT bestub;
+    floatingpointT max_cost;
+
+    static floatingpointT max_cost_init(const c_type<floatingpointT>& c,
+                                        bx::minimize_tag) noexcept
+    {
+        assert(not c.empty());
+
+        return *std::max_element(c.cbegin(), c.cend());
+    }
+
+    static floatingpointT max_cost_init(const c_type<floatingpointT>& c,
+                                        bx::maximize_tag) noexcept
+    {
+        assert(not c.empty());
+
+        return *std::min_element(c.cbegin(), c.cend());
+    }
+
+    bounds_printer(const c_type<floatingpointT>& c)
+      : bestlb(std::numeric_limits<floatingpointT>::lowest())
+      , bestub(std::numeric_limits<floatingpointT>::max())
+      , max_cost(max_cost_init(c, modeT()))
+    {}
+
+    template<typename randomT>
+    floatingpointT init_bound(
+      const solver<floatingpointT, modeT, randomT>& slv,
+      bx::minimize_tag)
+    {
+        floatingpointT b{ 0 };
+
+        for (auto c = 0; c != slv.m; ++c)
+            b += slv.pi[c] * slv.b(c).min;
+
+        return b;
+    }
+
+    template<typename randomT>
+    floatingpointT init_bound(
+      const solver<floatingpointT, modeT, randomT>& slv,
+      bx::maximize_tag)
+    {
+        floatingpointT b{ 0 };
+
+        for (auto c = 0; c != slv.m; ++c)
+            b += slv.pi[c] * slv.b(c).max;
+
+        return b;
+    }
+
+    template<typename randomT>
+    floatingpointT add_bound(const solver<floatingpointT, modeT, randomT>& slv,
+                             int j,
+                             floatingpointT sum_a_pi,
+                             bx::minimize_tag)
+    {
+        if (slv.c[j] - sum_a_pi < 0)
+            return slv.c[j] - sum_a_pi;
+
+        return { 0 };
+    }
+
+    template<typename randomT>
+    floatingpointT add_bound(const solver<floatingpointT, modeT, randomT>& slv,
+                             int j,
+                             floatingpointT sum_a_pi,
+                             bx::maximize_tag)
+    {
+        if (slv.c[j] - sum_a_pi > 0)
+            return slv.c[j] - sum_a_pi;
+
+        return { 0 };
+    }
+
+    void print_bound(const std::shared_ptr<bx::context>& ctx,
+                     floatingpointT lower_bound,
+                     floatingpointT upper_bound,
+                     bx::minimize_tag)
+    {
+        bool better_gap = (lower_bound > bestlb || upper_bound < bestub);
+
+        if (upper_bound < bestub)
+            bestub = upper_bound;
+
+        if (lower_bound > bestlb)
+            bestlb = lower_bound;
+
+        if (better_gap) {
+            if (bestub == 0.0)
+                info(ctx, "  - Lower bound: {}   (gap: 0%)\n", bestlb);
+            else
+                info(ctx,
+                     "  - Lower bound: {}   (gap: {}%)\n",
+                     bestlb,
+                     100. * (bestub - bestlb) / bestub);
+        }
+    }
+
+    void print_bound(const std::shared_ptr<bx::context>& ctx,
+                     floatingpointT lower_bound,
+                     floatingpointT upper_bound,
+                     bx::maximize_tag)
+    {
+        bool better_gap = (lower_bound > bestlb || upper_bound < bestub);
+
+        if (upper_bound < bestub)
+            bestub = upper_bound;
+
+        if (lower_bound > bestlb)
+            bestlb = lower_bound;
+
+        if (better_gap) {
+            if (bestlb == 0.0)
+                info(ctx, "  - Upper bound: {}   (gap: 0%)\n", bestub);
+            else
+                info(ctx,
+                     "  - Upper bound: {}   (gap: {}%)\n",
+                     bestub,
+                     100. * (bestlb - bestub) / bestlb);
+        }
+    }
+
+    floatingpointT init_ub(bx::minimize_tag)
+    {
+        return std::numeric_limits<floatingpointT>::max();
+    }
+
+    floatingpointT init_ub(bx::maximize_tag)
+    {
+        return std::numeric_limits<floatingpointT>::lowest();
+    }
+
+    template<typename randomT>
+    void operator()(const solver<floatingpointT, modeT, randomT>& slv,
+                    const std::shared_ptr<bx::context>& ctx,
+                    const bx::result& best)
+    {
+        floatingpointT lb = init_bound(slv, modeT());
+        floatingpointT ub = init_ub(modeT());
+
+        if (best)
+            ub = best.value;
+
+        for (auto j = 0; j != slv.n; ++j) {
+            floatingpointT sum_a_pi = 0.;
+
+            typename AP_type<floatingpointT>::const_iterator ht, hend;
+            std::tie(ht, hend) = slv.ap.column(j);
+
+            for (; ht != hend; ++ht) {
+                auto a = slv.ap.A()[ht->value];
+                sum_a_pi += std::abs(a) * slv.pi[ht->position];
+            }
+
+            lb += add_bound(slv, j, sum_a_pi, modeT());
+        }
+
+        lb *= max_cost; // restore original cost
+
+        print_bound(ctx, lb, ub, modeT());
+    }
+};
 
 template<typename floatingpointT, typename randomT>
 struct compute_none
@@ -1367,6 +1538,8 @@ struct solver_functor
 
         constraint_order_type compute(m_ctx, slv, m_rng);
 
+        bounds_printer<floatingpointT, modeT> bound_print(original_costs);
+
         info(m_ctx, "* solver starts:\n");
 
         for (;;) {
@@ -1381,6 +1554,8 @@ struct solver_functor
                   std::chrono::duration_cast<std::chrono::duration<double>>(
                     m_end - m_begin)
                     .count();
+
+                bound_print(slv, m_ctx, m_best);
 
                 info(m_ctx,
                      "  - constraints remaining: {}/{} at {}s (loop: {})\n",
@@ -1594,6 +1769,8 @@ struct optimize_functor
 
         constraint_order_type compute(m_ctx, slv, m_rng);
 
+        bounds_printer<floatingpointT, modeT> bound_print(original_costs);
+
         for (; not bx::is_time_limit(p.time_limit, m_begin, m_end);
              m_end = std::chrono::steady_clock::now(), ++i) {
 
@@ -1652,6 +1829,8 @@ struct optimize_functor
                     }
                 }
             }
+
+            bound_print(slv, m_ctx, m_best);
         }
 
         return m_best;
