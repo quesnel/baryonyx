@@ -1,8 +1,3 @@
-# optimizer returns: 3910.000000 (kappa: 0.116151 0.000000 5.000000
-#                                 delta: 0.000705 theta: 0.784961)
-# optimizer returns: 3860.000000 (kappa: 0.118276 0.000001 5.000000
-#                                 delta: 0.000615 theta: 0.784961)
-
 library(rgenoud)
 library(rbaryonyx)
 library(parallel)
@@ -27,6 +22,8 @@ optim_gen_lp <- function(x) {
            pushing_objective_amplifier = 10,
            pushes_limit = 20,
            pushing_iteration_limit = 50,
+           init_policy = 0,
+           init_random = 0.5,
            float_type = 1)
            verbose = FALSE)
 
