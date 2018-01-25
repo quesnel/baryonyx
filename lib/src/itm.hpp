@@ -61,9 +61,38 @@ inequalities_Zcoeff_wedelin_optimize(const std::shared_ptr<context>& ctx,
                                      problem& pb,
                                      int thread);
 
+enum class init_policy_type
+{
+    bastert = 0,
+    random,
+    best
+};
+
+inline const char*
+init_policy_type_to_string(init_policy_type type) noexcept
+{
+    static const char* ret[] = { "bastert", "random", "best" };
+
+    return ret[static_cast<int>(type)];
+}
+
+inline init_policy_type
+get_init_policy_type(const std::shared_ptr<context>& ctx) noexcept
+{
+    auto str = ctx->get_string_parameter("init-policy", "bastert");
+
+    if (str == "random")
+        return init_policy_type::random;
+
+    if (str == "best")
+        return init_policy_type::best;
+
+    return init_policy_type::bastert;
+}
+
 enum class floating_point_type
 {
-    float_type,
+    float_type = 0,
     double_type,
     longdouble_type
 };
@@ -77,16 +106,7 @@ floating_point_type_to_string(floating_point_type type) noexcept
         "longdouble",
     };
 
-    switch (type) {
-    case floating_point_type::float_type:
-        return ret[0];
-    case floating_point_type::double_type:
-        return ret[1];
-    case floating_point_type::longdouble_type:
-        return ret[2];
-    default:
-        return ret[0];
-    };
+    return ret[static_cast<int>(type)];
 }
 
 inline floating_point_type
@@ -104,7 +124,7 @@ get_floating_point_type(const std::shared_ptr<context>& ctx) noexcept
 
 enum class constraint_order
 {
-    none,
+    none = 0,
     reversing,
     random_sorting,
     infeasibility_decr,
@@ -122,20 +142,7 @@ constraint_order_to_string(constraint_order type) noexcept
         "infeasibility-incr",
     };
 
-    switch (type) {
-    case constraint_order::none:
-        return ret[0];
-    case constraint_order::reversing:
-        return ret[1];
-    case constraint_order::random_sorting:
-        return ret[2];
-    case constraint_order::infeasibility_decr:
-        return ret[3];
-    case constraint_order::infeasibility_incr:
-        return ret[4];
-    default:
-        return ret[0];
-    }
+    return ret[static_cast<int>(type)];
 }
 
 inline constraint_order
@@ -171,6 +178,7 @@ struct parameters
       , pushing_k_factor(ctx->get_real_parameter("pushing-k-factor", 0.9))
       , pushing_objective_amplifier(
           ctx->get_real_parameter("pushing-objective-amplifier", 5))
+      , init_random(ctx->get_real_parameter("init-random", 0.5))
       , pushes_limit(ctx->get_integer_parameter("pushes-limit", 10))
       , pushing_iteration_limit(
           ctx->get_integer_parameter("pushing-iteration-limit", 20))
@@ -179,6 +187,7 @@ struct parameters
       , print_level(ctx->get_integer_parameter("print-level", 0))
       , order(get_constraint_order(ctx))
       , float_type(get_floating_point_type(ctx))
+      , init_policy(get_init_policy_type(ctx))
     {
         if (limit < 0)
             limit = std::numeric_limits<int>::max();
@@ -219,11 +228,12 @@ struct parameters
                   pushing_iteration_limit,
                   pushing_k_factor);
 
-        if (ctx->optimize()) {
+        if (ctx->optimize())
             ctx->info("optimizer parameters:\n"
-                      "  - reverse-solution: %.10g\n",
-                      reverse_solution);
-        }
+                      "  - init-policy: %s\n"
+                      "  - init-random: %.10g\n",
+                      init_policy_type_to_string(init_policy),
+                      init_random);
     }
 
     std::string preprocessing;
@@ -238,6 +248,7 @@ struct parameters
     double reverse_solution;
     double pushing_k_factor;
     double pushing_objective_amplifier;
+    double init_random;
     int pushes_limit;
     int pushing_iteration_limit;
     int limit;
@@ -245,6 +256,7 @@ struct parameters
     int print_level;
     constraint_order order;
     floating_point_type float_type;
+    init_policy_type init_policy;
 };
 
 struct merged_constraint

@@ -155,10 +155,8 @@ help(baryonyx::context* ctx) noexcept
               "  - pushing-iteration-limit: integer [0, +oo[\n"
               "  - pushing-k-factor: real [0, +oo[\n"
               "optimizer parameters:\n"
-              "  - reverse-solution: real 0 or 1 (reset to 0 or 1),\n"
-              "                           ]0, 1[ keep x%% of the best solution,\n"
-              "                           ]-1, 0[ random solution (%% bernouilli),\n"
-              "                           other: initial system\n");
+              "  - init-policy: bastert random best\n"
+              "  - init-random: real [0, 1]\n");
 }
 }
 
