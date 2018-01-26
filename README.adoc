@@ -32,6 +32,14 @@ apt-get install build-essential cmake clang
 
 === Installation
 
+First, we clone baryonyx git repository and the submodule.
+
+....
+git clone https://github.com/quesnel/baryonyx.git
+cd baryonyx
+git submodule update --init --recursive
+....
+
 Default, baryonyx provides a shared library `libbaryonyx-0.2.so`, a static
 library `libbaryonyx-0.2.a` and an executable `baryonyx-0.2`. To compile and
 install in default cmake's install directory:
