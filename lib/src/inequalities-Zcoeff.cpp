@@ -537,7 +537,7 @@ struct solver
 
 	    for (; ht != hend; ++ht) {
 		auto a = ap.A()[ht->value];
-		sum_a_pi += a * pi[ht->position];
+		sum_a_pi += std::abs(a) * pi[ht->position];
 	    }
 
 	    if (c[j] - sum_a_pi < 0.) lb += c[j] - sum_a_pi;
