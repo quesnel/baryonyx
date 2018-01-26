@@ -25,7 +25,7 @@
 
 #include <fmt/format.h>
 
-#ifndef __WIN32
+#ifndef _WIN32
 #include <unistd.h>
 #endif
 
@@ -34,7 +34,7 @@
 namespace unit_test {
 namespace detail {
 
-#ifndef __WIN32
+#ifndef _WIN32
 inline bool
 have_color() noexcept
 {
