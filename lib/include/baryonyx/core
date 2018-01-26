@@ -67,13 +67,6 @@
 #define BARYONYX_MODULE BARYONYX_HELPER_DLL_EXPORT
 #endif
 
-#if defined(__GNUC__)
-#define BARYONYX_FORMAT(idformat, idarg)                                      \
-    __attribute__((format(printf, (idformat), (idarg))))
-#else
-#define BARYONYX_FORMAT(idformat, idarg)
-#endif
-
 namespace baryonyx {
 
 /** @c index is used as accessors for all array. */
