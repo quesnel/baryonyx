@@ -532,15 +532,12 @@ public:
 };
 
 /**
- * @brief @c baryonyx::context stores logging system and all parameters.
+ * @brief @c baryonyx::context stores logging system and parameters.
  *
- * @details @c baryonyx::context manages the logging system via a subclass
- *     @c baryonyx::context::logger which writes logs to the user defined
- *     storage. @c baryonyx::context stores a set of parameters for
- *     solvers. Default, the logging system is active and the call to the
- *     @c log function are send to the logger functor. Define
- *     BARYONYX_DISABLE_LOGGING as preprocessor value to hide all logging
- *     message.
+ * @details @c baryonyx::context manages the logging system and stores a set of
+ *     parameters for solvers. Default, the logging system is active and use @c
+ *     stdout C file structure. Define BARYONYX_DISABLE_LOGGING as preprocessor
+ *     value to hide debug logging message.
  */
 class BARYONYX_API context
 {
@@ -557,15 +554,14 @@ public:
         debug,   ///< debug-level message
     };
 
-    enum class logger_type
-    {
-        c_file,
-        // std_ostream,
-        string
-    };
-
     using string_logger_functor =
       std::function<void(message_type, std::string)>;
+
+    enum class logger_type
+    {
+        c_file, ///< log are send to a C FILE* structure.
+        string  ///< log are store to the string_logger_functor.
+    };
 
     context();
     context(FILE* f);
@@ -578,14 +574,14 @@ public:
      * @brief Parse the command line argument using the `getopt_long`
      *     function.
      *
-     * @details Parse the command line and search for strings "-p
-     *     [str:value]" and store @c str as argument's name and tries to
-     *     convert the @c value in @c baryonyx::parameter.
+     * @details Parse the command line and search for strings "-p [str:value]"
+     *     and store @c str as argument's name and tries to convert the @c
+     *     value in @c baryonyx::parameter.
      *
      * @code
      * int main(int argc, char *argv[])
      * {
-     *     auto ctx = baryonyx::make_context();
+     *     auto ctx = std::make_shared<baryonyx::context>();
      *     int i = ctx->parse(argc, argv);
      *     if (i < 0)
      *         return EXIT_FAILURE;
