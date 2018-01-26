@@ -950,6 +950,7 @@ struct problem_writer
         else
             os << "minimize\n";
 
+	os << "0 ";
         write_function_element(p.objective.elements);
 
         if (p.objective.value < 0)
