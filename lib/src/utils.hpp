@@ -391,8 +391,8 @@ is_essentially_equal(const T v1, const T v2, const T epsilon)
 class timer_profiler
 {
 public:
-    timer_profiler(std::shared_ptr<baryonyx::context> ctx)
-      : ctx(std::move(ctx))
+    timer_profiler(std::shared_ptr<baryonyx::context> ctx_)
+      : ctx(std::move(ctx_))
       , m_s(std::chrono::steady_clock::now())
     {}
 

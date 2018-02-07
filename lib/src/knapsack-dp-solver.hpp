@@ -110,7 +110,7 @@ struct knapsack_dp_solver
 
         for (i = 1; i <= n; ++i) {
             for (j = 1; j <= W; ++j) {
-                if (items[i - 1].factor <= (int)j)
+                if (items[i - 1].factor <= static_cast<int>(j))
                     best(i, j) =
                       get_best(best(i - 1, j),
                                items[i - 1].r + best(i - 1,

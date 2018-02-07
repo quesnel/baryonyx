@@ -264,7 +264,7 @@ make_special_merged_constraints(const std::shared_ptr<bx::context>& ctx,
             tosort.emplace_back(cst, 0);
             for (auto& elem : cst.elements) {
                 for (auto& s : linkcst[elem.variable_index])
-                    tosort.back().second += linkvars[s].size();
+                    tosort.back().second += static_cast<int>(linkvars[s].size());
             }
         }
 
@@ -304,8 +304,8 @@ make_special_merged_constraints(const std::shared_ptr<bx::context>& ctx,
         std::sort(ret.begin(),
                   ret.end(),
                   [linkvars, linkcst](const auto& lhs, const auto& rhs) {
-                      int sumlhs{ 1 };
-                      int sumrhs{ 1 };
+                      std::size_t sumlhs{ 1 };
+                      std::size_t sumrhs{ 1 };
 
                       for (auto& f : lhs.elements)
                           sumlhs *= linkcst[f.variable_index].size();

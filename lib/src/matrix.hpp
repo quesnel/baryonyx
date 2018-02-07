@@ -182,7 +182,7 @@ operator<<(std::ostream& os, const SparseArray<A_T, P_T>& m)
                   std::end(to_show),
                   std::numeric_limits<double>::infinity());
 
-        auto its = m.row(i);
+        auto its = m.row(static_cast<typename SparseArray<A_T, P_T>::index_type>(i));
 
         for (; std::get<0>(its) != std::get<1>(its); ++std::get<0>(its))
             to_show[std::get<0>(its)->position] =
@@ -291,7 +291,7 @@ SparseArray<A_T, P_T>::set(index_type row, index_type col, a_type x, p_type y)
 {
     m_check_index(row, col);
 
-    auto id = m_a.size();
+    auto id = static_cast<int>(m_a.size());
 
     for (auto i = SparseArray<A_T, P_T>::row(row);
          std::get<0>(i) != std::get<1>(i);

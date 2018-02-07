@@ -111,14 +111,16 @@ struct branch_and_bound_solver
     static inline void sort_items(fixed_array<item>& c, maximize_tag) noexcept
     {
         std::sort(c.begin(), c.end(), [](const auto& lhs, const auto& rhs) {
-            return (lhs.r / lhs.factor) > (rhs.r / rhs.factor);
+                  return (lhs.r / static_cast<floatingpointT>(lhs.factor))
+                  > (rhs.r / static_cast<floatingpointT>(rhs.factor));
         });
     }
 
     static inline void sort_items(fixed_array<item>& c, minimize_tag) noexcept
     {
         std::sort(c.begin(), c.end(), [](const auto& lhs, const auto& rhs) {
-            return (rhs.r / rhs.factor) > (lhs.r / lhs.factor);
+                  return (rhs.r / static_cast<floatingpointT>(rhs.factor))
+                  > (lhs.r / static_cast<floatingpointT>(lhs.factor));
         });
     }
 
@@ -136,14 +138,12 @@ struct branch_and_bound_solver
         return lhs < rhs;
     }
 
-    floatingpointT bound_node(const node& u,
-                              int W,
-                              const fixed_array<item>& items) noexcept
+    floatingpointT bound_node(const node& u, int W) noexcept
     {
         if (u.sumfactor >= W)
             return init(modeT());
 
-        auto bound = u.sumr;
+        auto bound_ret = u.sumr;
         auto sumf = u.sumfactor;
 
         int j = u.level + 1;
@@ -153,14 +153,14 @@ struct branch_and_bound_solver
             if (sumf + items[j].factor > W)
                 break;
 
-            bound += items[j].r;
+            bound_ret += items[j].r;
             sumf += items[j].factor;
         }
 
         if (j < n)
-            bound += (W - sumf) * (items[j].r / items[j].factor);
+            bound_ret += static_cast<floatingpointT>(W - sumf) * (items[j].r / static_cast<floatingpointT>(items[j].factor));
 
-        return bound;
+        return bound_ret;
     }
 
     floatingpointT init(maximize_tag)
@@ -182,7 +182,7 @@ struct branch_and_bound_solver
 
         sort_items(items, modeT());
 
-        queue.emplace(bound_node(best, bound, items), 0.0, 0, -1);
+        queue.emplace(bound_node(best, bound), 0.0, 0, -1);
         best.sumr = init(modeT());
 
         while (not queue.empty()) {
@@ -213,7 +213,7 @@ struct branch_and_bound_solver
 
                 node next_not_added = u;
                 next_not_added.level += 1;
-                next_not_added.z = bound_node(next_not_added, bound, items);
+                next_not_added.z = bound_node(next_not_added, bound);
 
                 if (is_best(next_not_added.z, best.sumr, modeT()))
                     queue.push(next_not_added);

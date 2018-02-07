@@ -4,7 +4,8 @@ option(WITH_FULL_OPTIMIZATION "Disable all logging facilities and active heavy o
 
 option(WITH_DEBUG "enable debug log message. [default: ON]" ON)
 
-add_library(libbaryonyx SHARED src/consistency.cpp src/inequalities-01coeff.cpp src/inequalities-101coeff.cpp src/inequalities-Zcoeff.cpp src/lpcore.cpp src/lpformat-io.cpp src/itm.cpp src/preprocessor.cpp src/select.cpp src/sol-format.cpp include/baryonyx/core include/baryonyx/core-compare include/baryonyx/core-out include/baryonyx/core-test)
+# add_library(libbaryonyx SHARED src/branch-and-bound-solver.hpp src/fixed_2darray.hpp src/fixed_array.hpp src/itm.hpp src/matrix.hpp src/private.hpp src/scoped_array.hpp src/utils.hpp src/consistency.cpp src/inequalities-01coeff.cpp src/inequalities-101coeff.cpp src/inequalities-Zcoeff.cpp src/lpcore.cpp src/lpformat-io.cpp src/itm.cpp src/preprocessor.cpp src/select.cpp src/sol-format.cpp include/baryonyx/core include/baryonyx/core-compare include/baryonyx/core-out include/baryonyx/core-test)
+add_library(libbaryonyx SHARED src/branch-and-bound-solver.hpp src/fixed_2darray.hpp src/fixed_array.hpp src/itm.hpp src/matrix.hpp src/private.hpp src/scoped_array.hpp src/utils.hpp src/consistency.cpp src/inequalities-Zcoeff.cpp src/lpcore.cpp src/lpformat-io.cpp src/itm.cpp src/preprocessor.cpp src/select.cpp src/sol-format.cpp include/baryonyx/core include/baryonyx/core-compare include/baryonyx/core-out include/baryonyx/core-test)
 
 target_include_directories(libbaryonyx PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
@@ -31,7 +32,8 @@ install(TARGETS libbaryonyx
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin)
 
-add_library(libbaryonyx-static STATIC src/consistency.cpp src/inequalities-01coeff.cpp src/inequalities-101coeff.cpp src/inequalities-Zcoeff.cpp src/itm.cpp src/lpcore.cpp src/lpformat-io.cpp src/preprocessor.cpp src/select.cpp src/sol-format.cpp include/baryonyx/core include/baryonyx/core-compare include/baryonyx/core-out include/baryonyx/core-test)
+# add_library(libbaryonyx-static STATIC src/branch-and-bound-solver.hpp src/fixed_2darray.hpp src/fixed_array.hpp src/itm.hpp src/matrix.hpp src/private.hpp src/scoped_array.hpp src/utils.hpp src/consistency.cpp inequalities-01coeff.cpp src/inequalities-101coeff.cpp src/inequalities-Zcoeff.cpp src/itm.cpp src/lpcore.cpp src/lpformat-io.cpp src/preprocessor.cpp src/select.cpp src/sol-format.cpp include/baryonyx/core include/baryonyx/core-compare include/baryonyx/core-out include/baryonyx/core-test)
+add_library(libbaryonyx-static STATIC src/branch-and-bound-solver.hpp src/fixed_2darray.hpp src/fixed_array.hpp src/itm.hpp src/matrix.hpp src/private.hpp src/scoped_array.hpp src/utils.hpp src/consistency.cpp src/inequalities-Zcoeff.cpp src/itm.cpp src/lpcore.cpp src/lpformat-io.cpp src/preprocessor.cpp src/select.cpp src/sol-format.cpp include/baryonyx/core include/baryonyx/core-compare include/baryonyx/core-out include/baryonyx/core-test)
 
 target_include_directories(libbaryonyx-static PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>

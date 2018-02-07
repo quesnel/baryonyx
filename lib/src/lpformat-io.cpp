@@ -281,10 +281,10 @@ struct parser_stack
 
         if (stack[0][0] == '-') {
             if (stack[0].size() > 1)
-                return std::isdigit(stack[0][1]);
+                return !!std::isdigit(stack[0][1]);
 
             if (stack.size() > 2)
-                return std::isdigit(stack[1][0]);
+                return !!std::isdigit(stack[1][0]);
         }
 
         return false;
@@ -408,13 +408,16 @@ get_variable(std::unordered_map<std::string, int>& cache,
     if (it != cache.end())
         return it->second;
 
-    int id = std::distance(vars.names.cbegin(), vars.names.cend());
+    auto id = std::distance(vars.names.cbegin(), vars.names.cend());
+    if (id >= INT_MAX)
+        throw file_format_failure(file_format_error_tag::too_many_variables);
+
     vars.names.emplace_back(name);
     vars.values.emplace_back();
 
-    cache[name] = id;
+    cache[name] = static_cast<int>(id);
 
-    return id;
+    return static_cast<int>(id);
 }
 
 static inline int
@@ -535,7 +538,7 @@ read_integer(parser_stack& stack)
     if (*endptr != '\0')
         stack.push_front(endptr);
 
-    return (negative) ? -value : value;
+    return (negative) ? -static_cast<int>(value) : static_cast<int>(value);
 }
 
 static inline double

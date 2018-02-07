@@ -735,7 +735,7 @@ remove_unused_variables(const std::shared_ptr<baryonyx::context>& ctx,
         std::unordered_set<int> vars;
         vars.reserve(pb.vars.values.size());
 
-        for (int i = 0, e = (int)pb.vars.values.size(); i != e; ++i)
+        for (int i = 0, e = baryonyx::length(pb.vars.values); i != e; ++i)
             vars.insert(i);
 
         for (auto& cst : pb.equal_constraints) {
@@ -805,7 +805,7 @@ remove_unused_variables(const std::shared_ptr<baryonyx::context>& ctx,
                 --unused_variable[j];
     }
 
-    variable += (int)unused_variable.size();
+    variable += baryonyx::length(unused_variable);
 }
 
 namespace baryonyx_private {

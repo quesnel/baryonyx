@@ -146,7 +146,7 @@ test_n_queens_problem(const std::shared_ptr<baryonyx::context>& ctx)
         mean_distance += distance;
     }
 
-    fmt::print("Optimum means: {}\n", mean_distance / solutions.size());
+    fmt::print("Optimum means: {}\n", mean_distance / static_cast<double>(solutions.size()));
 
     Ensures(all_found == valid_solutions.size());
 }

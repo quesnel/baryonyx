@@ -385,7 +385,7 @@ check_fixed_2darray()
 
 struct rc
 {
-    float value;
+    double value;
     int id;
 };
 
@@ -400,7 +400,7 @@ check_knapsack_solver()
         std::vector<rc> R{ { 15, 0 }, { 19, 1 }, { 23, 2 }, { 26, 3 } };
         std::vector<int> factors{ 2, 3, 4, 5 };
         int selected =
-          baryonyx::knapsack_dp_solver<baryonyx::maximize_tag, float>(
+          baryonyx::knapsack_dp_solver<baryonyx::maximize_tag, double>(
             R, factors.begin(), factors.end(), 7);
 
         Ensures(selected == 2);
@@ -409,10 +409,10 @@ check_knapsack_solver()
 
         Ensures(std::accumulate(R.begin(),
                                 R.begin() + selected,
-                                0.0f,
-                                [](float init, const rc& elem) {
+                                0.0,
+                                [](double init, const rc& elem) {
                                     return init + elem.value;
-                                }) == 42.0f);
+                                }) == 42.0);
     }
 }
 
@@ -427,7 +427,7 @@ check_branch_and_bound_solver()
         std::vector<rc> R{ { 15, 0 }, { 19, 1 }, { 23, 2 }, { 26, 3 } };
         std::vector<int> factors{ 2, 3, 4, 5 };
         int selected =
-          baryonyx::branch_and_bound_solver<baryonyx::maximize_tag, float>(
+          baryonyx::branch_and_bound_solver<baryonyx::maximize_tag, double>(
             R, factors.begin(), factors.end(), 7);
 
         Ensures(selected == 2);
@@ -436,10 +436,10 @@ check_branch_and_bound_solver()
 
         Ensures(std::accumulate(R.begin(),
                                 R.begin() + selected,
-                                0.0f,
-                                [](float init, const rc& elem) {
+                                0.0,
+                                [](double init, const rc& elem) {
                                     return init + elem.value;
-                                }) == 42.0f);
+                                }) == 42.0);
     }
 
     {
@@ -447,17 +447,17 @@ check_branch_and_bound_solver()
         std::vector<int> factors{ 2, 1, 3, 2 };
 
         int selected =
-          baryonyx::branch_and_bound_solver<baryonyx::minimize_tag, float>(
+          baryonyx::branch_and_bound_solver<baryonyx::minimize_tag, double>(
             R, factors.begin(), factors.end(), 3);
 
         Ensures(selected == 1);
         Ensures(R[0].id == 2 or R[1].id == 2);
         Ensures(std::accumulate(R.begin(),
                                 R.begin() + selected,
-                                0.0f,
-                                [](float init, const rc& elem) {
+                                0.0,
+                                [](double init, const rc& elem) {
                                     return init + elem.value;
-                                }) == 13.0f);
+                                }) == 13.0);
     }
 
     {
@@ -467,16 +467,16 @@ check_branch_and_bound_solver()
         std::vector<int> factors{ 2, 3, 4, 5, 7 };
 
         int selected =
-          baryonyx::branch_and_bound_solver<baryonyx::maximize_tag, float>(
+          baryonyx::branch_and_bound_solver<baryonyx::maximize_tag, double>(
             R, factors.begin(), factors.end(), 7);
 
         Ensures(selected == 2);
         Ensures(std::accumulate(R.begin(),
                                 R.begin() + selected,
-                                0.0f,
-                                [](float init, const rc& elem) {
+                                0.0,
+                                [](double init, const rc& elem) {
                                     return init + elem.value;
-                                }) == 44.0f);
+                                }) == 44.0);
     }
 
     {
@@ -485,7 +485,7 @@ check_branch_and_bound_solver()
         std::vector<int> factors{ 1, 2, 3, 4, 5, 6 };
 
         auto selected =
-          baryonyx::branch_and_bound_solver<baryonyx::maximize_tag, float>(
+          baryonyx::branch_and_bound_solver<baryonyx::maximize_tag, double>(
             R, factors.begin(), factors.end(), 7);
 
         Ensures(selected == 3);
@@ -500,7 +500,7 @@ check_branch_and_bound_solver()
         std::vector<int> factors{ 1, 2, 3, 4, 5, 6 };
 
         auto selected =
-          baryonyx::branch_and_bound_solver<baryonyx::minimize_tag, float>(
+          baryonyx::branch_and_bound_solver<baryonyx::minimize_tag, double>(
             R, factors.begin(), factors.end(), 7);
 
         Ensures(selected == 1);

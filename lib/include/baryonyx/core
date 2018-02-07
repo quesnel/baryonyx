@@ -25,6 +25,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <functional>
 #include <limits>
 #include <memory>
 #include <stdexcept>
@@ -36,6 +37,7 @@
 
 #include <cstdarg>
 #include <cstdio>
+#include <ciso646>
 
 #if defined _WIN32 || defined __CYGWIN__
 #define BARYONYX_HELPER_DLL_IMPORT __declspec(dllimport)
@@ -200,7 +202,9 @@ enum class file_format_error_tag
     bad_objective_function_type,
     bad_bound,
     bad_function_element,
-    bad_constraint
+    bad_constraint,
+    too_many_variables,
+    too_many_constraints
 };
 
 struct file_format_error
@@ -224,6 +228,11 @@ struct file_format_failure : std::runtime_error
     file_format_failure(file_format_error_tag failure, int line, int column)
       : std::runtime_error("file_format_failure")
       , m_error{ std::string(), line, column, failure }
+    {}
+
+    file_format_failure(file_format_error_tag failure)
+      : std::runtime_error("file_format_failure")
+      , m_error{ std::string(), -1, -1, failure }
     {}
 
     std::string element() const
@@ -326,7 +335,7 @@ private:
  *     int with the value of @c 0. Use the @c baryonyx::parameter::type
  *     function to get the current type stored into the @c baryonyx::parameter.
  */
-class parameter
+class BARYONYX_API parameter
 {
 public:
     enum class tag
@@ -690,9 +699,21 @@ enum class operator_type
 
 struct variable_value
 {
-    int min = { 0 };
-    int max = std::numeric_limits<int>::max();
-    variable_type type = variable_type::real;
+	variable_value()
+	  : min(0)
+	  , max(std::numeric_limits<int>::max())
+	  , type(variable_type::real)
+	{}
+
+	variable_value(int min_, int max_, variable_type type_)
+	  : min(min_)
+	  , max(max_)
+	  , type(type_)
+	{}
+
+    int min;
+    int max; 
+    variable_type type;
 };
 
 struct variables

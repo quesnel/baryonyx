@@ -124,9 +124,9 @@ struct resume
                                         return value;
                                     });
 
-        constraints[0] = pb.equal_constraints.size();
-        constraints[1] = pb.greater_constraints.size();
-        constraints[2] = pb.less_constraints.size();
+        constraints[0] = static_cast<int>(pb.equal_constraints.size());
+        constraints[1] = static_cast<int>(pb.greater_constraints.size());
+        constraints[2] = static_cast<int>(pb.less_constraints.size());
     }
 
     std::array<int, 3> variables;

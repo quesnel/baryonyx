@@ -37,9 +37,8 @@
 #include <cmath>
 #include <cstring>
 
-#include <getopt.h>
-
 #ifndef _WIN32
+#include <getopt.h>
 #include <sys/types.h>
 #include <unistd.h>
 #endif
@@ -77,7 +76,7 @@ to_int(const char* s, int bad_value) noexcept
     if (value > INT_MAX)
         return INT_MAX;
 
-    return value;
+    return static_cast<int>(value);
 }
 
 std::tuple<std::string, baryonyx::parameter>

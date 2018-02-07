@@ -209,8 +209,9 @@ is_better_solution(floatingpointT lhs,
     return lhs > rhs;
 }
 
+template<typename floatingpointT>
 static inline bool
-init_x(int cost, int value_if_cost_0, bx::minimize_tag) noexcept
+init_x(floatingpointT cost, int value_if_cost_0, bx::minimize_tag) noexcept
 {
     if (cost < 0)
         return true;
@@ -221,8 +222,9 @@ init_x(int cost, int value_if_cost_0, bx::minimize_tag) noexcept
     return false;
 }
 
+template<typename floatingpointT>
 static inline bool
-init_x(int cost, int value_if_cost_0, bx::maximize_tag) noexcept
+init_x(floatingpointT cost, int value_if_cost_0, bx::maximize_tag) noexcept
 {
     if (cost > 0)
         return true;
@@ -395,7 +397,7 @@ struct solver
                 int lower = 0, upper = 0;
 
                 for (const auto& cst : csts[i].elements) {
-                    ap.set(i, cst.variable_index, cst.factor, 0.0);
+                    ap.set(i, cst.variable_index, cst.factor, static_cast<floatingpoint_type>(0.0));
 
                     if (cst.factor > 0)
                         upper += cst.factor;
@@ -473,7 +475,8 @@ struct solver
             R = bx::fixed_array<r_data<floatingpoint_type>>(rsizemax);
         }
 
-        reinit(x_type(), init_type, init_random);
+        x_type empty;
+        reinit(empty, init_type, init_random);
     }
 
     void reinit(const x_type& best_previous,
@@ -558,10 +561,10 @@ struct solver
 
         if (is_valid_solution(ap, x, b)) {
             ret.status = bx::result_status::success;
-            double value = cost_constant;
+            double value = static_cast<double>(cost_constant);
 
             for (int i{ 0 }, ei{ n }; i != ei; ++i)
-                value += original_costs[i] * x[i];
+                value += static_cast<double>(original_costs[i] * x[i]);
 
             ret.value = static_cast<double>(value);
         }
@@ -629,7 +632,7 @@ struct solver
 
         for (int i = 0; i != c_size; ++i) {
             ap.invert_p(k, ck[i].id_A);
-            x[ck[i].id_A] = 1 - x[ck[i].id_A];
+            x[ck[i].id_A] = !x[ck[i].id_A]; // 1 - x[ck[i].id_A];
         }
     }
 
@@ -687,7 +690,7 @@ struct solver
 
         for (int i = 0; i != c_size; ++i) {
             ap.invert_p(k, ck[i].id_A);
-            x[ck[i].id_A] = 1 - x[ck[i].id_A];
+            x[ck[i].id_A] = !x[ck[i].id_A]; // 1 - x[ck[i].id_A];
         }
     }
 
@@ -802,7 +805,7 @@ struct solver
 
         for (int i = 0; i != c_size; ++i) {
             ap.invert_p(k, ck[i].id_A);
-            x[ck[i].id_A] = 1 - x[ck[i].id_A];
+            x[ck[i].id_A] = !x[ck[i].id_A]; // 1 - x[ck[i].id_A];
         }
     }
 
@@ -858,7 +861,7 @@ struct solver
 
         for (int i = 0; i != c_size; ++i) {
             ap.invert_p(k, ck[i].id_A);
-            x[ck[i].id_A] = 1 - x[ck[i].id_A];
+            x[ck[i].id_A] = !x[ck[i].id_A]; // 1 - x[ck[i].id_A];
         }
     }
 
@@ -892,7 +895,7 @@ struct solver
             std::tie(ht, hend) = ap.column(begin->position);
 
             for (; ht != hend; ++ht) {
-                auto a = ap.A()[ht->value];
+                auto a = static_cast<floatingpoint_type>(ap.A()[ht->value]);
                 sum_a_pi += a * pi[ht->position];
                 sum_a_p += a * ap.P()[ht->value];
             }
@@ -972,10 +975,10 @@ struct solver
                 ap.add_p(k, R[i].id, delta);
             }
         } else {
-            pi(k) += ((R[selected].value + R[selected + 1].value) / 2.0);
+            pi(k) += ((R[selected].value + R[selected + 1].value) / static_cast<floatingpoint_type>(2.0));
 
             floatingpoint_type d =
-              delta + ((kappa / (1.0 - kappa)) *
+              delta + ((kappa / (static_cast<floatingpoint_type>(1.0) - kappa)) *
                        (R[selected + 1].value - R[selected].value));
 
             int i = 0;
@@ -1028,22 +1031,22 @@ struct solver
     {
         if (Z[k]) {
             if (b(k).min == b(k).max)
-                compute_update_row_Z_eq(k, b(k).min, kappa, delta, theta, 0);
+                compute_update_row_Z_eq(k, b(k).min, kappa, delta, theta, static_cast<floatingpoint_type>(0));
             else
                 compute_update_row_Z_ineq(
-                  k, b(k).min, b(k).max, kappa, delta, theta, 0);
+                  k, b(k).min, b(k).max, kappa, delta, theta, static_cast<floatingpoint_type>(0));
         } else if (!C[k]) {
             if (b(k).min == b(k).max)
-                compute_update_row_01_eq(k, b(k).min, kappa, delta, theta, 0);
+                compute_update_row_01_eq(k, b(k).min, kappa, delta, theta, static_cast<floatingpoint_type>(0));
             else
                 compute_update_row_01_ineq(
-                  k, b(k).min, b(k).max, kappa, delta, theta, 0);
+                  k, b(k).min, b(k).max, kappa, delta, theta, static_cast<floatingpoint_type>(0));
         } else {
             if (b(k).min == b(k).max)
-                compute_update_row_101_eq(k, b(k).min, kappa, delta, theta, 0);
+                compute_update_row_101_eq(k, b(k).min, kappa, delta, theta, static_cast<floatingpoint_type>(0));
             else
                 compute_update_row_101_ineq(
-                  k, b(k).min, b(k).max, kappa, delta, theta, 0);
+                  k, b(k).min, b(k).max, kappa, delta, theta, static_cast<floatingpoint_type>(0));
         }
     }
 };
@@ -1126,7 +1129,7 @@ struct bounds_printer
         floatingpointT b{ 0 };
 
         for (auto c = 0; c != slv.m; ++c)
-            b += slv.pi[c] * slv.b(c).min;
+            b += slv.pi[c] * static_cast<floatingpointT>(slv.b(c).min);
 
         return b;
     }
@@ -1139,7 +1142,7 @@ struct bounds_printer
         floatingpointT b{ 0 };
 
         for (auto c = 0; c != slv.m; ++c)
-            b += slv.pi[c] * slv.b(c).max;
+            b += slv.pi[c] * static_cast<floatingpointT>(slv.b(c).max);
 
         return b;
     }
@@ -1182,13 +1185,13 @@ struct bounds_printer
             bestlb = lower_bound;
 
         if (better_gap) {
-            if (bestub == 0.0)
+            if (bestub == static_cast<floatingpointT>(0.0))
                 info(ctx, "  - Lower bound: {}   (gap: 0%)\n", bestlb);
             else
                 info(ctx,
                      "  - Lower bound: {}   (gap: {}%)\n",
                      bestlb,
-                     100. * (bestub - bestlb) / bestub);
+                     static_cast<floatingpointT>(100.) * (bestub - bestlb) / bestub);
         }
     }
 
@@ -1206,13 +1209,13 @@ struct bounds_printer
             bestlb = lower_bound;
 
         if (better_gap) {
-            if (bestlb == 0.0)
+            if (bestlb == static_cast<floatingpointT>(0.0))
                 info(ctx, "  - Upper bound: {}   (gap: 0%)\n", bestub);
             else
                 info(ctx,
                      "  - Upper bound: {}   (gap: {}%)\n",
                      bestub,
-                     100. * (bestlb - bestub) / bestlb);
+                     static_cast<floatingpointT>(100.) * (bestlb - bestub) / bestlb);
         }
     }
 
@@ -1235,7 +1238,7 @@ struct bounds_printer
         floatingpointT ub = init_ub(modeT());
 
         if (best)
-            ub = best.value;
+            ub = static_cast<floatingpointT>(best.value);
 
         for (auto j = 0; j != slv.n; ++j) {
             floatingpointT sum_a_pi = 0.;
@@ -1245,7 +1248,7 @@ struct bounds_printer
 
             for (; ht != hend; ++ht) {
                 auto a = slv.ap.A()[ht->value];
-                sum_a_pi += std::abs(a) * slv.pi[ht->position];
+                sum_a_pi += static_cast<floatingpointT>(std::abs(a)) * slv.pi[ht->position];
             }
 
             lb += add_bound(slv, j, sum_a_pi, modeT());
@@ -1536,7 +1539,17 @@ struct solver_functor
         int pushed = -1;
         int best_remaining = -1;
         int pushing_iteration = p.pushing_iteration_limit;
-        floatingpoint_type kappa = p.kappa_min;
+
+        const auto kappa_min = static_cast<floatingpoint_type>(p.kappa_min);
+        const auto kappa_step = static_cast<floatingpoint_type>(p.kappa_step);
+        const auto kappa_max = static_cast<floatingpoint_type>(p.kappa_max);
+        const auto delta = static_cast<floatingpoint_type>(p.delta);
+        const auto theta = static_cast<floatingpoint_type>(p.theta);
+        const auto alpha = static_cast<floatingpoint_type>(p.alpha);
+        const auto pushing_k_factor = static_cast<floatingpoint_type>(p.pushing_k_factor);
+        const auto pushing_objective_amplifier = static_cast<floatingpoint_type>(p.pushing_objective_amplifier);
+
+        auto kappa = kappa_min;
 
         solver<floatingpoint_type, mode_type, random_type> slv(m_rng,
                                                                variables,
@@ -1552,7 +1565,7 @@ struct solver_functor
         info(m_ctx, "* solver starts:\n");
 
         for (;;) {
-            int remaining = compute.run(slv, kappa, p.delta, p.theta);
+            int remaining = compute.run(slv, kappa, delta, theta);
 
             if (best_remaining == -1 or remaining < best_remaining) {
                 best_remaining = remaining;
@@ -1592,15 +1605,15 @@ struct solver_functor
                       m_ctx,
                       "    - push {}: kappa * k: {} objective amplifier: {}\n",
                       pushed,
-                      static_cast<double>(p.pushing_k_factor * kappa),
-                      static_cast<double>(p.pushing_objective_amplifier));
+                      (pushing_k_factor * kappa),
+                      (pushing_objective_amplifier));
 
                     remaining =
                       compute.push_and_run(slv,
-                                           p.pushing_k_factor * kappa,
-                                           p.delta,
-                                           p.theta,
-                                           p.pushing_objective_amplifier);
+                                           pushing_k_factor * kappa,
+                                           delta,
+                                           theta,
+                                           pushing_objective_amplifier);
 
                     if (remaining == 0) {
                         auto current =
@@ -1623,10 +1636,10 @@ struct solver_functor
             }
 
             if (i > p.w)
-                kappa += p.kappa_step *
+                kappa += kappa_step *
                          std::pow(static_cast<floatingpointT>(remaining) /
                                     static_cast<floatingpointT>(slv.m),
-                                  p.alpha);
+                                  alpha);
 
             if (++i > p.limit) {
                 info(m_ctx, "  - Loop limit reached: {}\n", i);
@@ -1643,7 +1656,7 @@ struct solver_functor
                 return m_best;
             }
 
-            if (kappa > p.kappa_max) {
+            if (kappa > kappa_max) {
                 info(m_ctx, "  - Kappa max reached: {:+.6f}\n", kappa);
                 if (pushed == -1)
                     m_best.status = bx::result_status::kappa_max_reached;
@@ -1767,7 +1780,17 @@ struct optimize_functor
         int i = 0;
         int pushed = -1;
         int pushing_iteration = 0;
-        floatingpoint_type kappa = p.kappa_min;
+
+        const auto kappa_min = static_cast<floatingpoint_type>(p.kappa_min);
+        const auto kappa_step = static_cast<floatingpoint_type>(p.kappa_step);
+        const auto kappa_max = static_cast<floatingpoint_type>(p.kappa_max);
+        const auto delta = static_cast<floatingpoint_type>(p.delta);
+        const auto theta = static_cast<floatingpoint_type>(p.theta);
+        const auto alpha = static_cast<floatingpoint_type>(p.alpha);
+        const auto pushing_k_factor = static_cast<floatingpoint_type>(p.pushing_k_factor);
+        const auto pushing_objective_amplifier = static_cast<floatingpoint_type>(p.pushing_objective_amplifier);
+
+        auto kappa = kappa_min;
 
         solver<floatingpoint_type, mode_type, random_type> slv(m_rng,
                                                                variables,
@@ -1783,7 +1806,7 @@ struct optimize_functor
         for (; not bx::is_time_limit(p.time_limit, m_begin, m_end);
              m_end = std::chrono::steady_clock::now(), ++i) {
 
-            int remaining = compute.run(slv, kappa, p.delta, p.theta);
+            int remaining = compute.run(slv, kappa, delta, theta);
 
             if (remaining == 0) {
                 auto current = slv.results(original_costs, cost_constant);
@@ -1797,16 +1820,16 @@ struct optimize_functor
 
             if (i > p.w)
                 kappa +=
-                  p.kappa_step * std::pow(static_cast<double>(remaining) /
-                                            static_cast<double>(slv.m),
-                                          p.alpha);
+                  kappa_step * std::pow(static_cast<floatingpoint_type>(remaining) /
+                                            static_cast<floatingpoint_type>(slv.m),
+                                          alpha);
 
-            if (i >= p.limit or kappa > p.kappa_max or
+            if (i >= p.limit or kappa > kappa_max or
                 pushed > p.pushes_limit) {
                 slv.reinit(m_best_x, p.init_policy, p.init_random);
 
                 i = 0;
-                kappa = p.kappa_min;
+                kappa = static_cast<floatingpoint_type>(kappa_min);
                 pushed = -1;
                 pushing_iteration = 0;
 
@@ -1822,10 +1845,10 @@ struct optimize_functor
 
                     remaining =
                       compute.push_and_run(slv,
-                                           p.pushing_k_factor * kappa,
-                                           p.delta,
-                                           p.theta,
-                                           p.pushing_objective_amplifier);
+                                           pushing_k_factor * kappa,
+                                           delta,
+                                           theta,
+                                           pushing_objective_amplifier);
 
                     if (remaining == 0) {
                         auto current =
@@ -1902,7 +1925,7 @@ random_epsilon_unique(iteratorT begin,
     std::uniform_real_distribution<floatingpointT> distribution(min, max);
 
     for (; begin != end; ++begin)
-        begin->second += distribution(rng);
+        begin->first += distribution(rng);
 }
 
 template<typename floatingpointT, typename randomT>
@@ -1983,7 +2006,7 @@ normalize_costs(const std::shared_ptr<bx::context>& ctx,
     }
 
     c_type<floatingpointT> ret(c);
-    double div{ 0 };
+    floatingpointT div{ 0 };
 
     if (norm == "l1") {
         info(ctx, "  - Compute l1 norm\n");
@@ -2012,9 +2035,22 @@ make_objective_function(const bx::objective_function& obj, int n)
     c_type<floatingpointT> ret(n, 0);
 
     for (const auto& elem : obj.elements)
-        ret(elem.variable_index) += elem.factor;
+        ret(elem.variable_index) += static_cast<floatingpointT>(elem.factor);
 
     return ret;
+}
+
+template<typename randomT>
+typename randomT::result_type
+init_random_generator_seed(std::shared_ptr<bx::context> ctx)
+{
+    auto epoch = std::chrono::system_clock::now().time_since_epoch().count();
+    auto param = ctx->get_integer_parameter("seed", -1);
+
+    if (param == -1)
+        return static_cast<typename randomT::result_type>(epoch);
+
+    return static_cast<typename randomT::result_type>(param);
 }
 
 template<typename floatingpointT,
@@ -2033,9 +2069,8 @@ solve(std::shared_ptr<bx::context> ctx,
 
     auto constraints{ bx::itm::make_merged_constraints(ctx, pb, p) };
     if (not constraints.empty() and not pb.vars.values.empty()) {
-        randomT rng(ctx->get_integer_parameter(
-          "seed",
-          std::chrono::system_clock::now().time_since_epoch().count()));
+
+        randomT rng(init_random_generator_seed<randomT>(ctx));
 
         auto variables = bx::numeric_cast<int>(pb.vars.values.size());
         auto cost =
@@ -2081,9 +2116,7 @@ optimize(std::shared_ptr<bx::context> ctx,
     auto constraints{ bx::itm::make_merged_constraints(ctx, pb, p) };
     if (not constraints.empty() and not pb.vars.values.empty()) {
 
-        randomT rng(ctx->get_integer_parameter(
-          "seed",
-          std::chrono::system_clock::now().time_since_epoch().count()));
+        randomT rng(init_random_generator_seed<randomT>(ctx));
 
         auto variables = bx::numeric_cast<int>(pb.vars.values.size());
         auto cost =
