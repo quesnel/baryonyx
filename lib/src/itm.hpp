@@ -169,7 +169,7 @@ struct parameters
       , norm(ctx->get_string_parameter("norm", "inf"))
       , time_limit(ctx->get_real_parameter("time-limit", -1.0))
       , theta(ctx->get_real_parameter("theta", 0.5))
-      , delta(ctx->get_real_parameter("delta", 0.01))
+      , delta(ctx->get_real_parameter("delta", -1.0))
       , kappa_min(ctx->get_real_parameter("kappa-min", 0.0))
       , kappa_step(ctx->get_real_parameter("kappa-step", 1.e-3))
       , kappa_max(ctx->get_real_parameter("kappa-max", 0.6))

@@ -1531,6 +1531,40 @@ struct compute_infeasibility
     }
 };
 
+template<typename floatingpointT>
+static floatingpointT
+compute_delta(const std::shared_ptr<bx::context>& ctx,
+              const c_type<floatingpointT>& c,
+              std::size_t constraint_number)
+{
+    info(ctx, "  - delta not defined, compute it:\n");
+
+    auto mini{ std::numeric_limits<floatingpointT>::max() };
+    for (int i = 0, e = bx::numeric_cast<int>(c.size()); i != e; ++i)
+        if (c[i] != 0 and std::abs(c[i] < mini))
+            mini = std::abs(c[i]);
+
+    if (mini == std::numeric_limits<floatingpointT>::max()) {
+        info(ctx, "    - All costs equal 0. Default value is used.\n");
+        mini = static_cast<floatingpointT>(0.01);
+    }
+
+    // const auto ret = (constraint_number > 0)
+    //                    ? mini /
+    //                    static_cast<floatingpointT>(constraint_number) : mini
+    //                    / static_cast<floatingpointT>(2);
+
+    const auto ret = mini / static_cast<floatingpointT>(2);
+
+    info(ctx,
+         "    - delta={} (min normalized cost:{} / {} constraints\n",
+         ret,
+         mini,
+         constraint_number);
+
+    return ret;
+}
+
 template<typename floatingpointT,
          typename modeT,
          typename constraintOrderT,
@@ -1582,11 +1616,16 @@ struct solver_functor
         const auto kappa_min = static_cast<floatingpoint_type>(p.kappa_min);
         const auto kappa_step = static_cast<floatingpoint_type>(p.kappa_step);
         const auto kappa_max = static_cast<floatingpoint_type>(p.kappa_max);
-        const auto delta = static_cast<floatingpoint_type>(p.delta);
-        const auto theta = static_cast<floatingpoint_type>(p.theta);
         const auto alpha = static_cast<floatingpoint_type>(p.alpha);
-        const auto pushing_k_factor = static_cast<floatingpoint_type>(p.pushing_k_factor);
-        const auto pushing_objective_amplifier = static_cast<floatingpoint_type>(p.pushing_objective_amplifier);
+        const auto theta = static_cast<floatingpoint_type>(p.theta);
+        const auto delta =
+          p.delta < 0 ? compute_delta(m_ctx, norm_costs, constraints.size())
+                      : static_cast<floatingpoint_type>(p.delta);
+
+        const auto pushing_k_factor =
+          static_cast<floatingpoint_type>(p.pushing_k_factor);
+        const auto pushing_objective_amplifier =
+          static_cast<floatingpoint_type>(p.pushing_objective_amplifier);
 
         auto kappa = kappa_min;
 
@@ -1823,11 +1862,16 @@ struct optimize_functor
         const auto kappa_min = static_cast<floatingpoint_type>(p.kappa_min);
         const auto kappa_step = static_cast<floatingpoint_type>(p.kappa_step);
         const auto kappa_max = static_cast<floatingpoint_type>(p.kappa_max);
-        const auto delta = static_cast<floatingpoint_type>(p.delta);
-        const auto theta = static_cast<floatingpoint_type>(p.theta);
         const auto alpha = static_cast<floatingpoint_type>(p.alpha);
-        const auto pushing_k_factor = static_cast<floatingpoint_type>(p.pushing_k_factor);
-        const auto pushing_objective_amplifier = static_cast<floatingpoint_type>(p.pushing_objective_amplifier);
+        const auto theta = static_cast<floatingpoint_type>(p.theta);
+        const auto delta =
+          p.delta < 0 ? compute_delta(m_ctx, norm_costs, constraints.size())
+                      : static_cast<floatingpoint_type>(p.delta);
+
+        const auto pushing_k_factor =
+          static_cast<floatingpoint_type>(p.pushing_k_factor);
+        const auto pushing_objective_amplifier =
+          static_cast<floatingpoint_type>(p.pushing_objective_amplifier);
 
         auto kappa = kappa_min;
 
