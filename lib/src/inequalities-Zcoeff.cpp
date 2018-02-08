@@ -1840,7 +1840,9 @@ struct optimize_functor
 
         constraint_order_type compute(m_ctx, slv, m_rng);
 
+#ifndef BARYONYX_FULL_OPTIMIZATION
         bounds_printer<floatingpointT, modeT> bound_print(original_costs);
+#endif
 
         for (; not bx::is_time_limit(p.time_limit, m_begin, m_end);
              m_end = std::chrono::steady_clock::now(), ++i) {
@@ -1900,7 +1902,9 @@ struct optimize_functor
                 }
             }
 
+#ifndef BARYONYX_FULL_OPTIMIZATION
             bound_print(slv, m_ctx, m_best);
+#endif
         }
 
         return m_best;
