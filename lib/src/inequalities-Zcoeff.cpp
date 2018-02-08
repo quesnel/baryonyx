@@ -489,8 +489,12 @@ struct solver
         std::fill(ap.P().begin(), ap.P().end(), 0);
         std::fill(pi.begin(), pi.end(), 0);
 
-        if (best_previous.empty() and type == bx::itm::init_policy_type::best)
-            type = bx::itm::init_policy_type::random;
+        if (best_previous.empty() and
+            type == bx::itm::init_policy_type::best) {
+            std::bernoulli_distribution d(0.5);
+            type = d(rng) ? bx::itm::init_policy_type::random
+                          : bx::itm::init_policy_type::bastert;
+        }
 
         init_random = bx::clamp(init_random, 0.0, 1.0);
 
