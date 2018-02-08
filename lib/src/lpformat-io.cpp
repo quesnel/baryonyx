@@ -402,7 +402,7 @@ private:
 static inline int
 get_variable(std::unordered_map<std::string, int>& cache,
              baryonyx::variables& vars,
-             const std::string& name) noexcept
+             const std::string& name)
 {
     auto it = cache.find(name);
     if (it != cache.end())
