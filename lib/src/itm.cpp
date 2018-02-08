@@ -1,10 +1,10 @@
-/* Copyright (C) 2017 INRA
+/* Copyright (C) 2016-2018 INRA
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the
  * "Software"), to deal in the Software without restriction, including
  * without limitation the rights to use, copy, modify, merge, publish,
- * distribute, sublipnse, and/or sell copies of the Software, and to
+ * distribute, sublicense, and/or sell copies of the Software, and to
  * permit persons to whom the Software is furnished to do so, subject to
  * the following conditions:
  *
@@ -264,7 +264,8 @@ make_special_merged_constraints(const std::shared_ptr<bx::context>& ctx,
             tosort.emplace_back(cst, 0);
             for (auto& elem : cst.elements) {
                 for (auto& s : linkcst[elem.variable_index])
-                    tosort.back().second += static_cast<int>(linkvars[s].size());
+                    tosort.back().second +=
+                      static_cast<int>(linkvars[s].size());
             }
         }
 

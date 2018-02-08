@@ -1,4 +1,4 @@
-/* Copyright (C) 2017 INRA
+/* Copyright (C) 2016-2018 INRA
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the
@@ -130,16 +130,14 @@ template<typename T>
 fixed_2darray<T>::fixed_2darray() noexcept
   : m_rows{ 0 }
   , m_columns{ 0 }
-{
-}
+{}
 
 template<typename T>
 fixed_2darray<T>::fixed_2darray(size_type rows, size_type columns)
   : m_rows{ rows }
   , m_columns{ columns }
   , m_buffer{ std::make_unique<T[]>(columns * rows) }
-{
-}
+{}
 
 template<typename T>
 fixed_2darray<T>::fixed_2darray(size_type rows,

@@ -1,10 +1,10 @@
-/* Copyright (C) 2017 INRA
+/* Copyright (C) 2016-2018 INRA
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the
  * "Software"), to deal in the Software without restriction, including
  * without limitation the rights to use, copy, modify, merge, publish,
- * distribute, sublipnse, and/or sell copies of the Software, and to
+ * distribute, sublicense, and/or sell copies of the Software, and to
  * permit persons to whom the Software is furnished to do so, subject to
  * the following conditions:
  *
@@ -397,7 +397,10 @@ struct solver
                 int lower = 0, upper = 0;
 
                 for (const auto& cst : csts[i].elements) {
-                    ap.set(i, cst.variable_index, cst.factor, static_cast<floatingpoint_type>(0.0));
+                    ap.set(i,
+                           cst.variable_index,
+                           cst.factor,
+                           static_cast<floatingpoint_type>(0.0));
 
                     if (cst.factor > 0)
                         upper += cst.factor;
@@ -975,11 +978,13 @@ struct solver
                 ap.add_p(k, R[i].id, delta);
             }
         } else {
-            pi(k) += ((R[selected].value + R[selected + 1].value) / static_cast<floatingpoint_type>(2.0));
+            pi(k) += ((R[selected].value + R[selected + 1].value) /
+                      static_cast<floatingpoint_type>(2.0));
 
             floatingpoint_type d =
-              delta + ((kappa / (static_cast<floatingpoint_type>(1.0) - kappa)) *
-                       (R[selected + 1].value - R[selected].value));
+              delta +
+              ((kappa / (static_cast<floatingpoint_type>(1.0) - kappa)) *
+               (R[selected + 1].value - R[selected].value));
 
             int i = 0;
             for (; i <= selected; ++i) {
@@ -1031,22 +1036,53 @@ struct solver
     {
         if (Z[k]) {
             if (b(k).min == b(k).max)
-                compute_update_row_Z_eq(k, b(k).min, kappa, delta, theta, static_cast<floatingpoint_type>(0));
+                compute_update_row_Z_eq(k,
+                                        b(k).min,
+                                        kappa,
+                                        delta,
+                                        theta,
+                                        static_cast<floatingpoint_type>(0));
             else
-                compute_update_row_Z_ineq(
-                  k, b(k).min, b(k).max, kappa, delta, theta, static_cast<floatingpoint_type>(0));
+                compute_update_row_Z_ineq(k,
+                                          b(k).min,
+                                          b(k).max,
+                                          kappa,
+                                          delta,
+                                          theta,
+                                          static_cast<floatingpoint_type>(0));
         } else if (!C[k]) {
             if (b(k).min == b(k).max)
-                compute_update_row_01_eq(k, b(k).min, kappa, delta, theta, static_cast<floatingpoint_type>(0));
+                compute_update_row_01_eq(k,
+                                         b(k).min,
+                                         kappa,
+                                         delta,
+                                         theta,
+                                         static_cast<floatingpoint_type>(0));
             else
-                compute_update_row_01_ineq(
-                  k, b(k).min, b(k).max, kappa, delta, theta, static_cast<floatingpoint_type>(0));
+                compute_update_row_01_ineq(k,
+                                           b(k).min,
+                                           b(k).max,
+                                           kappa,
+                                           delta,
+                                           theta,
+                                           static_cast<floatingpoint_type>(0));
         } else {
             if (b(k).min == b(k).max)
-                compute_update_row_101_eq(k, b(k).min, kappa, delta, theta, static_cast<floatingpoint_type>(0));
+                compute_update_row_101_eq(k,
+                                          b(k).min,
+                                          kappa,
+                                          delta,
+                                          theta,
+                                          static_cast<floatingpoint_type>(0));
             else
                 compute_update_row_101_ineq(
-                  k, b(k).min, b(k).max, kappa, delta, theta, static_cast<floatingpoint_type>(0));
+                  k,
+                  b(k).min,
+                  b(k).max,
+                  kappa,
+                  delta,
+                  theta,
+                  static_cast<floatingpoint_type>(0));
         }
     }
 };
@@ -1191,7 +1227,8 @@ struct bounds_printer
                 info(ctx,
                      "  - Lower bound: {}   (gap: {}%)\n",
                      bestlb,
-                     static_cast<floatingpointT>(100.) * (bestub - bestlb) / bestub);
+                     static_cast<floatingpointT>(100.) * (bestub - bestlb) /
+                       bestub);
         }
     }
 
@@ -1215,7 +1252,8 @@ struct bounds_printer
                 info(ctx,
                      "  - Upper bound: {}   (gap: {}%)\n",
                      bestub,
-                     static_cast<floatingpointT>(100.) * (bestlb - bestub) / bestlb);
+                     static_cast<floatingpointT>(100.) * (bestlb - bestub) /
+                       bestlb);
         }
     }
 
@@ -1248,7 +1286,8 @@ struct bounds_printer
 
             for (; ht != hend; ++ht) {
                 auto a = slv.ap.A()[ht->value];
-                sum_a_pi += static_cast<floatingpointT>(std::abs(a)) * slv.pi[ht->position];
+                sum_a_pi += static_cast<floatingpointT>(std::abs(a)) *
+                            slv.pi[ht->position];
             }
 
             lb += add_bound(slv, j, sum_a_pi, modeT());
@@ -1819,13 +1858,12 @@ struct optimize_functor
             }
 
             if (i > p.w)
-                kappa +=
-                  kappa_step * std::pow(static_cast<floatingpoint_type>(remaining) /
-                                            static_cast<floatingpoint_type>(slv.m),
-                                          alpha);
+                kappa += kappa_step *
+                         std::pow(static_cast<floatingpoint_type>(remaining) /
+                                    static_cast<floatingpoint_type>(slv.m),
+                                  alpha);
 
-            if (i >= p.limit or kappa > kappa_max or
-                pushed > p.pushes_limit) {
+            if (i >= p.limit or kappa > kappa_max or pushed > p.pushes_limit) {
                 slv.reinit(m_best_x, p.init_policy, p.init_random);
 
                 i = 0;

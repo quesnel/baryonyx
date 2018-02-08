@@ -1,4 +1,4 @@
-/* Copyright (C) 2017 INRA
+/* Copyright (C) 2016-2018 INRA
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the
@@ -72,8 +72,7 @@ public:
         access(index_type position_, index_type value_)
           : position(position_)
           , value(value_)
-        {
-        }
+        {}
 
         index_type position{ -1 };
         index_type value{ -1 };
@@ -182,7 +181,8 @@ operator<<(std::ostream& os, const SparseArray<A_T, P_T>& m)
                   std::end(to_show),
                   std::numeric_limits<double>::infinity());
 
-        auto its = m.row(static_cast<typename SparseArray<A_T, P_T>::index_type>(i));
+        auto its =
+          m.row(static_cast<typename SparseArray<A_T, P_T>::index_type>(i));
 
         for (; std::get<0>(its) != std::get<1>(its); ++std::get<0>(its))
             to_show[std::get<0>(its)->position] =
@@ -204,8 +204,7 @@ template<typename A_T, typename P_T>
 SparseArray<A_T, P_T>::SparseArray(index_type rows, index_type cols)
   : m_rows_access(rows, -1)
   , m_cols_access(cols, -1)
-{
-}
+{}
 
 template<typename A_T, typename P_T>
 bool

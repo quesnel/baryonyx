@@ -1,4 +1,4 @@
-/* Copyright (C) 2017 INRA
+/* Copyright (C) 2016-2018 INRA
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the
@@ -130,15 +130,13 @@ public:
 template<typename T>
 fixed_array<T>::fixed_array() noexcept
   : m_length{ 0 }
-{
-}
+{}
 
 template<typename T>
 fixed_array<T>::fixed_array(std::size_t n)
   : m_length{ n }
   , m_buffer{ std::make_unique<T[]>(n) }
-{
-}
+{}
 
 template<typename T>
 fixed_array<T>::fixed_array(std::size_t n, const value_type& def)

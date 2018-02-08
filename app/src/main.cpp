@@ -1,4 +1,4 @@
-/* Copyright (C) 2017 INRA
+/* Copyright (C) 2016-2018 INRA
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the
@@ -97,7 +97,8 @@ main(int argc, char* argv[])
             std::ofstream ofs(filename);
             ofs << std::boolalpha
                 << std::setprecision(static_cast<int>(std::floor(
-                     std::numeric_limits<double>::digits * std::log10(2) + 2)));
+                     std::numeric_limits<double>::digits * std::log10(2) +
+                     2)));
 
             auto now = std::chrono::system_clock::now();
             auto in_time_t = std::chrono::system_clock::to_time_t(now);

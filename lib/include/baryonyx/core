@@ -1,4 +1,4 @@
-/* Copyright (C) 2017 INRA
+/* Copyright (C) 2016-2018 INRA
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the
@@ -35,9 +35,9 @@
 #include <utility>
 #include <vector>
 
+#include <ciso646>
 #include <cstdarg>
 #include <cstdio>
-#include <ciso646>
 
 #if defined _WIN32 || defined __CYGWIN__
 #define BARYONYX_HELPER_DLL_IMPORT __declspec(dllimport)
@@ -699,20 +699,20 @@ enum class operator_type
 
 struct variable_value
 {
-	variable_value()
-	  : min(0)
-	  , max(std::numeric_limits<int>::max())
-	  , type(variable_type::real)
-	{}
+    variable_value()
+      : min(0)
+      , max(std::numeric_limits<int>::max())
+      , type(variable_type::real)
+    {}
 
-	variable_value(int min_, int max_, variable_type type_)
-	  : min(min_)
-	  , max(max_)
-	  , type(type_)
-	{}
+    variable_value(int min_, int max_, variable_type type_)
+      : min(min_)
+      , max(max_)
+      , type(type_)
+    {}
 
     int min;
-    int max; 
+    int max;
     variable_type type;
 };
 

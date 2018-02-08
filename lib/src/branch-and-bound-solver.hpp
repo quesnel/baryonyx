@@ -1,4 +1,4 @@
-/* Copyright (C) 2017 INRA
+/* Copyright (C) 2016-2018 INRA
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the
@@ -111,16 +111,16 @@ struct branch_and_bound_solver
     static inline void sort_items(fixed_array<item>& c, maximize_tag) noexcept
     {
         std::sort(c.begin(), c.end(), [](const auto& lhs, const auto& rhs) {
-                  return (lhs.r / static_cast<floatingpointT>(lhs.factor))
-                  > (rhs.r / static_cast<floatingpointT>(rhs.factor));
+            return (lhs.r / static_cast<floatingpointT>(lhs.factor)) >
+                   (rhs.r / static_cast<floatingpointT>(rhs.factor));
         });
     }
 
     static inline void sort_items(fixed_array<item>& c, minimize_tag) noexcept
     {
         std::sort(c.begin(), c.end(), [](const auto& lhs, const auto& rhs) {
-                  return (rhs.r / static_cast<floatingpointT>(rhs.factor))
-                  > (lhs.r / static_cast<floatingpointT>(lhs.factor));
+            return (rhs.r / static_cast<floatingpointT>(rhs.factor)) >
+                   (lhs.r / static_cast<floatingpointT>(lhs.factor));
         });
     }
 
@@ -158,7 +158,9 @@ struct branch_and_bound_solver
         }
 
         if (j < n)
-            bound_ret += static_cast<floatingpointT>(W - sumf) * (items[j].r / static_cast<floatingpointT>(items[j].factor));
+            bound_ret +=
+              static_cast<floatingpointT>(W - sumf) *
+              (items[j].r / static_cast<floatingpointT>(items[j].factor));
 
         return bound_ret;
     }

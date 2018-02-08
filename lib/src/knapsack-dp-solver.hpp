@@ -1,10 +1,10 @@
-/* Copyright (C) 2017 INRA
+/* Copyright (C) 2016-2018 INRA
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the
  * "Software"), to deal in the Software without restriction, including
  * without limitation the rights to use, copy, modify, merge, publish,
- * distribute, sublipnse, and/or sell copies of the Software, and to
+ * distribute, sublicense, and/or sell copies of the Software, and to
  * permit persons to whom the Software is furnished to do so, subject to
  * the following conditions:
  *
@@ -71,8 +71,7 @@ struct knapsack_dp_solver
       : items(size_)
       , best(size_ + 1, capacity_ + 1, 0)
       , capacity(capacity_)
-    {
-    }
+    {}
 
     floatingpointT get_best(floatingpointT lhs,
                             floatingpointT rhs,

@@ -1,4 +1,4 @@
-/* Copyright (C) 2017 INRA
+/* Copyright (C) 2016-2018 INRA
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the
@@ -92,8 +92,7 @@ public:
 template<class T>
 scoped_array<T>::scoped_array(std::size_t n)
   : m_buffer{ std::make_unique<T[]>(n) }
-{
-}
+{}
 
 template<class T>
 scoped_array<T>::scoped_array(std::size_t n, const value_type& def)
