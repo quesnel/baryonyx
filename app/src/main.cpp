@@ -23,6 +23,7 @@
 #include <baryonyx/core-out>
 #include <baryonyx/core>
 
+#include <fmt/ostream.h>
 #include <fmt/printf.h>
 
 #include <fstream>
@@ -74,6 +75,7 @@ main(int argc, char* argv[])
     for (; i < argc; ++i) {
         try {
             auto pb = baryonyx::make_problem(ctx, argv[i]);
+            fmt::print("{}", baryonyx::resume(pb, false));
 
             auto filename =
               fmt::format("{}-{}_{}.sol", argv[i], ::getpid(), i);

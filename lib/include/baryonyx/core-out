@@ -100,10 +100,11 @@ operator<<(std::ostream& os, const result& result)
 
 struct resume
 {
-    resume(const problem& pb)
+    resume(const problem& pb, bool use_lp_format_ = true)
       : variables({})
       , constraints({})
       , minmax(compute_min_max_objective_function(pb))
+      , use_lp_format(use_lp_format_)
     {
         variables = std::accumulate(pb.vars.values.begin(),
                                     pb.vars.values.end(),
@@ -132,27 +133,53 @@ struct resume
     std::array<int, 3> variables;
     std::array<int, 3> constraints;
     std::tuple<double, double> minmax;
+    bool use_lp_format;
 };
 
 inline std::ostream&
 operator<<(std::ostream& os, const resume& pb)
 {
-    return os << "\\ problem stats:\n"
-              << R"(\  nb variables: )"
-              << std::accumulate(pb.variables.begin(), pb.variables.end(), 0)
-              << '\n'
-              << R"(\   ..... real: )" << pb.variables[0] << '\n'
-              << R"(\   ... binary: )" << pb.variables[1] << '\n'
-              << R"(\   .. general: )" << pb.variables[2] << '\n'
-              << R"(\  nb constraints: )"
-              << std::accumulate(
-                   pb.constraints.begin(), pb.constraints.end(), 0)
-              << '\n'
-              << R"(\   ........ =  : )" << pb.constraints[0] << '\n'
-              << R"(\   ........ >= : )" << pb.constraints[1] << '\n'
-              << R"(\   ........ <= : )" << pb.constraints[2] << '\n'
-              << R"(\  minimal value.: )" << std::get<0>(pb.minmax) << '\n'
-              << R"(\  maximal value.: )" << std::get<1>(pb.minmax) << '\n';
+    auto store = os.flags();
+
+    os << std::setprecision(std::numeric_limits<double>::digits10 + 1);
+
+    if (pb.use_lp_format) {
+        os << "\\ problem stats:\n"
+           << R"(\  nb variables: )"
+           << std::accumulate(pb.variables.begin(), pb.variables.end(), 0)
+           << '\n'
+           << R"(\   ..... real: )" << pb.variables[0] << '\n'
+           << R"(\   ... binary: )" << pb.variables[1] << '\n'
+           << R"(\   .. general: )" << pb.variables[2] << '\n'
+           << R"(\  nb constraints: )"
+           << std::accumulate(pb.constraints.begin(), pb.constraints.end(), 0)
+           << '\n'
+           << R"(\   ........ =  : )" << pb.constraints[0] << '\n'
+           << R"(\   ........ >= : )" << pb.constraints[1] << '\n'
+           << R"(\   ........ <= : )" << pb.constraints[2] << '\n'
+           << R"(\  minimal value.: )" << std::get<0>(pb.minmax) << '\n'
+           << R"(\  maximal value.: )" << std::get<1>(pb.minmax) << '\n';
+    } else {
+        os << "  * variables: "
+           << std::accumulate(pb.variables.begin(), pb.variables.end(), 0)
+           << '\n'
+           << "    - real: " << pb.variables[0] << '\n'
+           << "    - binary: " << pb.variables[1] << '\n'
+           << "    - general: " << pb.variables[2] << '\n'
+           << "  * constraints: "
+           << std::accumulate(pb.constraints.begin(), pb.constraints.end(), 0)
+           << '\n'
+           << "    - constraint =  : " << pb.constraints[0] << '\n'
+           << "    - constraint >= : " << pb.constraints[1] << '\n'
+           << "    - constraint <= : " << pb.constraints[2] << '\n'
+           << "  * objective:\n"
+           << "    - minimal value.: " << std::get<0>(pb.minmax) << '\n'
+           << "    - maximal value.: " << std::get<1>(pb.minmax) << '\n';
+    }
+
+    os.flags(store);
+
+    return os;
 }
 
 } // namespace baryonyx
