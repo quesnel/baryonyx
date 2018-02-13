@@ -54,11 +54,15 @@ struct write_parameters
 
 static const char* file_format_error_format(
   baryonyx::file_format_error_tag) noexcept;
+
 static const char* problem_definition_error_format(
   baryonyx::problem_definition_error_tag) noexcept;
+
 static const char* solver_error_format(baryonyx::solver_error_tag) noexcept;
+
 static std::ostream&
 operator<<(std::ostream& os, const write_parameters& wp);
+
 static baryonyx::result
 solve_or_optimize(const std::shared_ptr<baryonyx::context>& ctx,
                   baryonyx::problem& pb);
@@ -111,6 +115,13 @@ main(int argc, char* argv[])
                 << ::write_parameters(ctx);
 
             auto ret = solve_or_optimize(ctx, pb);
+            if (ret.status == baryonyx::result_status::success) {
+                fmt::print(
+                  "Best solution found: {} in {}s\n", ret.value, ret.duration);
+            } else {
+                fmt::print("No solution found. Missing constraints: {}\n",
+                           ret.remaining_constraints);
+            }
 
             in_time_t = std::chrono::system_clock::to_time_t(now);
             ofs << R"(\ solver finishes: )"
