@@ -1814,6 +1814,43 @@ private:
     }
 };
 
+template<typename floatingpointT, typename modeT>
+struct best_solution_recorder
+{
+    std::shared_ptr<bx::context> m_ctx;
+    std::mutex m_mutex;
+    bx::result m_best;
+
+    best_solution_recorder(std::shared_ptr<bx::context> ctx_)
+      : m_ctx(ctx_)
+    {}
+
+    void try_update(bx::result current) noexcept
+    {
+        try {
+            // Lock the access to the m_best variable
+            std::lock_guard<std::mutex> lock(m_mutex);
+
+            if (current.status != bx::result_status::success)
+                return;
+
+            if (m_best.status != bx::result_status::success or
+                is_better_solution(current.value, m_best.value, modeT())) {
+
+                info(m_ctx,
+                     "  - Solution found: {} (i={} t={}s)\n",
+                     current.value,
+                     current.loop,
+                     current.duration);
+
+                m_best = current;
+            }
+        } catch (const std::exception& e) {
+            error(m_ctx, "sync optimization error: {}", e.what());
+        }
+    }
+};
+
 template<typename floatingpointT,
          typename modeT,
          typename constraintOrderT,
@@ -1849,6 +1886,7 @@ struct optimize_functor
     {}
 
     bx::result operator()(
+      best_solution_recorder<floatingpointT, modeT>& best_recorder,
       const std::vector<bx::itm::merged_constraint>& constraints,
       int variables,
       const c_type<floatingpointT>& original_costs,
@@ -1904,6 +1942,8 @@ struct optimize_functor
                 if (store_if_better(current)) {
                     m_best_x = slv.x;
                     pushed = 0;
+
+                    best_recorder.try_update(m_best);
                 }
             }
 
@@ -1944,8 +1984,11 @@ struct optimize_functor
                         current.loop = i;
                         current.remaining_constraints = 0;
 
-                        if (store_if_better(current))
+                        if (store_if_better(current)) {
                             m_best_x = slv.x;
+
+                            best_recorder.try_update(m_best);
+                        }
                     }
                 }
             }
@@ -1971,13 +2014,6 @@ private:
               std::chrono::duration_cast<std::chrono::duration<double>>(
                 m_end - m_begin)
                 .count();
-
-            info(m_ctx,
-                 "  - Solution found: {} (i={} t={}s thread:{})\n",
-                 current.value,
-                 current.loop,
-                 t,
-                 m_thread_id);
 
             m_best = current;
             m_best.duration = t;
@@ -2196,16 +2232,12 @@ optimize(std::shared_ptr<bx::context> ctx,
          const bx::itm::parameters& p,
          int thread)
 {
-    bx::Expects(thread >= 1, "optimize: bad thread number");
-
     info(ctx, "Optimizer initializing\n");
-
     bx::result ret;
     auto affected_vars = std::move(pb.affected_vars);
 
     auto constraints{ bx::itm::make_merged_constraints(ctx, pb, p) };
     if (not constraints.empty() and not pb.vars.values.empty()) {
-
         randomT rng(init_random_generator_seed<randomT>(ctx));
 
         auto variables = bx::numeric_cast<int>(pb.vars.values.size());
@@ -2221,6 +2253,8 @@ optimize(std::shared_ptr<bx::context> ctx,
         pool.clear();
         std::vector<std::future<bx::result>> results(thread);
         results.clear();
+
+        best_solution_recorder<floatingpointT, modeT> result(ctx);
 
         if (thread == 1)
             info(ctx, "optimizer starts with one thread\n");
@@ -2240,6 +2274,7 @@ optimize(std::shared_ptr<bx::context> ctx,
                                modeT,
                                constraintOrderT,
                                randomT>(ctx, i, seed, names, affected_vars),
+              std::ref(result),
               std::ref(constraints),
               variables,
               std::ref(cost),
