@@ -179,11 +179,11 @@ struct parameters
       , pushing_objective_amplifier(
           ctx->get_real_parameter("pushing-objective-amplifier", 5))
       , init_random(ctx->get_real_parameter("init-random", 0.5))
-      , pushes_limit(ctx->get_integer_parameter("pushes-limit", 10))
+      , pushes_limit(ctx->get_integer_parameter("pushes-limit", 100))
       , pushing_iteration_limit(
-          ctx->get_integer_parameter("pushing-iteration-limit", 20))
+          ctx->get_integer_parameter("pushing-iteration-limit", 50))
       , limit(ctx->get_integer_parameter("limit", 1000))
-      , w(ctx->get_integer_parameter("w", 500))
+      , w(ctx->get_integer_parameter("w", 20))
       , print_level(ctx->get_integer_parameter("print-level", 0))
       , order(get_constraint_order(ctx))
       , float_type(get_floating_point_type(ctx))
