@@ -1100,43 +1100,6 @@ struct solver
     }
 };
 
-// #ifndef BARYONYX_FULL_OPTIMIZATION
-// template <typename floatingpointT>
-// static void
-// print_AP(std::shared_ptr<bx::context> ctx,
-//          const AP_type<floatingpointT>& ap,
-//          int k,
-//          int rows,
-//          int cols)
-// {
-//     int level = ctx->get_integer_parameter("print-level", 0l);
-//     if (level <= 1)
-//         return;
-
-//     debug(ctx,"P after constraint {} computation:\n", k);
-//     std::vector<floatingpointT> to_show(cols);
-
-//     for (int i{ 0 }; i != rows; ++i) {
-//         std::fill(std::begin(to_show),
-//                   std::end(to_show),
-//                   std::numeric_limits<floatingpointT>::infinity());
-
-//         auto its = ap.row(i);
-
-//         for (; std::get<0>(its) != std::get<1>(its); ++std::get<0>(its))
-//             to_show[std::get<0>(its)->position] =
-//               ap.P()[std::get<0>(its)->value];
-
-//         for (auto elem : to_show)
-//             if (elem == std::numeric_limits<floatingpointT>::infinity())
-//                 debug(ctx,"          ");
-//             else
-//                 debug(ctx,"%+.6f ", (double)elem);
-
-//         debug(ctx,"\n");
-//     }
-// }
-
 //
 // Compute a problem lower or upper bounds based on Lagrangian multipliers
 // (valid if there are equality constraints only?)
