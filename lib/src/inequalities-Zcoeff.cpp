@@ -1795,14 +1795,13 @@ struct best_solution_recorder
       : m_ctx(ctx_)
     {}
 
-    void try_update(bx::result current) noexcept
+    bool try_update(const bx::result& current) noexcept
     {
         try {
-            // Lock the access to the m_best variable
             std::lock_guard<std::mutex> lock(m_mutex);
 
             if (current.status != bx::result_status::success)
-                return;
+                return false;
 
             if (m_best.status != bx::result_status::success or
                 is_better_solution(current.value, m_best.value, modeT())) {
@@ -1814,10 +1813,14 @@ struct best_solution_recorder
                      current.duration);
 
                 m_best = current;
+
+                return true;
             }
         } catch (const std::exception& e) {
             error(m_ctx, "sync optimization error: {}", e.what());
         }
+
+        return false;
     }
 };
 
@@ -1914,7 +1917,9 @@ struct optimize_functor
                     m_best_x = slv.x;
                     pushed = 0;
 
-                    best_recorder.try_update(m_best);
+                    if (best_recorder.try_update(m_best) and
+                        pushed > 0)
+                        info(m_ctx, "   * pushed solution.\n");
                 }
             }
 
@@ -1958,7 +1963,8 @@ struct optimize_functor
                         if (store_if_better(current)) {
                             m_best_x = slv.x;
 
-                            best_recorder.try_update(m_best);
+                            if (best_recorder.try_update(m_best))
+                                info(m_ctx, "   * pushed solution.\n");
                         }
                     }
                 }
