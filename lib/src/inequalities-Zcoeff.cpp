@@ -133,16 +133,9 @@ static void
 calculator_sort(iteratorT begin, iteratorT end, randomT& rng, bx::minimize_tag)
 {
     if (std::distance(begin, end) > 1) {
-
-#ifdef BARYONYX_FULL_OPTIMIZATION
         std::sort(begin, end, [](const auto& lhs, const auto& rhs) {
             return lhs.value < rhs.value;
         });
-#else
-        std::stable_sort(begin, end, [](const auto& lhs, const auto& rhs) {
-            return lhs.value < rhs.value;
-        });
-#endif
 
         random_shuffle_unique(begin, end, rng);
     }
@@ -153,16 +146,9 @@ static void
 calculator_sort(iteratorT begin, iteratorT end, randomT& rng, bx::maximize_tag)
 {
     if (std::distance(begin, end) > 1) {
-
-#ifdef BARYONYX_FULL_OPTIMIZATION
         std::sort(begin, end, [](const auto& lhs, const auto& rhs) {
             return rhs.value < lhs.value;
         });
-#else
-        std::stable_sort(begin, end, [](const auto& lhs, const auto& rhs) {
-            return rhs.value < lhs.value;
-        });
-#endif
 
         random_shuffle_unique(begin, end, rng);
     }
