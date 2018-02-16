@@ -490,11 +490,37 @@ struct solver
         std::fill(ap.P().begin(), ap.P().end(), 0);
         std::fill(pi.begin(), pi.end(), 0);
 
+        //
+        // Default, we randomly change the init policy using using the
+        // bernoulli distribution with p = 0.1.
+        //
+
+        {
+            std::bernoulli_distribution d(0.1);
+
+            if (d(rng)) {
+                std::uniform_int_distribution<int> di(0, 2);
+                auto ret = di(rng);
+                type = (ret == 0)
+                         ? bx::itm::init_policy_type::best
+                         : (ret == 1) ? bx::itm::init_policy_type::random
+                                      : bx::itm::init_policy_type::best;
+            }
+        }
+
+        //
+        // If no solution was found previously and the policy type is best, we
+        // randomly replace the best policy init type with random or bastert
+        // policy solution using the berouilli distribution with p = 0.5.
+        //
+
         if (best_previous.empty() and
             type == bx::itm::init_policy_type::best) {
             std::bernoulli_distribution d(0.5);
-            type = d(rng) ? bx::itm::init_policy_type::random
-                          : bx::itm::init_policy_type::bastert;
+            if (type == bx::itm::init_policy_type::best) {
+                type = d(rng) ? bx::itm::init_policy_type::random
+                              : bx::itm::init_policy_type::bastert;
+            }
         }
 
         init_random = bx::clamp(init_random, 0.0, 1.0);
@@ -519,11 +545,7 @@ struct solver
             break;
         case bx::itm::init_policy_type::best:
             for (int i = 0; i != n; ++i)
-                x(i) = d(rng);
-
-            for (int i = 0; i != n; ++i)
-                if (d(rng))
-                    x(i) = best_previous(i);
+                x(i) = (d(rng)) ? best_previous(i) : d(rng);
             break;
         }
     }
