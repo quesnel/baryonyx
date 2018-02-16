@@ -1539,6 +1539,7 @@ template<typename floatingpointT>
 static floatingpointT
 compute_delta(const std::shared_ptr<bx::context>& ctx,
               const c_type<floatingpointT>& c,
+              floatingpointT theta,
               std::size_t constraint_number)
 {
     info(ctx, "  - delta not defined, compute it:\n");
@@ -1553,15 +1554,11 @@ compute_delta(const std::shared_ptr<bx::context>& ctx,
         mini = static_cast<floatingpointT>(0.01);
     }
 
-    // const auto ret = (constraint_number > 0)
-    //                    ? mini /
-    //                    static_cast<floatingpointT>(constraint_number) : mini
-    //                    / static_cast<floatingpointT>(2);
-
-    const auto ret = mini / static_cast<floatingpointT>(2);
+    const auto ret = mini - theta * mini;
+    //(static_cast<floatingpointT>(0.1) * mini);
 
     info(ctx,
-         "    - delta={} (min normalized cost:{} / {} constraints\n",
+         "    - delta={} (min normalized cost:{} / {} constraints)\n",
          ret,
          mini,
          constraint_number);
@@ -1623,8 +1620,9 @@ struct solver_functor
         const auto alpha = static_cast<floatingpoint_type>(p.alpha);
         const auto theta = static_cast<floatingpoint_type>(p.theta);
         const auto delta =
-          p.delta < 0 ? compute_delta(m_ctx, norm_costs, constraints.size())
-                      : static_cast<floatingpoint_type>(p.delta);
+          p.delta < 0
+            ? compute_delta(m_ctx, norm_costs, theta, constraints.size())
+            : static_cast<floatingpoint_type>(p.delta);
 
         const auto pushing_k_factor =
           static_cast<floatingpoint_type>(p.pushing_k_factor);
@@ -1907,8 +1905,9 @@ struct optimize_functor
         const auto alpha = static_cast<floatingpoint_type>(p.alpha);
         const auto theta = static_cast<floatingpoint_type>(p.theta);
         const auto delta =
-          p.delta < 0 ? compute_delta(m_ctx, norm_costs, constraints.size())
-                      : static_cast<floatingpoint_type>(p.delta);
+          p.delta < 0
+            ? compute_delta(m_ctx, norm_costs, theta, constraints.size())
+            : static_cast<floatingpoint_type>(p.delta);
 
         const auto pushing_k_factor =
           static_cast<floatingpoint_type>(p.pushing_k_factor);
