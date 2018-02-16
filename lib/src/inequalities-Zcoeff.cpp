@@ -44,6 +44,7 @@
 #include "knapsack-dp-solver.hpp"
 #include "matrix.hpp"
 #include "private.hpp"
+#include "scoped_array.hpp"
 #include "utils.hpp"
 
 #include <cassert>
@@ -2221,6 +2222,39 @@ solve(std::shared_ptr<bx::context> ctx,
     return ret;
 }
 
+/**
+ * Generates an array with unique seed value.
+ */
+template<typename randomT>
+static bx::scoped_array<typename randomT::result_type>
+generate_seed(randomT& rng, int thread)
+{
+    using type = typename randomT::result_type;
+
+    bx::scoped_array<type> ret(thread);
+
+    std::uniform_int_distribution<type> dst(std::numeric_limits<type>::min(),
+                                            std::numeric_limits<type>::max());
+
+    ret[0] = bx::numeric_cast<type>(dst(rng));
+
+    for (int i = 1; i != thread; ++i) {
+        ret[i] = bx::numeric_cast<type>(dst(rng));
+
+        int j = i - 1;
+        while (j > 0) {
+            if (ret[j] == ret[i]) {
+                ret[j] = bx::numeric_cast<type>(dst(rng));
+                j = i;
+            }
+
+            --j;
+        }
+    }
+
+    return ret;
+}
+
 template<typename floatingpointT,
          typename modeT,
          typename constraintOrderT,
@@ -2260,26 +2294,22 @@ optimize(std::shared_ptr<bx::context> ctx,
         else
             info(ctx, "Optimizer starts with {} threads\n", thread);
 
-        std::uniform_int_distribution<typename randomT::result_type> dst(
-          std::numeric_limits<typename randomT::result_type>::min(),
-          std::numeric_limits<typename randomT::result_type>::max());
+        auto seeds = generate_seed(rng, thread);
 
         for (int i{ 0 }; i != thread; ++i) {
-            auto seed =
-              bx::numeric_cast<typename randomT::result_type>(dst(rng));
-
-            std::packaged_task<bx::result()> task(std::bind(
-              optimize_functor<floatingpointT,
-                               modeT,
-                               constraintOrderT,
-                               randomT>(ctx, i, seed, names, affected_vars),
-              std::ref(result),
-              std::ref(constraints),
-              variables,
-              std::ref(cost),
-              std::ref(norm_costs),
-              cost_constant,
-              std::ref(p)));
+            std::packaged_task<bx::result()> task(
+              std::bind(optimize_functor<floatingpointT,
+                                         modeT,
+                                         constraintOrderT,
+                                         randomT>(
+                          ctx, i, seeds[i], names, affected_vars),
+                        std::ref(result),
+                        std::ref(constraints),
+                        variables,
+                        std::ref(cost),
+                        std::ref(norm_costs),
+                        cost_constant,
+                        std::ref(p)));
 
             results.emplace_back(task.get_future());
 
