@@ -20,67 +20,36 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <baryonyx/core-compare>
-#include <baryonyx/core-out>
+#ifndef ORG_VLEPROJECT_BARYONYX_SOLVER_INEQUALITIES_ZCOEFF_HPP
+#define ORG_VLEPROJECT_BARYONYX_SOLVER_INEQUALITIES_ZCOEFF_HPP
 
-#include <fmt/format.h>
-
-#include <algorithm>
-#include <chrono>
-#include <fstream>
-#include <functional>
-#include <future>
-#include <iterator>
-#include <random>
-#include <set>
-#include <thread>
-#include <unordered_map>
-#include <utility>
-#include <vector>
-
-#include "branch-and-bound-solver.hpp"
-#include "fixed_array.hpp"
-#include "itm.hpp"
-#include "knapsack-dp-solver.hpp"
-#include "matrix.hpp"
-#include "private.hpp"
-#include "scoped_array.hpp"
-#include "utils.hpp"
-
-#include <cassert>
+#include "itm-solver-common.hpp"
 
 namespace baryonyx {
 namespace itm {
 
-template<typename floatingpointT>
-using AP_type = bx::SparseArray<int, floatingpointT>;
-
-using b_type = baryonyx::fixed_array<bound>;
-
-template<typename floatingpointT>
-using c_type = baryonyx::fixed_array<floatingpointT>;
-using x_type = baryonyx::fixed_array<std::int8_t>;
-
-template<typename floatingpointT>
-using pi_type = baryonyx::fixed_array<floatingpointT>;
-
 template<typename floatingpointT, typename modeT, typename randomT>
-struct solver
+struct solver_inequalities_Zcoeff
 {
     using floatingpoint_type = floatingpointT;
     using mode_type = modeT;
     using random_type = randomT;
 
+    using AP_type = SparseArray<int, floatingpointT>;
+    using b_type = baryonyx::fixed_array<bound>;
+    using c_type = baryonyx::fixed_array<floatingpointT>;
+    using pi_type = baryonyx::fixed_array<floatingpointT>;
+
     random_type& rng;
 
     // Sparse matrix to store A and P values.
-    AP_type<floatingpoint_type> ap;
+    AP_type ap;
 
     // Vector shared between all constraints to store the reduced cost.
-    bx::fixed_array<r_data<floatingpoint_type>> R;
+    fixed_array<r_data<floatingpoint_type>> R;
 
     // Vector for each constraint with negative coefficients.
-    bx::fixed_array<bx::fixed_array<c_data>> C;
+    fixed_array<fixed_array<c_data>> C;
 
     // Vector of boolean where true informs a Z coefficient in the equation or
     // inequation.
@@ -88,18 +57,18 @@ struct solver
 
     // Bound vector.
     b_type b;
-    const c_type<floatingpoint_type>& c;
+    const c_type& c;
     x_type x;
-    pi_type<floatingpoint_type> pi;
+    pi_type pi;
     int m;
     int n;
 
-    solver(random_type& rng_,
-           int n_,
-           const c_type<floatingpoint_type>& c_,
-           const std::vector<bx::itm::merged_constraint>& csts,
-           bx::itm::init_policy_type init_type,
-           double init_random)
+    solver_inequalities_Zcoeff(random_type& rng_,
+                               int n_,
+                               const c_type& c_,
+                               const std::vector<itm::merged_constraint>& csts,
+                               itm::init_policy_type init_type,
+                               double init_random)
       : rng(rng_)
       , ap(length(csts), n_)
       , C(length(csts))
@@ -116,7 +85,7 @@ struct solver
             // each rows and columns the number of elements to correctly
             // initialize the @c `matrix` structure.
 
-            bx::fixed_array<int> rinit(m, 0), cinit(n, 0);
+            fixed_array<int> rinit(m, 0), cinit(n, 0);
             int elem{ 0 };
 
             for (int i{ 0 }, e{ length(csts) }; i != e; ++i) {
@@ -201,12 +170,12 @@ struct solver
                 if (csize <= 0) // No negative coefficient found in
                     continue;   // constraint, try the next.
 
-                C[i] = bx::fixed_array<c_data>(csize);
+                C[i] = fixed_array<c_data>(csize);
 
                 int id_in_r = 0;
                 int id_in_c = 0;
 
-                typename AP_type<floatingpoint_type>::const_iterator it, et;
+                typename AP_type::const_iterator it, et;
                 std::tie(it, et) = ap.row(i);
 
                 for (; it != et; ++it) {
@@ -219,7 +188,7 @@ struct solver
                 }
             }
 
-            R = bx::fixed_array<r_data<floatingpoint_type>>(rsizemax);
+            R = fixed_array<r_data<floatingpoint_type>>(rsizemax);
         }
 
         x_type empty;
@@ -227,7 +196,7 @@ struct solver
     }
 
     void reinit(const x_type& best_previous,
-                bx::itm::init_policy_type type,
+                itm::init_policy_type type,
                 double init_random)
     {
         std::fill(ap.P().begin(), ap.P().end(), 0);
@@ -244,10 +213,9 @@ struct solver
             if (d(rng)) {
                 std::uniform_int_distribution<int> di(0, 2);
                 auto ret = di(rng);
-                type = (ret == 0)
-                         ? bx::itm::init_policy_type::best
-                         : (ret == 1) ? bx::itm::init_policy_type::random
-                                      : bx::itm::init_policy_type::best;
+                type = (ret == 0) ? itm::init_policy_type::best
+                                  : (ret == 1) ? itm::init_policy_type::random
+                                               : itm::init_policy_type::best;
             }
         }
 
@@ -257,43 +225,43 @@ struct solver
         // policy solution using the berouilli distribution with p = 0.5.
         //
 
-        if (best_previous.empty() and
-            type == bx::itm::init_policy_type::best) {
+        if (best_previous.empty() and type == itm::init_policy_type::best) {
             std::bernoulli_distribution d(0.5);
-            if (type == bx::itm::init_policy_type::best) {
-                type = d(rng) ? bx::itm::init_policy_type::random
-                              : bx::itm::init_policy_type::bastert;
+            if (type == itm::init_policy_type::best) {
+                type = d(rng) ? itm::init_policy_type::random
+                              : itm::init_policy_type::bastert;
             }
         }
 
-        init_random = bx::clamp(init_random, 0.0, 1.0);
+        init_random = clamp(init_random, 0.0, 1.0);
 
         std::bernoulli_distribution d(init_random);
 
         switch (type) {
-        case bx::itm::init_policy_type::bastert:
+        case itm::init_policy_type::bastert:
             if (init_random == 0.0 or init_random == 1.0) {
                 bool value_if_cost_0 = init_random == 1.0;
 
                 for (int i = 0, e = n; i != e; ++i)
-                    x(i) = init_x(c(i), value_if_cost_0, mode_type());
+                    x[i] = init_x(c(i), value_if_cost_0, mode_type());
             } else {
                 for (int i = 0, e = n; i != e; ++i)
-                    x(i) = init_x(c(i), d(rng), mode_type());
+                    x[i] = init_x(c(i), d(rng), mode_type());
             }
             break;
-        case bx::itm::init_policy_type::random:
+        case itm::init_policy_type::random:
             for (int i = 0; i != n; ++i)
-                x(i) = d(rng);
+                x[i] = d(rng);
             break;
-        case bx::itm::init_policy_type::best:
-            for (int i = 0; i != n; ++i)
-                x(i) = (d(rng)) ? best_previous(i) : d(rng);
+        case itm::init_policy_type::best:
+            for (int i = 0; i != n; ++i) {
+                x[i] = (d(rng)) ? (best_previous[i]) : d(rng);
+            }
             break;
         }
     }
 
-    void print(const std::shared_ptr<bx::context>& ctx,
+    void print(const std::shared_ptr<context>& ctx,
                const std::vector<std::string>& names,
                int print_level) const
     {
@@ -316,7 +284,7 @@ struct solver
 
             for (; std::get<0>(ak) != std::get<1>(ak); ++std::get<0>(ak))
                 v += ap.A()[std::get<0>(ak)->value] *
-                     x(std::get<0>(ak)->position);
+                     x[std::get<0>(ak)->position];
 
             bool valid = b(k).min <= v and v <= b(k).max;
             debug(ctx,
@@ -327,13 +295,13 @@ struct solver
         }
     }
 
-    bx::result results(const c_type<floatingpoint_type>& original_costs,
-                       const double cost_constant) const
+    result results(const c_type& original_costs,
+                   const double cost_constant) const
     {
-        bx::result ret;
+        result ret;
 
         if (is_valid_solution(ap, x, b)) {
-            ret.status = bx::result_status::success;
+            ret.status = result_status::success;
             double value = static_cast<double>(cost_constant);
 
             for (int i{ 0 }, ei{ n }; i != ei; ++i)
@@ -345,7 +313,7 @@ struct solver
         ret.variable_value.resize(n, 0);
 
         for (int i{ 0 }, ei{ n }; i != ei; ++i)
-            ret.variable_value[i] = x(i);
+            ret.variable_value[i] = x[i] ? 1 : 0;
 
         ret.variables = n;
         ret.constraints = m;
@@ -360,7 +328,7 @@ struct solver
                                  floatingpoint_type theta,
                                  floatingpoint_type objective_amplifier)
     {
-        typename AP_type<floatingpoint_type>::const_iterator it, et;
+        typename AP_type::const_iterator it, et;
         std::tie(it, et) = ap.row(k);
 
         decrease_preference(it, et, theta);
@@ -392,9 +360,8 @@ struct solver
 
         bk += std::abs(bk_move);
 
-        int selected =
-          baryonyx::branch_and_bound_solver<modeT, floatingpoint_type>(
-            ap, R, it, et, bk);
+        int selected = branch_and_bound_solver<modeT, floatingpoint_type>(
+          ap, R, it, et, bk);
 
         affect_variables(k, selected, r_size, kappa, delta);
 
@@ -417,7 +384,7 @@ struct solver
                                    floatingpoint_type theta,
                                    floatingpoint_type objective_amplifier)
     {
-        typename AP_type<floatingpoint_type>::const_iterator it, et;
+        typename AP_type::const_iterator it, et;
         std::tie(it, et) = ap.row(k);
 
         decrease_preference(it, et, theta);
@@ -450,9 +417,8 @@ struct solver
         bkmin += std::abs(bk_move);
         bkmax += std::abs(bk_move);
 
-        int selected =
-          baryonyx::branch_and_bound_solver<modeT, floatingpoint_type>(
-            ap, R, it, et, bkmax);
+        int selected = branch_and_bound_solver<modeT, floatingpoint_type>(
+          ap, R, it, et, bkmax);
 
         affect_variables(k, selected, r_size, kappa, delta);
 
@@ -474,7 +440,7 @@ struct solver
                                   floatingpoint_type theta,
                                   floatingpoint_type objective_amplifier)
     {
-        typename AP_type<floatingpoint_type>::const_iterator it, et;
+        typename AP_type::const_iterator it, et;
         std::tie(it, et) = ap.row(k);
 
         decrease_preference(it, et, theta);
@@ -505,7 +471,7 @@ struct solver
                                     floatingpoint_type theta,
                                     floatingpoint_type objective_amplifier)
     {
-        typename AP_type<floatingpoint_type>::const_iterator it, et;
+        typename AP_type::const_iterator it, et;
         std::tie(it, et) = ap.row(k);
 
         decrease_preference(it, et, theta);
@@ -535,7 +501,7 @@ struct solver
                                    floatingpoint_type theta,
                                    floatingpoint_type objective_amplifier)
     {
-        typename AP_type<floatingpoint_type>::const_iterator it, et;
+        typename AP_type::const_iterator it, et;
         std::tie(it, et) = ap.row(k);
 
         decrease_preference(it, et, theta);
@@ -590,7 +556,7 @@ struct solver
                                      floatingpoint_type theta,
                                      floatingpoint_type objective_amplifier)
     {
-        typename AP_type<floatingpoint_type>::const_iterator it, et;
+        typename AP_type::const_iterator it, et;
         std::tie(it, et) = ap.row(k);
 
         decrease_preference(it, et, theta);
@@ -664,7 +630,7 @@ struct solver
             floatingpoint_type sum_a_pi = 0;
             floatingpoint_type sum_a_p = 0;
 
-            typename AP_type<floatingpoint_type>::const_iterator ht, hend;
+            typename AP_type::const_iterator ht, hend;
             std::tie(ht, hend) = ap.column(begin->position);
 
             for (; ht != hend; ++ht) {
@@ -739,12 +705,12 @@ struct solver
     {
         if (selected < 0) {
             for (int i = 0; i != r_size; ++i) {
-                x(R[i].id) = 0;
+                x[R[i].id] = 0;
                 ap.add_p(k, R[i].id, -delta);
             }
         } else if (selected + 1 >= r_size) {
             for (int i = 0; i != r_size; ++i) {
-                x(R[i].id) = 1;
+                x[R[i].id] = 1;
                 ap.add_p(k, R[i].id, delta);
             }
         } else {
@@ -758,12 +724,12 @@ struct solver
 
             int i = 0;
             for (; i <= selected; ++i) {
-                x(R[i].id) = 1;
+                x[R[i].id] = 1;
                 ap.add_p(k, R[i].id, +d);
             }
 
             for (; i != r_size; ++i) {
-                x(R[i].id) = 0;
+                x[R[i].id] = 0;
                 ap.add_p(k, R[i].id, -d);
             }
         }
@@ -857,5 +823,7 @@ struct solver
     }
 };
 
-}
-}
+} // namespace itm
+} // namespace baryonyx
+
+#endif

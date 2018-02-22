@@ -24,6 +24,7 @@
 #define ORG_VLEPROJECT_BARYONYX_SOLVER_KNAPSACK_SOLVER_HPP
 
 #include "fixed_2darray.hpp"
+#include "itm-common.hpp"
 #include "private.hpp"
 
 #include <vector>
@@ -31,6 +32,7 @@
 #include <cassert>
 
 namespace baryonyx {
+namespace itm {
 namespace details {
 
 template<typename modeT, typename floatingpointT>
@@ -254,6 +256,7 @@ knapsack_dp_solver(R& reduced_cost, iteratorT begin, iteratorT end, int bound)
     return slv.solve(reduced_cost);
 }
 
+} // namespace itm
 } // namespace baryonyx
 
 #endif

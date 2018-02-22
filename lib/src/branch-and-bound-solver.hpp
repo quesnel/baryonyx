@@ -24,17 +24,18 @@
 #define ORG_VLEPROJECT_BARYONYX_BRANCH_AND_BOUND_HPP
 
 #include "fixed_array.hpp"
+#include "itm-common.hpp"
 #include "private.hpp"
 #include "utils.hpp"
 
 #include <algorithm>
 #include <limits>
 #include <queue>
-#include <vector>
 
 #include <cassert>
 
 namespace baryonyx {
+namespace itm {
 namespace details {
 
 template<typename floatingpointT>
@@ -344,6 +345,7 @@ branch_and_bound_solver(R& reduced_cost,
     return slv.solve(reduced_cost);
 }
 
+} // namespace itm
 } // namespace baryonyx
 
 #endif // ORG_VLEPROJECT_BARYONYX_BRANCH_AND_BOUND_HPP

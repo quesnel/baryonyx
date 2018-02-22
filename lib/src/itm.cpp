@@ -21,17 +21,21 @@
  */
 
 #include "itm.hpp"
+#include "itm-common.hpp"
+
+#include "inequalities-Zcoeff.hpp"
 
 #include <set>
 
 #include <cassert>
 
-namespace bx = baryonyx;
+namespace baryonyx {
+namespace itm {
 
 struct merged_constraint_hash
 {
     inline size_t operator()(
-      const std::vector<bx::function_element>& fct) const noexcept
+      const std::vector<baryonyx::function_element>& fct) const noexcept
     {
         std::size_t seed{ fct.size() };
 
@@ -50,21 +54,21 @@ struct merged_constraint_hash
 //
 template<typename cacheT, typename retT>
 static void
-fill_merged_constraints(const std::shared_ptr<bx::context>& ctx,
+fill_merged_constraints(const std::shared_ptr<baryonyx::context>& ctx,
                         cacheT& cache,
-                        bx::operator_type op,
-                        const bx::problem& pb,
+                        baryonyx::operator_type op,
+                        const baryonyx::problem& pb,
                         retT& ret)
 {
     switch (op) {
-    case bx::operator_type::equal:
+    case baryonyx::operator_type::equal:
         for (const auto& elem : pb.equal_constraints) {
             auto it = cache.find(elem.elements);
             if (it == cache.end()) {
                 cache.emplace(elem.elements, ret.size());
                 ret.emplace_back(elem.elements,
-                                 bx::numeric_cast<int>(elem.value),
-                                 bx::numeric_cast<int>(elem.value),
+                                 baryonyx::numeric_cast<int>(elem.value),
+                                 baryonyx::numeric_cast<int>(elem.value),
                                  elem.id);
             } else {
                 if (ret[it->second].min <= elem.value and
@@ -80,22 +84,23 @@ fill_merged_constraints(const std::shared_ptr<bx::context>& ctx,
             }
         }
         break;
-    case bx::operator_type::less:
+    case baryonyx::operator_type::less:
         for (const auto& elem : pb.less_constraints) {
             auto it = cache.find(elem.elements);
             if (it == cache.end()) {
                 cache.emplace(elem.elements, ret.size());
                 ret.emplace_back(elem.elements,
                                  std::numeric_limits<int>::min(),
-                                 bx::numeric_cast<int>(elem.value),
+                                 baryonyx::numeric_cast<int>(elem.value),
                                  elem.id);
             } else {
-                ret[it->second].max = std::min(
-                  ret[it->second].max, bx::numeric_cast<int>(elem.value));
+                ret[it->second].max =
+                  std::min(ret[it->second].max,
+                           baryonyx::numeric_cast<int>(elem.value));
             }
         }
         break;
-    case bx::operator_type::greater:
+    case baryonyx::operator_type::greater:
         for (const auto& elem : pb.greater_constraints) {
             auto it = cache.find(elem.elements);
             if (it == cache.end()) {
@@ -105,8 +110,9 @@ fill_merged_constraints(const std::shared_ptr<bx::context>& ctx,
                                  std::numeric_limits<int>::max(),
                                  elem.id);
             } else {
-                ret[it->second].min = std::max(
-                  ret[it->second].min, bx::numeric_cast<int>(elem.value));
+                ret[it->second].min =
+                  std::max(ret[it->second].min,
+                           baryonyx::numeric_cast<int>(elem.value));
             }
         }
         break;
@@ -115,17 +121,17 @@ fill_merged_constraints(const std::shared_ptr<bx::context>& ctx,
     }
 }
 
-static inline bx::operator_type
+static inline baryonyx::operator_type
 operator_from_string(const std::string& op) noexcept
 {
     if (op == "equal")
-        return bx::operator_type::equal;
+        return baryonyx::operator_type::equal;
     if (op == "less")
-        return bx::operator_type::less;
+        return baryonyx::operator_type::less;
     if (op == "greater")
-        return bx::operator_type::greater;
+        return baryonyx::operator_type::greater;
 
-    return bx::operator_type::undefined;
+    return baryonyx::operator_type::undefined;
 }
 
 //
@@ -133,24 +139,27 @@ operator_from_string(const std::string& op) noexcept
 // merged_constraint::id (initially initialized in the lp format reading
 // process).
 //
-static std::vector<bx::itm::merged_constraint>
-make_unsorted_merged_constraints(const std::shared_ptr<bx::context>& ctx,
-                                 const bx::problem& pb)
+static std::vector<baryonyx::itm::merged_constraint>
+make_unsorted_merged_constraints(const std::shared_ptr<baryonyx::context>& ctx,
+                                 const baryonyx::problem& pb)
 {
     info(ctx, "  - merge constraints without any sort\n");
 
-    std::unordered_map<std::vector<bx::function_element>,
+    std::unordered_map<std::vector<baryonyx::function_element>,
                        std::size_t,
                        merged_constraint_hash>
       cache;
 
-    std::vector<bx::itm::merged_constraint> ret;
+    std::vector<baryonyx::itm::merged_constraint> ret;
     ret.reserve(pb.equal_constraints.size() + pb.less_constraints.size() +
                 pb.greater_constraints.size());
 
-    fill_merged_constraints(ctx, cache, bx::operator_type::equal, pb, ret);
-    fill_merged_constraints(ctx, cache, bx::operator_type::less, pb, ret);
-    fill_merged_constraints(ctx, cache, bx::operator_type::greater, pb, ret);
+    fill_merged_constraints(
+      ctx, cache, baryonyx::operator_type::equal, pb, ret);
+    fill_merged_constraints(
+      ctx, cache, baryonyx::operator_type::less, pb, ret);
+    fill_merged_constraints(
+      ctx, cache, baryonyx::operator_type::greater, pb, ret);
 
     std::sort(ret.begin(), ret.end(), [](const auto& lhs, const auto& rhs) {
         return lhs.id < rhs.id;
@@ -164,10 +173,10 @@ make_unsorted_merged_constraints(const std::shared_ptr<bx::context>& ctx,
 // preprocessing parameter. If parameter is badly defined, we fall back to the
 // unsorted_merged_constraints.
 //
-static std::vector<bx::itm::merged_constraint>
-make_ordered_merged_constraints(const std::shared_ptr<bx::context>& ctx,
-                                const bx::problem& pb,
-                                const bx::itm::parameters& p)
+static std::vector<baryonyx::itm::merged_constraint>
+make_ordered_merged_constraints(const std::shared_ptr<baryonyx::context>& ctx,
+                                const baryonyx::problem& pb,
+                                const baryonyx::itm::parameters& p)
 {
     info(ctx, "  - merge constraints with ordered sort\n");
 
@@ -179,25 +188,25 @@ make_ordered_merged_constraints(const std::shared_ptr<bx::context>& ctx,
             auto op1 = p.preprocessing.substr(first + 1, second - first - 1);
             auto op2 = p.preprocessing.substr(second + 1);
 
-            bx::operator_type op[3] = { bx::operator_type::less,
-                                        bx::operator_type::greater,
-                                        bx::operator_type::equal };
+            baryonyx::operator_type op[3] = { baryonyx::operator_type::less,
+                                              baryonyx::operator_type::greater,
+                                              baryonyx::operator_type::equal };
 
             op[0] = operator_from_string(op0);
             op[1] = operator_from_string(op1);
             op[2] = operator_from_string(op2);
 
-            if (op[0] != bx::operator_type::undefined and
-                op[1] != bx::operator_type::undefined and
-                op[2] != bx::operator_type::undefined and op[0] != op[1] and
-                op[1] != op[2] and op[0] != op[2]) {
+            if (op[0] != baryonyx::operator_type::undefined and
+                op[1] != baryonyx::operator_type::undefined and
+                op[2] != baryonyx::operator_type::undefined and
+                op[0] != op[1] and op[1] != op[2] and op[0] != op[2]) {
 
-                std::unordered_map<std::vector<bx::function_element>,
+                std::unordered_map<std::vector<baryonyx::function_element>,
                                    std::size_t,
                                    merged_constraint_hash>
                   cache;
 
-                std::vector<bx::itm::merged_constraint> ret;
+                std::vector<baryonyx::itm::merged_constraint> ret;
                 ret.reserve(pb.equal_constraints.size() +
                             pb.less_constraints.size() +
                             pb.greater_constraints.size());
@@ -224,10 +233,10 @@ make_ordered_merged_constraints(const std::shared_ptr<bx::context>& ctx,
 // preprocessing parameter. If parameter is badly defined, we fall back to the
 // unsorted_merged_constraints.
 //
-static std::vector<bx::itm::merged_constraint>
-make_special_merged_constraints(const std::shared_ptr<bx::context>& ctx,
-                                const bx::problem& pb,
-                                const bx::itm::parameters& p)
+static std::vector<baryonyx::itm::merged_constraint>
+make_special_merged_constraints(const std::shared_ptr<baryonyx::context>& ctx,
+                                const baryonyx::problem& pb,
+                                const baryonyx::itm::parameters& p)
 {
     info(ctx,
          "  - merge constraint according to the `{}` algorithm\n",
@@ -257,7 +266,7 @@ make_special_merged_constraints(const std::shared_ptr<bx::context>& ctx,
         }
     }
 
-    std::vector<std::pair<bx::itm::merged_constraint, int>> tosort;
+    std::vector<std::pair<baryonyx::itm::merged_constraint, int>> tosort;
 
     if (p.preprocessing == "variables-number") {
         for (auto& cst : ret) {
@@ -358,9 +367,6 @@ make_special_merged_constraints(const std::shared_ptr<bx::context>& ctx,
     return ret;
 }
 
-namespace baryonyx {
-namespace itm {
-
 std::vector<merged_constraint>
 make_merged_constraints(const std::shared_ptr<context>& ctx,
                         const problem& pb,
@@ -387,5 +393,298 @@ make_merged_constraints(const std::shared_ptr<context>& ctx,
 
     return ret;
 }
+
+template<typename floatingpointT, typename modeT, typename randomT>
+struct solver_inequalities_Zcoeff;
+
+template<typename floatingpointT,
+         typename modeT,
+         typename constraintOrderT,
+         typename randomT>
+inline result
+dispatch_solver(std::shared_ptr<context> ctx,
+                problem& pb,
+                const itm::parameters& p)
+{
+    switch (pb.problem_type) {
+    case problem_solver_type::equalities_01:
+        return solve_problem<
+          solver_inequalities_Zcoeff<floatingpointT, modeT, randomT>,
+          floatingpointT,
+          modeT,
+          constraintOrderT,
+          randomT>(ctx, pb, p);
+    case problem_solver_type::equalities_101:
+        return solve_problem<
+          solver_inequalities_Zcoeff<floatingpointT, modeT, randomT>,
+          floatingpointT,
+          modeT,
+          constraintOrderT,
+          randomT>(ctx, pb, p);
+    case problem_solver_type::equalities_Z:
+        return solve_problem<
+          solver_inequalities_Zcoeff<floatingpointT, modeT, randomT>,
+          floatingpointT,
+          modeT,
+          constraintOrderT,
+          randomT>(ctx, pb, p);
+    case problem_solver_type::inequalities_01:
+        return solve_problem<
+          solver_inequalities_Zcoeff<floatingpointT, modeT, randomT>,
+          floatingpointT,
+          modeT,
+          constraintOrderT,
+          randomT>(ctx, pb, p);
+    case problem_solver_type::inequalities_101:
+        return solve_problem<
+          solver_inequalities_Zcoeff<floatingpointT, modeT, randomT>,
+          floatingpointT,
+          modeT,
+          constraintOrderT,
+          randomT>(ctx, pb, p);
+    case problem_solver_type::inequalities_Z:
+        return solve_problem<
+          solver_inequalities_Zcoeff<floatingpointT, modeT, randomT>,
+          floatingpointT,
+          modeT,
+          constraintOrderT,
+          randomT>(ctx, pb, p);
+    }
+
+    return result(result_status::internal_error);
 }
+
+template<typename floatingpointT,
+         typename modeT,
+         typename constraintOrderT,
+         typename randomT>
+inline result
+dispatch_optimizer(std::shared_ptr<context> ctx,
+                   problem& pb,
+                   const itm::parameters& p,
+                   int thread)
+{
+    switch (pb.problem_type) {
+    case problem_solver_type::equalities_01:
+        return optimize_problem<
+          solver_inequalities_Zcoeff<floatingpointT, modeT, randomT>,
+          floatingpointT,
+          modeT,
+          constraintOrderT,
+          randomT>(ctx, pb, p, thread);
+    case problem_solver_type::equalities_101:
+        return optimize_problem<
+          solver_inequalities_Zcoeff<floatingpointT, modeT, randomT>,
+          floatingpointT,
+          modeT,
+          constraintOrderT,
+          randomT>(ctx, pb, p, thread);
+    case problem_solver_type::equalities_Z:
+        return optimize_problem<
+          solver_inequalities_Zcoeff<floatingpointT, modeT, randomT>,
+          floatingpointT,
+          modeT,
+          constraintOrderT,
+          randomT>(ctx, pb, p, thread);
+    case problem_solver_type::inequalities_01:
+        return optimize_problem<
+          solver_inequalities_Zcoeff<floatingpointT, modeT, randomT>,
+          floatingpointT,
+          modeT,
+          constraintOrderT,
+          randomT>(ctx, pb, p, thread);
+    case problem_solver_type::inequalities_101:
+        return optimize_problem<
+          solver_inequalities_Zcoeff<floatingpointT, modeT, randomT>,
+          floatingpointT,
+          modeT,
+          constraintOrderT,
+          randomT>(ctx, pb, p, thread);
+    case problem_solver_type::inequalities_Z:
+        return optimize_problem<
+          solver_inequalities_Zcoeff<floatingpointT, modeT, randomT>,
+          floatingpointT,
+          modeT,
+          constraintOrderT,
+          randomT>(ctx, pb, p, thread);
+    }
+
+    return result(result_status::internal_error);
 }
+
+template<typename realT, typename modeT, typename randomT>
+inline result
+dispatch_solver_parameters(std::shared_ptr<context> ctx,
+                           problem& pb,
+                           const itm::parameters& p)
+{
+    switch (p.order) {
+    case itm::constraint_order::none:
+        return dispatch_solver<realT,
+                               modeT,
+                               compute_none<realT, randomT>,
+                               randomT>(ctx, pb, p);
+    case itm::constraint_order::reversing:
+        return dispatch_solver<realT,
+                               modeT,
+                               compute_reversing<realT, randomT>,
+                               randomT>(ctx, pb, p);
+    case itm::constraint_order::random_sorting:
+        return dispatch_solver<realT,
+                               modeT,
+                               compute_random<realT, randomT>,
+                               randomT>(ctx, pb, p);
+    case itm::constraint_order::infeasibility_decr:
+        return dispatch_solver<
+          realT,
+          modeT,
+          compute_infeasibility<realT, randomT, compute_infeasibility_decr>,
+          randomT>(ctx, pb, p);
+    case itm::constraint_order::infeasibility_incr:
+        return dispatch_solver<
+          realT,
+          modeT,
+          compute_infeasibility<realT, randomT, compute_infeasibility_incr>,
+          randomT>(ctx, pb, p);
+    }
+
+    return result(result_status::internal_error);
+}
+
+template<typename realT, typename modeT, typename randomT>
+inline result
+dispatch_optimizer_parameters(std::shared_ptr<context> ctx,
+                              problem& pb,
+                              const itm::parameters& p,
+                              int thread)
+{
+    switch (p.order) {
+    case itm::constraint_order::none:
+        return dispatch_optimizer<realT,
+                                  modeT,
+                                  compute_none<realT, randomT>,
+                                  randomT>(ctx, pb, p, thread);
+    case itm::constraint_order::reversing:
+        return dispatch_optimizer<realT,
+                                  modeT,
+                                  compute_reversing<realT, randomT>,
+                                  randomT>(ctx, pb, p, thread);
+    case itm::constraint_order::random_sorting:
+        return dispatch_optimizer<realT,
+                                  modeT,
+                                  compute_random<realT, randomT>,
+                                  randomT>(ctx, pb, p, thread);
+    case itm::constraint_order::infeasibility_decr:
+        return dispatch_optimizer<
+          realT,
+          modeT,
+          compute_infeasibility<realT, randomT, compute_infeasibility_decr>,
+          randomT>(ctx, pb, p, thread);
+    case itm::constraint_order::infeasibility_incr:
+        return dispatch_optimizer<
+
+          realT,
+          modeT,
+          compute_infeasibility<realT, randomT, compute_infeasibility_incr>,
+          randomT>(ctx, pb, p, thread);
+    }
+
+    return result(result_status::internal_error);
+}
+
+result
+solve(const std::shared_ptr<baryonyx::context>& ctx, problem& pb)
+{
+    info(ctx, "Solve mode\n");
+    parameters p(ctx);
+
+    using random_type = std::default_random_engine;
+
+    if (pb.type == baryonyx::objective_function_type::maximize) {
+        switch (p.float_type) {
+        case floating_point_type::float_type:
+            return dispatch_solver_parameters<float,
+                                              maximize_tag,
+                                              random_type>(ctx, pb, p);
+        case floating_point_type::double_type:
+            return dispatch_solver_parameters<double,
+                                              maximize_tag,
+                                              random_type>(ctx, pb, p);
+        case floating_point_type::longdouble_type:
+            return dispatch_solver_parameters<long double,
+                                              maximize_tag,
+                                              random_type>(ctx, pb, p);
+        }
+    } else {
+        switch (p.float_type) {
+        case floating_point_type::float_type:
+            return dispatch_solver_parameters<float,
+                                              minimize_tag,
+                                              random_type>(ctx, pb, p);
+        case floating_point_type::double_type:
+            return dispatch_solver_parameters<double,
+                                              minimize_tag,
+                                              random_type>(ctx, pb, p);
+        case floating_point_type::longdouble_type:
+            return dispatch_solver_parameters<long double,
+                                              minimize_tag,
+                                              random_type>(ctx, pb, p);
+        }
+    }
+
+    return result(result_status::internal_error);
+}
+
+result
+optimize(const std::shared_ptr<baryonyx::context>& ctx,
+         problem& pb,
+         int thread)
+{
+    info(ctx, "Optimize mode\n");
+    parameters p(ctx);
+
+    using random_type = std::default_random_engine;
+
+    if (pb.type == baryonyx::objective_function_type::maximize) {
+        switch (p.float_type) {
+        case floating_point_type::float_type:
+            return dispatch_optimizer_parameters<float,
+                                                 maximize_tag,
+                                                 random_type>(
+              ctx, pb, p, thread);
+        case floating_point_type::double_type:
+            return dispatch_optimizer_parameters<double,
+                                                 maximize_tag,
+                                                 random_type>(
+              ctx, pb, p, thread);
+        case floating_point_type::longdouble_type:
+            return dispatch_optimizer_parameters<long double,
+                                                 maximize_tag,
+                                                 random_type>(
+              ctx, pb, p, thread);
+        }
+    } else {
+        switch (p.float_type) {
+        case floating_point_type::float_type:
+            return dispatch_optimizer_parameters<float,
+                                                 minimize_tag,
+                                                 random_type>(
+              ctx, pb, p, thread);
+        case floating_point_type::double_type:
+            return dispatch_optimizer_parameters<double,
+                                                 minimize_tag,
+                                                 random_type>(
+              ctx, pb, p, thread);
+        case floating_point_type::longdouble_type:
+            return dispatch_optimizer_parameters<long double,
+                                                 minimize_tag,
+                                                 random_type>(
+              ctx, pb, p, thread);
+        }
+    }
+
+    return result(result_status::internal_error);
+}
+
+} // namespace itm
+} // namespace baryonyx

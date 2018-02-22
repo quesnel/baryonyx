@@ -58,6 +58,9 @@ operator<<(std::ostream& os, const result& result)
        << R"(\ status................: )";
 
     switch (result.status) {
+    case result_status::internal_error:
+        os << "internal error reported\n";
+        break;
     case result_status::uninitialized:
         os << "uninitialized\n";
         break;

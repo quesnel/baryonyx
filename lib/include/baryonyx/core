@@ -682,6 +682,16 @@ enum class variable_type
     general
 };
 
+enum class problem_solver_type
+{
+    equalities_01,
+    equalities_101,
+    equalities_Z,
+    inequalities_01,
+    inequalities_101,
+    inequalities_Z
+};
+
 enum class objective_function_type
 {
     undefined,
@@ -782,6 +792,8 @@ struct problem
     affected_variables affected_vars;
 
     objective_function_type type = { objective_function_type::maximize };
+
+    problem_solver_type problem_type = { problem_solver_type::equalities_01 };
 };
 
 /**
@@ -822,8 +834,9 @@ clear(baryonyx::problem& pb) noexcept
 
 enum class result_status
 {
-    uninitialized,
     success,
+    internal_error,
+    uninitialized,
     time_limit_reached,
     kappa_max_reached,
     limit_reached
@@ -843,7 +856,15 @@ struct result
     index constraints = 0;
     index remaining_constraints = std::numeric_limits<index>::max();
 
-    result_status status = result_status::uninitialized;
+    result_status status;
+
+    result()
+      : status(result_status::uninitialized)
+    {}
+
+    result(result_status status_)
+      : status(status_)
+    {}
 
     operator bool() const
     {

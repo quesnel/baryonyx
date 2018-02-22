@@ -25,16 +25,6 @@
 
 #include <baryonyx/core>
 
-namespace baryonyx {
-
-struct maximize_tag
-{};
-
-struct minimize_tag
-{};
-
-} // namespace baryonyx
-
 namespace baryonyx_private {
 
 baryonyx::problem

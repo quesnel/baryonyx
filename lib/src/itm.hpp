@@ -34,33 +34,6 @@
 namespace baryonyx {
 namespace itm {
 
-result
-inequalities_1coeff_wedelin_solve(const std::shared_ptr<context>& ctx,
-                                  problem& pb);
-
-result
-inequalities_1coeff_wedelin_optimize(const std::shared_ptr<context>& ctx,
-                                     problem& pb,
-                                     int thread);
-
-result
-inequalities_101coeff_wedelin_solve(const std::shared_ptr<context>& ctx,
-                                    problem& pb);
-
-result
-inequalities_101coeff_wedelin_optimize(const std::shared_ptr<context>& ctx,
-                                       problem& pb,
-                                       int thread);
-
-result
-inequalities_Zcoeff_wedelin_solve(const std::shared_ptr<context>& ctx,
-                                  problem& pb);
-
-result
-inequalities_Zcoeff_wedelin_optimize(const std::shared_ptr<context>& ctx,
-                                     problem& pb,
-                                     int thread);
-
 enum class init_policy_type
 {
     bastert = 0,
@@ -288,6 +261,14 @@ std::vector<merged_constraint>
 make_merged_constraints(const std::shared_ptr<context>& ctx,
                         const problem& pb,
                         const parameters& p);
+
+result
+solve(const std::shared_ptr<baryonyx::context>& ctx, problem& pb);
+
+result
+optimize(const std::shared_ptr<baryonyx::context>& ctx,
+         problem& pb,
+         int thread);
 }
 }
 
