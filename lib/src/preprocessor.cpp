@@ -866,6 +866,44 @@ preprocess(const std::shared_ptr<baryonyx::context>& ctx,
              constraint);
     }
 
+    {
+        int type = 0;
+        for (const auto& elem : pb.vars.values) {
+            if (elem.type == baryonyx::variable_type::real) {
+                type = 2;
+                break;
+            } else if (elem.type == baryonyx::variable_type::general) {
+                type = 1;
+            }
+        }
+
+        if (pb.greater_constraints.empty() or pb.less_constraints.empty()) {
+            switch (type) {
+            case 0:
+                pb.problem_type = baryonyx::problem_solver_type::equalities_01;
+                break;
+            case 1:
+                pb.problem_type = baryonyx::problem_solver_type::equalities_101;
+                break;
+            default:
+                pb.problem_type = baryonyx::problem_solver_type::equalities_Z;
+                break;
+            }
+        } else {
+            switch (type) {
+            case 0:
+                pb.problem_type = baryonyx::problem_solver_type::inequalities_01;
+                break;
+            case 1:
+                pb.problem_type = baryonyx::problem_solver_type::inequalities_101;
+                break;
+            default:
+                pb.problem_type = baryonyx::problem_solver_type::inequalities_Z;
+                break;
+            }
+        }
+    }
+
 #ifndef BARYONYX_FULL_OPTIMIZATION
     {
         info(ctx, "  - write preprocessed.lp: ");
