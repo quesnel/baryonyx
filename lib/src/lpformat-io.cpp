@@ -1051,6 +1051,42 @@ private:
     }
 };
 
+baryonyx::problem_solver_type
+get_problem_type(const baryonyx::problem& p) noexcept
+{
+    int type = 0;
+    for (const auto& elem : p.vars.values) {
+        if (elem.type == baryonyx::variable_type::real) {
+            type = 2;
+            break;
+        } else if (elem.type == baryonyx::variable_type::general) {
+            type = 1;
+        }
+    }
+
+    if (p.greater_constraints.empty() or p.less_constraints.empty()) {
+        switch (type) {
+        case 0:
+            return baryonyx::problem_solver_type::equalities_01;
+        case 1:
+            return baryonyx::problem_solver_type::equalities_101;
+        default:
+            return baryonyx::problem_solver_type::equalities_Z;
+        }
+    } else {
+        switch (type) {
+        case 0:
+            return baryonyx::problem_solver_type::inequalities_01;
+        case 1:
+            return baryonyx::problem_solver_type::inequalities_101;
+        default:
+            return baryonyx::problem_solver_type::inequalities_Z;
+        }
+    }
+
+    return baryonyx::problem_solver_type::inequalities_Z;
+}
+
 namespace baryonyx_private {
 
 baryonyx::problem
@@ -1076,8 +1112,10 @@ read_problem(std::istream& is)
         read_general(stack, p);
 
     if (stack.is_end()) {
-        if (stack.empty())
+        if (stack.empty()) {
+            p.problem_type = ::get_problem_type(p);
             return p;
+        }
     }
 
     throw file_format_failure(
