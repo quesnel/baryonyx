@@ -23,6 +23,7 @@
 #include "itm.hpp"
 #include "itm-common.hpp"
 
+#include "equalities-01coeff.hpp"
 #include "inequalities-Zcoeff.hpp"
 
 #include <set>
