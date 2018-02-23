@@ -23,8 +23,8 @@
 #include "itm.hpp"
 #include "itm-common.hpp"
 
-#include "equalities-01coeff.hpp"
-#include "inequalities-Zcoeff.hpp"
+#include "itm-solver-equalities-01.hpp"
+#include "itm-solver-inequalities-Z.hpp"
 
 #include <set>
 
