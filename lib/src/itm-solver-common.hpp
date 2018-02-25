@@ -62,7 +62,8 @@ struct bound
     bound(int min_, int max_)
       : min(min_)
       , max(max_)
-    {}
+    {
+    }
 
     int min;
     int max;
@@ -76,7 +77,8 @@ struct r_data
     r_data(floatingpointT value_, int index_)
       : value(value_)
       , id(index_)
-    {}
+    {
+    }
 
     floatingpointT value; // reduced cost value
     int id;               // index in AP matrix
@@ -89,7 +91,8 @@ struct c_data
     c_data(int id_A_, int id_r_)
       : id_A(id_A_)
       , id_r(id_r_)
-    {}
+    {
+    }
 
     int id_A; // index in AP matrix
     int id_r; // index in r matrix
@@ -321,7 +324,8 @@ struct bounds_printer
       : bestlb(std::numeric_limits<floatingpointT>::lowest())
       , bestub(std::numeric_limits<floatingpointT>::max())
       , max_cost(max_cost_init(c, modeT()))
-    {}
+    {
+    }
 
     template<typename SolverT>
     floatingpointT init_bound(const SolverT& slv, minimize_tag)
@@ -756,7 +760,8 @@ struct solver_functor
       , m_rng(rng)
       , m_variable_names(variable_names)
       , m_affected_vars(affected_vars)
-    {}
+    {
+    }
 
     result operator()(const std::vector<itm::merged_constraint>& constraints,
                       int variables,
@@ -875,10 +880,10 @@ struct solver_functor
             }
 
             if (i > p.w)
-                kappa += kappa_step *
-                         std::pow(static_cast<floatingpointT>(remaining) /
-                                    static_cast<floatingpointT>(slv.m),
-                                  alpha);
+                kappa +=
+                  kappa_step * std::pow(static_cast<floatingpointT>(remaining) /
+                                          static_cast<floatingpointT>(slv.m),
+                                        alpha);
 
             if (++i > p.limit) {
                 info(m_ctx, "  - Loop limit reached: {}\n", i);
@@ -938,8 +943,8 @@ private:
             is_better_solution(current.value, m_best.value, mode_type())) {
 
             double t =
-              std::chrono::duration_cast<std::chrono::duration<double>>(
-                m_end - m_begin)
+              std::chrono::duration_cast<std::chrono::duration<double>>(m_end -
+                                                                        m_begin)
                 .count();
 
             info(m_ctx,
@@ -980,7 +985,8 @@ struct best_solution_recorder
 
     best_solution_recorder(std::shared_ptr<context> ctx_)
       : m_ctx(ctx_)
-    {}
+    {
+    }
 
     bool try_update(const result& current) noexcept
     {
@@ -1046,7 +1052,8 @@ struct optimize_functor
       , m_thread_id(thread_id)
       , m_variable_names(variable_names)
       , m_affected_vars(affected_vars)
-    {}
+    {
+    }
 
     result operator()(
       best_solution_recorder<floatingpointT, modeT>& best_recorder,
@@ -1089,10 +1096,6 @@ struct optimize_functor
                     p.init_random);
 
         constraint_order_type compute(m_ctx, slv, m_rng);
-
-#ifndef BARYONYX_FULL_OPTIMIZATION
-        bounds_printer<floatingpointT, modeT> bound_print(original_costs);
-#endif
 
         for (; not is_time_limit(p.time_limit, m_begin, m_end);
              m_end = std::chrono::steady_clock::now(), ++i) {
@@ -1158,10 +1161,6 @@ struct optimize_functor
                     }
                 }
             }
-
-#ifndef BARYONYX_FULL_OPTIMIZATION
-            bound_print(slv, m_ctx, m_best);
-#endif
         }
 
         return m_best;
@@ -1177,8 +1176,8 @@ private:
             is_better_solution(current.value, m_best.value, mode_type())) {
 
             double t =
-              std::chrono::duration_cast<std::chrono::duration<double>>(
-                m_end - m_begin)
+              std::chrono::duration_cast<std::chrono::duration<double>>(m_end -
+                                                                        m_begin)
                 .count();
 
             m_best = current;
@@ -1368,8 +1367,8 @@ solve_problem(std::shared_ptr<context> ctx,
         using CostT = typename SolverT::c_type;
 
         auto variables = numeric_cast<int>(pb.vars.values.size());
-        auto cost = make_objective_function<CostT, floatingpointT>(
-          pb.objective, variables);
+        auto cost = make_objective_function<CostT, floatingpointT>(pb.objective,
+                                                                   variables);
         auto norm_costs = normalize_costs<CostT, floatingpointT, randomT>(
           ctx, p.norm, cost, rng);
         auto cost_constant = pb.objective.value;
@@ -1476,20 +1475,19 @@ optimize_problem(std::shared_ptr<context> ctx,
         auto seeds = generate_seed(rng, thread);
 
         for (int i{ 0 }; i != thread; ++i) {
-            std::packaged_task<baryonyx::result()> task(
-              std::bind(optimize_functor<SolverT,
-                                         floatingpointT,
-                                         modeT,
-                                         constraintOrderT,
-                                         randomT>(
-                          ctx, i, seeds[i], names, affected_vars),
-                        std::ref(result),
-                        std::ref(constraints),
-                        variables,
-                        std::ref(cost),
-                        std::ref(norm_costs),
-                        cost_constant,
-                        std::ref(p)));
+            std::packaged_task<baryonyx::result()> task(std::bind(
+              optimize_functor<SolverT,
+                               floatingpointT,
+                               modeT,
+                               constraintOrderT,
+                               randomT>(ctx, i, seeds[i], names, affected_vars),
+              std::ref(result),
+              std::ref(constraints),
+              variables,
+              std::ref(cost),
+              std::ref(norm_costs),
+              cost_constant,
+              std::ref(p)));
 
             results.emplace_back(task.get_future());
 

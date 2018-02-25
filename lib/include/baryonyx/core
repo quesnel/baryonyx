@@ -78,14 +78,16 @@ struct precondition_failure : std::logic_error
 {
     precondition_failure(const char* msg)
       : std::logic_error(msg)
-    {}
+    {
+    }
 };
 
 struct postcondition_failure : std::logic_error
 {
     postcondition_failure(const char* msg)
       : std::logic_error(msg)
-    {}
+    {
+    }
 };
 
 struct numeric_cast_failure : public std::exception
@@ -174,7 +176,8 @@ struct file_access_failure : std::runtime_error
     file_access_failure(std::string file, int error)
       : std::runtime_error("file_access_failure")
       , m_error{ std::move(file), error }
-    {}
+    {
+    }
 
     std::string file() const
     {
@@ -223,17 +226,20 @@ struct file_format_failure : std::runtime_error
                         int column)
       : std::runtime_error("file_format_failure")
       , m_error{ std::move(element), line, column, failure }
-    {}
+    {
+    }
 
     file_format_failure(file_format_error_tag failure, int line, int column)
       : std::runtime_error("file_format_failure")
       , m_error{ std::string(), line, column, failure }
-    {}
+    {
+    }
 
     file_format_failure(file_format_error_tag failure)
       : std::runtime_error("file_format_failure")
       , m_error{ std::string(), -1, -1, failure }
-    {}
+    {
+    }
 
     std::string element() const
     {
@@ -280,7 +286,8 @@ struct problem_definition_failure : std::runtime_error
                                problem_definition_error_tag failure)
       : std::runtime_error("problem_definition_failure")
       , m_error{ std::move(element), failure }
-    {}
+    {
+    }
 
     std::string element() const
     {
@@ -313,7 +320,8 @@ struct solver_failure : std::runtime_error
     solver_failure(solver_error_tag failure)
       : std::runtime_error("solver_failure")
       , m_error{ failure }
-    {}
+    {
+    }
 
     solver_error_tag failure() const
     {
@@ -356,22 +364,26 @@ public:
 
     parameter()
       : l(0)
-    {}
+    {
+    }
 
     explicit parameter(int value_)
       : l(value_)
       , type(tag::integer)
-    {}
+    {
+    }
 
     explicit parameter(double value_)
       : d(value_)
       , type(tag::real)
-    {}
+    {
+    }
 
     explicit parameter(std::string value_)
       : s(std::move(value_))
       , type(tag::string)
-    {}
+    {
+    }
 
     parameter(const parameter& w)
       : type(w.type)
@@ -579,39 +591,6 @@ public:
     context(const context&) = delete;
     context& operator=(const context&) = delete;
 
-    /**
-     * @brief Parse the command line argument using the `getopt_long`
-     *     function.
-     *
-     * @details Parse the command line and search for strings "-p [str:value]"
-     *     and store @c str as argument's name and tries to convert the @c
-     *     value in @c baryonyx::parameter.
-     *
-     * @code
-     * int main(int argc, char *argv[])
-     * {
-     *     auto ctx = std::make_shared<baryonyx::context>();
-     *     int i = ctx->parse(argc, argv);
-     *     if (i < 0)
-     *         return EXIT_FAILURE;
-     *
-     *     if (ctx->get_integer_parameter("limit", 1000l) <= 0) {
-     *         printf("negative limit parameters, assume 1000.\n");
-     *         ctx->set_parameter("limit", 1000l);
-     *     }
-     *
-     *     for (; i != argc; ++i) {
-     *         baryonyx::make_problem(argv[i]);
-     *         ...
-     *     }
-     * }
-     * @endcode
-     *
-     * @return -1 if an error occurred when parsing command argument or
-     *     the file to parse int the `argv`.
-     */
-    int parse(int argc, char* argv[]) noexcept;
-
     void set_parameters(std::unordered_map<std::string, parameter>&& params);
     void set_parameter(const std::string& name, double p) noexcept;
     void set_parameter(const std::string& name, int p) noexcept;
@@ -666,6 +645,9 @@ public:
     }
 
 private:
+    bool try_set_important_parameter(std::string name,
+                                     baryonyx::parameter value);
+
     std::unordered_map<std::string, parameter> m_parameters;
     string_logger_functor m_string_logger;
     FILE* m_cfile_logger = stdout;
@@ -714,13 +696,15 @@ struct variable_value
       : min(0)
       , max(std::numeric_limits<int>::max())
       , type(variable_type::real)
-    {}
+    {
+    }
 
     variable_value(int min_, int max_, variable_type type_)
       : min(min_)
       , max(max_)
       , type(type_)
-    {}
+    {
+    }
 
     int min;
     int max;
@@ -738,7 +722,8 @@ struct function_element
     function_element(int factor_, index variable_index_) noexcept
       : factor(factor_)
       , variable_index(variable_index_)
-    {}
+    {
+    }
 
     int factor = { 0 };
     index variable_index{ -1 };
@@ -749,7 +734,8 @@ struct objective_function_element
     objective_function_element(double factor_, index variable_index_) noexcept
       : factor(factor_)
       , variable_index(variable_index_)
-    {}
+    {
+    }
 
     double factor = { 0 };
     index variable_index{ -1 };
@@ -861,11 +847,13 @@ struct result
 
     result()
       : status(result_status::uninitialized)
-    {}
+    {
+    }
 
     result(result_status status_)
       : status(status_)
-    {}
+    {
+    }
 
     operator bool() const
     {

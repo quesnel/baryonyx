@@ -37,231 +37,95 @@
 #include <cmath>
 #include <cstring>
 
-#ifndef _WIN32
-#include <getopt.h>
-#include <sys/types.h>
-#include <unistd.h>
-#endif
-
-namespace {
-
-double
-to_double(const char* s, double bad_value) noexcept
-{
-    char* c;
-    errno = 0;
-    double value = std::strtod(s, &c);
-
-    if ((errno == ERANGE and (value == HUGE_VAL or value == -HUGE_VAL)) or
-        (value == 0.0 and c == s))
-        return bad_value;
-
-    return value;
-}
-
-int
-to_int(const char* s, int bad_value) noexcept
-{
-    char* c;
-    errno = 0;
-    long value = std::strtol(s, &c, 10);
-
-    if ((errno == ERANGE and (value == LONG_MIN or value == LONG_MAX)) or
-        (value == 0 and c == s))
-        return bad_value;
-
-    if (value < INT_MIN)
-        return INT_MIN;
-
-    if (value > INT_MAX)
-        return INT_MAX;
-
-    return static_cast<int>(value);
-}
-
-std::tuple<std::string, baryonyx::parameter>
-split_param(const char* param) noexcept
-{
-    std::string name, value;
-
-    while (*param) {
-        if (isalpha(*param) or *param == '_' or *param == '-')
-            name += *param;
-        else
-            break;
-
-        param++;
-    }
-
-    if (*param and (*param == ':' or *param == '=')) {
-        param++;
-
-        while (*param)
-            value += *param++;
-    }
-
-    auto valuel = to_int(value.c_str(), INT_MIN);
-    auto valued = to_double(value.c_str(), -HUGE_VAL);
-
-    double tmp;
-    if (valued != -HUGE_VAL and std::modf(valued, &tmp))
-        return std::make_tuple(name, baryonyx::parameter(valued));
-
-    if (valuel != INT_MIN)
-        return std::make_tuple(name, baryonyx::parameter(valuel));
-
-    return std::make_tuple(name, baryonyx::parameter(value));
-}
-
-void
-help(baryonyx::context* ctx) noexcept
-{
-    baryonyx::log(ctx,
-                  baryonyx::context::message_type::info,
-                  "Baryonyx v{}.{}.{}",
-                  VERSION_MAJOR,
-                  VERSION_MINOR,
-                  VERSION_PATCH);
-
-    if (VERSION_TWEAK)
-        baryonyx::log(
-          ctx, baryonyx::context::message_type::info, "-{}", VERSION_TWEAK);
-
-    baryonyx::log(
-      ctx,
-      baryonyx::context::message_type::info,
-      "\nGeneral options:\n"
-      "  --help|-h                   This help message\n"
-      "  --param|-p [name][:|=][value]   Add a new parameter (name is"
-      " [a-z][A-Z]_) value can be a double, an integer otherwise a"
-      " string.\n"
-      "  --optimize|-O               Optimize model (default "
-      "feasibility search only)\n"
-      "  --check filename.sol        Check if the solution is correct."
-      "\n"
-      "  --quiet                     Remove any verbose message\n"
-      "  --verbose|-v int            Set verbose level\n\n"
-      "Parameter list for in the middle heuristic\n"
-      " * Global parameters"
-      "  - limit: integer ]-oo, +oo[ in loop number\n"
-      "  - time-limit: real [0, +oo[ in seconds\n"
-      "  - floating-point-type: float double longdouble\n"
-      "  - print-level: [0, 2]\n"
-      " * In The Middle parameters\n"
-      "  - preprocessing: none variables-number variables-weight "
-      "constraints-weight implied\n"
-      "  - constraint-order: none reversing random-sorting "
-      "infeasibility-decr infeasibility-incr\n"
-      "  - theta: real [0, 1]\n"
-      "  - delta: real [0, +oo[\n"
-      "  - kappa-min: real [0, 1[\n"
-      "  - kappa-step: real [0, 1[\n"
-      "  - kappa-max: real [0, 1[\n"
-      "  - alpha: integer [0, 2]\n"
-      "  - w: integer [0, +oo[\n"
-      "  - norm: l1 l2 inf none rng\n"
-      " * Pushes system parameters\n"
-      "  - pushes-limit: integer [0, +oo[\n"
-      "  - pushing-objective-amplifier: real [0, +oo[\n"
-      "  - pushing-iteration-limit: integer [0, +oo[\n"
-      "  - pushing-k-factor: real [0, +oo[\n"
-      " * Initialization parameters\n"
-      "  - init-policy: bastert random best\n"
-      "  - init-random: real [0, 1]\n");
-}
-}
-
 namespace baryonyx {
 
 context::context()
   : m_cfile_logger(stdout)
   , m_log_priority(context::message_type::info)
   , m_logger(context::logger_type::c_file)
-{}
+  , m_optimize(false)
+  , m_check(false)
+{
+}
 
 context::context(FILE* f)
   : m_cfile_logger(f ? f : stdout)
   , m_log_priority(context::message_type::info)
   , m_logger(context::logger_type::c_file)
-{}
+  , m_optimize(false)
+  , m_check(false)
+{
+}
 
 context::context(string_logger_functor logger)
   : m_string_logger(logger)
   , m_cfile_logger(nullptr)
   , m_log_priority(context::message_type::info)
   , m_logger(context::logger_type::string)
-{}
-
-int
-context::parse(int argc, char* argv[]) noexcept
+  , m_optimize(false)
+  , m_check(false)
 {
-    const char* const short_opts = "OC:hp:l:qv:";
-    const struct option long_opts[] = {
-        { "optimize", 0, nullptr, 'O' }, { "check", 1, nullptr, 'C' },
-        { "help", 0, nullptr, 'h' },     { "param", 1, nullptr, 'p' },
-        { "limit", 1, nullptr, 'l' },    { "quiet", 0, nullptr, 'q' },
-        { "verbose", 1, nullptr, 'v' },  { nullptr, 0, nullptr, 0 }
-    };
-
-    int opt_index;
-    int verbose = 6;
-    int quiet = 0;
-
-    for (;;) {
-        const auto opt =
-          getopt_long(argc, argv, short_opts, long_opts, &opt_index);
-        if (opt == -1)
-            break;
-
-        switch (opt) {
-        case 0:
-            break;
-        case 'C':
-            m_check = true;
-            m_parameters["check-filename"] = std::string(::optarg);
-            break;
-        case 'O':
-            m_optimize = true;
-            break;
-        case 'h':
-            ::help(this);
-            break;
-        case 'p': {
-            std::string name;
-            baryonyx::parameter value;
-            std::tie(name, value) = ::split_param(::optarg);
-            m_parameters[name] = value;
-        } break;
-        case 'l':
-            m_parameters["limit"] = ::to_int(::optarg, 1000);
-            break;
-        case 'q':
-            quiet = 1;
-            break;
-        case 'v':
-            verbose = ::to_int(::optarg, 3);
-            break;
-        case '?':
-        default:
-            baryonyx::log(this,
-                          baryonyx::context::message_type::err,
-                          "Unknown command line option\n");
-            return -1;
-        };
-    }
-
-    if (quiet)
-        set_log_priority(message_type::notice);
-    else if (verbose >= 0 and verbose <= 7)
-        set_log_priority(static_cast<message_type>(verbose));
-
-    return ::optind;
 }
 
 void
 context::set_parameters(std::unordered_map<std::string, parameter>&& params)
 {
     m_parameters = params;
+
+    std::unordered_map<std::string, baryonyx::parameter>::const_iterator it;
+
+    it = m_parameters.find("check-filename");
+    if (it != m_parameters.cend())
+        m_check = true;
+
+    it = m_parameters.find("optimize");
+    if (it != m_parameters.cend())
+        m_optimize = true;
+
+    int quiet = 0;
+    it = m_parameters.find("quiet");
+    if (it != m_parameters.cend())
+        quiet = 1;
+
+    int verbose = 6;
+    it = m_parameters.find("verbose");
+    if (it != m_parameters.cend() and
+        it->second.type == parameter::tag::integer)
+        verbose = baryonyx::clamp(it->second.l, 0, 7);
+
+    if (quiet)
+        set_log_priority(message_type::notice);
+    else if (verbose >= 0 and verbose <= 7)
+        set_log_priority(static_cast<message_type>(verbose));
+}
+
+bool
+context::try_set_important_parameter(std::string name,
+                                     baryonyx::parameter value)
+{
+    if (name == "check-filename" and value.type == parameter::tag::string) {
+        m_check = true;
+        m_parameters["check-filename"] = value;
+        return true;
+    }
+
+    if (name == "optimize") {
+        m_optimize = true;
+        return true;
+    }
+
+    if (name == "quiet") {
+        set_log_priority(message_type::notice);
+        return true;
+    }
+
+    if (name == "verbose" and value.type == parameter::tag::integer) {
+        set_log_priority(
+          static_cast<message_type>(baryonyx::clamp(value.l, 0, 7)));
+        return true;
+    }
+
+    return false;
 }
 
 void
@@ -273,7 +137,8 @@ context::set_parameter(const std::string& name, double p) noexcept
     if (not std::isalnum(name[0]))
         return;
 
-    m_parameters[name] = p;
+    if (not try_set_important_parameter(name, baryonyx::parameter(p)))
+        m_parameters[name] = p;
 }
 
 void
@@ -285,7 +150,8 @@ context::set_parameter(const std::string& name, int p) noexcept
     if (not std::isalnum(name[0]))
         return;
 
-    m_parameters[name] = p;
+    if (not try_set_important_parameter(name, baryonyx::parameter(p)))
+        m_parameters[name] = p;
 }
 
 void
@@ -297,7 +163,8 @@ context::set_parameter(const std::string& name, std::string p) noexcept
     if (not std::isalnum(name[0]))
         return;
 
-    m_parameters[name] = p;
+    if (not try_set_important_parameter(name, baryonyx::parameter(p)))
+        m_parameters[name] = p;
 }
 
 double
