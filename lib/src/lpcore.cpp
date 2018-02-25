@@ -259,6 +259,12 @@ context::parse(int argc, char* argv[]) noexcept
 }
 
 void
+context::set_parameters(std::unordered_map<std::string, parameter>&& params)
+{
+    m_parameters = params;
+}
+
+void
 context::set_parameter(const std::string& name, double p) noexcept
 {
     if (name.empty())

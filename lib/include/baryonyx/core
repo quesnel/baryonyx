@@ -612,6 +612,7 @@ public:
      */
     int parse(int argc, char* argv[]) noexcept;
 
+    void set_parameters(std::unordered_map<std::string, parameter>&& params);
     void set_parameter(const std::string& name, double p) noexcept;
     void set_parameter(const std::string& name, int p) noexcept;
     void set_parameter(const std::string& name, std::string p) noexcept;
