@@ -13,11 +13,13 @@ target_include_directories(libbaryonyx PUBLIC
 target_link_libraries(libbaryonyx threads)
 set_target_properties(libbaryonyx PROPERTIES
   OUTPUT_NAME "baryonyx-${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}"
+  POSITION_INDEPENDENT_CODE ON
   COMPILE_DEFINITIONS "BARYONYX_DLL"
   DEFINE_SYMBOL "libbaryonyx_EXPORTS"
+  CXX_VISIBILITY_PRESET hidden
+  VISIBILITY_INLINES_HIDDEN ON
   CXX_STANDARD 14
-  CXX_STANDARD_REQUIRED ON
-  COMPILE_FLAGS "-fvisibility=hidden -fvisibility-inlines-hidden")
+  CXX_STANDARD_REQUIRED ON)
 target_compile_definitions(libbaryonyx
   PRIVATE
   $<$<BOOL:${WITH_FULL_OPTIMIZATION}>:BARYONYX_FULL_OPTIMIZATION>
@@ -42,8 +44,7 @@ set_target_properties(libbaryonyx-static PROPERTIES
   POSITION_INDEPENDENT_CODE true
   OUTPUT_NAME "baryonyx-${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}"
   CXX_STANDARD 14
-  CXX_STANDARD_REQUIRED ON
-  COMPILE_FLAGS "-fvisibility=hidden -fvisibility-inlines-hidden")
+  CXX_STANDARD_REQUIRED ON)
 target_compile_definitions(libbaryonyx-static
   PRIVATE
   $<$<BOOL:${WITH_FULL_OPTIMIZATION}>:BARYONYX_FULL_OPTIMIZATION>
