@@ -113,29 +113,14 @@ struct solver_equalities_01coeff
                         lower += cst.factor;
                 }
 
-                if (csts[i].min == csts[i].max) {
-                    b(i).min = csts[i].min;
-                    b(i).max = csts[i].max;
-                } else {
-                    if (csts[i].min == std::numeric_limits<int>::min()) {
-                        b(i).min = lower;
-                    } else {
-                        if (lower < 0)
-                            b(i).min = std::max(lower, csts[i].min);
-                        else
-                            b(i).min = csts[i].min;
-                    }
+                assert(csts[i].min == csts[i].max &&
+                       "Preprocessor select error");
 
-                    if (csts[i].max == std::numeric_limits<int>::max()) {
-                        b(i).max = upper;
-                    } else {
-                        b(i).max = csts[i].max;
-                    }
-                }
+                b(i) = csts[i].min;
             }
-
-            ap.sort();
         }
+
+        ap.sort();
 
         {
             //
@@ -148,7 +133,8 @@ struct solver_equalities_01coeff
                 int rsize = 0;
 
                 for (const auto& cst : csts[i].elements) {
-                    assert(cst.factor == 1 && "equalities_01 with no 01 coefficient");
+                    assert(cst.factor == 1 &&
+                           "equalities_01 with no 01 coefficient");
                     ++rsize;
                 }
 
@@ -250,14 +236,13 @@ struct solver_equalities_01coeff
             int v = 0;
 
             for (; std::get<0>(ak) != std::get<1>(ak); ++std::get<0>(ak))
-                v += ap.A()[std::get<0>(ak)->value] *
-                     x[std::get<0>(ak)->position];
+                v +=
+                  ap.A()[std::get<0>(ak)->value] * x[std::get<0>(ak)->position];
 
-            bool valid = b(k).min <= v and v <= b(k).max;
             debug(ctx,
                   "C {}:{} (Lmult: {})\n",
                   k,
-                  (valid ? "   valid" : "violated"),
+                  ((b[k] == v) ? "   valid" : "violated"),
                   pi[k]);
         }
     }
@@ -420,7 +405,7 @@ struct solver_equalities_01coeff
                                      floatingpoint_type theta,
                                      floatingpoint_type obj_amp)
     {
-        compute_update_row_01_eq(k, b(k).min, kappa, delta, theta, obj_amp);
+        compute_update_row_01_eq(k, b[k], kappa, delta, theta, obj_amp);
     }
 
     void compute_update_row(int k,
@@ -428,8 +413,8 @@ struct solver_equalities_01coeff
                             floatingpoint_type delta,
                             floatingpoint_type theta)
     {
-        compute_update_row_01_eq(k, b(k).min, kappa, delta, theta,
-                                 static_cast<floatingpoint_type>(0));
+        compute_update_row_01_eq(
+          k, b[k], kappa, delta, theta, static_cast<floatingpoint_type>(0));
     }
 };
 
