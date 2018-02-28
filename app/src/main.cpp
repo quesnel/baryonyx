@@ -306,15 +306,15 @@ main(int argc, char* argv[])
             fmt::print("Output file: {}\n", filename);
 
             if (ctx->check()) {
-                auto filename =
+                auto check_filename =
                   ctx->get_string_parameter("check-filename", std::string());
 
-                auto result = baryonyx::make_result(ctx, filename);
+                auto result = baryonyx::make_result(ctx, check_filename);
                 if (result) {
                     auto valid = baryonyx::is_valid_solution(pb, result);
                     fmt::print("Check {} with {}: {}",
                                files.front(),
-                               filename,
+                               check_filename,
                                (valid ? "success" : "failure"));
                 }
             }
