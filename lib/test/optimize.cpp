@@ -61,7 +61,7 @@ test_qap(const std::shared_ptr<baryonyx::context>& ctx)
         Ensures(result.value == 790.0);
 
     if (result.status == baryonyx::result_status::success) {
-        auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/small4.lp");
+        pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/small4.lp");
 
         Ensures(baryonyx::is_valid_solution(pb, result.variable_value) ==
                 true);

@@ -307,7 +307,7 @@ remove_duplicated_constraints(const std::shared_ptr<baryonyx::context>& ctx,
     std::sort(order.begin(), order.end(), std::less<int>());
 
     std::vector<baryonyx::constraint> result(order.size());
-    for (std::size_t i{ 0 }, e{ order.size() }; i != e; ++i)
+    for (i = 0, e = order.size(); i != e; ++i)
         result[i] = std::move(cst[order[i]]);
 
     result.swap(cst);

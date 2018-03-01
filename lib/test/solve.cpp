@@ -311,16 +311,18 @@ test_8_queens_puzzle_fixed_cost()
     ctx->set_parameter("alpha", 1.0);
     ctx->set_parameter("w", 40);
 
-    std::vector<int> cost{ 25, 89, 12, 22, 84, 3,  61, 14, 93, 97, 68, 5,  51,
-                           72, 96, 80, 13, 38, 81, 48, 70, 50, 66, 68, 30, 97,
-                           79, 4,  41, 44, 47, 62, 60, 11, 18, 44, 57, 24, 7,
-                           11, 66, 87, 9,  17, 27, 60, 95, 45, 94, 47, 60, 87,
-                           79, 53, 81, 52, 91, 53, 57, 8,  63, 78, 1,  8 };
+    {
+        std::vector<int> cost{
+            25, 89, 12, 22, 84, 3,  61, 14, 93, 97, 68, 5,  51,
+                72, 96, 80, 13, 38, 81, 48, 70, 50, 66, 68, 30, 97,
+                79, 4,  41, 44, 47, 62, 60, 11, 18, 44, 57, 24, 7,
+                11, 66, 87, 9,  17, 27, 60, 95, 45, 94, 47, 60, 87,
+                79, 53, 81, 52, 91, 53, 57, 8,  63, 78, 1,  8 };
 
-    std::size_t i{ 0 };
-
-    for (auto& elem : pb.objective.elements)
-        elem.factor = cost[i++];
+        int i {0};
+        for (auto& elem : pb.objective.elements)
+            elem.factor = cost[i++];
+    }
 
     auto result = baryonyx::solve(ctx, pb);
 

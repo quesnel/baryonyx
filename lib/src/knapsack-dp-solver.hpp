@@ -104,34 +104,35 @@ struct knapsack_dp_solver
     {
         const std::size_t n = items.size();
         const std::size_t W = static_cast<size_t>(capacity);
-        std::size_t i, j;
-
-        for (j = 1; j <= W; ++j)
-            best(0, j) = init(modeT());
-
-        for (i = 1; i <= n; ++i) {
-            for (j = 1; j <= W; ++j) {
-                if (items[i - 1].factor <= static_cast<int>(j))
-                    best(i, j) =
-                      get_best(best(i - 1, j),
-                               items[i - 1].r + best(i - 1,
-
-                                                     j - items[i - 1].factor),
-                               modeT());
-                else
-                    best(i, j) = best(i - 1, j);
-            }
-        }
-
-        i = items.size();
-        j = static_cast<std::size_t>(capacity);
-
         std::vector<int> variables;
 
-        for (; i > 0 and j > 0; --i) {
-            if (best(i, j) != best(i - 1, j)) {
-                variables.emplace_back(items[i - 1].variable);
-                j -= items[i - 1].factor;
+        {
+            std::size_t i, j;
+
+            for (j = 1; j <= W; ++j)
+                best(0, j) = init(modeT());
+
+            for (i = 1; i <= n; ++i) {
+                for (j = 1; j <= W; ++j) {
+                    if (items[i - 1].factor <= static_cast<int>(j))
+                        best(i, j) =
+                            get_best(best(i - 1, j),
+                                     items[i - 1].r + best(i - 1,
+                                                           j - items[i - 1].factor),
+                                     modeT());
+                    else
+                        best(i, j) = best(i - 1, j);
+                }
+            }
+
+            i = items.size();
+            j = static_cast<std::size_t>(capacity);
+
+            for (; i > 0 and j > 0; --i) {
+                if (best(i, j) != best(i - 1, j)) {
+                    variables.emplace_back(items[i - 1].variable);
+                    j -= items[i - 1].factor;
+                }
             }
         }
 
