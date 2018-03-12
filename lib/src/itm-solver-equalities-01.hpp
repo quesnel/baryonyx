@@ -214,7 +214,7 @@ struct solver_equalities_01coeff
         }
     }
 
-    void print(const std::shared_ptr<context>& ctx,
+    void print(const context_ptr& ctx,
                const std::vector<std::string>& names,
                int print_level) const
     {
@@ -236,8 +236,8 @@ struct solver_equalities_01coeff
             int v = 0;
 
             for (; std::get<0>(ak) != std::get<1>(ak); ++std::get<0>(ak))
-                v +=
-                  ap.A()[std::get<0>(ak)->value] * x[std::get<0>(ak)->position];
+                v += ap.A()[std::get<0>(ak)->value] *
+                     x[std::get<0>(ak)->position];
 
             debug(ctx,
                   "C {}:{} (Lmult: {})\n",

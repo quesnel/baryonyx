@@ -78,16 +78,14 @@ struct precondition_failure : std::logic_error
 {
     precondition_failure(const char* msg)
       : std::logic_error(msg)
-    {
-    }
+    {}
 };
 
 struct postcondition_failure : std::logic_error
 {
     postcondition_failure(const char* msg)
       : std::logic_error(msg)
-    {
-    }
+    {}
 };
 
 struct numeric_cast_failure : public std::exception
@@ -176,8 +174,7 @@ struct file_access_failure : std::runtime_error
     file_access_failure(std::string file, int error)
       : std::runtime_error("file_access_failure")
       , m_error{ std::move(file), error }
-    {
-    }
+    {}
 
     std::string file() const
     {
@@ -226,20 +223,17 @@ struct file_format_failure : std::runtime_error
                         int column)
       : std::runtime_error("file_format_failure")
       , m_error{ std::move(element), line, column, failure }
-    {
-    }
+    {}
 
     file_format_failure(file_format_error_tag failure, int line, int column)
       : std::runtime_error("file_format_failure")
       , m_error{ std::string(), line, column, failure }
-    {
-    }
+    {}
 
     file_format_failure(file_format_error_tag failure)
       : std::runtime_error("file_format_failure")
       , m_error{ std::string(), -1, -1, failure }
-    {
-    }
+    {}
 
     std::string element() const
     {
@@ -286,8 +280,7 @@ struct problem_definition_failure : std::runtime_error
                                problem_definition_error_tag failure)
       : std::runtime_error("problem_definition_failure")
       , m_error{ std::move(element), failure }
-    {
-    }
+    {}
 
     std::string element() const
     {
@@ -320,8 +313,7 @@ struct solver_failure : std::runtime_error
     solver_failure(solver_error_tag failure)
       : std::runtime_error("solver_failure")
       , m_error{ failure }
-    {
-    }
+    {}
 
     solver_error_tag failure() const
     {
@@ -364,26 +356,27 @@ public:
 
     parameter()
       : l(0)
-    {
-    }
+    {}
 
-    explicit parameter(int value_)
+    parameter(int value_)
       : l(value_)
       , type(tag::integer)
-    {
-    }
+    {}
 
-    explicit parameter(double value_)
+    parameter(double value_)
       : d(value_)
       , type(tag::real)
-    {
-    }
+    {}
 
-    explicit parameter(std::string value_)
+    parameter(std::string value_)
       : s(std::move(value_))
       , type(tag::string)
-    {
-    }
+    {}
+
+    parameter(const char* value_)
+      : s(value_)
+      , type(tag::string)
+    {}
 
     parameter(const parameter& w)
       : type(w.type)
@@ -536,6 +529,24 @@ public:
         return *this;
     }
 
+    parameter& operator=(const char* value)
+    {
+        if (type == tag::string) {
+            s = value;
+            return *this;
+        }
+
+        if (type == tag::string) {
+            using std::string;
+            s.~string();
+        }
+
+        type = tag::string;
+        new (&s) std::string(value);
+
+        return *this;
+    }
+
     ~parameter() noexcept
     {
         if (type == tag::string) {
@@ -553,110 +564,59 @@ public:
 };
 
 /**
- * @brief @c baryonyx::context stores logging system and parameters.
+ * @brief Stores logging system and parameters.
  *
  * @details @c baryonyx::context manages the logging system and stores a set of
- *     parameters for solvers. Default, the logging system is active and use @c
- *     stdout C file structure. Define BARYONYX_DISABLE_LOGGING as preprocessor
- *     value to hide debug logging message.
+ *     parameters for solvers. Default, the logging system is active and use
+ *     @c stdout C file structure. Define @c BARYONYX_DISABLE_LOGGING as
+ *     preprocessor value to hide debug logging message.
+ *
+ *     The implementation of this class is hidden into private include to
+ *     ensure a stable ABI of the Baryonyx library.
  */
-class BARYONYX_API context
-{
-public:
-    enum class message_type
-    {
-        emerg,   ///< system is unusable
-        alert,   ///< action must be taken immediately
-        crit,    ///< critical conditions
-        err,     ///< error conditions
-        warning, ///< warning conditions
-        notice,  ///< normal, but significant, condition
-        info,    ///< informational message
-        debug,   ///< debug-level message
-    };
+struct context;
 
-    using string_logger_functor =
-      std::function<void(message_type, std::string)>;
+/**
+ * @brief Stores the @c context into smart pointer.
+ *
+ * @details This type is use in many place of the Baryonyx library and
+ *     application to simplify source code. We use a no copyable smart pointer
+ *     to ensure thread safe library. Each thread must use its own @c context.
+ *     Use the @c copy_context function to simplify the copy. We provide a free
+ *     function to delete context pointer to avoid context publication.
+ */
+using context_ptr = std::unique_ptr<context, void (*)(context*)>;
 
-    enum class logger_type
-    {
-        c_file, ///< log are send to a C FILE* structure.
-        string  ///< log are store to the string_logger_functor.
-    };
+BARYONYX_API context_ptr
+make_context(FILE* f = stdout, int verbose_level = 6);
 
-    context();
-    context(FILE* f);
-    context(string_logger_functor logger);
+BARYONYX_API context_ptr
+make_context(std::function<void(int, std::string)> logger,
+             int verbose_level = 6);
 
-    context(const context&) = delete;
-    context& operator=(const context&) = delete;
+BARYONYX_API context_ptr
+copy_context(const context_ptr& ctx, FILE* f = stdout);
 
-    void set_parameters(std::unordered_map<std::string, parameter>&& params);
-    void set_parameter(const std::string& name, double p) noexcept;
-    void set_parameter(const std::string& name, int p) noexcept;
-    void set_parameter(const std::string& name, std::string p) noexcept;
+BARYONYX_API context_ptr
+copy_context(const context_ptr& ctx,
+             std::function<void(int, std::string)> logger);
 
-    double get_real_parameter(const std::string& name, double def) const
-      noexcept;
+BARYONYX_API context_ptr
+copy_context(const context_ptr& ctx, FILE* f, int verbose_level);
 
-    int get_integer_parameter(const std::string& name, int def) const noexcept;
+BARYONYX_API context_ptr
+copy_context(const context_ptr& ctx,
+             std::function<void(int, std::string)> logger,
+             int verbose_level);
 
-    std::string get_string_parameter(const std::string& name,
-                                     std::string def) const noexcept;
+BARYONYX_API void
+context_set_parameters(const context_ptr& ctx,
+                       std::unordered_map<std::string, parameter>&& params);
 
-    bool optimize() const noexcept
-    {
-        return m_optimize;
-    }
-
-    bool check() const noexcept
-    {
-        return m_check;
-    }
-
-    std::unordered_map<std::string, parameter> get_parameters() const noexcept
-    {
-        return m_parameters;
-    }
-
-    FILE* cfile_logger() const noexcept
-    {
-        return m_cfile_logger;
-    }
-
-    const string_logger_functor& string_logger() const noexcept
-    {
-        return m_string_logger;
-    }
-
-    void set_log_priority(message_type type) noexcept
-    {
-        m_log_priority = type;
-    }
-
-    message_type log_priority() const noexcept
-    {
-        return m_log_priority;
-    }
-
-    logger_type logger() const noexcept
-    {
-        return m_logger;
-    }
-
-private:
-    bool try_set_important_parameter(std::string name,
-                                     baryonyx::parameter value);
-
-    std::unordered_map<std::string, parameter> m_parameters;
-    string_logger_functor m_string_logger;
-    FILE* m_cfile_logger = stdout;
-    message_type m_log_priority = context::message_type::info;
-    logger_type m_logger = context::logger_type::c_file;
-
-    bool m_optimize = false;
-    bool m_check = false;
-};
+BARYONYX_API void
+context_set_parameter(const context_ptr& ctx,
+                      std::string name,
+                      parameter param);
 
 enum class variable_type
 {
@@ -696,15 +656,13 @@ struct variable_value
       : min(0)
       , max(std::numeric_limits<int>::max())
       , type(variable_type::real)
-    {
-    }
+    {}
 
     variable_value(int min_, int max_, variable_type type_)
       : min(min_)
       , max(max_)
       , type(type_)
-    {
-    }
+    {}
 
     int min;
     int max;
@@ -719,11 +677,12 @@ struct variables
 
 struct function_element
 {
+    function_element() = default;
+
     function_element(int factor_, index variable_index_) noexcept
       : factor(factor_)
       , variable_index(variable_index_)
-    {
-    }
+    {}
 
     int factor = { 0 };
     index variable_index{ -1 };
@@ -734,8 +693,7 @@ struct objective_function_element
     objective_function_element(double factor_, index variable_index_) noexcept
       : factor(factor_)
       , variable_index(variable_index_)
-    {
-    }
+    {}
 
     double factor = { 0 };
     index variable_index{ -1 };
@@ -847,13 +805,11 @@ struct result
 
     result()
       : status(result_status::uninitialized)
-    {
-    }
+    {}
 
     result(result_status status_)
       : status(status_)
-    {
-    }
+    {}
 
     operator bool() const
     {
@@ -885,8 +841,7 @@ compute_min_max_objective_function(const problem& pb) noexcept
  */
 BARYONYX_API
 problem
-make_problem(const std::shared_ptr<baryonyx::context>& ctx,
-             const std::string& filename);
+make_problem(const baryonyx::context_ptr& ctx, const std::string& filename);
 
 /**
  * Read a @e lp file from the @e is stream.
@@ -896,16 +851,15 @@ make_problem(const std::shared_ptr<baryonyx::context>& ctx,
  */
 BARYONYX_API
 problem
-make_problem(const std::shared_ptr<baryonyx::context>& ctx, std::istream& is);
+make_problem(const baryonyx::context_ptr& ctx, std::istream& is);
 
 BARYONYX_API
 result
-make_result(const std::shared_ptr<baryonyx::context>& ctx,
-            const std::string& filename);
+make_result(const baryonyx::context_ptr& ctx, const std::string& filename);
 
 BARYONYX_API
 result
-make_result(const std::shared_ptr<baryonyx::context>& ctx, std::istream& is);
+make_result(const baryonyx::context_ptr& ctx, std::istream& is);
 
 /**
  * Write @e lp problem into a stream.
@@ -926,7 +880,7 @@ operator<<(std::ostream& os, const problem& p);
  */
 BARYONYX_API
 result
-solve(std::shared_ptr<baryonyx::context> ctx, problem& pb);
+solve(const baryonyx::context_ptr& ctx, problem& pb);
 
 /**
  * @details Try to optimize the @c baryonyx::problem with a set of
@@ -940,7 +894,7 @@ solve(std::shared_ptr<baryonyx::context> ctx, problem& pb);
  */
 BARYONYX_API
 result
-optimize(std::shared_ptr<baryonyx::context> ctx, problem& pb);
+optimize(const baryonyx::context_ptr& ctx, problem& pb);
 
 BARYONYX_API
 bool

@@ -62,8 +62,7 @@ struct bound
     bound(int min_, int max_)
       : min(min_)
       , max(max_)
-    {
-    }
+    {}
 
     int min;
     int max;
@@ -77,8 +76,7 @@ struct r_data
     r_data(floatingpointT value_, int index_)
       : value(value_)
       , id(index_)
-    {
-    }
+    {}
 
     floatingpointT value; // reduced cost value
     int id;               // index in AP matrix
@@ -91,8 +89,7 @@ struct c_data
     c_data(int id_A_, int id_r_)
       : id_A(id_A_)
       , id_r(id_r_)
-    {
-    }
+    {}
 
     int id_A; // index in AP matrix
     int id_r; // index in r matrix
@@ -258,7 +255,7 @@ compute_missing_constraint(const apT& ap,
 
 template<typename apT, typename xT, typename bT>
 inline void
-print_missing_constraint(const std::shared_ptr<baryonyx::context>& ctx,
+print_missing_constraint(const baryonyx::context_ptr& ctx,
                          const apT& ap,
                          const xT& x,
                          const bT& b,
@@ -324,8 +321,7 @@ struct bounds_printer
       : bestlb(std::numeric_limits<floatingpointT>::lowest())
       , bestub(std::numeric_limits<floatingpointT>::max())
       , max_cost(max_cost_init(c, modeT()))
-    {
-    }
+    {}
 
     template<typename SolverT>
     floatingpointT init_bound(const SolverT& slv, minimize_tag)
@@ -373,7 +369,7 @@ struct bounds_printer
         return { 0 };
     }
 
-    void print_bound(const std::shared_ptr<context>& ctx,
+    void print_bound(const context_ptr& ctx,
                      floatingpointT lower_bound,
                      floatingpointT upper_bound,
                      minimize_tag)
@@ -398,7 +394,7 @@ struct bounds_printer
         }
     }
 
-    void print_bound(const std::shared_ptr<context>& ctx,
+    void print_bound(const context_ptr& ctx,
                      floatingpointT lower_bound,
                      floatingpointT upper_bound,
                      maximize_tag)
@@ -435,7 +431,7 @@ struct bounds_printer
 
     template<typename SolverT>
     void operator()(const SolverT& slv,
-                    const std::shared_ptr<context>& ctx,
+                    const context_ptr& ctx,
                     const baryonyx::result& best)
     {
         using AP_type = typename SolverT::AP_type;
@@ -473,12 +469,12 @@ struct compute_none
 {
     using random_type = randomT;
 
-    std::shared_ptr<context> m_ctx;
+    const context_ptr& m_ctx;
     std::vector<int> R;
 
     template<typename solverT>
-    compute_none(std::shared_ptr<context> ctx, const solverT& s, randomT&)
-      : m_ctx(std::move(ctx))
+    compute_none(const context_ptr& ctx, const solverT& s, randomT&)
+      : m_ctx(ctx)
       , R(s.m)
     {
         compute_missing_constraint(s.ap, s.x, s.b, R);
@@ -516,13 +512,13 @@ struct compute_reversing
 {
     using random_type = randomT;
 
-    std::shared_ptr<context> m_ctx;
+    const context_ptr& m_ctx;
     std::vector<int> R;
     int nb = 0;
 
     template<typename solverT>
-    compute_reversing(std::shared_ptr<context> ctx, solverT& s, randomT&)
-      : m_ctx(std::move(ctx))
+    compute_reversing(const context_ptr& ctx, solverT& s, randomT&)
+      : m_ctx(ctx)
       , R(s.m)
     {
         compute_missing_constraint(s.ap, s.x, s.b, R);
@@ -560,13 +556,13 @@ struct compute_random
 {
     using random_type = randomT;
 
-    std::shared_ptr<context> m_ctx;
+    const context_ptr& m_ctx;
     std::vector<int> R;
     random_type& rng;
 
     template<typename solverT>
-    compute_random(std::shared_ptr<context> ctx, solverT& s, random_type& rng_)
-      : m_ctx(std::move(ctx))
+    compute_random(const context_ptr& ctx, solverT& s, random_type& rng_)
+      : m_ctx(ctx)
       , R(s.m)
       , rng(rng_)
     {
@@ -632,15 +628,15 @@ struct compute_infeasibility
     using random_type = randomT;
     using direction_type = directionT;
 
-    std::shared_ptr<context> m_ctx;
+    const context_ptr& m_ctx;
     std::vector<std::pair<int, int>> R;
     random_type& rng;
 
     template<typename solverT>
-    compute_infeasibility(std::shared_ptr<context> ctx,
+    compute_infeasibility(const context_ptr& ctx,
                           solverT& s,
                           random_type& rng_)
-      : m_ctx(std::move(ctx))
+      : m_ctx(ctx)
       , R(s.m)
       , rng(rng_)
     {
@@ -700,9 +696,7 @@ struct compute_infeasibility
 
 template<typename CostT, typename floatingpointT>
 inline floatingpointT
-compute_delta(const std::shared_ptr<context>& ctx,
-              const CostT& c,
-              floatingpointT theta)
+compute_delta(const context_ptr& ctx, const CostT& c, floatingpointT theta)
 {
     info(ctx, "  - delta not defined, compute it:\n");
 
@@ -744,7 +738,7 @@ struct solver_functor
     std::chrono::time_point<std::chrono::steady_clock> m_begin;
     std::chrono::time_point<std::chrono::steady_clock> m_end;
 
-    std::shared_ptr<context> m_ctx;
+    const context_ptr& m_ctx;
     randomT& m_rng;
     const std::vector<std::string>& m_variable_names;
     const affected_variables& m_affected_vars;
@@ -752,16 +746,15 @@ struct solver_functor
     x_type m_best_x;
     result m_best;
 
-    solver_functor(std::shared_ptr<context> ctx,
+    solver_functor(const context_ptr& ctx,
                    randomT& rng,
                    const std::vector<std::string>& variable_names,
                    const affected_variables& affected_vars)
-      : m_ctx(std::move(ctx))
+      : m_ctx(ctx)
       , m_rng(rng)
       , m_variable_names(variable_names)
       , m_affected_vars(affected_vars)
-    {
-    }
+    {}
 
     result operator()(const std::vector<itm::merged_constraint>& constraints,
                       int variables,
@@ -880,17 +873,17 @@ struct solver_functor
             }
 
             if (i > p.w)
-                kappa +=
-                  kappa_step * std::pow(static_cast<floatingpointT>(remaining) /
-                                          static_cast<floatingpointT>(slv.m),
-                                        alpha);
+                kappa += kappa_step *
+                         std::pow(static_cast<floatingpointT>(remaining) /
+                                    static_cast<floatingpointT>(slv.m),
+                                  alpha);
 
             if (++i > p.limit) {
                 info(m_ctx, "  - Loop limit reached: {}\n", i);
                 if (pushed == -1)
                     m_best.status = result_status::limit_reached;
 
-                if (m_ctx->get_integer_parameter("print-level", 0) > 0)
+                if (context_get_integer_parameter(m_ctx, "print-level", 0) > 0)
                     print_missing_constraint(m_ctx,
                                              slv.ap,
                                              m_best.variable_value,
@@ -905,7 +898,7 @@ struct solver_functor
                 if (pushed == -1)
                     m_best.status = result_status::kappa_max_reached;
 
-                if (m_ctx->get_integer_parameter("print-level", 0) > 0)
+                if (context_get_integer_parameter(m_ctx, "print-level", 0) > 0)
                     print_missing_constraint(m_ctx,
                                              slv.ap,
                                              m_best.variable_value,
@@ -921,7 +914,7 @@ struct solver_functor
                 if (pushed == -1)
                     m_best.status = result_status::time_limit_reached;
 
-                if (m_ctx->get_integer_parameter("print-level", 0) > 0)
+                if (context_get_integer_parameter(m_ctx, "print-level", 0) > 0)
                     print_missing_constraint(m_ctx,
                                              slv.ap,
                                              m_best.variable_value,
@@ -943,8 +936,8 @@ private:
             is_better_solution(current.value, m_best.value, mode_type())) {
 
             double t =
-              std::chrono::duration_cast<std::chrono::duration<double>>(m_end -
-                                                                        m_begin)
+              std::chrono::duration_cast<std::chrono::duration<double>>(
+                m_end - m_begin)
                 .count();
 
             info(m_ctx,
@@ -979,14 +972,13 @@ private:
 template<typename floatingpointT, typename modeT>
 struct best_solution_recorder
 {
-    std::shared_ptr<context> m_ctx;
+    const context_ptr& m_ctx;
     std::mutex m_mutex;
     result m_best;
 
-    best_solution_recorder(std::shared_ptr<context> ctx_)
-      : m_ctx(ctx_)
-    {
-    }
+    best_solution_recorder(const context_ptr& ctx)
+      : m_ctx(ctx)
+    {}
 
     bool try_update(const result& current) noexcept
     {
@@ -1034,7 +1026,7 @@ struct optimize_functor
     std::chrono::time_point<std::chrono::steady_clock> m_begin;
     std::chrono::time_point<std::chrono::steady_clock> m_end;
 
-    std::shared_ptr<context> m_ctx;
+    const context_ptr& m_ctx;
     randomT m_rng;
     int m_thread_id;
     const std::vector<std::string>& m_variable_names;
@@ -1042,18 +1034,17 @@ struct optimize_functor
     x_type m_best_x;
     result m_best;
 
-    optimize_functor(std::shared_ptr<context> ctx,
+    optimize_functor(const context_ptr& ctx,
                      int thread_id,
                      typename random_type::result_type seed,
                      const std::vector<std::string>& variable_names,
                      const affected_variables& affected_vars)
-      : m_ctx(std::move(ctx))
+      : m_ctx(ctx)
       , m_rng(seed)
       , m_thread_id(thread_id)
       , m_variable_names(variable_names)
       , m_affected_vars(affected_vars)
-    {
-    }
+    {}
 
     result operator()(
       best_solution_recorder<floatingpointT, modeT>& best_recorder,
@@ -1176,8 +1167,8 @@ private:
             is_better_solution(current.value, m_best.value, mode_type())) {
 
             double t =
-              std::chrono::duration_cast<std::chrono::duration<double>>(m_end -
-                                                                        m_begin)
+              std::chrono::duration_cast<std::chrono::duration<double>>(
+                m_end - m_begin)
                 .count();
 
             m_best = current;
@@ -1281,7 +1272,7 @@ rng_normalize_costs(const CostT& c, randomT& rng)
  */
 template<typename CostT, typename floatingpointT, typename randomT>
 inline CostT
-normalize_costs(const std::shared_ptr<context>& ctx,
+normalize_costs(const context_ptr& ctx,
                 const std::string& norm,
                 const CostT& c,
                 randomT& rng)
@@ -1333,10 +1324,10 @@ make_objective_function(const objective_function& obj, int n)
 
 template<typename randomT>
 typename randomT::result_type
-init_random_generator_seed(std::shared_ptr<context> ctx)
+init_random_generator_seed(const context_ptr& ctx)
 {
     auto epoch = std::chrono::system_clock::now().time_since_epoch().count();
-    auto param = ctx->get_integer_parameter("seed", -1);
+    auto param = context_get_integer_parameter(ctx, "seed", -1);
 
     if (param == -1)
         return static_cast<typename randomT::result_type>(epoch);
@@ -1350,9 +1341,7 @@ template<typename SolverT,
          typename constraintOrderT,
          typename randomT>
 inline result
-solve_problem(std::shared_ptr<context> ctx,
-              problem& pb,
-              const itm::parameters& p)
+solve_problem(const context_ptr& ctx, problem& pb, const itm::parameters& p)
 {
     info(ctx, "Solver initializing\n");
 
@@ -1367,8 +1356,8 @@ solve_problem(std::shared_ptr<context> ctx,
         using CostT = typename SolverT::c_type;
 
         auto variables = numeric_cast<int>(pb.vars.values.size());
-        auto cost = make_objective_function<CostT, floatingpointT>(pb.objective,
-                                                                   variables);
+        auto cost = make_objective_function<CostT, floatingpointT>(
+          pb.objective, variables);
         auto norm_costs = normalize_costs<CostT, floatingpointT, randomT>(
           ctx, p.norm, cost, rng);
         auto cost_constant = pb.objective.value;
@@ -1434,7 +1423,7 @@ template<typename SolverT,
          typename constraintOrderT,
          typename randomT>
 inline result
-optimize_problem(std::shared_ptr<context> ctx,
+optimize_problem(const context_ptr& ctx,
                  problem& pb,
                  const itm::parameters& p,
                  int thread)
@@ -1475,19 +1464,20 @@ optimize_problem(std::shared_ptr<context> ctx,
         auto seeds = generate_seed(rng, thread);
 
         for (int i{ 0 }; i != thread; ++i) {
-            std::packaged_task<baryonyx::result()> task(std::bind(
-              optimize_functor<SolverT,
-                               floatingpointT,
-                               modeT,
-                               constraintOrderT,
-                               randomT>(ctx, i, seeds[i], names, affected_vars),
-              std::ref(result),
-              std::ref(constraints),
-              variables,
-              std::ref(cost),
-              std::ref(norm_costs),
-              cost_constant,
-              std::ref(p)));
+            std::packaged_task<baryonyx::result()> task(
+              std::bind(optimize_functor<SolverT,
+                                         floatingpointT,
+                                         modeT,
+                                         constraintOrderT,
+                                         randomT>(
+                          ctx, i, seeds[i], names, affected_vars),
+                        std::ref(result),
+                        std::ref(constraints),
+                        variables,
+                        std::ref(cost),
+                        std::ref(norm_costs),
+                        cost_constant,
+                        std::ref(p)));
 
             results.emplace_back(task.get_future());
 

@@ -40,30 +40,30 @@
 //
 
 static inline int
-get_thread_number(std::shared_ptr<baryonyx::context>& ctx) noexcept
+get_thread_number(const baryonyx::context_ptr& ctx) noexcept
 {
-    auto t = ctx->get_integer_parameter("thread",
-                                        std::thread::hardware_concurrency());
+    auto t = context_get_integer_parameter(
+      ctx, "thread", std::thread::hardware_concurrency());
 
     return t <= 0 ? 1 : baryonyx::numeric_cast<int>(t);
 }
 
-namespace baryonyx_private {
+namespace baryonyx {
 
 baryonyx::result
-solve(const std::shared_ptr<baryonyx::context>& ctx, baryonyx::problem& pb)
+solver_select(const baryonyx::context_ptr& ctx, baryonyx::problem& pb)
 {
-    baryonyx_private::preprocess(ctx, pb);
+    preprocess(ctx, pb);
 
     return baryonyx::itm::solve(ctx, pb);
 }
 
 baryonyx::result
-optimize(std::shared_ptr<baryonyx::context> ctx, baryonyx::problem& pb)
+optimizer_select(const baryonyx::context_ptr& ctx, baryonyx::problem& pb)
 {
     auto th = get_thread_number(ctx);
-    baryonyx_private::preprocess(ctx, pb);
+    preprocess(ctx, pb);
 
     return baryonyx::itm::optimize(ctx, pb, th);
 }
-}
+} // namespace baryonyx

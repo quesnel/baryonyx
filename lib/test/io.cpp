@@ -36,7 +36,7 @@
 #include <fmt/printf.h>
 
 void
-test_examples_1(std::shared_ptr<baryonyx::context> ctx)
+test_examples_1(const baryonyx::context_ptr& ctx)
 {
     const char* example_1 = "maximize\n"
                             "obj: x1 + 2x2 + 3x3 - 100\n"
@@ -109,7 +109,7 @@ test_examples_1(std::shared_ptr<baryonyx::context> ctx)
 }
 
 void
-test_examples_2(const std::shared_ptr<baryonyx::context>& ctx)
+test_examples_2(const baryonyx::context_ptr& ctx)
 {
     std::ifstream ifs;
 
@@ -139,7 +139,7 @@ test_examples_2(const std::shared_ptr<baryonyx::context>& ctx)
 }
 
 void
-test_examples_3(std::shared_ptr<baryonyx::context> ctx)
+test_examples_3(const baryonyx::context_ptr& ctx)
 {
     auto pb = baryonyx::make_problem(
       ctx, EXAMPLES_DIR "/geom-30a-3-ext_1000_support.lp");
@@ -158,7 +158,7 @@ test_examples_3(std::shared_ptr<baryonyx::context> ctx)
 }
 
 void
-test_examples_4(std::shared_ptr<baryonyx::context> ctx)
+test_examples_4(const baryonyx::context_ptr& ctx)
 {
     auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/general.lp");
     fmt::print("{}\n{}\n", __func__, baryonyx::resume(pb));
@@ -176,7 +176,7 @@ test_examples_4(std::shared_ptr<baryonyx::context> ctx)
 }
 
 void
-test_examples_sudoku(std::shared_ptr<baryonyx::context> ctx)
+test_examples_sudoku(const baryonyx::context_ptr& ctx)
 {
     auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/sudoku.lp");
 
@@ -193,7 +193,7 @@ test_examples_sudoku(std::shared_ptr<baryonyx::context> ctx)
 }
 
 void
-test_examples_8_queens_puzzle(std::shared_ptr<baryonyx::context> ctx)
+test_examples_8_queens_puzzle(const baryonyx::context_ptr& ctx)
 {
     auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/8_queens_puzzle.lp");
 
@@ -210,7 +210,7 @@ test_examples_8_queens_puzzle(std::shared_ptr<baryonyx::context> ctx)
 }
 
 void
-test_examples_vm(std::shared_ptr<baryonyx::context> ctx)
+test_examples_vm(const baryonyx::context_ptr& ctx)
 {
     auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/vm.lp");
 
@@ -218,7 +218,7 @@ test_examples_vm(std::shared_ptr<baryonyx::context> ctx)
 }
 
 void
-test_verger_5_5(std::shared_ptr<baryonyx::context> ctx)
+test_verger_5_5(const baryonyx::context_ptr& ctx)
 {
     auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/verger_5_5.lp");
 
@@ -228,7 +228,7 @@ test_verger_5_5(std::shared_ptr<baryonyx::context> ctx)
 int
 main(int /* argc */, char* /* argv */ [])
 {
-    auto ctx = std::make_shared<baryonyx::context>();
+    auto ctx = baryonyx::make_context();
 
     test_examples_1(ctx);
     test_examples_2(ctx);

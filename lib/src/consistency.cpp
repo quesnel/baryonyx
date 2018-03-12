@@ -26,10 +26,8 @@
 
 #include <algorithm>
 
-using namespace baryonyx;
-
 static inline void
-are_variables_used(const problem& pb)
+are_variables_used(const baryonyx::problem& pb)
 {
     std::vector<bool> vars(pb.vars.names.size(), false);
 
@@ -48,22 +46,22 @@ are_variables_used(const problem& pb)
 
     auto it = std::find(std::begin(vars), std::end(vars), false);
     if (it != std::end(vars))
-        throw problem_definition_failure(
+        throw baryonyx::problem_definition_failure(
           pb.vars.names[std::distance(std::begin(vars), it)],
-          problem_definition_error_tag::variable_not_used);
+          baryonyx::problem_definition_error_tag::variable_not_used);
 }
 
 static inline void
-are_bounds_correct(const problem& pb)
+are_bounds_correct(const baryonyx::problem& pb)
 {
     for (std::size_t i{ 0 }, e{ pb.vars.values.size() }; i != e; ++i)
         if (pb.vars.values[i].min > pb.vars.values[i].max)
-            throw problem_definition_failure(
-              pb.vars.names[i], problem_definition_error_tag::bad_bound);
+            throw baryonyx::problem_definition_failure(
+              pb.vars.names[i],
+              baryonyx::problem_definition_error_tag::bad_bound);
 }
 
-namespace baryonyx_private {
-
+namespace baryonyx {
 bool
 check_consistency(const baryonyx::problem& pb)
 {

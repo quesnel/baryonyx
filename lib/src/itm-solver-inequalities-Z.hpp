@@ -261,7 +261,7 @@ struct solver_inequalities_Zcoeff
         }
     }
 
-    void print(const std::shared_ptr<context>& ctx,
+    void print(const context_ptr& ctx,
                const std::vector<std::string>& names,
                int print_level) const
     {

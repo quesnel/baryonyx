@@ -1087,7 +1087,7 @@ get_problem_type(const baryonyx::problem& p) noexcept
     return baryonyx::problem_solver_type::inequalities_Z;
 }
 
-namespace baryonyx_private {
+namespace baryonyx {
 
 baryonyx::problem
 read_problem(std::istream& is)

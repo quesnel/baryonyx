@@ -39,139 +39,105 @@
 
 namespace baryonyx {
 
-context::context()
-  : m_cfile_logger(stdout)
-  , m_log_priority(context::message_type::info)
-  , m_logger(context::logger_type::c_file)
-  , m_optimize(false)
-  , m_check(false)
+void
+context_deleter(context* ctx)
 {
+    delete ctx;
 }
 
-context::context(FILE* f)
-  : m_cfile_logger(f ? f : stdout)
-  , m_log_priority(context::message_type::info)
-  , m_logger(context::logger_type::c_file)
-  , m_optimize(false)
-  , m_check(false)
+context_ptr
+make_context(FILE* f, int verbose_level)
 {
+    auto pointer = new context(f, verbose_level);
+
+    return context_ptr(pointer, &context_deleter);
 }
 
-context::context(string_logger_functor logger)
-  : m_string_logger(logger)
-  , m_cfile_logger(nullptr)
-  , m_log_priority(context::message_type::info)
-  , m_logger(context::logger_type::string)
-  , m_optimize(false)
-  , m_check(false)
+context_ptr
+make_context(string_logger_functor logger, int verbose_level)
 {
+    auto pointer = new context(logger, verbose_level);
+
+    return context_ptr(pointer, &context_deleter);
+}
+
+context_ptr
+copy_context(const context_ptr& ctx, FILE* f)
+{
+    auto pointer = new context(*ctx);
+
+    pointer->string_logger = nullptr;
+    pointer->cfile_logger = f ? f : stdout;
+    pointer->logger = context::logger_type::c_file;
+
+    return context_ptr(pointer, &context_deleter);
+}
+
+context_ptr
+copy_context(const context_ptr& ctx, string_logger_functor logger)
+{
+    auto pointer = new context(*ctx);
+
+    pointer->string_logger = logger;
+    pointer->cfile_logger = nullptr;
+    pointer->logger = context::logger_type::string;
+
+    return context_ptr(pointer, &context_deleter);
+}
+
+context_ptr
+copy_context(const context_ptr& ctx, FILE* f, int verbose_level)
+{
+    auto pointer = new context(*ctx);
+
+    pointer->string_logger = nullptr;
+    pointer->cfile_logger = f ? f : stdout;
+    pointer->logger = context::logger_type::c_file;
+    pointer->log_priority = static_cast<context::message_type>(
+      verbose_level < 0 ? 0 : verbose_level > 7 ? 7 : verbose_level);
+
+    return context_ptr(pointer, &context_deleter);
+}
+
+context_ptr
+copy_context(const context_ptr& ctx,
+             string_logger_functor logger,
+             int verbose_level)
+{
+    auto pointer = new context(*ctx);
+
+    pointer->string_logger = logger;
+    pointer->cfile_logger = nullptr;
+    pointer->logger = context::logger_type::string;
+    pointer->log_priority = static_cast<context::message_type>(
+      verbose_level < 0 ? 0 : verbose_level > 7 ? 7 : verbose_level);
+
+    return context_ptr(pointer, &context_deleter);
 }
 
 void
-context::set_parameters(std::unordered_map<std::string, parameter>&& params)
+context_set_parameter(const context_ptr& ctx, std::string name, parameter p)
 {
-    m_parameters = params;
+    if (name.empty() or not std::isalnum(name[0]))
+        return;
 
-    std::unordered_map<std::string, baryonyx::parameter>::const_iterator it;
-
-    it = m_parameters.find("check-filename");
-    if (it != m_parameters.cend())
-        m_check = true;
-
-    it = m_parameters.find("optimize");
-    if (it != m_parameters.cend())
-        m_optimize = true;
-
-    int quiet = 0;
-    it = m_parameters.find("quiet");
-    if (it != m_parameters.cend())
-        quiet = 1;
-
-    int verbose = 6;
-    it = m_parameters.find("verbose");
-    if (it != m_parameters.cend() and
-        it->second.type == parameter::tag::integer)
-        verbose = baryonyx::clamp(it->second.l, 0, 7);
-
-    if (quiet)
-        set_log_priority(message_type::notice);
-    else if (verbose >= 0 and verbose <= 7)
-        set_log_priority(static_cast<message_type>(verbose));
-}
-
-bool
-context::try_set_important_parameter(std::string name,
-                                     baryonyx::parameter value)
-{
-    if (name == "check-filename" and value.type == parameter::tag::string) {
-        m_check = true;
-        m_parameters["check-filename"] = value;
-        return true;
-    }
-
-    if (name == "optimize") {
-        m_optimize = true;
-        return true;
-    }
-
-    if (name == "quiet") {
-        set_log_priority(message_type::notice);
-        return true;
-    }
-
-    if (name == "verbose" and value.type == parameter::tag::integer) {
-        set_log_priority(
-          static_cast<message_type>(baryonyx::clamp(value.l, 0, 7)));
-        return true;
-    }
-
-    return false;
+    ctx->parameters[name] = p;
 }
 
 void
-context::set_parameter(const std::string& name, double p) noexcept
+context_set_parameters(const context_ptr& ctx,
+                       std::unordered_map<std::string, parameter>&& params)
 {
-    if (name.empty())
-        return;
-
-    if (not std::isalnum(name[0]))
-        return;
-
-    if (not try_set_important_parameter(name, baryonyx::parameter(p)))
-        m_parameters[name] = p;
-}
-
-void
-context::set_parameter(const std::string& name, int p) noexcept
-{
-    if (name.empty())
-        return;
-
-    if (not std::isalnum(name[0]))
-        return;
-
-    if (not try_set_important_parameter(name, baryonyx::parameter(p)))
-        m_parameters[name] = p;
-}
-
-void
-context::set_parameter(const std::string& name, std::string p) noexcept
-{
-    if (name.empty())
-        return;
-
-    if (not std::isalnum(name[0]))
-        return;
-
-    if (not try_set_important_parameter(name, baryonyx::parameter(p)))
-        m_parameters[name] = p;
+    ctx->parameters = params;
 }
 
 double
-context::get_real_parameter(const std::string& name, double def) const noexcept
+context_get_real_parameter(const context_ptr& ctx,
+                           const std::string& name,
+                           double def) noexcept
 {
-    auto it = m_parameters.find(name);
-    if (it == m_parameters.cend())
+    auto it = ctx->parameters.find(name);
+    if (it == ctx->parameters.cend())
         return def;
 
     if (it->second.type == parameter::tag::real)
@@ -180,7 +146,7 @@ context::get_real_parameter(const std::string& name, double def) const noexcept
     if (it->second.type == parameter::tag::integer)
         return static_cast<double>(it->second.l);
 
-    baryonyx::log(const_cast<baryonyx::context*>(this),
+    baryonyx::log(ctx,
                   context::message_type::warning,
                   "fail to convert parameter {}\n",
                   name);
@@ -189,10 +155,12 @@ context::get_real_parameter(const std::string& name, double def) const noexcept
 }
 
 int
-context::get_integer_parameter(const std::string& name, int def) const noexcept
+context_get_integer_parameter(const context_ptr& ctx,
+                              const std::string& name,
+                              int def) noexcept
 {
-    auto it = m_parameters.find(name);
-    if (it == m_parameters.cend())
+    auto it = ctx->parameters.find(name);
+    if (it == ctx->parameters.cend())
         return def;
 
     if (it->second.type == parameter::tag::integer)
@@ -201,7 +169,7 @@ context::get_integer_parameter(const std::string& name, int def) const noexcept
     if (it->second.type == parameter::tag::real)
         return static_cast<int>(it->second.d);
 
-    baryonyx::log(const_cast<baryonyx::context*>(this),
+    baryonyx::log(ctx,
                   context::message_type::warning,
                   "fail to convert parameter {}\n",
                   name);
@@ -210,11 +178,12 @@ context::get_integer_parameter(const std::string& name, int def) const noexcept
 }
 
 std::string
-context::get_string_parameter(const std::string& name, std::string def) const
-  noexcept
+context_get_string_parameter(const context_ptr& ctx,
+                             const std::string& name,
+                             std::string def) noexcept
 {
-    auto it = m_parameters.find(name);
-    if (it == m_parameters.cend())
+    auto it = ctx->parameters.find(name);
+    if (it == ctx->parameters.cend())
         return def;
 
     if (it->second.type == parameter::tag::string)
@@ -226,7 +195,7 @@ context::get_string_parameter(const std::string& name, std::string def) const
     if (it->second.type == parameter::tag::integer)
         return std::to_string(it->second.l);
 
-    baryonyx::log(const_cast<baryonyx::context*>(this),
+    baryonyx::log(ctx,
                   context::message_type::warning,
                   "fail to convert parameter {}\n",
                   name);
@@ -235,8 +204,7 @@ context::get_string_parameter(const std::string& name, std::string def) const
 }
 
 problem
-make_problem(const std::shared_ptr<baryonyx::context>& ctx,
-             const std::string& filename)
+make_problem(const baryonyx::context_ptr& ctx, const std::string& filename)
 {
     info(ctx, "problem reads from file `{}'\n", filename);
 
@@ -244,22 +212,21 @@ make_problem(const std::shared_ptr<baryonyx::context>& ctx,
     ifs.exceptions(std::ifstream::badbit);
     ifs.open(filename);
 
-    return baryonyx_private::read_problem(ifs);
+    return read_problem(ifs);
 }
 
 problem
-make_problem(const std::shared_ptr<baryonyx::context>& ctx, std::istream& is)
+make_problem(const baryonyx::context_ptr& ctx, std::istream& is)
 {
     info(ctx, "problem reads from stream\n");
 
     is.exceptions(std::ifstream::badbit);
 
-    return baryonyx_private::read_problem(is);
+    return read_problem(is);
 }
 
 result
-make_result(const std::shared_ptr<baryonyx::context>& ctx,
-            const std::string& filename)
+make_result(const baryonyx::context_ptr& ctx, const std::string& filename)
 {
     info(ctx, "solution reads from file {}\n", filename);
 
@@ -267,42 +234,42 @@ make_result(const std::shared_ptr<baryonyx::context>& ctx,
     ifs.exceptions(std::ifstream::badbit);
     ifs.open(filename);
 
-    return baryonyx_private::read_result(ifs);
+    return read_result(ifs);
 }
 
 result
-make_result(const std::shared_ptr<baryonyx::context>& ctx, std::istream& is)
+make_result(const baryonyx::context_ptr& ctx, std::istream& is)
 {
     info(ctx, "solution reads from stream\n");
 
     is.exceptions(std::ifstream::badbit);
 
-    return baryonyx_private::read_result(is);
+    return read_result(is);
 }
 
 std::ostream&
 operator<<(std::ostream& os, const problem& p)
 {
-    if (not baryonyx_private::write_problem(os, p))
+    if (not write_problem(os, p))
         os.setstate(std::ios_base::failbit);
 
     return os;
 }
 
 result
-solve(std::shared_ptr<baryonyx::context> ctx, problem& pb)
+solve(const baryonyx::context_ptr& ctx, problem& pb)
 {
-    baryonyx_private::check_consistency(pb);
+    check_consistency(pb);
 
-    return baryonyx_private::solve(ctx, pb);
+    return solver_select(ctx, pb);
 }
 
 result
-optimize(std::shared_ptr<baryonyx::context> ctx, problem& pb)
+optimize(const baryonyx::context_ptr& ctx, problem& pb)
 {
-    baryonyx_private::check_consistency(pb);
+    check_consistency(pb);
 
-    return baryonyx_private::optimize(std::move(ctx), pb);
+    return optimizer_select(ctx, pb);
 }
 
 template<typename functionT, typename variablesT>

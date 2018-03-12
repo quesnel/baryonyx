@@ -27,7 +27,7 @@
 
 #include <cctype>
 
-namespace baryonyx_private {
+namespace baryonyx {
 
 baryonyx::result
 read_result(std::istream& is)

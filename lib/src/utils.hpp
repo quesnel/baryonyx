@@ -25,6 +25,8 @@
 
 #include <baryonyx/core>
 
+#include "private.hpp"
+
 #include <fmt/format.h>
 #include <fmt/printf.h>
 
@@ -48,34 +50,32 @@ is_loggable(context::message_type current_level,
 
 template<typename... Args>
 void
-log(std::shared_ptr<baryonyx::context> ctx,
+log(const context_ptr& ctx,
     context::message_type level,
     const char* fmt,
     const Args&... args)
 {
-    if (not is_loggable(ctx->log_priority(), level))
+    if (not is_loggable(ctx->log_priority, level))
         return;
 
-    if (ctx->logger() == context::logger_type::c_file) {
-        fmt::print(ctx->cfile_logger(), fmt, args...);
+    if (ctx->logger == context::logger_type::c_file) {
+        fmt::print(ctx->cfile_logger, fmt, args...);
     } else {
-        ctx->string_logger()(level, fmt::format(fmt, args...));
+        ctx->string_logger(static_cast<int>(level), fmt::format(fmt, args...));
     }
 }
 
 template<typename... Args>
 void
-log(std::shared_ptr<baryonyx::context> ctx,
-    context::message_type level,
-    const char* msg)
+log(const context_ptr& ctx, context::message_type level, const char* msg)
 {
-    if (not is_loggable(ctx->log_priority(), level))
+    if (not is_loggable(ctx->log_priority, level))
         return;
 
-    if (ctx->logger() == context::logger_type::c_file) {
-        fmt::print(ctx->cfile_logger(), msg);
+    if (ctx->logger == context::logger_type::c_file) {
+        fmt::print(ctx->cfile_logger, msg);
     } else {
-        ctx->string_logger()(level, fmt::format(msg));
+        ctx->string_logger(static_cast<int>(level), fmt::format(msg));
     }
 }
 
@@ -86,13 +86,13 @@ log(baryonyx::context* ctx,
     const char* fmt,
     const Args&... args)
 {
-    if (not is_loggable(ctx->log_priority(), level))
+    if (not is_loggable(ctx->log_priority, level))
         return;
 
-    if (ctx->logger() == context::logger_type::c_file) {
-        fmt::print(ctx->cfile_logger(), fmt, args...);
+    if (ctx->logger == context::logger_type::c_file) {
+        fmt::print(ctx->cfile_logger, fmt, args...);
     } else {
-        ctx->string_logger()(level, fmt::format(fmt, args...));
+        ctx->string_logger(static_cast<int>(level), fmt::format(fmt, args...));
     }
 }
 
@@ -100,55 +100,47 @@ template<typename... Args>
 void
 log(baryonyx::context* ctx, context::message_type level, const char* msg)
 {
-    if (not is_loggable(ctx->log_priority(), level))
+    if (not is_loggable(ctx->log_priority, level))
         return;
 
-    if (ctx->logger() == context::logger_type::c_file) {
-        fmt::print(ctx->cfile_logger(), msg);
+    if (ctx->logger == context::logger_type::c_file) {
+        fmt::print(ctx->cfile_logger, msg);
     } else {
-        ctx->string_logger()(level, fmt::format(msg));
+        ctx->string_logger(static_cast<int>(level), fmt::format(msg));
     }
 }
 
 template<typename... Args>
 void
-info(std::shared_ptr<baryonyx::context> ctx,
-     const char* fmt,
-     const Args&... args)
+info(const context_ptr& ctx, const char* fmt, const Args&... args)
 {
     log(ctx, context::message_type::info, fmt, args...);
 }
 
 template<typename... Args>
 void
-debug(std::shared_ptr<baryonyx::context> ctx,
-      const char* fmt,
-      const Args&... args)
+debug(const context_ptr& ctx, const char* fmt, const Args&... args)
 {
     log(ctx, context::message_type::debug, fmt, args...);
 }
 
 template<typename... Args>
 void
-warning(std::shared_ptr<baryonyx::context> ctx,
-        const char* fmt,
-        const Args&... args)
+warning(const context_ptr& ctx, const char* fmt, const Args&... args)
 {
     log(ctx, context::message_type::warning, fmt, args...);
 }
 
 template<typename... Args>
 void
-error(std::shared_ptr<baryonyx::context> ctx,
-      const char* fmt,
-      const Args&... args)
+error(const context_ptr& ctx, const char* fmt, const Args&... args)
 {
     log(ctx, context::message_type::err, fmt, args...);
 }
 
 template<typename Arg1, typename... Args>
 void
-info(std::shared_ptr<baryonyx::context> ctx,
+info(const context_ptr& ctx,
      const char* fmt,
      const Arg1& arg1,
      const Args&... args)
@@ -158,7 +150,7 @@ info(std::shared_ptr<baryonyx::context> ctx,
 
 template<typename Arg1, typename... Args>
 void
-debug(std::shared_ptr<baryonyx::context> ctx,
+debug(const context_ptr& ctx,
       const char* fmt,
       const Arg1& arg1,
       const Args&... args)
@@ -180,7 +172,7 @@ debug(std::shared_ptr<baryonyx::context> ctx,
 
 template<typename Arg1, typename... Args>
 void
-warning(std::shared_ptr<baryonyx::context> ctx,
+warning(const context_ptr& ctx,
         const char* fmt,
         const Arg1& arg1,
         const Args&... args)
@@ -190,7 +182,7 @@ warning(std::shared_ptr<baryonyx::context> ctx,
 
 template<typename Arg1, typename... Args>
 void
-error(std::shared_ptr<baryonyx::context> ctx,
+error(const context_ptr& ctx,
       const char* fmt,
       const Arg1& arg1,
       const Args&... args)
@@ -200,17 +192,15 @@ error(std::shared_ptr<baryonyx::context> ctx,
 
 template<typename T>
 void
-log(std::shared_ptr<baryonyx::context> ctx,
-    context::message_type level,
-    const T& msg)
+log(const context_ptr& ctx, context::message_type level, const T& msg)
 {
-    if (not is_loggable(ctx->log_priority(), level))
+    if (not is_loggable(ctx->log_priority, level))
         return;
 
-    if (ctx->logger() == context::logger_type::c_file) {
-        fmt::print(ctx->cfile_logger(), "{}", msg);
+    if (ctx->logger == context::logger_type::c_file) {
+        fmt::print(ctx->cfile_logger, "{}", msg);
     } else {
-        ctx->string_logger()(level, fmt::format("{}", msg));
+        ctx->string_logger(static_cast<int>(level), fmt::format("{}", msg));
     }
 }
 
@@ -218,26 +208,26 @@ template<typename T>
 void
 log(baryonyx::context* ctx, context::message_type level, const T& msg)
 {
-    if (not is_loggable(ctx->log_priority(), level))
+    if (not is_loggable(ctx->log_priority, level))
         return;
 
-    if (ctx->logger() == context::logger_type::c_file) {
-        fmt::print(ctx->cfile_logger(), "{}", msg);
+    if (ctx->logger == context::logger_type::c_file) {
+        fmt::print(ctx->cfile_logger, "{}", msg);
     } else {
-        ctx->string_logger()(level, fmt::format("{}", msg));
+        ctx->string_logger(static_cast<int>(level), fmt::format("{}", msg));
     }
 }
 
 template<typename T>
 void
-info(std::shared_ptr<baryonyx::context> ctx, const T& msg)
+info(const context_ptr& ctx, const T& msg)
 {
     log(ctx, context::message_type::info, msg);
 }
 
 template<typename T>
 void
-debug(std::shared_ptr<baryonyx::context> ctx, const T& msg)
+debug(const context_ptr& ctx, const T& msg)
 {
 #ifndef BARYONYX_DISABLE_LOGGING
     //
@@ -254,14 +244,14 @@ debug(std::shared_ptr<baryonyx::context> ctx, const T& msg)
 
 template<typename T>
 void
-warning(std::shared_ptr<baryonyx::context> ctx, const T& msg)
+warning(const context_ptr& ctx, const T& msg)
 {
     log(ctx, context::message_type::warning, msg);
 }
 
 template<typename T>
 void
-error(std::shared_ptr<baryonyx::context> ctx, const T& msg)
+error(const context_ptr& ctx, const T& msg)
 {
     log(ctx, context::message_type::err, msg);
 }
@@ -388,41 +378,6 @@ is_essentially_equal(const T v1, const T v2, const T epsilon)
            ((fabs(v1) > fabs(v2) ? fabs(v2) : fabs(v1)) * (epsilon));
 }
 
-class timer_profiler
-{
-public:
-    timer_profiler(std::shared_ptr<baryonyx::context> ctx_)
-      : ctx(std::move(ctx_))
-      , m_s(std::chrono::steady_clock::now())
-    {}
-
-    timer_profiler()
-      : m_s(std::chrono::steady_clock::now())
-    {}
-
-    ~timer_profiler()
-    {
-        auto end = std::chrono::steady_clock::now();
-
-        if (ctx.get())
-            info(ctx,
-                 "{}s\n",
-                 std::chrono::duration_cast<std::chrono::duration<double>>(
-                   end - m_s)
-                   .count());
-        else
-            fmt::print(
-              stderr,
-              "{}s\n",
-              std::chrono::duration_cast<std::chrono::duration<double>>(end -
-                                                                        m_s)
-                .count());
-    }
-
-private:
-    std::shared_ptr<baryonyx::context> ctx;
-    std::chrono::time_point<std::chrono::steady_clock> m_s;
-};
 /**
  * @brief Check if the duration between @c begin and @c end is greater than @c
  *     limit in second.

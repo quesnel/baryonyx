@@ -36,23 +36,23 @@
 #include <fmt/printf.h>
 
 void
-test_qap(const std::shared_ptr<baryonyx::context>& ctx)
+test_qap(const baryonyx::context_ptr& ctx)
 {
     auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/small4.lp");
 
-    ctx->set_parameter("limit", -1);
-    ctx->set_parameter("theta", 0.5);
-    ctx->set_parameter("delta", 0.2);
-    ctx->set_parameter("kappa-step", 10e-4);
-    ctx->set_parameter("kappa-max", 10.0);
-    ctx->set_parameter("alpha", 0.0);
-    ctx->set_parameter("w", 20);
-    ctx->set_parameter("time-limit", 40.0);
-    ctx->set_parameter("pushing-k-factor", 0.9);
-    ctx->set_parameter("pushes-limit", 50);
-    ctx->set_parameter("pushing-objective-amplifier", 10);
-    ctx->set_parameter("pushing-iteration-limit", 50);
-    ctx->set_parameter("thread", 2);
+    context_set_parameter(ctx, "limit", -1);
+    context_set_parameter(ctx, "theta", 0.5);
+    context_set_parameter(ctx, "delta", 0.2);
+    context_set_parameter(ctx, "kappa-step", 10e-4);
+    context_set_parameter(ctx, "kappa-max", 10.0);
+    context_set_parameter(ctx, "alpha", 0.0);
+    context_set_parameter(ctx, "w", 20);
+    context_set_parameter(ctx, "time-limit", 40.0);
+    context_set_parameter(ctx, "pushing-k-factor", 0.9);
+    context_set_parameter(ctx, "pushes-limit", 50);
+    context_set_parameter(ctx, "pushing-objective-amplifier", 10);
+    context_set_parameter(ctx, "pushing-iteration-limit", 50);
+    context_set_parameter(ctx, "thread", 2);
 
     auto result = baryonyx::optimize(ctx, pb);
 
@@ -71,7 +71,7 @@ test_qap(const std::shared_ptr<baryonyx::context>& ctx)
 }
 
 void
-test_n_queens_problem(const std::shared_ptr<baryonyx::context>& ctx)
+test_n_queens_problem(const baryonyx::context_ptr& ctx)
 {
     std::vector<bool> valid_solutions(30, false);
     std::vector<double> solutions(30, 0.0);
@@ -96,20 +96,21 @@ test_n_queens_problem(const std::shared_ptr<baryonyx::context>& ctx)
             return;
     }
 
-    ctx->set_parameter("limit", 100000);
-    ctx->set_parameter("theta", 0.5);
-    ctx->set_parameter("delta", 1.0);
-    ctx->set_parameter("kappa-min", 0.30);
-    ctx->set_parameter("kappa-step", 1e-2);
-    ctx->set_parameter("kappa-max", 100.0);
-    ctx->set_parameter("alpha", 1.0);
-    ctx->set_parameter("w", 60);
-    ctx->set_parameter("constraint-order", std::string("random-sorting"));
-    ctx->set_parameter("time-limit", 20.0);
-    ctx->set_parameter("pushing-k-factor", 0.9);
-    ctx->set_parameter("pushes-limit", 50);
-    ctx->set_parameter("pushing-objective-amplifier", 10);
-    ctx->set_parameter("pushing-iteration-limit", 10);
+    context_set_parameter(ctx, "limit", 100000);
+    context_set_parameter(ctx, "theta", 0.5);
+    context_set_parameter(ctx, "delta", 1.0);
+    context_set_parameter(ctx, "kappa-min", 0.30);
+    context_set_parameter(ctx, "kappa-step", 1e-2);
+    context_set_parameter(ctx, "kappa-max", 100.0);
+    context_set_parameter(ctx, "alpha", 1.0);
+    context_set_parameter(ctx, "w", 60);
+    context_set_parameter(
+      ctx, "constraint-order", std::string("random-sorting"));
+    context_set_parameter(ctx, "time-limit", 20.0);
+    context_set_parameter(ctx, "pushing-k-factor", 0.9);
+    context_set_parameter(ctx, "pushes-limit", 50);
+    context_set_parameter(ctx, "pushing-objective-amplifier", 10);
+    context_set_parameter(ctx, "pushing-iteration-limit", 10);
 
     for (std::size_t i{ 0 }; i != valid_solutions.size(); ++i) {
         std::string filepath{ EXAMPLES_DIR "/n-queens/n-queens-problem-" };
@@ -155,7 +156,7 @@ test_n_queens_problem(const std::shared_ptr<baryonyx::context>& ctx)
 int
 main(int /* argc */, char* /* argv */ [])
 {
-    auto ctx = std::make_shared<baryonyx::context>();
+    auto ctx = baryonyx::make_context();
 
     test_qap(ctx);
     test_n_queens_problem(ctx);

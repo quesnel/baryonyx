@@ -55,16 +55,6 @@ get_pid() noexcept
 }
 #endif
 
-struct write_parameters
-{
-    std::shared_ptr<baryonyx::context> ctx;
-
-    write_parameters(std::shared_ptr<baryonyx::context> ctx_)
-      : ctx(std::move(ctx_))
-    {
-    }
-};
-
 double
 to_double(const char* s, double bad_value) noexcept
 {
@@ -141,13 +131,6 @@ static const char* problem_definition_error_format(
 
 static const char* solver_error_format(baryonyx::solver_error_tag) noexcept;
 
-static std::ostream&
-operator<<(std::ostream& os, const write_parameters& wp);
-
-static baryonyx::result
-solve_or_optimize(const std::shared_ptr<baryonyx::context>& ctx,
-                  baryonyx::problem& pb);
-
 static void
 help() noexcept
 {
@@ -160,54 +143,63 @@ help() noexcept
     if (VERSION_TWEAK)
         fmt::print("-{}", VERSION_TWEAK);
 
-    fmt::print("\nGeneral options:\n"
-               "  --help|-h                   This help message\n"
-               "  --param|-p [name][:|=][value]   Add a new parameter (name is"
-               " [a-z][A-Z]_) value can be a double, an integer otherwise a"
-               " string.\n"
-               "  --optimize|-O               Optimize model (default "
-               "feasibility search only)\n"
-               "  --check filename.sol        Check if the solution is correct."
-               "\n"
-               "  --quiet                     Remove any verbose message\n"
-               "  --verbose|-v int            Set verbose level\n\n"
-               "Parameter list for in the middle heuristic\n"
-               " * Global parameters"
-               "  - limit: integer ]-oo, +oo[ in loop number\n"
-               "  - time-limit: real [0, +oo[ in seconds\n"
-               "  - floating-point-type: float double longdouble\n"
-               "  - print-level: [0, 2]\n"
-               " * In The Middle parameters\n"
-               "  - preprocessing: none variables-number variables-weight "
-               "constraints-weight implied\n"
-               "  - constraint-order: none reversing random-sorting "
-               "infeasibility-decr infeasibility-incr\n"
-               "  - theta: real [0, 1]\n"
-               "  - delta: real [0, +oo[\n"
-               "  - kappa-min: real [0, 1[\n"
-               "  - kappa-step: real [0, 1[\n"
-               "  - kappa-max: real [0, 1[\n"
-               "  - alpha: integer [0, 2]\n"
-               "  - w: integer [0, +oo[\n"
-               "  - norm: l1 l2 inf none rng\n"
-               " * Pushes system parameters\n"
-               "  - pushes-limit: integer [0, +oo[\n"
-               "  - pushing-objective-amplifier: real [0, +oo[\n"
-               "  - pushing-iteration-limit: integer [0, +oo[\n"
-               "  - pushing-k-factor: real [0, +oo[\n"
-               " * Initialization parameters\n"
-               "  - init-policy: bastert random best\n"
-               "  - init-random: real [0, 1]\n");
+    fmt::print(
+      "\nGeneral options:\n"
+      "  --help|-h                   This help message\n"
+      "  --param|-p [name][:|=][value]   Add a new parameter (name is"
+      " [a-z][A-Z]_) value can be a double, an integer otherwise a"
+      " string.\n"
+      "  --optimize|-O               Optimize model (default "
+      "feasibility search only)\n"
+      "  --check filename.sol        Check if the solution is correct."
+      "\n"
+      "  --quiet                     Remove any verbose message\n"
+      "  --verbose|-v int            Set verbose level\n\n"
+      "Parameter list for in the middle heuristic\n"
+      " * Global parameters"
+      "  - limit: integer ]-oo, +oo[ in loop number\n"
+      "  - time-limit: real [0, +oo[ in seconds\n"
+      "  - floating-point-type: float double longdouble\n"
+      "  - print-level: [0, 2]\n"
+      " * In The Middle parameters\n"
+      "  - preprocessing: none variables-number variables-weight "
+      "constraints-weight implied\n"
+      "  - constraint-order: none reversing random-sorting "
+      "infeasibility-decr infeasibility-incr\n"
+      "  - theta: real [0, 1]\n"
+      "  - delta: real [0, +oo[\n"
+      "  - kappa-min: real [0, 1[\n"
+      "  - kappa-step: real [0, 1[\n"
+      "  - kappa-max: real [0, 1[\n"
+      "  - alpha: integer [0, 2]\n"
+      "  - w: integer [0, +oo[\n"
+      "  - norm: l1 l2 inf none rng\n"
+      " * Pushes system parameters\n"
+      "  - pushes-limit: integer [0, +oo[\n"
+      "  - pushing-objective-amplifier: real [0, +oo[\n"
+      "  - pushing-iteration-limit: integer [0, +oo[\n"
+      "  - pushing-k-factor: real [0, +oo[\n"
+      " * Initialization parameters\n"
+      "  - init-policy: bastert random best\n"
+      "  - init-random: real [0, 1]\n");
 }
 
-static std::tuple<std::unordered_map<std::string, baryonyx::parameter>,
-                  std::vector<std::string>>
+struct main_parameters
+{
+    std::unordered_map<std::string, baryonyx::parameter> params;
+    std::vector<std::string> filenames;
+    std::string check_filename;
+    int verbose = 6;
+    int limit = 1000;
+    bool check = false;
+    bool optimize = false;
+    bool quiet = false;
+};
+
+main_parameters
 parse(int argc, char* argv[])
 {
-    std::vector<std::string> files;
-    std::unordered_map<std::string, baryonyx::parameter> params;
-    params["verbose"] = baryonyx::parameter(6);
-    params["limit"] = baryonyx::parameter(1000);
+    main_parameters ret;
 
     for (int i = 1; i < argc; ++i) {
         std::string arg(argv[i]);
@@ -218,12 +210,12 @@ parse(int argc, char* argv[])
         }
 
         if (arg == "--quiet" or arg == "-q") {
-            params["quiet"] = 1;
+            ret.quiet = true;
             continue;
         }
 
         if (arg == "--optimize" or arg == "-O") {
-            params["optimize"] = 1;
+            ret.optimize = true;
             continue;
         }
 
@@ -231,7 +223,7 @@ parse(int argc, char* argv[])
             if (i + 1 >= argc) {
                 fmt::print(stderr, "/!\\ --limit argument required");
             } else {
-                params["limit"] = to_int(argv[i + 1], 1000);
+                ret.limit = to_int(argv[i + 1], 1000);
                 ++i;
             }
             continue;
@@ -241,7 +233,7 @@ parse(int argc, char* argv[])
             if (i + 1 >= argc) {
                 fmt::print(stderr, "/!\\ --verbose argument required\n");
             } else {
-                params["verbose"] = ::to_int(argv[i + 1], 3);
+                ret.verbose = ::to_int(argv[i + 1], 3);
                 ++i;
             }
             continue;
@@ -251,7 +243,7 @@ parse(int argc, char* argv[])
             if (i + 1 >= argc) {
                 fmt::print(stderr, "/!\\ --check argument required\n");
             } else {
-                params["check-filename"] = argv[i + 1];
+                ret.check_filename = argv[i + 1];
                 ++i;
             }
             continue;
@@ -264,57 +256,51 @@ parse(int argc, char* argv[])
                 std::string name;
                 baryonyx::parameter value;
                 std::tie(name, value) = ::split_param(argv[i + 1]);
-                params[name] = value;
+                ret.params[name] = value;
                 ++i;
             }
             continue;
         }
 
-        files.emplace_back(argv[i]);
+        ret.filenames.emplace_back(argv[i]);
     }
 
-    return std::make_tuple(params, files);
+    return ret;
 }
 
 int
 main(int argc, char* argv[])
 {
-    std::vector<std::string> files;
-    std::unordered_map<std::string, baryonyx::parameter> params;
+    auto params = parse(argc, argv);
 
-    std::tie(params, files) = parse(argc, argv);
-
-    if (params.empty()) {
-        fmt::print(stderr, "Argument error, see --help\n");
-        return EXIT_FAILURE;
-    }
-
-    if (files.empty()) {
+    if (params.filenames.empty()) {
         fmt::print(stderr, "Missing lp file, see --help\n");
         return EXIT_SUCCESS;
     }
 
-    auto ctx = std::make_shared<baryonyx::context>();
-    ctx->set_parameters(std::move(params));
+    auto ctx =
+      baryonyx::make_context(stdout, params.quiet ? 3 : params.verbose);
 
-    if (files.size() == 1) {
+    context_set_parameters(ctx, std::move(params.params));
+
+    if (params.filenames.size() == 1) {
         try {
-            auto pb = baryonyx::make_problem(ctx, files.front());
+            auto pb = baryonyx::make_problem(ctx, params.filenames.front());
             fmt::print("{}", baryonyx::resume(pb, false));
 
-            auto filename = fmt::format("{}-{}.sol", files.front(), get_pid());
+            auto filename =
+              fmt::format("{}-{}.sol", params.filenames.front(), get_pid());
             fmt::print("Output file: {}\n", filename);
 
-            if (ctx->check()) {
-                auto check_filename =
-                  ctx->get_string_parameter("check-filename", std::string());
+            if (params.check) {
+                auto result =
+                  baryonyx::make_result(ctx, params.check_filename);
 
-                auto result = baryonyx::make_result(ctx, check_filename);
                 if (result) {
                     auto valid = baryonyx::is_valid_solution(pb, result);
                     fmt::print("Check {} with {}: {}",
-                               files.front(),
-                               check_filename,
+                               params.filenames.front(),
+                               params.check_filename,
                                (valid ? "success" : "failure"));
                 }
             }
@@ -322,17 +308,19 @@ main(int argc, char* argv[])
             std::ofstream ofs(filename);
             ofs << std::boolalpha
                 << std::setprecision(static_cast<int>(std::floor(
-                     std::numeric_limits<double>::digits * std::log10(2) + 2)));
+                     std::numeric_limits<double>::digits * std::log10(2) +
+                     2)));
 
             auto now = std::chrono::system_clock::now();
             auto in_time_t = std::chrono::system_clock::to_time_t(now);
 
             ofs << baryonyx::resume(pb) << R"(\ solver starts: )"
                 << std::put_time(std::localtime(&in_time_t), "%Y-%m-%d %X")
-                << "\n\\ parameters:\n"
-                << ::write_parameters(ctx);
+                << "\n";
 
-            auto ret = solve_or_optimize(ctx, pb);
+            auto ret = params.optimize ? baryonyx::optimize(ctx, pb)
+                                       : baryonyx::solve(ctx, pb);
+
             if (ret.status == baryonyx::result_status::success) {
                 fmt::print(
                   "Best solution found: {} in {}s\n", ret.value, ret.duration);
@@ -389,13 +377,15 @@ main(int argc, char* argv[])
             << std::setprecision(static_cast<int>(std::floor(
                  std::numeric_limits<double>::digits * std::log10(2) + 2)));
 
-        for (auto& elem : files) {
+        for (auto& elem : params.filenames) {
             try {
                 auto pb = baryonyx::make_problem(ctx, elem);
                 fmt::print("{}", baryonyx::resume(pb, false));
                 ofs << elem << " ";
 
-                auto ret = solve_or_optimize(ctx, pb);
+                auto ret = params.optimize ? baryonyx::optimize(ctx, pb)
+                                           : baryonyx::solve(ctx, pb);
+
                 if (ret.status == baryonyx::result_status::success) {
                     ofs << ret.value << " " << ret.duration << "\n";
                 } else {
@@ -475,42 +465,4 @@ solver_error_format(baryonyx::solver_error_tag failure) noexcept
                                        "not enough memory" };
 
     return tag[static_cast<int>(failure)];
-}
-
-static std::ostream&
-operator<<(std::ostream& os, const write_parameters& wp)
-{
-    if (not wp.ctx)
-        return os;
-
-    const auto& params = wp.ctx->get_parameters();
-    for (const auto& param : params) {
-        os << R"(\ )" << param.first << " = ";
-
-        switch (param.second.type) {
-        case baryonyx::parameter::tag::string:
-            os << param.second.s;
-            break;
-        case baryonyx::parameter::tag::integer:
-            os << param.second.l;
-            break;
-        case baryonyx::parameter::tag::real:
-            os << param.second.d;
-            break;
-        }
-
-        os << '\n';
-    }
-
-    return os;
-}
-
-static baryonyx::result
-solve_or_optimize(const std::shared_ptr<baryonyx::context>& ctx,
-                  baryonyx::problem& pb)
-{
-    if (ctx->optimize())
-        return baryonyx::optimize(ctx, pb);
-
-    return baryonyx::solve(ctx, pb);
 }

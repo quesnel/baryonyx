@@ -50,9 +50,9 @@ init_policy_type_to_string(init_policy_type type) noexcept
 }
 
 inline init_policy_type
-get_init_policy_type(const std::shared_ptr<context>& ctx) noexcept
+get_init_policy_type(const context_ptr& ctx) noexcept
 {
-    auto str = ctx->get_string_parameter("init-policy", "bastert");
+    auto str = context_get_string_parameter(ctx, "init-policy", "bastert");
 
     if (str == "random")
         return init_policy_type::random;
@@ -83,9 +83,10 @@ floating_point_type_to_string(floating_point_type type) noexcept
 }
 
 inline floating_point_type
-get_floating_point_type(const std::shared_ptr<context>& ctx) noexcept
+get_floating_point_type(const context_ptr& ctx) noexcept
 {
-    auto str = ctx->get_string_parameter("floating-point-type", "double");
+    auto str =
+      context_get_string_parameter(ctx, "floating-point-type", "double");
 
     if (str == "float")
         return floating_point_type::float_type;
@@ -119,9 +120,9 @@ constraint_order_to_string(constraint_order type) noexcept
 }
 
 inline constraint_order
-get_constraint_order(const std::shared_ptr<context>& ctx) noexcept
+get_constraint_order(const context_ptr& ctx) noexcept
 {
-    auto str = ctx->get_string_parameter("constraint-order", "none");
+    auto str = context_get_string_parameter(ctx, "constraint-order", "none");
 
     if (str == "reversing")
         return constraint_order::reversing;
@@ -137,27 +138,30 @@ get_constraint_order(const std::shared_ptr<context>& ctx) noexcept
 
 struct parameters
 {
-    parameters(const std::shared_ptr<context>& ctx)
-      : preprocessing(ctx->get_string_parameter("preprocessing", "none"))
-      , norm(ctx->get_string_parameter("norm", "inf"))
-      , time_limit(ctx->get_real_parameter("time-limit", -1.0))
-      , theta(ctx->get_real_parameter("theta", 0.5))
-      , delta(ctx->get_real_parameter("delta", -1.0))
-      , kappa_min(ctx->get_real_parameter("kappa-min", 0.0))
-      , kappa_step(ctx->get_real_parameter("kappa-step", 1.e-3))
-      , kappa_max(ctx->get_real_parameter("kappa-max", 0.6))
-      , alpha(ctx->get_real_parameter("alpha", 1.0))
-      , reverse_solution(ctx->get_real_parameter("reverse-solution", -0.5))
-      , pushing_k_factor(ctx->get_real_parameter("pushing-k-factor", 0.9))
+    parameters(const context_ptr& ctx)
+      : preprocessing(
+          context_get_string_parameter(ctx, "preprocessing", "none"))
+      , norm(context_get_string_parameter(ctx, "norm", "inf"))
+      , time_limit(context_get_real_parameter(ctx, "time-limit", -1.0))
+      , theta(context_get_real_parameter(ctx, "theta", 0.5))
+      , delta(context_get_real_parameter(ctx, "delta", -1.0))
+      , kappa_min(context_get_real_parameter(ctx, "kappa-min", 0.0))
+      , kappa_step(context_get_real_parameter(ctx, "kappa-step", 1.e-3))
+      , kappa_max(context_get_real_parameter(ctx, "kappa-max", 0.6))
+      , alpha(context_get_real_parameter(ctx, "alpha", 1.0))
+      , reverse_solution(
+          context_get_real_parameter(ctx, "reverse-solution", -0.5))
+      , pushing_k_factor(
+          context_get_real_parameter(ctx, "pushing-k-factor", 0.9))
       , pushing_objective_amplifier(
-          ctx->get_real_parameter("pushing-objective-amplifier", 5))
-      , init_random(ctx->get_real_parameter("init-random", 0.5))
-      , pushes_limit(ctx->get_integer_parameter("pushes-limit", 100))
+          context_get_real_parameter(ctx, "pushing-objective-amplifier", 5))
+      , init_random(context_get_real_parameter(ctx, "init-random", 0.5))
+      , pushes_limit(context_get_integer_parameter(ctx, "pushes-limit", 100))
       , pushing_iteration_limit(
-          ctx->get_integer_parameter("pushing-iteration-limit", 50))
-      , limit(ctx->get_integer_parameter("limit", 1000))
-      , w(ctx->get_integer_parameter("w", 20))
-      , print_level(ctx->get_integer_parameter("print-level", 0))
+          context_get_integer_parameter(ctx, "pushing-iteration-limit", 50))
+      , limit(context_get_integer_parameter(ctx, "limit", 1000))
+      , w(context_get_integer_parameter(ctx, "w", 20))
+      , print_level(context_get_integer_parameter(ctx, "print-level", 0))
       , order(get_constraint_order(ctx))
       , float_type(get_floating_point_type(ctx))
       , init_policy(get_init_policy_type(ctx))
@@ -258,17 +262,15 @@ struct merged_constraint
 };
 
 std::vector<merged_constraint>
-make_merged_constraints(const std::shared_ptr<context>& ctx,
+make_merged_constraints(const context_ptr& ctx,
                         const problem& pb,
                         const parameters& p);
 
 result
-solve(const std::shared_ptr<baryonyx::context>& ctx, problem& pb);
+solve(const baryonyx::context_ptr& ctx, problem& pb);
 
 result
-optimize(const std::shared_ptr<baryonyx::context>& ctx,
-         problem& pb,
-         int thread);
+optimize(const baryonyx::context_ptr& ctx, problem& pb, int thread);
 }
 }
 

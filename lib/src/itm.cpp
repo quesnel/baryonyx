@@ -55,7 +55,7 @@ struct merged_constraint_hash
 //
 template<typename cacheT, typename retT>
 static void
-fill_merged_constraints(const std::shared_ptr<baryonyx::context>& ctx,
+fill_merged_constraints(const baryonyx::context_ptr& ctx,
                         cacheT& cache,
                         baryonyx::operator_type op,
                         const baryonyx::problem& pb,
@@ -141,7 +141,7 @@ operator_from_string(const std::string& op) noexcept
 // process).
 //
 static std::vector<baryonyx::itm::merged_constraint>
-make_unsorted_merged_constraints(const std::shared_ptr<baryonyx::context>& ctx,
+make_unsorted_merged_constraints(const baryonyx::context_ptr& ctx,
                                  const baryonyx::problem& pb)
 {
     info(ctx, "  - merge constraints without any sort\n");
@@ -175,7 +175,7 @@ make_unsorted_merged_constraints(const std::shared_ptr<baryonyx::context>& ctx,
 // unsorted_merged_constraints.
 //
 static std::vector<baryonyx::itm::merged_constraint>
-make_ordered_merged_constraints(const std::shared_ptr<baryonyx::context>& ctx,
+make_ordered_merged_constraints(const baryonyx::context_ptr& ctx,
                                 const baryonyx::problem& pb,
                                 const baryonyx::itm::parameters& p)
 {
@@ -235,7 +235,7 @@ make_ordered_merged_constraints(const std::shared_ptr<baryonyx::context>& ctx,
 // unsorted_merged_constraints.
 //
 static std::vector<baryonyx::itm::merged_constraint>
-make_special_merged_constraints(const std::shared_ptr<baryonyx::context>& ctx,
+make_special_merged_constraints(const baryonyx::context_ptr& ctx,
                                 const baryonyx::problem& pb,
                                 const baryonyx::itm::parameters& p)
 {
@@ -369,7 +369,7 @@ make_special_merged_constraints(const std::shared_ptr<baryonyx::context>& ctx,
 }
 
 std::vector<merged_constraint>
-make_merged_constraints(const std::shared_ptr<context>& ctx,
+make_merged_constraints(const context_ptr& ctx,
                         const problem& pb,
                         const parameters& p)
 {
@@ -403,9 +403,7 @@ template<typename floatingpointT,
          typename constraintOrderT,
          typename randomT>
 inline result
-dispatch_solver(std::shared_ptr<context> ctx,
-                problem& pb,
-                const itm::parameters& p)
+dispatch_solver(const context_ptr& ctx, problem& pb, const itm::parameters& p)
 {
     switch (pb.problem_type) {
     case problem_solver_type::equalities_01:
@@ -460,7 +458,7 @@ template<typename floatingpointT,
          typename constraintOrderT,
          typename randomT>
 inline result
-dispatch_optimizer(std::shared_ptr<context> ctx,
+dispatch_optimizer(const context_ptr& ctx,
                    problem& pb,
                    const itm::parameters& p,
                    int thread)
@@ -515,7 +513,7 @@ dispatch_optimizer(std::shared_ptr<context> ctx,
 
 template<typename realT, typename modeT, typename randomT>
 inline result
-dispatch_solver_parameters(std::shared_ptr<context> ctx,
+dispatch_solver_parameters(const context_ptr& ctx,
                            problem& pb,
                            const itm::parameters& p)
 {
@@ -554,7 +552,7 @@ dispatch_solver_parameters(std::shared_ptr<context> ctx,
 
 template<typename realT, typename modeT, typename randomT>
 inline result
-dispatch_optimizer_parameters(std::shared_ptr<context> ctx,
+dispatch_optimizer_parameters(const context_ptr& ctx,
                               problem& pb,
                               const itm::parameters& p,
                               int thread)
@@ -594,7 +592,7 @@ dispatch_optimizer_parameters(std::shared_ptr<context> ctx,
 }
 
 result
-solve(const std::shared_ptr<baryonyx::context>& ctx, problem& pb)
+solve(const baryonyx::context_ptr& ctx, problem& pb)
 {
     info(ctx, "Solve mode\n");
     parameters p(ctx);
@@ -637,9 +635,7 @@ solve(const std::shared_ptr<baryonyx::context>& ctx, problem& pb)
 }
 
 result
-optimize(const std::shared_ptr<baryonyx::context>& ctx,
-         problem& pb,
-         int thread)
+optimize(const baryonyx::context_ptr& ctx, problem& pb, int thread)
 {
     info(ctx, "Optimize mode\n");
     parameters p(ctx);
