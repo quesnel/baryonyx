@@ -116,10 +116,10 @@ struct knapsack_dp_solver
                 for (j = 1; j <= W; ++j) {
                     if (items[i - 1].factor <= static_cast<int>(j))
                         best(i, j) =
-                            get_best(best(i - 1, j),
-                                     items[i - 1].r + best(i - 1,
-                                                           j - items[i - 1].factor),
-                                     modeT());
+                          get_best(best(i - 1, j),
+                                   items[i - 1].r +
+                                     best(i - 1, j - items[i - 1].factor),
+                                   modeT());
                     else
                         best(i, j) = best(i - 1, j);
                 }
@@ -208,11 +208,11 @@ struct knapsack_dp_solver
  */
 template<typename modeT,
          typename floatingpointT,
-         typename AP,
+         typename A,
          typename R,
          typename iteratorT>
 int
-knapsack_dp_solver(const AP& ap,
+knapsack_dp_solver(const A& a,
                    R& reduced_cost,
                    iteratorT begin,
                    iteratorT end,
@@ -225,7 +225,7 @@ knapsack_dp_solver(const AP& ap,
 
     for (int i = 0; begin != end; ++begin, ++i) {
         slv.items[i].r = reduced_cost[i].value;
-        slv.items[i].factor = std::abs(ap.A()[begin->value]);
+        slv.items[i].factor = std::abs(a[begin->value]);
         slv.items[i].variable = reduced_cost[i].id;
     }
 

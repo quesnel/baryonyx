@@ -293,11 +293,11 @@ struct branch_and_bound_solver
  */
 template<typename modeT,
          typename floatingpointT,
-         typename AP,
+         typename A,
          typename R,
          typename iteratorT>
 int
-branch_and_bound_solver(const AP& ap,
+branch_and_bound_solver(const A& a,
                         R& reduced_cost,
                         iteratorT begin,
                         iteratorT end,
@@ -310,7 +310,7 @@ branch_and_bound_solver(const AP& ap,
 
     for (int i = 0; begin != end; ++begin, ++i) {
         slv.items[i].r = reduced_cost[i].value;
-        slv.items[i].factor = std::abs(ap.A()[begin->value]);
+        slv.items[i].factor = std::abs(a[begin->value]);
         slv.items[i].variable = reduced_cost[i].id;
     }
 

@@ -24,9 +24,19 @@
 #define ORG_VLEPROJECT_BARYONYX_SOLVER_EQUALITIES_01COEFF_HPP
 
 #include "itm-solver-common.hpp"
+#include "sparse-matrix.hpp"
 
 namespace baryonyx {
 namespace itm {
+
+template<typename floatingpointT>
+struct AssignP
+{
+    floatingpointT operator()(const function_element& /*elem*/)
+    {
+        return floatingpointT(0);
+    }
+};
 
 template<typename floatingpointT, typename modeT, typename randomT>
 struct solver_equalities_01coeff
@@ -35,7 +45,7 @@ struct solver_equalities_01coeff
     using mode_type = modeT;
     using random_type = randomT;
 
-    using AP_type = SparseArray<bool, floatingpointT>;
+    using AP_type = sparse_matrix<floatingpointT>;
     using b_type = baryonyx::fixed_array<int>;
     using c_type = baryonyx::fixed_array<floatingpointT>;
     using pi_type = baryonyx::fixed_array<floatingpointT>;
@@ -63,7 +73,7 @@ struct solver_equalities_01coeff
                               itm::init_policy_type init_type,
                               double init_random)
       : rng(rng_)
-      , ap(length(csts), n_)
+      , ap(AssignP<floatingpointT>(), csts, length(csts), n_)
       , b(length(csts))
       , c(c_)
       , x(n_)
@@ -71,26 +81,6 @@ struct solver_equalities_01coeff
       , m(length(csts))
       , n(n_)
     {
-        {
-            // Compute the number of elements in the matrix A then compute for
-            // each rows and columns the number of elements to correctly
-            // initialize the @c `matrix` structure.
-
-            fixed_array<int> rinit(m, 0), cinit(n, 0);
-            int elem{ 0 };
-
-            for (int i{ 0 }, e{ length(csts) }; i != e; ++i) {
-                for (const auto& cst : csts[i].elements) {
-                    rinit[i]++;
-                    cinit[cst.variable_index]++;
-                    ++elem;
-                }
-            }
-
-            ap.reserve(
-              elem, rinit.begin(), rinit.end(), cinit.begin(), cinit.end());
-        }
-
         {
             // Compute the minimal bounds for each constraints, default
             // constraints are -oo <= ... <= bkmax, bkmin <= ... <= +oo and
@@ -101,11 +91,6 @@ struct solver_equalities_01coeff
                 int lower = 0, upper = 0;
 
                 for (const auto& cst : csts[i].elements) {
-                    ap.set(i,
-                           cst.variable_index,
-                           cst.factor,
-                           static_cast<floatingpoint_type>(0.0));
-
                     if (cst.factor > 0)
                         upper += cst.factor;
 
@@ -120,8 +105,6 @@ struct solver_equalities_01coeff
             }
         }
 
-        ap.sort();
-
         {
             //
             // Compute the R vector size and the C vectors for each constraints
@@ -135,7 +118,7 @@ struct solver_equalities_01coeff
                 for (const auto& cst : csts[i].elements) {
                     assert(cst.factor == 1 &&
                            "equalities_01 with no 01 coefficient");
-                    ++rsize;
+                    rsize += cst.factor;
                 }
 
                 rsizemax = std::max(rsizemax, rsize);
