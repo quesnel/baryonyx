@@ -126,8 +126,8 @@ public:
         std::vector<access> accessors(elem);
         accessors.clear();
         for (int i = 0; i != rows; ++i)
-            for (const auto& elem : csts[i].elements)
-                accessors.emplace_back(i, elem.variable_index, elem);
+            for (const auto& fct_elem : csts[i].elements)
+                accessors.emplace_back(i, fct_elem.variable_index, fct_elem);
 
         std::stable_sort(
           accessors.begin(),
@@ -242,10 +242,10 @@ private:
         (void)row;
         (void)col;
 #else
-        assert((col >= 0 && (size_type)col < m_cols_access.size()) &&
+        assert(col >= 0 && col < length(m_cols_access) &&
                "SparseArray: bad column access");
 
-        assert((row >= 0 && (size_type)row < m_rows_access.size()) &&
+        assert(row >= 0 && row < length(m_rows_access) &&
                "SparseArray: bad row access");
 #endif
     }

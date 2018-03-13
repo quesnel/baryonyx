@@ -807,6 +807,44 @@ remove_unused_variables(const baryonyx::context_ptr& ctx,
     variable += baryonyx::length(unused_variable);
 }
 
+int
+get_coefficient_type(const baryonyx::problem& pb) noexcept
+{
+    int coefficient_type {0}; ///< 0 means 01, 1 means -1 or 1, 2 means Z. 
+
+    for (const auto& cst : pb.equal_constraints) {
+        for (const auto& elem : cst.elements) {
+            if (elem.factor > 1 or elem.factor < 1)
+                return 2;
+
+            if (elem.factor == -1)
+                coefficient_type = 1;
+        }
+    }
+
+    for (const auto& cst : pb.less_constraints) {
+        for (const auto& elem : cst.elements) {
+            if (elem.factor > 1 or elem.factor < 1)
+                return 2;
+
+            if (elem.factor == -1)
+                coefficient_type = 1;
+        }
+    }
+
+    for (const auto& cst : pb.greater_constraints) {
+        for (const auto& elem : cst.elements) {
+            if (elem.factor > 1 or elem.factor < 1)
+                return 2;
+
+            if (elem.factor == -1)
+                coefficient_type = 1;
+        }
+    }
+
+    return coefficient_type;    
+}
+
 namespace baryonyx {
 
 void
@@ -865,17 +903,9 @@ preprocess(const baryonyx::context_ptr& ctx, baryonyx::problem& pb)
     }
 
     {
-        int type = 0;
-        for (const auto& elem : pb.vars.values) {
-            if (elem.type == baryonyx::variable_type::real) {
-                type = 2;
-                break;
-            } else if (elem.type == baryonyx::variable_type::general) {
-                type = 1;
-            }
-        }
+        auto type = ::get_coefficient_type(pb);
 
-        if (pb.greater_constraints.empty() or pb.less_constraints.empty()) {
+        if (pb.greater_constraints.empty() and pb.less_constraints.empty()) {
             switch (type) {
             case 0:
                 pb.problem_type = baryonyx::problem_solver_type::equalities_01;

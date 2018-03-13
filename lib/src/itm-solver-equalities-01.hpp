@@ -29,15 +29,6 @@
 namespace baryonyx {
 namespace itm {
 
-template<typename floatingpointT>
-struct AssignP
-{
-    floatingpointT operator()(const function_element& /*elem*/)
-    {
-        return floatingpointT(0);
-    }
-};
-
 template<typename floatingpointT, typename modeT, typename randomT>
 struct solver_equalities_01coeff
 {
@@ -45,7 +36,7 @@ struct solver_equalities_01coeff
     using mode_type = modeT;
     using random_type = randomT;
 
-    using AP_type = sparse_matrix<floatingpointT>;
+    using AP_type = sparse_matrix<int>;
     using b_type = baryonyx::fixed_array<int>;
     using c_type = baryonyx::fixed_array<floatingpointT>;
     using pi_type = baryonyx::fixed_array<floatingpointT>;
@@ -54,6 +45,7 @@ struct solver_equalities_01coeff
 
     // Sparse matrix to store A and P values.
     AP_type ap;
+    fixed_array<floatingpointT> P;
 
     // Vector shared between all constraints to store the reduced cost.
     fixed_array<r_data<floatingpoint_type>> R;
@@ -73,7 +65,8 @@ struct solver_equalities_01coeff
                               itm::init_policy_type init_type,
                               double init_random)
       : rng(rng_)
-      , ap(AssignP<floatingpointT>(), csts, length(csts), n_)
+      , ap(csts, length(csts), n_)
+      , P(element_number(csts), 0)
       , b(length(csts))
       , c(c_)
       , x(n_)
@@ -87,7 +80,7 @@ struct solver_equalities_01coeff
             // bkmin <= ... <= bkmax. This code remove infinity and replace
             // with minimal or maximal value of the constraint.
 
-            for (int i = 0, e = length(csts); i != e; ++i) {
+            for (int i = 0; i != m; ++i) {
                 int lower = 0, upper = 0;
 
                 for (const auto& cst : csts[i].elements) {
@@ -98,7 +91,11 @@ struct solver_equalities_01coeff
                         lower += cst.factor;
                 }
 
-                assert(csts[i].min == csts[i].max &&
+                assert(lower == 0);
+                assert(upper == length(csts[i].elements));
+                assert(csts[i].min == csts[i].max);
+                assert(lower == 0 and upper == length(csts[i].elements) and
+                       csts[i].min == csts[i].max and
                        "Preprocessor select error");
 
                 b(i) = csts[i].min;
@@ -111,18 +108,10 @@ struct solver_equalities_01coeff
             // with negative coefficient.
             //
 
-            int rsizemax = 0;
-            for (int i = 0, e = length(csts); i != e; ++i) {
-                int rsize = 0;
-
-                for (const auto& cst : csts[i].elements) {
-                    assert(cst.factor == 1 &&
-                           "equalities_01 with no 01 coefficient");
-                    rsize += cst.factor;
-                }
-
-                rsizemax = std::max(rsizemax, rsize);
-            }
+            int rsizemax = length(csts[0].elements);
+            for (int i = 1; i != m; ++i)
+                if (rsizemax < length(csts[i].elements))
+                    rsizemax = length(csts[i].elements);
 
             R = fixed_array<r_data<floatingpoint_type>>(rsizemax);
         }
@@ -131,11 +120,44 @@ struct solver_equalities_01coeff
         reinit(empty, init_type, init_random);
     }
 
+    int factor(int /*value*/) const noexcept
+    {
+        return 1;
+    }
+
+    int bound_min(int constraint) const noexcept
+    {
+        return b[constraint];
+    }
+
+    int bound_max(int constraint) const noexcept
+    {
+        return b[constraint];
+    }
+
+    int bound_init(int constraint) const
+    {
+        return b[constraint];
+    }
+
+    floatingpointT compute_sum_A_pi(int variable) const
+    {
+        floatingpointT ret{ 0 };
+
+        AP_type::const_col_iterator ht, hend;
+        std::tie(ht, hend) = ap.column(variable);
+
+        for (; ht != hend; ++ht)
+            ret += pi[ht->row];
+
+        return ret;
+    }
+
     void reinit(const x_type& best_previous,
                 itm::init_policy_type type,
                 double init_random)
     {
-        std::fill(ap.P().begin(), ap.P().end(), 0);
+        std::fill(P.begin(), P.end(), 0);
         std::fill(pi.begin(), pi.end(), 0);
 
         //
@@ -215,19 +237,60 @@ struct solver_equalities_01coeff
         debug(ctx, "\n");
 
         for (int k = 0, ek = m; k != ek; ++k) {
-            auto ak = ap.row(k);
+            typename AP_type::const_row_iterator it, et;
+
+            std::tie(it, et) = ap.row(k);
             int v = 0;
 
-            for (; std::get<0>(ak) != std::get<1>(ak); ++std::get<0>(ak))
-                v += ap.A()[std::get<0>(ak)->value] *
-                     x[std::get<0>(ak)->position];
+            for (; it != et; ++it)
+                v += x[it->column];
 
+            bool valid = b(k) == v;
             debug(ctx,
                   "C {}:{} (Lmult: {})\n",
                   k,
-                  ((b[k] == v) ? "   valid" : "violated"),
+                  (valid ? "   valid" : "violated"),
                   pi[k]);
         }
+    }
+
+    bool is_valid_solution() const
+    {
+        typename AP_type::const_row_iterator it, et;
+
+        for (int k = 0; k != m; ++k) {
+            std::tie(it, et) = ap.row(k);
+            int v = 0;
+
+            for (; it != et; ++it)
+                v += x[it->column];
+
+            if (b[k] != v)
+                return false;
+        }
+
+        return true;
+    }
+
+    template<typename Container>
+    int compute_violated_constraints(Container& c) const
+    {
+        typename AP_type::const_row_iterator it, et;
+
+        c.clear();
+
+        for (int k = 0; k != m; ++k) {
+            std::tie(it, et) = ap.row(k);
+            int v = 0;
+
+            for (; it != et; ++it)
+                v += x[it->column];
+
+            if (b[k] != v)
+                c.emplace_back(k);
+        }
+
+        return length(c);
     }
 
     result results(const c_type& original_costs,
@@ -235,7 +298,7 @@ struct solver_equalities_01coeff
     {
         result ret;
 
-        if (is_valid_solution(ap, x, b)) {
+        if (is_valid_solution()) {
             ret.status = result_status::success;
             double value = static_cast<double>(cost_constant);
 
@@ -256,34 +319,10 @@ struct solver_equalities_01coeff
         return ret;
     }
 
-    void compute_update_row_01_eq(int k,
-                                  int bk,
-                                  floatingpoint_type kappa,
-                                  floatingpoint_type delta,
-                                  floatingpoint_type theta,
-                                  floatingpoint_type objective_amplifier)
+    typename AP_type::row_iterator ap_value(typename AP_type::row_iterator it,
+                                            int id_in_r)
     {
-        typename AP_type::const_iterator it, et;
-        std::tie(it, et) = ap.row(k);
-
-        decrease_preference(it, et, theta);
-
-        const int r_size = compute_reduced_costs(it, et);
-
-        //
-        // Before sort and select variables, we apply the push method: for each
-        // reduces cost, we had the cost multiply with an objective amplifier.
-        //
-
-        if (objective_amplifier)
-            for (int i = 0; i != r_size; ++i)
-                R[i].value += objective_amplifier * c[R[i].id];
-
-        calculator_sort(R.begin(), R.begin() + r_size, rng, mode_type());
-
-        int selected = select_variables_equality(r_size, bk);
-
-        affect_variables(k, selected, r_size, kappa, delta);
+        return it + id_in_r;
     }
 
     //
@@ -297,7 +336,7 @@ struct solver_equalities_01coeff
                              floatingpoint_type theta) noexcept
     {
         for (; begin != end; ++begin)
-            ap.P()[begin->value] *= theta;
+            P[begin->value] *= theta;
     }
 
     //
@@ -312,17 +351,16 @@ struct solver_equalities_01coeff
             floatingpoint_type sum_a_pi = 0;
             floatingpoint_type sum_a_p = 0;
 
-            typename AP_type::const_iterator ht, hend;
-            std::tie(ht, hend) = ap.column(begin->position);
+            typename AP_type::const_col_iterator ht, hend;
+            std::tie(ht, hend) = ap.column(begin->column);
 
             for (; ht != hend; ++ht) {
-                auto a = static_cast<floatingpoint_type>(ap.A()[ht->value]);
-                sum_a_pi += a * pi[ht->position];
-                sum_a_p += a * ap.P()[ht->value];
+                sum_a_pi += pi[ht->row];
+                sum_a_p += P[ht->value];
             }
 
-            R[r_size].id = begin->position;
-            R[r_size].value = c[begin->position] - sum_a_pi - sum_a_p;
+            R[r_size].id = r_size;
+            R[r_size].value = c[begin->column] - sum_a_pi - sum_a_p;
             ++r_size;
         }
 
@@ -344,7 +382,9 @@ struct solver_equalities_01coeff
     // to -infinity or +infinity. We have to scan the r vector and search a
     // value j such as b(0, k) <= Sum A(k, R[j]) < b(1, k).
     //
-    void affect_variables(int k,
+    template<typename Iterator>
+    void affect_variables(Iterator it,
+                          int k,
                           int selected,
                           int r_size,
                           const floatingpointT kappa,
@@ -352,13 +392,17 @@ struct solver_equalities_01coeff
     {
         if (selected < 0) {
             for (int i = 0; i != r_size; ++i) {
-                x[R[i].id] = 0;
-                ap.add_p(k, R[i].id, -delta);
+                auto var = ap_value(it, R[i].id);
+
+                x[var->column] = 0;
+                P[var->value] -= delta;
             }
         } else if (selected + 1 >= r_size) {
             for (int i = 0; i != r_size; ++i) {
-                x[R[i].id] = 1;
-                ap.add_p(k, R[i].id, delta);
+                auto var = ap_value(it, R[i].id);
+
+                x[var->column] = 1;
+                P[var->value] += delta;
             }
         } else {
             pi(k) += ((R[selected].value + R[selected + 1].value) /
@@ -371,13 +415,17 @@ struct solver_equalities_01coeff
 
             int i = 0;
             for (; i <= selected; ++i) {
-                x[R[i].id] = 1;
-                ap.add_p(k, R[i].id, +d);
+                auto var = ap_value(it, R[i].id);
+
+                x[var->column] = 1;
+                P[var->value] += d;
             }
 
             for (; i != r_size; ++i) {
-                x[R[i].id] = 0;
-                ap.add_p(k, R[i].id, -d);
+                auto var = ap_value(it, R[i].id);
+
+                x[var->column] = 0;
+                P[var->value] -= d;
             }
         }
     }
@@ -386,9 +434,21 @@ struct solver_equalities_01coeff
                                      floatingpoint_type kappa,
                                      floatingpoint_type delta,
                                      floatingpoint_type theta,
-                                     floatingpoint_type obj_amp)
+                                     floatingpoint_type objective_amplifier)
     {
-        compute_update_row_01_eq(k, b[k], kappa, delta, theta, obj_amp);
+        typename AP_type::row_iterator it, et;
+        std::tie(it, et) = ap.row(k);
+
+        decrease_preference(it, et, theta);
+        const int r_size = compute_reduced_costs(it, et);
+
+        if (objective_amplifier)
+            for (int i = 0; i != r_size; ++i)
+                R[i].value += objective_amplifier * c[R[i].id];
+
+        calculator_sort(R.begin(), R.begin() + r_size, rng, mode_type());
+        int selected = select_variables_equality(r_size, b[k]);
+        affect_variables(it, k, selected, r_size, kappa, delta);
     }
 
     void compute_update_row(int k,
@@ -396,8 +456,14 @@ struct solver_equalities_01coeff
                             floatingpoint_type delta,
                             floatingpoint_type theta)
     {
-        compute_update_row_01_eq(
-          k, b[k], kappa, delta, theta, static_cast<floatingpoint_type>(0));
+        typename AP_type::row_iterator it, et;
+        std::tie(it, et) = ap.row(k);
+
+        decrease_preference(it, et, theta);
+        const int r_size = compute_reduced_costs(it, et);
+        calculator_sort(R.begin(), R.begin() + r_size, rng, mode_type());
+        int selected = select_variables_equality(r_size, b[k]);
+        affect_variables(it, k, selected, r_size, kappa, delta);
     }
 };
 

@@ -177,6 +177,50 @@ struct solver_inequalities_Zcoeff
         reinit(empty, init_type, init_random);
     }
 
+    int factor(int value) const noexcept
+    {
+        return A[value];
+    }
+
+    int bound_min(int constraint) const noexcept
+    {
+        return b[constraint].min;
+    }
+
+    int bound_max(int constraint) const noexcept
+    {
+        return b[constraint].max;
+    }
+
+    int bound_init(int constraint) const
+    {
+        return bound_init(constraint, modeT());
+    }
+
+    int bound_init(int constraint, minimize_tag) const
+    {
+        return b[constraint].min;
+    }
+
+    int bound_init(int constraint, maximize_tag) const
+    {
+        return b[constraint].max;
+    }
+
+    floatingpointT compute_sum_A_pi(int variable) const
+    {
+        floatingpointT ret{ 0 };
+
+        AP_type::const_col_iterator ht, hend;
+        std::tie(ht, hend) = ap.column(variable);
+
+        for (; ht != hend; ++ht)
+            ret += std::abs(static_cast<floatingpointT>(A[ht->value]))
+                * pi[ht->row];
+
+        return ret;
+    }
+
     void reinit(const x_type& best_previous,
                 itm::init_policy_type type,
                 double init_random)
@@ -278,12 +322,51 @@ struct solver_inequalities_Zcoeff
         }
     }
 
+    bool is_valid_solution() const
+    {
+        for (int k = 0, ek = m; k != ek; ++k) {
+            typename AP_type::const_row_iterator it, et;
+
+            std::tie(it, et) = ap.row(k);
+            int v = 0;
+
+            for (; it != et; ++it)
+                v += A[it->value] * x[it->column];
+
+            if (not(b[k].min <= v and v <= b[k].max))
+                return false;
+        }
+
+        return true;
+    }
+
+    template<typename Container>
+    int compute_violated_constraints(Container& c) const
+    {
+        typename AP_type::const_row_iterator it, et;
+
+        c.clear();
+
+        for (int k = 0; k != m; ++k) {
+            std::tie(it, et) = ap.row(k);
+            int v = 0;
+
+            for (; it != et; ++it)
+                v += A[it->value] * x[it->column];
+
+            if (not(b(k).min <= v and v <= b(k).max))
+                c.emplace_back(k);
+        }
+
+        return length(c);
+    }
+
     result results(const c_type& original_costs,
                    const double cost_constant) const
     {
         result ret;
 
-        if (is_valid_solution(ap, A, x, b)) {
+        if (is_valid_solution()) {
             ret.status = result_status::success;
             double value = static_cast<double>(cost_constant);
 

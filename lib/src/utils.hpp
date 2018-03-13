@@ -277,7 +277,7 @@ template<class C>
 constexpr int
 length(const C& c) noexcept
 {
-    assert(c.size() <= INT_MAX);
+    assert(c.size() <= static_cast<std::size_t>(INT_MAX));
 
     return static_cast<int>(c.size());
 }

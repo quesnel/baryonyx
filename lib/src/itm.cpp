@@ -408,7 +408,7 @@ dispatch_solver(const context_ptr& ctx, problem& pb, const itm::parameters& p)
     switch (pb.problem_type) {
     case problem_solver_type::equalities_01:
         return solve_problem<
-          solver_inequalities_Zcoeff<floatingpointT, modeT, randomT>,
+          solver_equalities_01coeff<floatingpointT, modeT, randomT>,
           floatingpointT,
           modeT,
           constraintOrderT,
@@ -466,7 +466,7 @@ dispatch_optimizer(const context_ptr& ctx,
     switch (pb.problem_type) {
     case problem_solver_type::equalities_01:
         return optimize_problem<
-          solver_inequalities_Zcoeff<floatingpointT, modeT, randomT>,
+          solver_equalities_01coeff<floatingpointT, modeT, randomT>,
           floatingpointT,
           modeT,
           constraintOrderT,

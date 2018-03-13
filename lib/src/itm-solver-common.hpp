@@ -202,85 +202,50 @@ init_x(floatingpointT cost, int value_if_cost_0, maximize_tag) noexcept
     return false;
 }
 
-template<typename apT, typename A, typename xT, typename bT>
+template<typename Solver>
 inline bool
-is_valid_solution(const apT& ap, const A& a, const xT& x, const bT& b) noexcept
+is_valid_solution(const Solver& s) noexcept
 {
-    typename apT::const_row_iterator it, et;
-
-    for (int k = 0, ek = length(b); k != ek; ++k) {
-        std::tie(it, et) = ap.row(k);
-        int v = 0;
-
-        for (; it != et; ++it)
-            v += a[it->value] * x[it->column];
-
-        if (not(b(k).min <= v and v <= b(k).max))
-            return false;
-    }
-
-    return true;
+    return s.is_valid_solution();
 }
 
-template<typename apT, typename A, typename xT, typename bT, typename C>
+template<typename Solver, typename Container>
 inline int
-compute_missing_constraint(const apT& ap,
-                           const A& a,
-                           const xT& x,
-                           const bT& b,
-                           C& r) noexcept
+compute_missing_constraint(const Solver& s, Container& c)
 {
-    typename apT::const_row_iterator it, et;
-
-    r.clear();
-
-    for (int k = 0, ek = length(b); k != ek; ++k) {
-        std::tie(it, et) = ap.row(k);
-        int v = 0;
-
-        for (; it != et; ++it)
-            v += a[it->value] * x[it->column];
-
-        if (not(b(k).min <= v and v <= b(k).max))
-            r.emplace_back(k);
-    }
-
-    return length(r);
+    return s.compute_violated_constraints(c);
 }
 
-template<typename apT, typename A, typename xT, typename bT>
+template<typename Solver>
 inline void
 print_missing_constraint(const baryonyx::context_ptr& ctx,
-                         const apT& ap,
-                         const A& a,
-                         const xT& x,
-                         const bT& b,
+                         const Solver& s,
                          const std::vector<std::string>& names) noexcept
 {
     std::vector<int> R;
+    
+    compute_missing_constraint(s, R);
+    info(ctx, "Constraints remaining: {}\n", length(R));
 
-    compute_missing_constraint(ap, a, x, b, R);
-    info(ctx, "Constraints remaining {}:\n", length(R));
-
-    typename apT::const_row_iterator it, et;
+    typename Solver::AP_type::const_row_iterator it, et;
 
     for (auto k : R) {
-        std::tie(it, et) = ap.row(k);
+        std::tie(it, et) = s.ap.row(k);
         int v = 0;
 
-        info(ctx, "{}: {} <= ", k, b(k).min);
+        info(ctx, "{}: {} <= ", k, s.bound_min(k));
 
         for (; it != et; ++it) {
-            v += a[it->value] * x[it->column];
+            v += s.factor(it->value) * s.x[it->column];
 
             info(ctx,
                  "{:+d} [{} ({})] ",
-                 a[it->value],
+                 s.factor(it->value),
                  names[it->column],
-                 x[it->column]);
+                 s.x[it->column]);
         }
 
-        info(ctx, " <= {} | value: {}\n", b(k).max, v);
+        info(ctx, " <= {} | value: {}\n", s.bound_max(k));
     }
 }
 
@@ -319,23 +284,12 @@ struct bounds_printer
     {}
 
     template<typename SolverT>
-    floatingpointT init_bound(const SolverT& slv, minimize_tag)
+    floatingpointT init_bound(const SolverT& slv)
     {
         floatingpointT b{ 0 };
 
         for (auto c = 0; c != slv.m; ++c)
-            b += slv.pi[c] * static_cast<floatingpointT>(slv.b(c).min);
-
-        return b;
-    }
-
-    template<typename SolverT>
-    floatingpointT init_bound(const SolverT& slv, maximize_tag)
-    {
-        floatingpointT b{ 0 };
-
-        for (auto c = 0; c != slv.m; ++c)
-            b += slv.pi[c] * static_cast<floatingpointT>(slv.b(c).max);
+            b += slv.pi[c] * static_cast<floatingpointT>(slv.bound_init(c));
 
         return b;
     }
@@ -429,28 +383,14 @@ struct bounds_printer
                     const context_ptr& ctx,
                     const baryonyx::result& best)
     {
-        using AP_type = typename SolverT::AP_type;
-        using const_iterator = typename AP_type::const_col_iterator;
-
-        floatingpointT lb = init_bound(slv, modeT());
+        floatingpointT lb = init_bound(slv);
         floatingpointT ub = init_ub(modeT());
 
         if (best)
             ub = static_cast<floatingpointT>(best.value);
 
-        for (auto j = 0; j != slv.n; ++j) {
-            floatingpointT sum_a_pi = 0.;
-
-            const_iterator ht, hend;
-            std::tie(ht, hend) = slv.ap.column(j);
-
-            for (; ht != hend; ++ht) {
-                auto a = std::abs(slv.A[ht->value]);
-                sum_a_pi += a * slv.pi[ht->row];
-            }
-
-            lb += add_bound(slv, j, sum_a_pi, modeT());
-        }
+        for (auto j = 0; j != slv.n; ++j)
+            lb += add_bound(slv, j, slv.compute_sum_A_pi(j), modeT());
 
         lb *= max_cost; // restore original cost
 
@@ -471,7 +411,7 @@ struct compute_none
       : m_ctx(ctx)
       , R(s.m)
     {
-        compute_missing_constraint(s.ap, s.A, s.x, s.b, R);
+        compute_missing_constraint(s, R);
     }
 
     template<typename solverT>
@@ -485,8 +425,7 @@ struct compute_none
             solver.push_and_compute_update_row(
               k, kappa, delta, theta, objective_amplifier);
 
-        return compute_missing_constraint(
-          solver.ap, solver.A, solver.x, solver.b, R);
+        return compute_missing_constraint(solver, R);
     }
 
     template<typename solverT>
@@ -498,8 +437,7 @@ struct compute_none
         for (auto it = R.begin(), et = R.end(); it != et; ++it)
             solver.compute_update_row(*it, kappa, delta, theta);
 
-        return compute_missing_constraint(
-          solver.ap, solver.A, solver.x, solver.b, R);
+        return compute_missing_constraint(solver, R);
     }
 };
 
@@ -517,7 +455,7 @@ struct compute_reversing
       : m_ctx(ctx)
       , R(s.m)
     {
-        compute_missing_constraint(s.ap, s.A, s.x, s.b, R);
+        compute_missing_constraint(s, R);
     }
 
     template<typename solverT>
@@ -531,8 +469,7 @@ struct compute_reversing
             solver.push_and_compute_update_row(
               k, kappa, delta, theta, objective_amplifier);
 
-        return compute_missing_constraint(
-          solver.ap, solver.A, solver.x, solver.b, R);
+        return compute_missing_constraint(solver, R);
     }
 
     template<typename solverT>
@@ -544,8 +481,7 @@ struct compute_reversing
         for (auto it = R.rbegin(), et = R.rend(); it != et; ++it)
             solver.compute_update_row(*it, kappa, delta, theta);
 
-        return compute_missing_constraint(
-          solver.ap, solver.A, solver.x, solver.b, R);
+        return compute_missing_constraint(solver, R);
     }
 };
 
@@ -564,7 +500,7 @@ struct compute_random
       , R(s.m)
       , rng(rng_)
     {
-        compute_missing_constraint(s.ap, s.A, s.x, s.b, R);
+        compute_missing_constraint(s, R);
     }
 
     template<typename solverT>
@@ -578,8 +514,7 @@ struct compute_random
             solver.push_and_compute_update_row(
               k, kappa, delta, theta, objective_amplifier);
 
-        return compute_missing_constraint(
-          solver.ap, solver.A, solver.x, solver.b, R);
+        return compute_missing_constraint(solver, R);
     }
 
     template<typename solverT>
@@ -593,8 +528,7 @@ struct compute_random
         for (auto it = R.begin(), et = R.end(); it != et; ++it)
             solver.compute_update_row(*it, kappa, delta, theta);
 
-        return compute_missing_constraint(
-          solver.ap, solver.A, solver.x, solver.b, R);
+        return compute_missing_constraint(solver, R);
     }
 };
 
@@ -654,12 +588,12 @@ struct compute_infeasibility
             int v = 0;
 
             for (; it != et; ++it)
-                v += solver.A[it->value] * solver.x[it->column];
+                v += solver.factor(it->value) * solver.x[it->column];
 
-            if (solver.b(k).min > v)
-                R.push_back(std::make_pair(k, solver.b(k).min - v));
-            else if (solver.b(k).max < v)
-                R.push_back(std::make_pair(k, v - solver.b(k).max));
+            if (solver.bound_min(k) > v)
+                R.push_back(std::make_pair(k, solver.bound_min(k) - v));
+            else if (solver.bound_max(k) < v)
+                R.push_back(std::make_pair(k, v - solver.bound_max(k)));
         }
 
         return length(R);
@@ -672,7 +606,7 @@ struct compute_infeasibility
                      floatingpointT theta,
                      floatingpointT objective_amplifier)
     {
-        for (int k = 0, e = solver.m; k != e; ++k)
+        for (int k = 0; k != solver.m; ++k)
             solver.push_and_compute_update_row(
               k, kappa, delta, theta, objective_amplifier);
 
@@ -894,13 +828,14 @@ struct solver_functor
                 if (pushed == -1)
                     m_best.status = result_status::limit_reached;
 
-                if (context_get_integer_parameter(m_ctx, "print-level", 0) > 0)
-                    print_missing_constraint(m_ctx,
-                                             slv.ap,
-                                             slv.A,
-                                             m_best.variable_value,
-                                             slv.b,
-                                             m_variable_names);
+                // if (context_get_integer_parameter(m_ctx, "print-level", 0) >
+                // 0)
+                //     print_missing_constraint(m_ctx,
+                //                              slv.ap,
+                //                              slv.A,
+                //                              m_best.variable_value,
+                //                              slv.b,
+                //                              m_variable_names);
 
                 return m_best;
             }
@@ -910,13 +845,14 @@ struct solver_functor
                 if (pushed == -1)
                     m_best.status = result_status::kappa_max_reached;
 
-                if (context_get_integer_parameter(m_ctx, "print-level", 0) > 0)
-                    print_missing_constraint(m_ctx,
-                                             slv.ap,
-                                             slv.A,
-                                             m_best.variable_value,
-                                             slv.b,
-                                             m_variable_names);
+                // if (context_get_integer_parameter(m_ctx, "print-level", 0) >
+                // 0)
+                //     print_missing_constraint(m_ctx,
+                //                              slv.ap,
+                //                              slv.A,
+                //                              m_best.variable_value,
+                //                              slv.b,
+                //                              m_variable_names);
 
                 return m_best;
             }
@@ -927,13 +863,14 @@ struct solver_functor
                 if (pushed == -1)
                     m_best.status = result_status::time_limit_reached;
 
-                if (context_get_integer_parameter(m_ctx, "print-level", 0) > 0)
-                    print_missing_constraint(m_ctx,
-                                             slv.ap,
-                                             slv.A,
-                                             m_best.variable_value,
-                                             slv.b,
-                                             m_variable_names);
+                // if (context_get_integer_parameter(m_ctx, "print-level", 0) >
+                // 0)
+                //     print_missing_constraint(m_ctx,
+                //                              slv.ap,
+                //                              slv.A,
+                //                              m_best.variable_value,
+                //                              slv.b,
+                //                              m_variable_names);
 
                 return m_best;
             }
