@@ -40,6 +40,8 @@ struct solver_inequalities_Zcoeff
     using b_type = baryonyx::fixed_array<bound>;
     using c_type = baryonyx::fixed_array<floatingpointT>;
     using pi_type = baryonyx::fixed_array<floatingpointT>;
+    using A_type = fixed_array<int>;
+    using P_type = fixed_array<floatingpointT>;
 
     random_type& rng;
 
@@ -215,8 +217,8 @@ struct solver_inequalities_Zcoeff
         std::tie(ht, hend) = ap.column(variable);
 
         for (; ht != hend; ++ht)
-            ret += std::abs(static_cast<floatingpointT>(A[ht->value]))
-                * pi[ht->row];
+            ret += std::abs(static_cast<floatingpointT>(A[ht->value])) *
+                   pi[ht->row];
 
         return ret;
     }
@@ -225,8 +227,10 @@ struct solver_inequalities_Zcoeff
                 itm::init_policy_type type,
                 double init_random)
     {
-        std::fill(P.begin(), P.end(), 0);
-        std::fill(pi.begin(), pi.end(), 0);
+        std::fill(
+          P.begin(), P.end(), static_cast<typename P_type::value_type>(0));
+        std::fill(
+          pi.begin(), pi.end(), static_cast<typename pi_type::value_type>(0));
 
         //
         // Default, we randomly change the init policy using using the

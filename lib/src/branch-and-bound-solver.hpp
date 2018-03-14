@@ -185,7 +185,7 @@ struct branch_and_bound_solver
 
         sort_items(items, modeT());
 
-        queue.emplace(bound_node(best, bound), 0.0, 0, -1);
+        queue.emplace(bound_node(best, bound), floatingpointT(0), 0, -1);
         best.sumr = init(modeT());
 
         while (not queue.empty()) {

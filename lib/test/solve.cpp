@@ -461,6 +461,7 @@ test_aim_50_1_6_yes1_2()
     Ensures(baryonyx::is_valid_solution(pb, result.variable_value) == true);
 }
 
+#if 0
 static void
 test_Z_coefficient_1()
 {
@@ -509,7 +510,6 @@ test_Z_coefficient_1()
     }
 }
 
-#if 0
 static void
 test_bibd1n()
 {
@@ -558,9 +558,11 @@ main(int /*argc*/, char* /* argv */ [])
     test_uf50_0448();
     test_flat30_7();
     test_aim_50_1_6_yes1_2();
-    test_Z_coefficient_1();
 
-    // test_bibd1n();
+#if 0
+    test_Z_coefficient_1();
+    test_bibd1n();
+#endif
 
     return unit_test::report_errors();
 }

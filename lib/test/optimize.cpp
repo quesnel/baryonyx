@@ -125,11 +125,13 @@ test_n_queens_problem(const baryonyx::context_ptr& ctx)
             solutions[i] = result.value;
     }
 
-    auto all_found = std::accumulate(
-      valid_solutions.cbegin(),
-      valid_solutions.cend(),
-      std::size_t{ 0 },
-      [](int cumul, const auto& elem) { return elem ? cumul + 1 : cumul; });
+    auto all_found =
+      std::accumulate(valid_solutions.cbegin(),
+                      valid_solutions.cend(),
+                      static_cast<std::size_t>(0),
+                      [](std::size_t cumul, const auto& elem) -> std::size_t {
+                          return elem ? cumul + 1 : cumul;
+                      });
 
     double mean_distance{ 0 };
 

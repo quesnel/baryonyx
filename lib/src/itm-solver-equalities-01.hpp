@@ -40,6 +40,7 @@ struct solver_equalities_01coeff
     using b_type = baryonyx::fixed_array<int>;
     using c_type = baryonyx::fixed_array<floatingpointT>;
     using pi_type = baryonyx::fixed_array<floatingpointT>;
+    using P_type = fixed_array<floatingpointT>;
 
     random_type& rng;
 
@@ -157,8 +158,10 @@ struct solver_equalities_01coeff
                 itm::init_policy_type type,
                 double init_random)
     {
-        std::fill(P.begin(), P.end(), 0);
-        std::fill(pi.begin(), pi.end(), 0);
+        std::fill(
+          P.begin(), P.end(), static_cast<typename P_type::value_type>(0));
+        std::fill(
+          pi.begin(), pi.end(), static_cast<typename pi_type::value_type>(0));
 
         //
         // Default, we randomly change the init policy using using the

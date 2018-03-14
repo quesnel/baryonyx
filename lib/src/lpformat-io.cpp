@@ -89,9 +89,9 @@ struct parser_stack
 {
     parser_stack(std::istream& is_)
       : m_is(is_)
-      , m_current_constraint_id(0)
       , m_line(0)
       , m_column(0)
+      , m_current_constraint_id(0)
       , m_eof_reached(is_.eof())
     {}
 
@@ -112,8 +112,9 @@ struct parser_stack
             fill();
 
         if (stack.empty())
-            throw file_format_failure(
-              file_format_error_tag::end_of_file, m_line, m_column);
+            throw file_format_failure(file_format_error_tag::end_of_file,
+                                      static_cast<int>(m_line),
+                                      static_cast<int>(m_column));
 
         return stack.front();
     }
@@ -124,8 +125,9 @@ struct parser_stack
             fill();
 
         if (stack.empty())
-            throw file_format_failure(
-              file_format_error_tag::end_of_file, m_line, m_column);
+            throw file_format_failure(file_format_error_tag::end_of_file,
+                                      static_cast<int>(m_line),
+                                      static_cast<int>(m_column));
 
         std::string ret = stack.front();
         std::tie(m_line, m_column) = m_position_stack.front();
@@ -292,8 +294,8 @@ struct parser_stack
 
     void push_front(std::string str)
     {
-        m_position_stack.emplace_front(m_line,
-                                       m_column + (m_column - str.length()));
+        int length = static_cast<int>(str.length());
+        m_position_stack.emplace_front(m_line, m_column + (m_column - length));
 
         stack.push_front(std::move(str));
     }
@@ -316,12 +318,12 @@ struct parser_stack
         return stack.empty();
     }
 
-    int line() const
+    std::string::size_type line() const
     {
         return m_line;
     }
 
-    int column() const
+    std::string::size_type column() const
     {
         return m_column;
     }
@@ -342,13 +344,14 @@ struct parser_stack
     }
 
 private:
-    std::deque<std::tuple<int, int>> m_position_stack;
+    std::deque<std::tuple<std::string::size_type, std::string::size_type>>
+      m_position_stack;
     std::unordered_map<std::string, int> m_variable_cache;
 
     std::istream& m_is;
+    std::string::size_type m_line;
+    std::string::size_type m_column;
     int m_current_constraint_id;
-    int m_line;
-    int m_column;
     bool m_eof_reached;
 
     void fill()
@@ -454,8 +457,9 @@ read_name(parser_stack& stack)
         return ret;
     }
 
-    throw file_format_failure(
-      file_format_error_tag::bad_name, stack.line(), stack.column());
+    throw file_format_failure(file_format_error_tag::bad_name,
+                              static_cast<int>(stack.line()),
+                              static_cast<int>(stack.column()));
 }
 
 static inline operator_type
@@ -498,8 +502,9 @@ read_operator(parser_stack& stack)
         return operator_type::equal;
     }
 
-    throw file_format_failure(
-      file_format_error_tag::bad_operator, stack.line(), stack.column());
+    throw file_format_failure(file_format_error_tag::bad_operator,
+                              static_cast<int>(stack.line()),
+                              static_cast<int>(stack.column()));
 }
 
 static inline int
@@ -524,16 +529,19 @@ read_integer(parser_stack& stack)
 
     if ((errno == ERANGE and (value == LONG_MIN or value == LONG_MAX)) or
         (value == 0 and endptr == str.c_str()))
-        throw file_format_failure(
-          file_format_error_tag::bad_integer, stack.line(), stack.column());
+        throw file_format_failure(file_format_error_tag::bad_integer,
+                                  static_cast<int>(stack.line()),
+                                  static_cast<int>(stack.column()));
 
     if (value < INT_MIN)
-        throw file_format_failure(
-          file_format_error_tag::bad_integer, stack.line(), stack.column());
+        throw file_format_failure(file_format_error_tag::bad_integer,
+                                  static_cast<int>(stack.line()),
+                                  static_cast<int>(stack.column()));
 
     if (value > INT_MAX)
-        throw file_format_failure(
-          file_format_error_tag::bad_integer, stack.line(), stack.column());
+        throw file_format_failure(file_format_error_tag::bad_integer,
+                                  static_cast<int>(stack.line()),
+                                  static_cast<int>(stack.column()));
 
     if (*endptr != '\0')
         stack.push_front(endptr);
@@ -563,8 +571,9 @@ read_double(parser_stack& stack)
     double value = std::strtod(str.c_str(), &endptr);
     if ((errno == ERANGE and (value == HUGE_VAL or value == -HUGE_VAL)) or
         (value == 0.0 and endptr == str.c_str()))
-        throw file_format_failure(
-          file_format_error_tag::bad_integer, stack.line(), stack.column());
+        throw file_format_failure(file_format_error_tag::bad_integer,
+                                  static_cast<int>(stack.line()),
+                                  static_cast<int>(stack.column()));
 
     if (*endptr != '\0')
         stack.push_front(endptr);
@@ -679,8 +688,8 @@ read_objective_function_type(parser_stack& stack)
 
     throw file_format_failure(
       file_format_error_tag::bad_objective_function_type,
-      stack.line(),
-      stack.column());
+      static_cast<int>(stack.line()),
+      static_cast<int>(stack.column()));
 }
 
 static inline objective_function
@@ -760,8 +769,9 @@ read_constraint(parser_stack& stack, problem& p)
         return std::make_tuple(cst, type);
     }
 
-    throw file_format_failure(
-      file_format_error_tag::bad_constraint, stack.line(), stack.column());
+    throw file_format_failure(file_format_error_tag::bad_constraint,
+                              static_cast<int>(stack.line()),
+                              static_cast<int>(stack.column()));
 }
 
 static inline void
@@ -787,8 +797,9 @@ read_constraints(parser_stack& stack, problem& p)
             p.less_constraints.emplace_back(std::get<0>(cst));
             break;
         default:
-            throw file_format_failure(
-              file_format_error_tag::unknown, stack.line(), stack.column());
+            throw file_format_failure(file_format_error_tag::unknown,
+                                      static_cast<int>(stack.line()),
+                                      static_cast<int>(stack.column()));
         }
 
         if (std::get<0>(cst).label.empty())
@@ -902,8 +913,8 @@ read_binary(parser_stack& stack, problem& p)
         if (id < 0 or p.vars.values[id].type != variable_type::real)
             throw file_format_failure(name,
                                       file_format_error_tag::unknown,
-                                      stack.line(),
-                                      stack.column());
+                                      static_cast<int>(stack.line()),
+                                      static_cast<int>(stack.column()));
 
         p.vars.values[id] = { 0, 1, variable_type::binary };
 
@@ -923,8 +934,8 @@ read_general(parser_stack& stack, problem& p)
         if (id < 0 or p.vars.values[id].type != variable_type::real)
             throw file_format_failure(name,
                                       file_format_error_tag::unknown,
-                                      stack.line(),
-                                      stack.column());
+                                      static_cast<int>(stack.line()),
+                                      static_cast<int>(stack.column()));
 
         p.vars.values[id].type = variable_type::general;
 
@@ -1118,8 +1129,10 @@ read_problem(std::istream& is)
         }
     }
 
-    throw file_format_failure(
-      "end", file_format_error_tag::incomplete, stack.line(), stack.column());
+    throw file_format_failure("end",
+                              file_format_error_tag::incomplete,
+                              static_cast<int>(stack.line()),
+                              static_cast<int>(stack.column()));
 }
 
 bool

@@ -253,7 +253,7 @@ make_special_merged_constraints(const baryonyx::context_ptr& ctx,
         for (std::size_t i{ 0 }, e{ it->elements.size() }; i != e; ++i) {
 
             linkcst[it->elements[i].variable_index].emplace(
-              std::distance(it, ret.end()));
+              numeric_cast<int>(std::distance(it, ret.end())));
 
             for (std::size_t j{ 0 }; j != e; ++j) {
                 if (i != j)

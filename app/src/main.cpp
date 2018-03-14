@@ -341,11 +341,11 @@ main(int argc, char* argv[])
                     << ret.remaining_constraints << '\n';
             }
         } catch (const baryonyx::precondition_failure& e) {
-            fmt::print(stderr, "internal failure\n");
+            fmt::print(stderr, "internal failure: {}\n", e.what());
         } catch (const baryonyx::postcondition_failure& e) {
-            fmt::print(stderr, "internal failure\n");
+            fmt::print(stderr, "internal failure: {}\n", e.what());
         } catch (const baryonyx::numeric_cast_failure& e) {
-            fmt::print(stderr, "numeric cast internal failure\n");
+            fmt::print(stderr, "numeric cast internal failure: {}\n", e.what());
         } catch (const baryonyx::file_access_failure& e) {
             fmt::print(stderr,
                        "file `{}' fail {}: {}\n",
@@ -392,11 +392,11 @@ main(int argc, char* argv[])
                     ofs << "No solution found.\n";
                 }
             } catch (const baryonyx::precondition_failure& e) {
-                fmt::print(stderr, "internal failure\n");
+                fmt::print(stderr, "internal failure: {}\n", e.what());
             } catch (const baryonyx::postcondition_failure& e) {
-                fmt::print(stderr, "internal failure\n");
+                fmt::print(stderr, "internal failure: {}\n", e.what());
             } catch (const baryonyx::numeric_cast_failure& e) {
-                fmt::print(stderr, "numeric cast internal failure\n");
+                fmt::print(stderr, "numeric cast internal failure: {}\n", e.what());
             } catch (const baryonyx::file_access_failure& e) {
                 fmt::print(stderr,
                            "file `{}' fail {}: {}\n",
