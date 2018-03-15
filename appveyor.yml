@@ -1,0 +1,66 @@
+os: Visual Studio 2017
+
+branch:
+  only:
+    - master
+    - futur
+
+environment:
+  matrix:
+    - COMPILER: mingw
+      GENERATOR: MinGW Makefiles
+      PLATFORM: Win32
+      BUILD_TYPE: Debug
+
+    - COMPILER: mingw
+      GENERATOR: MinGW Makefiles
+      PLATFORM: Win32
+      BUILD_TYPE: Release
+
+    - COMPILER: mingw-w64
+      GENERATOR: MinGW Makefiles
+      PLATFORM: x64
+      BUILD_TYPE: Debug
+
+    - COMPILER: mingw-w64
+      GENERATOR: MinGW Makefiles
+      PLATFORM: x64
+      BUILD_TYPE: Release
+
+    - COMPILER: msvc
+      GENERATOR: Visual Studio 15 2017 Win64
+      APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
+      PLATFORM: x64
+      BUILD_TYPE: Debug
+
+    - COMPILER: msvc
+      GENERATOR: Visual Studio 15 2017 Win64
+      APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
+      PLATFORM: x64
+      BUILD_TYPE: Release
+
+    - COMPILER: msvc
+      GENERATOR: Visual Studio 15 2017
+      APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
+      PLATFORM: Win32
+      BUILD_TYPE: Debug
+
+    - COMPILER: msvc
+      GENERATOR: Visual Studio 15 2017
+      APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
+      PLATFORM: Win32
+      BUILD_TYPE: Release
+
+install:
+  - git submodule -q update --init --recursive
+  - if "%COMPILER%"=="mingw" set PATH=C:\MinGW\bin;%PATH%
+  - if "%COMPILER%"=="mingw-w64" set PATH=C:\MinGW\bin;%PATH%
+
+build_script:
+  - mkdir build
+  - cd build
+  - cmake -G "%GENERATOR%" -DCMAKE_BUILD_TYPE="%BUILD_TYPE%" -DCMAKE_SH=CMAKE_SH-NOTFOUND ..
+  - if "%COMPILER%"=="msvc" cmake --build . --config "%BUILD_TYPE%"
+  - if not "%COMPILER%"=="msvc" cmake --build .
+
+- ctest -V -C "%BUILD_TYPE%"
