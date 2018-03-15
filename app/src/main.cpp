@@ -192,16 +192,17 @@ help() noexcept
 
     fmt::print(
       "\nGeneral options:\n"
-      "  --help|-h                   This help message\n"
-      "  --param|-p [name][:|=][value]   Add a new parameter (name is"
+      "  --help|-h                     This help message\n"
+      "  --param|-p [name][:|=][value] Add a new parameter (name is"
       " [a-z][A-Z]_) value can be a double, an integer otherwise a"
       " string.\n"
-      "  --optimize|-O               Optimize model (default "
+      "  --disable-preprocessing|-np   Disable preprocessing\n"
+      "  --optimize|-O                 Optimize model (default "
       "feasibility search only)\n"
-      "  --check filename.sol        Check if the solution is correct."
+      "  --check filename.sol          Check if the solution is correct."
       "\n"
-      "  --quiet                     Remove any verbose message\n"
-      "  --verbose|-v int            Set verbose level\n\n"
+      "  --quiet                       Remove any verbose message\n"
+      "  --verbose|-v int              Set verbose level\n\n"
       "Parameter list for in the middle heuristic\n"
       " * Global parameters"
       "  - limit: integer ]-oo, +oo[ in loop number\n"
@@ -241,6 +242,7 @@ struct main_parameters
     bool check = false;
     bool optimize = false;
     bool quiet = false;
+    bool preprocessing = true;
 };
 
 main_parameters
@@ -265,6 +267,11 @@ parse(int argc, const char* argv[])
 
         if (arg == "--optimize" or arg == "-O") {
             ret.optimize = true;
+            continue;
+        }
+
+        if (arg == "--disable-preprocessing" or arg == "-np") {
+            ret.preprocessing = false;
             continue;
         }
 
