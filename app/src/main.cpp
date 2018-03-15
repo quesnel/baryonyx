@@ -123,6 +123,53 @@ split_param(const char* param) noexcept
     return std::make_tuple(name, baryonyx::parameter(value));
 }
 
+struct get_param
+{
+    get_param(int argc_, const char** argv_)
+      : argv(argv_)
+      , argc(argc_)
+      , i(0)
+    {}
+
+    const char* operator()(int arg,
+                           const char* longp,
+                           const char* shortp) noexcept
+    {
+        i = arg;
+
+        auto longp_length = strlen(longp);
+        if (not strncmp(argv[arg], longp, longp_length) and
+            strlen(argv[arg]) + 1 > longp_length and
+            argv[arg][longp_length] == '=') {
+            return argv[arg] + longp_length + 1;
+        }
+
+        auto shortp_length = strlen(shortp);
+        if (not strncmp(argv[arg], shortp, shortp_length) and
+            strlen(argv[arg]) > shortp_length) {
+            return argv[arg] + shortp_length;
+        }
+
+        if (arg + 1 < argc) {
+            if (longp and strcmp(argv[arg], longp) == 0) {
+                i = arg + 1;
+                return argv[i];
+            }
+
+            if (shortp and strcmp(argv[i], shortp) == 0) {
+                i = arg + 1;
+                return argv[i];
+            }
+        }
+
+        return nullptr;
+    }
+
+    const char** argv;
+    int argc;
+    int i;
+};
+
 static const char* file_format_error_format(
   baryonyx::file_format_error_tag) noexcept;
 
@@ -197,12 +244,14 @@ struct main_parameters
 };
 
 main_parameters
-parse(int argc, char* argv[])
+parse(int argc, const char* argv[])
 {
     main_parameters ret;
+    get_param get(argc, argv);
 
     for (int i = 1; i < argc; ++i) {
         std::string arg(argv[i]);
+        const char* opt;
 
         if (arg == "--help" or arg == "-h") {
             ::help();
@@ -219,46 +268,30 @@ parse(int argc, char* argv[])
             continue;
         }
 
-        if (arg == "--limit" or arg == "-l") {
-            if (i + 1 >= argc) {
-                fmt::print(stderr, "/!\\ --limit argument required");
-            } else {
-                ret.limit = to_int(argv[i + 1], 1000);
-                ++i;
-            }
+        if ((opt = get(i, "--limit", "-l"))) {
+            ret.params["limit"] = ::to_int(opt, 1000);
+            i = get.i;
             continue;
         }
 
-        if (arg == "--verbose" or arg == "-v") {
-            if (i + 1 >= argc) {
-                fmt::print(stderr, "/!\\ --verbose argument required\n");
-            } else {
-                ret.verbose = ::to_int(argv[i + 1], 3);
-                ++i;
-            }
+        if ((opt = get(i, "--verbose", "-v"))) {
+            ret.verbose = ::to_int(opt, 3);
+            i = get.i;
             continue;
         }
 
-        if (arg == "--check" or arg == "-C") {
-            if (i + 1 >= argc) {
-                fmt::print(stderr, "/!\\ --check argument required\n");
-            } else {
-                ret.check_filename = argv[i + 1];
-                ++i;
-            }
+        if ((opt = get(i, "--check", "-C"))) {
+            ret.check_filename = opt;
+            i = get.i;
             continue;
         }
 
-        if (arg == "--param" or arg == "-p") {
-            if (i + 1 >= argc) {
-                fmt::print(stderr, "/!\\ --param argument required\n");
-            } else {
-                std::string name;
-                baryonyx::parameter value;
-                std::tie(name, value) = ::split_param(argv[i + 1]);
-                ret.params[name] = value;
-                ++i;
-            }
+        if ((opt = get(i, "--param", "-p"))) {
+            std::string name;
+            baryonyx::parameter value;
+            std::tie(name, value) = ::split_param(opt);
+            ret.params[name] = value;
+            i = get.i;
             continue;
         }
 
@@ -269,7 +302,7 @@ parse(int argc, char* argv[])
 }
 
 int
-main(int argc, char* argv[])
+main(int argc, const char* argv[])
 {
     auto params = parse(argc, argv);
 
@@ -345,7 +378,8 @@ main(int argc, char* argv[])
         } catch (const baryonyx::postcondition_failure& e) {
             fmt::print(stderr, "internal failure: {}\n", e.what());
         } catch (const baryonyx::numeric_cast_failure& e) {
-            fmt::print(stderr, "numeric cast internal failure: {}\n", e.what());
+            fmt::print(
+              stderr, "numeric cast internal failure: {}\n", e.what());
         } catch (const baryonyx::file_access_failure& e) {
             fmt::print(stderr,
                        "file `{}' fail {}: {}\n",
@@ -396,7 +430,8 @@ main(int argc, char* argv[])
             } catch (const baryonyx::postcondition_failure& e) {
                 fmt::print(stderr, "internal failure: {}\n", e.what());
             } catch (const baryonyx::numeric_cast_failure& e) {
-                fmt::print(stderr, "numeric cast internal failure: {}\n", e.what());
+                fmt::print(
+                  stderr, "numeric cast internal failure: {}\n", e.what());
             } catch (const baryonyx::file_access_failure& e) {
                 fmt::print(stderr,
                            "file `{}' fail {}: {}\n",
