@@ -182,7 +182,7 @@ convert_result(const baryonyx::result& res,
 
     switch (res.status) {
     case baryonyx::result_status::success:
-        Rprintf("Solution found: %f\n", res);
+        Rprintf("Solution found: %f\n", res.value);
         solution = true;
         error = false;
         break;

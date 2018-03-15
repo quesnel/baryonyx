@@ -93,7 +93,7 @@ solve_lp <- function(x, file_path, limit=10000, time_limit=10, seed=123456789, t
                    init_random = x["init_random"],
                    float_type = x["float_type"])
 
-  return(r)
+  return ifelse(r$solution_found, r$value, 10000000)
 }
 
 r = apply(morrisDesign$X, 1, solve_lp, file_path="verger_5_5.lp", thread=1, limit=10000, time_limit=10, seed=123456789)
