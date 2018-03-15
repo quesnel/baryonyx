@@ -3,7 +3,7 @@ os: Visual Studio 2017
 branch:
   only:
     - master
-    - futur
+    - next
 
 environment:
   matrix:
@@ -29,25 +29,21 @@ environment:
 
     - COMPILER: msvc
       GENERATOR: Visual Studio 15 2017 Win64
-      APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
       PLATFORM: x64
       BUILD_TYPE: Debug
 
     - COMPILER: msvc
       GENERATOR: Visual Studio 15 2017 Win64
-      APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
       PLATFORM: x64
       BUILD_TYPE: Release
 
     - COMPILER: msvc
       GENERATOR: Visual Studio 15 2017
-      APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
       PLATFORM: Win32
       BUILD_TYPE: Debug
 
     - COMPILER: msvc
       GENERATOR: Visual Studio 15 2017
-      APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
       PLATFORM: Win32
       BUILD_TYPE: Release
 
@@ -62,5 +58,4 @@ build_script:
   - cmake -G "%GENERATOR%" -DCMAKE_BUILD_TYPE="%BUILD_TYPE%" -DCMAKE_SH=CMAKE_SH-NOTFOUND ..
   - if "%COMPILER%"=="msvc" cmake --build . --config "%BUILD_TYPE%"
   - if not "%COMPILER%"=="msvc" cmake --build .
-
-- ctest -V -C "%BUILD_TYPE%"
+  - ctest --output-on-failure --verbose -C "%BUILD_TYPE%" -E testoptimizer
