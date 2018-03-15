@@ -148,9 +148,6 @@ write_problem(std::ostream& os, const baryonyx::problem& pb);
 bool
 check_consistency(const baryonyx::problem& pb);
 
-void
-preprocess(const baryonyx::context_ptr& ctx, baryonyx::problem& pb);
-
 baryonyx::result
 solver_select(const baryonyx::context_ptr& ctx, baryonyx::problem& pb);
 

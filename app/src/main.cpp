@@ -345,6 +345,9 @@ main(int argc, const char* argv[])
                 }
             }
 
+            if (params.preprocessing)
+                baryonyx::preprocess(ctx, pb);
+
             std::ofstream ofs(filename);
             ofs << std::boolalpha
                 << std::setprecision(static_cast<int>(std::floor(
@@ -421,6 +424,10 @@ main(int argc, const char* argv[])
         for (auto& elem : params.filenames) {
             try {
                 auto pb = baryonyx::make_problem(ctx, elem);
+
+                if (params.preprocessing)
+                    baryonyx::preprocess(ctx, pb);
+
                 fmt::print("{}", baryonyx::resume(pb, false));
                 ofs << elem << " ";
 

@@ -870,6 +870,21 @@ std::ostream&
 operator<<(std::ostream& os, const problem& p);
 
 /**
+ * @brief Cleanup the @p pb problem.
+ * @details Remove already affected variables, duplicated constraints from the
+ *     problem @p pb.
+ *
+ * @param pb in out parameter.
+ *
+ * @exception std::bad_alloc
+ * @exception baryonyx::postcondition_failure
+ * @exception baryonyx::precondition_failure
+ */
+BARYONYX_API
+void
+preprocess(const baryonyx::context_ptr& ctx, problem& pb);
+
+/**
  * @details Try to solve or find a feasible solution for the @c
  *     baryonyx::problem.
  *
@@ -878,8 +893,7 @@ operator<<(std::ostream& os, const problem& p);
  * @exception baryonyx::solver_error
  * @exception baryonyx::problem_definition
  */
-BARYONYX_API
-result
+BARYONYX_API result
 solve(const baryonyx::context_ptr& ctx, problem& pb);
 
 /**

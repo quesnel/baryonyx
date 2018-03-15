@@ -53,8 +53,6 @@ namespace baryonyx {
 baryonyx::result
 solver_select(const baryonyx::context_ptr& ctx, baryonyx::problem& pb)
 {
-    preprocess(ctx, pb);
-
     return baryonyx::itm::solve(ctx, pb);
 }
 
@@ -62,7 +60,6 @@ baryonyx::result
 optimizer_select(const baryonyx::context_ptr& ctx, baryonyx::problem& pb)
 {
     auto th = get_thread_number(ctx);
-    preprocess(ctx, pb);
 
     return baryonyx::itm::optimize(ctx, pb, th);
 }
