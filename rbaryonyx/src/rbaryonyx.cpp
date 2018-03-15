@@ -29,28 +29,25 @@
 using namespace Rcpp;
 
 static void
-r_write(baryonyx::context::message_type level, std::string msg)
+r_write(int level, std::string msg)
 {
-
     switch (level) {
-    case baryonyx::context::message_type::emerg:
+    case 0:
         Rprintf("baryonyx: System is unusable: ");
         break;
-    case baryonyx::context::message_type::alert:
+    case 1:
         Rprintf("baryonyx: Action must be taken immediately: ");
         break;
-    case baryonyx::context::message_type::crit:
+    case 2:
         Rprintf("baryonyx: critical conditions: ");
         break;
-    case baryonyx::context::message_type::err:
+    case 3:
         Rprintf("baryonyx: error conditions: ");
         break;
-    case baryonyx::context::message_type::warning:
+    case 4:
         Rprintf("baryonyx: warning conditions: ");
         break;
-    case baryonyx::context::message_type::notice:
-    case baryonyx::context::message_type::info:
-    case baryonyx::context::message_type::debug:
+    default:
         break;
     }
 
@@ -58,7 +55,7 @@ r_write(baryonyx::context::message_type level, std::string msg)
 };
 
 static void
-assign_parameters(std::shared_ptr<baryonyx::context> ctx,
+assign_parameters(const baryonyx::context_ptr& ctx,
                   int limit,
                   double theta,
                   double delta,
@@ -80,9 +77,9 @@ assign_parameters(std::shared_ptr<baryonyx::context> ctx,
                   double init_random,
                   int float_type)
 {
-    ctx->set_parameter("limit", limit);
-    ctx->set_parameter("theta", theta);
-    ctx->set_parameter("delta", delta);
+    baryonyx::context_set_parameter(ctx, "limit", limit);
+    baryonyx::context_set_parameter(ctx, "theta", theta);
+    baryonyx::context_set_parameter(ctx, "delta", delta);
 
     std::string order("none");
     switch (constraint_order) {
@@ -101,32 +98,34 @@ assign_parameters(std::shared_ptr<baryonyx::context> ctx,
     default:
         break;
     }
-    ctx->set_parameter("constraint-order", order);
+    baryonyx::context_set_parameter(ctx, "constraint-order", order);
 
-    ctx->set_parameter("kappa-min", kappa_min);
-    ctx->set_parameter("kappa-step", kappa_step);
-    ctx->set_parameter("kappa-max", kappa_max);
-    ctx->set_parameter("alpha", alpha);
-    ctx->set_parameter("w", w);
-    ctx->set_parameter("time-limit", time_limit);
+    baryonyx::context_set_parameter(ctx, "kappa-min", kappa_min);
+    baryonyx::context_set_parameter(ctx, "kappa-step", kappa_step);
+    baryonyx::context_set_parameter(ctx, "kappa-max", kappa_max);
+    baryonyx::context_set_parameter(ctx, "alpha", alpha);
+    baryonyx::context_set_parameter(ctx, "w", w);
+    baryonyx::context_set_parameter(ctx, "time-limit", time_limit);
 
     if (seed > 0)
-        ctx->set_parameter("seed", seed);
+        baryonyx::context_set_parameter(ctx, "seed", seed);
 
-    ctx->set_parameter("thread", thread);
+    baryonyx::context_set_parameter(ctx, "thread", thread);
 
-    ctx->set_parameter(
+    baryonyx::context_set_parameter(
+      ctx,
       "norm",
       (norm == 0)
         ? "none"
         : (norm == 1) ? "rng"
                       : (norm == 2) ? "l1" : (norm == 3) ? "l2" : "inf");
 
-    ctx->set_parameter("pushing-k-factor", pushing_k_factor);
-    ctx->set_parameter("pushing-objective-amplifier",
-                       pushing_objective_amplifier);
-    ctx->set_parameter("pushes-limit", pushes_limit);
-    ctx->set_parameter("pushing-iteration-limit", pushing_iteration_limit);
+    baryonyx::context_set_parameter(ctx, "pushing-k-factor", pushing_k_factor);
+    baryonyx::context_set_parameter(
+      ctx, "pushing-objective-amplifier", pushing_objective_amplifier);
+    baryonyx::context_set_parameter(ctx, "pushes-limit", pushes_limit);
+    baryonyx::context_set_parameter(
+      ctx, "pushing-iteration-limit", pushing_iteration_limit);
 
     std::string policy("bastert");
     switch (init_policy) {
@@ -139,32 +138,76 @@ assign_parameters(std::shared_ptr<baryonyx::context> ctx,
     default:
         break;
     }
-    ctx->set_parameter("init-policy", policy);
-    ctx->set_parameter("init-random", init_random);
+    baryonyx::context_set_parameter(ctx, "init-policy", policy);
+    baryonyx::context_set_parameter(ctx, "init-random", init_random);
 
-    ctx->set_parameter("floating-point-type",
-                       (float_type == 1)
-                         ? "double"
-                         : (float_type == 2) ? "longdouble" : "float");
+    baryonyx::context_set_parameter(
+      ctx,
+      "floating-point-type",
+      (float_type == 1) ? "double"
+                        : (float_type == 2) ? "longdouble" : "float");
 }
 
-static double
-linearize_result(const baryonyx::result& r,
-                 double obj_min,
-                 double obj_max,
-                 baryonyx::objective_function_type type)
+// static double
+// linearize_result(const baryonyx::result& r,
+//                  double obj_min,
+//                  double obj_max,
+//                  baryonyx::objective_function_type type)
+// {
+//     if (r.status == baryonyx::result_status::success) {
+//         if (type == baryonyx::objective_function_type::maximize)
+//             return -r.value;
+//         else
+//             return r.value;
+//     }
+
+//     if (type == baryonyx::objective_function_type::maximize)
+//         return -obj_min + r.remaining_constraints;
+
+//     return obj_max + r.remaining_constraints;
+// }
+
+static List
+convert_result(const baryonyx::result& res,
+               bool minimize,
+               const std::vector<double>& objective)
 {
-    if (r.status == baryonyx::result_status::success) {
-        if (type == baryonyx::objective_function_type::maximize)
-            return -r.value;
-        else
-            return r.value;
+    bool solution;
+    bool error;
+    double value = res.value;
+    double duration = res.duration;
+    int variables = res.variables;
+    int constraints = res.constraints;
+    int remaining = res.remaining_constraints;
+
+    switch (res.status) {
+    case baryonyx::result_status::success:
+        Rprintf("Solution found: %f\n", res);
+        solution = true;
+        error = false;
+        break;
+    case baryonyx::result_status::internal_error:
+        Rprintf("Internal error\n");
+        solution = false;
+        error = true;
+        break;
+    default:
+        Rprintf("No solution found. Constraints remaining: %d\n",
+                res.remaining_constraints);
+        solution = false;
+        error = false;
+        break;
     }
 
-    if (type == baryonyx::objective_function_type::maximize)
-        return -obj_min + r.remaining_constraints;
-
-    return obj_max + r.remaining_constraints;
+    return List::create(_["solution_found"] = solution,
+                        _["error_found"] = error,
+                        _["value"] = value,
+                        _["duration"] = duration,
+                        _["variables"] = variables,
+                        _["constraints"] = constraints,
+                        _["remaining_constraints"] = remaining,
+                        _["minimize"] = minimize,
+                        _["objective_function"] = objective);
 }
 
 //' Tries to solve the 01 linear programming problem.
@@ -177,7 +220,7 @@ linearize_result(const baryonyx::result& r,
 //'    - 3: infeasibility-decr
 //'    - 4: infeasibility-incr
 //'
-//' @param norm: the normalization used to reduces cost dependencies. Default
+//' @param norm the normalization used to reduces cost dependencies. Default
 //'    is to use the infinity norm. Other values are:
 //'    - 0: none (use the default cost from the model (lp file)).
 //'    - 1: rng
@@ -185,87 +228,77 @@ linearize_result(const baryonyx::result& r,
 //'    - 3: l2-norm
 //'    - 4: infinity-norm
 //'
-//' @param policy_type: the type of (re)initilization used into the solver.
+//' @param policy_type the type of (re)initilization used into the solver.
 //'     Default is to use bastert and 0.5 for policy_random.
 //'    - 0: bastert
 //'    - 1: random
 //'    - 2: best
 //'
-//' @param float_type: the type of real used into the solver. Default is to
+//' @param float_type the type of real used into the solver. Default is to
 //'     use the C/C++ double representation.
 //'    - 0: float
 //'    - 1: double
 //'    - 2: longdouble
 //'
-//' @return an unique scalar.
-//'   - If a solution is found:
-//'     - if the problem is a minimization: the value of the solution
-//'       found.
-//'     - if the problem is a maximization: the inverse of the solution
-//'       found.
-//'   - If no solution is found, we use the limits of the objective
-//'     function (minimal and maximal value possible.
-//'     - if the problem is a minimization: the maximal value possible +
-//'       the remaining constraints.
-//'     - if the problem is a maximization: the inverse of the minimal
-//'       value possible + the remaining constraints.
-//'   - If a error occurred (not enough memory, problem error etc.):
-//'     - if the problem is a minimization: the maximal value possible +
-//'       the number of constraints .
-//'     - if the problem is a maximization: the inverse of the minimal
-//'       value possible + the number of constraints.
+//' @return a named list:
+//'   \item{solution_found}{Boolean, TRUE is a solution is found.}
+//'   \item{error_found}{Boolean, TRUE if an error occurred in Baryonyx,
+//'     other parameter may be useless and undefined.}
+//'   \item{value}{Real, the value of the solution if solution_found is
+//'     TRUE.}
+//'   \item{duration}{Real, time in second taken to found or not found a
+//'     solution.}
+//'   \item{variables}{Integer, number of variables in the problem.}
+//'   \item{constraints}{Integer, number of constraints in the problem.}
+//'   \item{remaining_constraints}{Integer, constraints remaining, 0 if
+//'     solution_found is TRUE, between 1 and constraints if
+//'      solution_found is FALSE.}
+//'   \item{minimize}{Boolean, TRUE is problem is a minimization, FALSE if
+//'     the problem is a maximization.}
+//'   \item{objective_function}{Vector, bound of the objective function.}
 //'
 //' @useDynLib rbaryonyx
 //' @importFrom Rcpp sourceCpp
 //'
 //' @export
 // [[Rcpp::export]]
-double
+List
 solve_01lp_problem(std::string file_path,
                    int limit = 1000,
                    double theta = 0.5,
-                   double delta = 1e-4,
+                   double delta = -1,
                    int constraint_order = 0,
-                   double kappa_min = 0.1,
-                   double kappa_step = 1e-4,
-                   double kappa_max = 1.0,
+                   double kappa_min = 0.0,
+                   double kappa_step = 1.0e-3,
+                   double kappa_max = 0.6,
                    double alpha = 1.0,
-                   int w = 500,
+                   int w = 20,
                    double time_limit = 10.0,
                    int seed = -1,
                    int thread = 1,
                    int norm = 4,
                    double pushing_k_factor = 0.9,
                    double pushing_objective_amplifier = 5.0,
-                   int pushes_limit = 10,
-                   int pushing_iteration_limit = 20,
+                   int pushes_limit = 100,
+                   int pushing_iteration_limit = 50,
                    int policy_type = 0,
                    double policy_random = 0.5,
                    int float_type = 1,
                    bool verbose = true) noexcept
+
 {
-    double ret{ 0 };
+    baryonyx::result ret;
+    std::vector<double> objective(2);
+    bool minimize = true;
 
     try {
-        auto ctx = std::make_shared<baryonyx::context>(r_write);
-        ctx->set_log_priority(verbose
-                                ? baryonyx::context::message_type::info
-                                : baryonyx::context::message_type::warning);
-
+        auto ctx = baryonyx::make_context(&r_write, verbose ? 6 : 4);
         auto pb = baryonyx::make_problem(ctx, file_path);
-        auto mm = baryonyx::compute_min_max_objective_function(pb);
-        auto type = pb.type;
 
-        if (type == baryonyx::objective_function_type::maximize)
-            ret = -std::get<0>(mm) + size(pb);
-        else
-            ret = std::get<1>(mm) + size(pb);
+        std::tie(objective[0], objective[1]) =
+          baryonyx::compute_min_max_objective_function(pb);
 
-        if (type == baryonyx::objective_function_type::maximize) {
-            std::swap(std::get<0>(mm), std::get<1>(mm));
-            std::get<0>(mm) = -std::get<0>(mm);
-            std::get<1>(mm) = -std::get<1>(mm);
-        }
+        minimize = (pb.type == baryonyx::objective_function_type::minimize);
 
         assign_parameters(ctx,
                           limit,
@@ -289,19 +322,19 @@ solve_01lp_problem(std::string file_path,
                           policy_random,
                           float_type);
 
-        auto result = baryonyx::solve(ctx, pb);
-        ret = linearize_result(result, std::get<0>(mm), std::get<1>(mm), type);
+        ret = baryonyx::solve(ctx, pb);
     } catch (const std::bad_alloc& e) {
-        Rprintf("lp memory error: %s\n", e.what());
+        Rprintf("Baryonyx memory error: %s\n", e.what());
+        ret.status = baryonyx::result_status::internal_error;
     } catch (const std::exception& e) {
-        Rprintf("lp error: %s\n", e.what());
+        Rprintf("Baryonyx error: %s\n", e.what());
+        ret.status = baryonyx::result_status::internal_error;
     } catch (...) {
-        Rprintf("lp error: unknown error\n");
+        Rprintf("Baryonyx error: unknown error\n");
+        ret.status = baryonyx::result_status::internal_error;
     }
 
-    Rprintf("solver returns: %f\n", ret);
-
-    return ret;
+    return convert_result(ret, minimize, objective);
 }
 
 //' Tries to optimize the 01 linear programming problem.
@@ -314,8 +347,7 @@ solve_01lp_problem(std::string file_path,
 //'    - 3: infeasibility-decr
 //'    - 4: infeasibility-incr
 //'
-//' @param norm: the normalization used to reduces cost dependencies.
-// Default
+//' @param norm the normalization used to reduces cost dependencies. Default
 //'    is to use the infinity norm. Other values are:
 //'    - 0: none (use the default cost from the model (lp file)).
 //'    - 1: rng
@@ -323,88 +355,76 @@ solve_01lp_problem(std::string file_path,
 //'    - 3: l2-norm
 //'    - 4: infinity-norm
 //'
-//' @param policy_type: the type of (re)initilization used into the solver.
+//' @param policy_type the type of (re)initilization used into the solver.
 //'     Default is to use bastert and 0.5 for policy_random.
 //'    - 0: bastert
 //'    - 1: random
 //'    - 2: best
 //'
-//' @param float_type: the type of real used into the solver. Default is to
+//' @param float_type the type of real used into the solver. Default is to
 //'     use the C/C++ double representation.
 //'    - 0: float
 //'    - 1: double
 //'    - 2: longdouble
 //'
-//' @return an unique scalar.
-//'   - If a solution is found:
-//'     - if the problem is a minimization: the value of the solution
-//'       found.
-//'     - if the problem is a maximization: the inverse of the solution
-//'       found.
-//'   - If no solution is found, we use the limits of the objective
-//'     function (minimal and maximal value possible.
-//'     - if the problem is a minimization: the maximal value possible +
-//'       the remaining constraints.
-//'     - if the problem is a maximization: the inverse of the minimal
-//'       value possible + the remaining constraints.
-//'   - If a error occurred (not enough memory, problem error etc.):
-//'     - if the problem is a minimization: the maximal value possible +
-//'       the number of constraints .
-//'     - if the problem is a maximization: the inverse of the minimal
-//'       value possible + the number of constraints.
+//' @return a named list:
+//'   \item{solution_found}{Boolean, TRUE is a solution is found.}
+//'   \item{error_found}{Boolean, TRUE if an error occurred in Baryonyx,
+//'     other parameter may be useless and undefined.}
+//'   \item{value}{Real, the value of the solution if solution_found is
+//'     TRUE.}
+//'   \item{duration}{Real, time in second taken to found or not found a
+//'     solution.}
+//'   \item{variables}{Integer, number of variables in the problem.}
+//'   \item{constraints}{Integer, number of constraints in the problem.}
+//'   \item{remaining_constraints}{Integer, constraints remaining, 0 if
+//'     solution_found is TRUE, between 1 and constraints if
+//'      solution_found is FALSE.}
+//'   \item{minimize}{Boolean, TRUE is problem is a minimization, FALSE if
+//'     the problem is a maximization.}
+//'   \item{objective_function}{Vector, bound of the objective function.}
 //'
 //' @useDynLib rbaryonyx
 //' @importFrom Rcpp sourceCpp
 //'
 //' @export
 // [[Rcpp::export]]
-double
+List
 optimize_01lp_problem(std::string file_path,
                       int limit = 1000,
                       double theta = 0.5,
-                      double delta = 1e-4,
+                      double delta = -1,
                       int constraint_order = 0,
-                      double kappa_min = 0.1,
-                      double kappa_step = 1e-4,
-                      double kappa_max = 1.0,
+                      double kappa_min = 0.0,
+                      double kappa_step = 1.0e-3,
+                      double kappa_max = 0.6,
                       double alpha = 1.0,
-                      int w = 500,
+                      int w = 20,
                       double time_limit = 10.0,
                       int seed = -1,
                       int thread = 1,
                       int norm = 4,
                       double pushing_k_factor = 0.9,
                       double pushing_objective_amplifier = 5.0,
-                      int pushes_limit = 10,
-                      int pushing_iteration_limit = 20,
+                      int pushes_limit = 100,
+                      int pushing_iteration_limit = 50,
                       int policy_type = 0,
                       double policy_random = 0.5,
                       int float_type = 1,
                       bool verbose = true) noexcept
-
 {
-    double ret{ 0 };
+    baryonyx::result ret;
+    std::vector<double> objective(2);
+    bool minimize = true;
 
     try {
-        auto ctx = std::make_shared<baryonyx::context>(r_write);
-        ctx->set_log_priority(verbose
-                                ? baryonyx::context::message_type::info
-                                : baryonyx::context::message_type::warning);
-
+        auto ctx = baryonyx::make_context(&r_write, verbose ? 6 : 4);
         auto pb = baryonyx::make_problem(ctx, file_path);
-        auto mm = baryonyx::compute_min_max_objective_function(pb);
-        auto type = pb.type;
 
-        if (type == baryonyx::objective_function_type::maximize)
-            ret = -std::get<0>(mm) + size(pb);
-        else
-            ret = std::get<1>(mm) + size(pb);
+        std::tie(objective[0], objective[1]) =
+          baryonyx::compute_min_max_objective_function(pb);
 
-        if (type == baryonyx::objective_function_type::maximize) {
-            std::swap(std::get<0>(mm), std::get<1>(mm));
-            std::get<0>(mm) = -std::get<0>(mm);
-            std::get<1>(mm) = -std::get<1>(mm);
-        }
+        minimize = (pb.type == baryonyx::objective_function_type::minimize);
 
         assign_parameters(ctx,
                           limit,
@@ -428,23 +448,17 @@ optimize_01lp_problem(std::string file_path,
                           policy_random,
                           float_type);
 
-        auto result = baryonyx::optimize(ctx, pb);
-        ret = linearize_result(result, std::get<0>(mm), std::get<1>(mm), type);
+        ret = baryonyx::optimize(ctx, pb);
     } catch (const std::bad_alloc& e) {
-        Rprintf("lp memory error: %s\n", e.what());
+        Rprintf("Baryonyx memory error: %s\n", e.what());
+        ret.status = baryonyx::result_status::internal_error;
     } catch (const std::exception& e) {
-        Rprintf("lp error: %s\n", e.what());
+        Rprintf("Baryonyx error: %s\n", e.what());
+        ret.status = baryonyx::result_status::internal_error;
     } catch (...) {
-        Rprintf("lp error: unknown error\n");
+        Rprintf("Baryonyx error: unknown error\n");
+        ret.status = baryonyx::result_status::internal_error;
     }
 
-    Rprintf("optimizer returns: %f (kappa: %f %f %f delta: %f theta: %f)\n",
-            ret,
-            kappa_min,
-            kappa_step,
-            kappa_max,
-            delta,
-            theta);
-
-    return ret;
+    return convert_result(ret, minimize, objective);
 }
