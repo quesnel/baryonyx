@@ -92,6 +92,7 @@ struct parser_stack
       , m_line(0)
       , m_column(0)
       , m_current_constraint_id(0)
+      , m_coefficient_type(0)
       , m_eof_reached(is_.eof())
     {}
 
@@ -343,6 +344,26 @@ struct parser_stack
         ++m_current_constraint_id;
     }
 
+    void update_coefficient(int factor) noexcept
+    {
+        if (m_coefficient_type == 2)
+            return;
+
+        if (factor < -1 or factor > 1) {
+            m_coefficient_type = 2;
+            return;
+        }
+
+        if (factor == -1) {
+            m_coefficient_type = 1;
+        }
+    }
+
+    int coefficient() const noexcept
+    {
+        return m_coefficient_type;
+    }
+
 private:
     std::deque<std::tuple<std::string::size_type, std::string::size_type>>
       m_position_stack;
@@ -352,6 +373,7 @@ private:
     std::string::size_type m_line;
     std::string::size_type m_column;
     int m_current_constraint_id;
+    int m_coefficient_type; // 0 {0, 1}, 1 {-1 0 1}, 2 {Z}
     bool m_eof_reached;
 
     void fill()
@@ -608,6 +630,8 @@ read_function_element(parser_stack& stack)
         } else if (negative) {
             std::get<1>(ret) = -1;
         }
+
+        stack.update_coefficient(std::get<1>(ret));
     }
 
     if (stack.is_topic())
@@ -1063,20 +1087,12 @@ private:
 };
 
 baryonyx::problem_solver_type
-get_problem_type(const baryonyx::problem& p) noexcept
+get_problem_type(const baryonyx::problem& p, int coefficient) noexcept
 {
-    int type = 0;
-    for (const auto& elem : p.vars.values) {
-        if (elem.type == baryonyx::variable_type::real) {
-            type = 2;
-            break;
-        } else if (elem.type == baryonyx::variable_type::general) {
-            type = 1;
-        }
-    }
+    assert(coefficient >= 0 and coefficient <= 2);
 
     if (p.greater_constraints.empty() or p.less_constraints.empty()) {
-        switch (type) {
+        switch (coefficient) {
         case 0:
             return baryonyx::problem_solver_type::equalities_01;
         case 1:
@@ -1085,7 +1101,7 @@ get_problem_type(const baryonyx::problem& p) noexcept
             return baryonyx::problem_solver_type::equalities_Z;
         }
     } else {
-        switch (type) {
+        switch (coefficient) {
         case 0:
             return baryonyx::problem_solver_type::inequalities_01;
         case 1:
@@ -1124,7 +1140,7 @@ read_problem(std::istream& is)
 
     if (stack.is_end()) {
         if (stack.empty()) {
-            p.problem_type = ::get_problem_type(p);
+            p.problem_type = ::get_problem_type(p, stack.coefficient());
             return p;
         }
     }
