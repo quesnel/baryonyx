@@ -326,7 +326,6 @@ main(int argc, const char* argv[])
     if (params.filenames.size() == 1) {
         try {
             auto pb = baryonyx::make_problem(ctx, params.filenames.front());
-            fmt::print("{}", baryonyx::resume(pb, false));
 
             auto filename =
               fmt::format("{}-{}.sol", params.filenames.front(), get_pid());
@@ -347,6 +346,7 @@ main(int argc, const char* argv[])
 
             if (params.preprocessing)
                 baryonyx::preprocess(ctx, pb);
+            fmt::print("{}", baryonyx::resume(pb, false));
 
             std::ofstream ofs(filename);
             ofs << std::boolalpha
