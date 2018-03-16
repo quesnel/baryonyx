@@ -810,7 +810,7 @@ remove_unused_variables(const baryonyx::context_ptr& ctx,
 int
 get_coefficient_type(const baryonyx::problem& pb) noexcept
 {
-    int coefficient_type {0}; ///< 0 means 01, 1 means -1 or 1, 2 means Z. 
+    int coefficient_type{ 0 }; ///< 0 means 01, 1 means -1 or 1, 2 means Z.
 
     for (const auto& cst : pb.equal_constraints) {
         for (const auto& elem : cst.elements) {
@@ -842,7 +842,7 @@ get_coefficient_type(const baryonyx::problem& pb) noexcept
         }
     }
 
-    return coefficient_type;    
+    return coefficient_type;
 }
 
 namespace baryonyx {
@@ -850,7 +850,7 @@ namespace baryonyx {
 void
 preprocess(const baryonyx::context_ptr& ctx, baryonyx::problem& pb)
 {
-    info(ctx, "preprocessing:\n");
+    info(ctx, "Preprocessing:\n");
 
     {
         info(ctx,
