@@ -24,7 +24,6 @@
 #include "fixed_2darray.hpp"
 #include "fixed_array.hpp"
 #include "knapsack-dp-solver.hpp"
-#include "matrix.hpp"
 #include "scoped_array.hpp"
 #include "unit-test.hpp"
 
@@ -161,71 +160,6 @@ check_parameter()
     x[3] = baryonyx::parameter(std::string("hello world!"));
     Ensures(x[3].type == baryonyx::parameter::tag::string);
     Ensures(x[3].s == "hello world!");
-}
-
-std::ptrdiff_t
-size(std::tuple<baryonyx::SparseArray<int, double>::const_iterator,
-                baryonyx::SparseArray<int, double>::const_iterator> elem)
-{
-    return std::distance(std::get<0>(elem), std::get<1>(elem));
-}
-
-static void
-check_matrix()
-{
-    std::vector<int> row{ 1, 1, 1, 1 };
-    std::vector<int> col{ 1, 3 };
-
-    baryonyx::SparseArray<int, double> m(4, 2);
-    m.reserve(4, row.begin(), row.end(), col.begin(), col.end());
-
-    EnsuresThrow(m.P(0, 0), std::out_of_range);
-    EnsuresThrow(m.P(0, 1), std::out_of_range);
-    EnsuresThrow(m.P(1, 0), std::out_of_range);
-    EnsuresThrow(m.P(1, 1), std::out_of_range);
-    EnsuresThrow(m.P(2, 0), std::out_of_range);
-    EnsuresThrow(m.P(2, 1), std::out_of_range);
-    EnsuresThrow(m.P(3, 0), std::out_of_range);
-    EnsuresThrow(m.P(3, 1), std::out_of_range);
-    Ensures(m.size() == 0);
-
-    m.set(1, 0, 1, 1.0);
-    m.set(0, 1, 2, 2.0);
-    m.set(3, 1, 3, 3.0);
-    m.set(2, 1, 4, 4.0);
-    m.sort();
-
-    fmt::print("matrix:\n{}\n", m);
-
-    Ensures(m.size() == 4);
-    EnsuresThrow(m.P(0, 0), std::out_of_range);
-    Ensures(m.A(0, 1) == 2);
-    Ensures(m.P(0, 1) == 2.0);
-
-    Ensures(m.A(1, 0) == 1);
-    Ensures(m.P(1, 0) == 1.0);
-    EnsuresThrow(m.A(1, 1), std::out_of_range);
-    EnsuresThrow(m.A(2, 0), std::out_of_range);
-    Ensures(m.A(2, 1) == 4);
-    Ensures(m.P(2, 1) == 4.0);
-    EnsuresThrow(m.A(3, 0), std::out_of_range);
-    Ensures(m.A(3, 1) == 3);
-    Ensures(m.P(3, 1) == 3.0);
-    Ensures(m.size() == 4);
-
-    Ensures(size(m.row(0)) == 1);
-    Ensures(size(m.row(1)) == 1);
-    Ensures(size(m.row(2)) == 1);
-    Ensures(size(m.row(3)) == 1);
-    Ensures(size(m.column(0)) == 1);
-
-    Ensures(size(m.column(1)) == 3);
-
-    Ensures(m.A().size() == 4);
-    Ensures(m.P()[0] == 1.0);
-    Ensures(m.P()[1] == 2.0);
-    Ensures(m.P()[2] == 3.0);
-    Ensures(m.P()[3] == 4.0);
 }
 
 static void
@@ -526,7 +460,6 @@ main(int /* argc */, char* /* argv */ [])
     check_clamp();
     check_numeric_cast();
     check_parameter();
-    check_matrix();
     check_scoped_array();
     check_fixed_array();
     check_fixed_2darray();

@@ -45,7 +45,6 @@
 #include "fixed_array.hpp"
 #include "itm.hpp"
 #include "knapsack-dp-solver.hpp"
-#include "matrix.hpp"
 #include "private.hpp"
 #include "scoped_array.hpp"
 #include "utils.hpp"

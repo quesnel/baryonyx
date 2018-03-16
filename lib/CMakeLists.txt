@@ -4,7 +4,7 @@ option(WITH_FULL_OPTIMIZATION "Disable all logging facilities and active heavy o
 
 option(WITH_DEBUG "enable debug log message. [default: ON]" ON)
 
-add_library(libbaryonyx SHARED include/baryonyx/core-out include/baryonyx/core-test include/baryonyx/core include/baryonyx/core-compare src/knapsack-dp-solver.hpp src/private.hpp src/itm.cpp src/scoped_array.hpp src/select.cpp src/preprocessor.cpp src/fixed_array.hpp src/consistency.cpp src/lpcore.cpp src/branch-and-bound-solver.hpp src/utils.hpp src/fixed_2darray.hpp src/matrix.hpp src/itm-solver-inequalities-Z.hpp src/itm-solver-common.hpp src/itm-common.hpp src/sol-format.cpp src/itm-solver-equalities-01.hpp src/lpformat-io.cpp src/itm.hpp)
+add_library(libbaryonyx SHARED include/baryonyx/core-out include/baryonyx/core-test include/baryonyx/core include/baryonyx/core-compare src/knapsack-dp-solver.hpp src/private.hpp src/itm.cpp src/scoped_array.hpp src/select.cpp src/preprocessor.cpp src/fixed_array.hpp src/consistency.cpp src/lpcore.cpp src/branch-and-bound-solver.hpp src/utils.hpp src/fixed_2darray.hpp src/itm-solver-inequalities-Z.hpp src/itm-solver-common.hpp src/itm-common.hpp src/sol-format.cpp src/itm-solver-equalities-01.hpp src/lpformat-io.cpp src/itm.hpp src/sparse-matrix.hpp)
 
 target_include_directories(libbaryonyx PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
@@ -35,7 +35,7 @@ install(TARGETS libbaryonyx
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin)
 
-add_library(libbaryonyx-static STATIC include/baryonyx/core-out include/baryonyx/core-test include/baryonyx/core include/baryonyx/core-compare src/knapsack-dp-solver.hpp src/private.hpp src/itm.cpp src/scoped_array.hpp src/select.cpp src/preprocessor.cpp src/fixed_array.hpp src/consistency.cpp src/lpcore.cpp src/branch-and-bound-solver.hpp src/utils.hpp src/fixed_2darray.hpp src/matrix.hpp src/itm-solver-inequalities-Z.hpp src/itm-solver-common.hpp src/itm-common.hpp src/sol-format.cpp src/itm-solver-equalities-01.hpp src/lpformat-io.cpp src/itm.hpp)
+add_library(libbaryonyx-static STATIC include/baryonyx/core-out include/baryonyx/core-test include/baryonyx/core include/baryonyx/core-compare src/knapsack-dp-solver.hpp src/private.hpp src/itm.cpp src/scoped_array.hpp src/select.cpp src/preprocessor.cpp src/fixed_array.hpp src/consistency.cpp src/lpcore.cpp src/branch-and-bound-solver.hpp src/utils.hpp src/fixed_2darray.hpp src/itm-solver-inequalities-Z.hpp src/itm-solver-common.hpp src/itm-common.hpp src/sol-format.cpp src/itm-solver-equalities-01.hpp src/lpformat-io.cpp src/itm.hpp src/sparse-matrix.hpp) 
 
 target_include_directories(libbaryonyx-static PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
