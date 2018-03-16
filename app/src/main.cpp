@@ -439,6 +439,7 @@ main(int argc, const char* argv[])
                 } else {
                     ofs << "No solution found.\n";
                 }
+                ofs.flush();
             } catch (const baryonyx::precondition_failure& e) {
                 fmt::print(stderr, "internal failure: {}\n", e.what());
             } catch (const baryonyx::postcondition_failure& e) {
