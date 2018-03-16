@@ -131,11 +131,33 @@ struct resume
         constraints[0] = static_cast<int>(pb.equal_constraints.size());
         constraints[1] = static_cast<int>(pb.greater_constraints.size());
         constraints[2] = static_cast<int>(pb.less_constraints.size());
+
+        switch (pb.problem_type) {
+        case baryonyx::problem_solver_type::equalities_01:
+            problem_type = "equalities-01";
+            break;
+        case baryonyx::problem_solver_type::equalities_101:
+            problem_type = "equalities-101";
+            break;
+        case baryonyx::problem_solver_type::equalities_Z:
+            problem_type = "equalities-Z";
+            break;
+        case baryonyx::problem_solver_type::inequalities_01:
+            problem_type = "inequalities-01";
+            break;
+        case baryonyx::problem_solver_type::inequalities_101:
+            problem_type = "inequalities-101";
+            break;
+        case baryonyx::problem_solver_type::inequalities_Z:
+            problem_type = "inequalities-Z";
+            break;
+        }
     }
 
     std::array<int, 3> variables;
     std::array<int, 3> constraints;
     std::tuple<double, double> minmax;
+    std::string problem_type;
     bool use_lp_format;
 };
 
@@ -147,7 +169,8 @@ operator<<(std::ostream& os, const resume& pb)
     os << std::setprecision(std::numeric_limits<double>::digits10 + 1);
 
     if (pb.use_lp_format) {
-        os << "\\ problem stats:\n"
+        os << "\\ Problem statistics:\n"
+           << R"(\  type: )" << pb.problem_type << '\n'
            << R"(\  nb variables: )"
            << std::accumulate(pb.variables.begin(), pb.variables.end(), 0)
            << '\n'
@@ -163,7 +186,9 @@ operator<<(std::ostream& os, const resume& pb)
            << R"(\  minimal value.: )" << std::get<0>(pb.minmax) << '\n'
            << R"(\  maximal value.: )" << std::get<1>(pb.minmax) << '\n';
     } else {
-        os << "  * variables: "
+        os << "Problem statistics:\n"
+           << "  * type: " << pb.problem_type << '\n'
+           << "  * variables: "
            << std::accumulate(pb.variables.begin(), pb.variables.end(), 0)
            << '\n'
            << "    - real: " << pb.variables[0] << '\n'
