@@ -32,7 +32,6 @@
 #include "itm.hpp"
 #include "private.hpp"
 #include "utils.hpp"
-#include "wedelin.hpp"
 
 //
 // Get number of thread to use in optimizer from parameters list or from the
