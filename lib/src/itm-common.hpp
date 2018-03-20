@@ -23,7 +23,11 @@
 #ifndef ORG_VLEPROJECT_BARYONYX_SOLVER_ITM_COMMON_HPP
 #define ORG_VLEPROJECT_BARYONYX_SOLVER_ITM_COMMON_HPP
 
-#include <vector>
+#include <baryonyx/core>
+
+#include <tuple>
+
+#include <cassert>
 
 namespace baryonyx {
 namespace itm {
@@ -40,6 +44,70 @@ struct minimize_tag
  * bool and optimizes for space.
  */
 using x_type = std::vector<bool>;
+
+inline double
+best_solution_value(const baryonyx::result& res) noexcept
+{
+    assert(res.status == baryonyx::result_status::success);
+    assert(not res.solutions.empty());
+
+    return res.solutions.back().value;
+}
+
+inline bool
+is_better_solution(const baryonyx::result& lhs,
+                   const baryonyx::result& rhs,
+                   maximize_tag) noexcept
+{
+    return best_solution_value(lhs) > best_solution_value(rhs);
+}
+
+inline bool
+is_better_solution(const baryonyx::result& lhs,
+                   const baryonyx::result& rhs,
+                   minimize_tag) noexcept
+{
+    return best_solution_value(lhs) < best_solution_value(rhs);
+}
+
+inline std::ostream&
+operator<<(std::ostream& os, const baryonyx::affected_variables& var)
+{
+    std::size_t i = 0, e = var.names.size();
+
+    assert(var.names.size() == var.values.size());
+
+    for (; i != e; ++i)
+        os << var.names[i] << ": " << (var.values[i] ? 1 : 0) << '\n';
+
+    return os;
+}
+
+struct best_solution_writer
+{
+    const baryonyx::result& res;
+
+    best_solution_writer(const baryonyx::result& res_)
+      : res(res_)
+    {}
+};
+
+inline std::ostream&
+operator<<(std::ostream& os, const best_solution_writer& writer)
+{
+    assert(writer.res.status == baryonyx::result_status::success);
+    assert(not writer.res.solutions.empty());
+    assert(writer.res.variable_name.size() ==
+           writer.res.solutions.back().variables.size());
+
+    std::size_t i = 0, e = writer.res.variable_name.size();
+
+    for (; i != e; ++i)
+        os << writer.res.variable_name[i] << ": "
+           << (writer.res.solutions.back().variables[i] ? 1 : 0) << '\n';
+
+    return os;
+}
 }
 }
 

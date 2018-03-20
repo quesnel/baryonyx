@@ -34,6 +34,7 @@ read_result(std::istream& is)
 {
     baryonyx::result ret;
     ret.status = baryonyx::result_status::success;
+    ret.solutions.emplace_back();
     int line{ 0 };
 
     std::string buffer;
@@ -69,7 +70,7 @@ read_result(std::istream& is)
         }
 
         ret.variable_name.emplace_back(name);
-        ret.variable_value.emplace_back(value);
+        ret.solutions.back().variables.emplace_back(!!value);
         ++line;
     }
 

@@ -58,15 +58,15 @@ test_qap(const baryonyx::context_ptr& ctx)
 
     Ensures(result.status == baryonyx::result_status::success);
     if (result.status == baryonyx::result_status::success)
-        Ensures(result.value == 790.0);
+        Ensures(result.solutions.back().value == 790.0);
 
     if (result.status == baryonyx::result_status::success) {
         pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/small4.lp");
 
-        Ensures(baryonyx::is_valid_solution(pb, result.variable_value) ==
-                true);
-        Ensures(baryonyx::compute_solution(pb, result.variable_value) ==
-                790.0);
+        Ensures(baryonyx::is_valid_solution(
+                  pb, result.solutions.back().variables) == true);
+        Ensures(baryonyx::compute_solution(
+                  pb, result.solutions.back().variables) == 790.0);
     }
 }
 
@@ -122,7 +122,7 @@ test_n_queens_problem(const baryonyx::context_ptr& ctx)
 
         valid_solutions[i] = (result.remaining_constraints == 0);
         if (valid_solutions[i])
-            solutions[i] = result.value;
+            solutions[i] = result.solutions.back().value;
     }
 
     auto all_found =

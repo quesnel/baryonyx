@@ -285,7 +285,7 @@ compute_function(const functionT& fct, const variablesT& vars) noexcept
 }
 
 bool
-is_valid_solution(const problem& pb, const std::vector<int>& variable_value)
+is_valid_solution(const problem& pb, const std::vector<bool>& variable_value)
 {
     Expects(not variable_value.empty(), "variables vector empty");
     std::size_t i, e;
@@ -312,7 +312,7 @@ is_valid_solution(const problem& pb, const std::vector<int>& variable_value)
 }
 
 double
-compute_solution(const problem& pb, const std::vector<int>& variable_value)
+compute_solution(const problem& pb, const std::vector<bool>& variable_value)
 {
     Expects(not variable_value.empty(), "variables vector empty");
 
@@ -324,19 +324,22 @@ compute_solution(const problem& pb, const std::vector<int>& variable_value)
     return ret;
 }
 
-static std::vector<int>
+static std::vector<bool>
 make_variable_value(const problem& pb, const result& r)
 {
+    if (not r or r.solutions.empty())
+        return {};
+
     std::unordered_map<std::string, int> cache;
 
     std::transform(
       r.variable_name.cbegin(),
       r.variable_name.cend(),
-      r.variable_value.cbegin(),
+      r.solutions.back().variables.cbegin(),
       std::inserter(cache, cache.begin()),
       [](const auto& name, int value) { return std::make_pair(name, value); });
 
-    std::vector<int> ret(pb.vars.names.size(), INT_MAX);
+    std::vector<bool> ret(pb.vars.names.size(), false);
 
     for (std::size_t i = 0, e = pb.vars.names.size(); i != e; ++i) {
         auto it = cache.find(pb.vars.names[i]);
@@ -350,9 +353,12 @@ make_variable_value(const problem& pb, const result& r)
 bool
 is_valid_solution(const problem& pb, const result& r)
 {
+    if (not r or r.solutions.empty())
+        return false;
+
     Expects(pb.vars.names.size() == pb.vars.values.size());
     Expects(pb.vars.names.size() == r.variable_name.size());
-    Expects(r.variable_value.size() == r.variable_name.size());
+    Expects(r.solutions.back().variables.size() == r.variable_name.size());
     Expects(pb.affected_vars.names.empty());
     Expects(pb.affected_vars.values.empty());
 
@@ -364,9 +370,10 @@ is_valid_solution(const problem& pb, const result& r)
 double
 compute_solution(const problem& pb, const result& r)
 {
+    Expects(r and not r.solutions.empty());
     Expects(pb.vars.names.size() == pb.vars.values.size());
     Expects(pb.vars.names.size() == r.variable_name.size());
-    Expects(r.variable_value.size() == r.variable_name.size());
+    Expects(r.solutions.back().variables.size() == r.variable_name.size());
     Expects(pb.affected_vars.names.empty());
     Expects(pb.affected_vars.values.empty());
 

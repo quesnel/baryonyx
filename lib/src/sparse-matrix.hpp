@@ -97,39 +97,6 @@ public:
         row_vector_access(elem).swap(m_rows_values);
         col_vector_access(elem).swap(m_cols_values);
 
-        {
-            std::size_t ets = m_rows_access.size() * sizeof(int) +
-                              m_cols_access.size() * sizeof(int) +
-                              m_rows_values.size() * sizeof(row_value) +
-                              m_cols_values.size() * sizeof(col_value);
-
-            double estimated;
-            std::string type;
-
-            if (ets > (1024 * 1024 * 1024)) {
-                estimated = ets / (1024 * 1024 * 1024);
-                type = "GB";
-            } else if (ets > 1024 * 1024) {
-                estimated = ets / (1024 * 1024);
-                type = "MB";
-            }
-            if (ets > 1024) {
-                estimated = ets / 1024;
-                type = "KB";
-            } else {
-                estimated = ets;
-                type = "B";
-            }
-
-            fmt::print("  - sparse_matrix [rows:{} columns:{} elements:{} "
-                       "memory: {}{}]\n",
-                       rows,
-                       cols,
-                       elem,
-                       estimated,
-                       type);
-        }
-
         //
         // First, we build a vector of access to all elements in the matrix
         // different to 0. Then, we sort accessors according to the column id

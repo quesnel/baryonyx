@@ -715,14 +715,14 @@ struct objective_function
 
 struct affected_variables
 {
-    void push_back(std::string name, int value)
+    void push_back(std::string name, bool value)
     {
         names.emplace_back(name);
         values.emplace_back(value);
     }
 
     std::vector<std::string> names;
-    std::vector<int> values;
+    std::vector<bool> values;
 };
 
 struct problem
@@ -774,7 +774,7 @@ clear(baryonyx::problem& pb) noexcept
     std::vector<variable_value>().swap(pb.vars.values);
 
     std::vector<std::string>().swap(pb.affected_vars.names);
-    std::vector<int>().swap(pb.affected_vars.values);
+    std::vector<bool>().swap(pb.affected_vars.values);
 }
 
 enum class result_status
@@ -787,15 +787,29 @@ enum class result_status
     limit_reached
 };
 
+struct solution
+{
+    solution() = default;
+
+    solution(const std::vector<bool>& variables_, double value_)
+      : variables(variables_)
+      , value(value_)
+    {}
+
+    std::vector<bool> variables;
+    double value;
+};
+
 struct result
 {
     std::string method;
 
-    std::vector<std::string> variable_name;
-    std::vector<int> variable_value;
     affected_variables affected_vars;
+
+    std::vector<std::string> variable_name;
+    std::vector<solution> solutions;
+
     double duration = 0.0;
-    double value = 0.0;
     index loop = 0;
     index variables = 0;
     index constraints = 0;
@@ -912,11 +926,11 @@ optimize(const baryonyx::context_ptr& ctx, problem& pb);
 
 BARYONYX_API
 bool
-is_valid_solution(const problem& pb, const std::vector<int>& variable_value);
+is_valid_solution(const problem& pb, const std::vector<bool>& variable_value);
 
 BARYONYX_API
 double
-compute_solution(const problem& pb, const std::vector<int>& variable_value);
+compute_solution(const problem& pb, const std::vector<bool>& variable_value);
 
 BARYONYX_API
 bool

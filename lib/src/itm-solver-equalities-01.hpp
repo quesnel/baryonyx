@@ -296,30 +296,17 @@ struct solver_equalities_01coeff
         return length(c);
     }
 
-    result results(const c_type& original_costs,
+    double results(const c_type& original_costs,
                    const double cost_constant) const
     {
-        result ret;
+        assert(is_valid_solution());
 
-        if (is_valid_solution()) {
-            ret.status = result_status::success;
-            double value = static_cast<double>(cost_constant);
-
-            for (int i{ 0 }, ei{ n }; i != ei; ++i)
-                value += static_cast<double>(original_costs[i] * x[i]);
-
-            ret.value = static_cast<double>(value);
-        }
-
-        ret.variable_value.resize(n, 0);
+        double value = static_cast<double>(cost_constant);
 
         for (int i{ 0 }, ei{ n }; i != ei; ++i)
-            ret.variable_value[i] = x[i] ? 1 : 0;
+            value += static_cast<double>(original_costs[i] * x[i]);
 
-        ret.variables = n;
-        ret.constraints = m;
-
-        return ret;
+        return value;
     }
 
     typename AP_type::row_iterator ap_value(typename AP_type::row_iterator it,
@@ -330,8 +317,8 @@ struct solver_equalities_01coeff
 
     //
     // Decrease influence of local preferences. 0 will completely reset the
-    // preference values for the current row. > 0 will keep former decision in
-    // mind.
+    // preference values for the current row. > 0 will keep former decision
+    // in mind.
     //
     template<typename iteratorT>
     void decrease_preference(iteratorT begin,
@@ -381,9 +368,9 @@ struct solver_equalities_01coeff
     }
 
     //
-    // The bkmin and bkmax constraint bounds are not equal and can be assigned
-    // to -infinity or +infinity. We have to scan the r vector and search a
-    // value j such as b(0, k) <= Sum A(k, R[j]) < b(1, k).
+    // The bkmin and bkmax constraint bounds are not equal and can be
+    // assigned to -infinity or +infinity. We have to scan the r vector and
+    // search a value j such as b(0, k) <= Sum A(k, R[j]) < b(1, k).
     //
     template<typename Iterator>
     void affect_variables(Iterator it,

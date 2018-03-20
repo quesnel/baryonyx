@@ -65,19 +65,24 @@ operator<<(std::ostream& os, const result& result)
         os << "uninitialized\n";
         break;
     case result_status::success:
-        os << "solution found\n"
-           << R"(\ value.................: )" << result.value << '\n'
+        os << "solution found\n";
+
+        if (result.solutions.empty()) // Baryonyx ensures solutions are not
+            break;                    // empty.
+
+        os << R"(\ value.................: )" << result.solutions.back().value
+           << '\n'
            << "\\ variables.............: \n";
 
         for (std::size_t i{ 0 }, e{ result.affected_vars.names.size() };
              i != e;
              ++i)
             os << result.affected_vars.names[i] << '='
-               << result.affected_vars.values[i] << '\n';
+               << (result.affected_vars.values[i] ? 1 : 0) << '\n';
 
         for (std::size_t i{ 0 }, e{ result.variable_name.size() }; i != e; ++i)
-            os << result.variable_name[i] << '=' << result.variable_value[i]
-               << '\n';
+            os << result.variable_name[i] << '='
+               << (result.solutions.back().variables[i] ? 1 : 0) << '\n';
         break;
     case result_status::time_limit_reached:
         os << "time limit reached\n"

@@ -201,6 +201,18 @@ init_x(floatingpointT cost, int value_if_cost_0, maximize_tag) noexcept
     return false;
 }
 
+template<typename TimePoint>
+double
+compute_duration(const TimePoint& first, const TimePoint& last) noexcept
+{
+    namespace sc = std::chrono;
+
+    auto diff = last - first;
+    auto dc = sc::duration_cast<sc::duration<double, std::ratio<1>>>(diff);
+
+    return dc.count();
+}
+
 template<typename Solver>
 inline bool
 is_valid_solution(const Solver& s) noexcept
@@ -222,7 +234,7 @@ print_missing_constraint(const baryonyx::context_ptr& ctx,
                          const std::vector<std::string>& names) noexcept
 {
     std::vector<int> R;
-    
+
     compute_missing_constraint(s, R);
     info(ctx, "Constraints remaining: {}\n", length(R));
 
@@ -385,8 +397,8 @@ struct bounds_printer
         floatingpointT lb = init_bound(slv);
         floatingpointT ub = init_ub(modeT());
 
-        if (best)
-            ub = static_cast<floatingpointT>(best.value);
+        if (not best.solutions.empty())
+            ub = static_cast<floatingpointT>(best.solutions.back().value);
 
         for (auto j = 0; j != slv.n; ++j)
             lb += add_bound(slv, j, slv.compute_sum_A_pi(j), modeT());
@@ -684,10 +696,7 @@ struct solver_functor
 
     const context_ptr& m_ctx;
     randomT& m_rng;
-    const std::vector<std::string>& m_variable_names;
-    const affected_variables& m_affected_vars;
 
-    x_type m_best_x;
     result m_best;
 
     solver_functor(const context_ptr& ctx,
@@ -696,9 +705,10 @@ struct solver_functor
                    const affected_variables& affected_vars)
       : m_ctx(ctx)
       , m_rng(rng)
-      , m_variable_names(variable_names)
-      , m_affected_vars(affected_vars)
-    {}
+    {
+        m_best.affected_vars = affected_vars;
+        m_best.variable_name = variable_names;
+    }
 
     result operator()(const std::vector<itm::merged_constraint>& constraints,
                       int variables,
@@ -745,34 +755,43 @@ struct solver_functor
 
         info(m_ctx, "* solver starts:\n");
 
+        m_best.variables = slv.m;
+        m_best.constraints = slv.n;
+
+        bool start_pushing = false;
+
         for (;;) {
             int remaining = compute.run(slv, kappa, delta, theta);
 
             if (best_remaining == -1 or remaining < best_remaining) {
                 best_remaining = remaining;
-                m_best = slv.results(original_costs, cost_constant);
+                m_best.duration = compute_duration(m_begin, m_end);
                 m_best.loop = i;
                 m_best.remaining_constraints = remaining;
-                m_best.duration =
-                  std::chrono::duration_cast<std::chrono::duration<double>>(
-                    m_end - m_begin)
-                    .count();
 
-                bound_print(slv, m_ctx, m_best);
+                if (remaining == 0) {
+                    m_best.status = baryonyx::result_status::success;
+                    store_if_better(
+                      slv.results(original_costs, cost_constant), slv.x, i);
+                    start_pushing = true;
+                } else {
 
-                info(m_ctx,
-                     "  - constraints remaining: {}/{} at {}s (loop: {})\n",
-                     remaining,
-                     m_best.constraints,
-                     m_best.duration,
-                     i);
+                    // bound_print(slv, m_ctx, m_best);
+
+                    info(m_ctx,
+                         "  - violated constraints: {}/{} at {}s (loop: {})\n",
+                         remaining,
+                         slv.n,
+                         compute_duration(m_begin, m_end),
+                         i);
+                }
             }
 
 #ifndef BARYONYX_FULL_OPTIMIZATION
-            slv.print(m_ctx, m_variable_names, p.print_level);
+            slv.print(m_ctx, m_best.variable_name, p.print_level);
 #endif
 
-            if (m_best.status == result_status::success) {
+            if (start_pushing) {
                 ++pushing_iteration;
 
                 if (pushed == -1)
@@ -782,13 +801,6 @@ struct solver_functor
                     pushed++;
                     pushing_iteration = 0;
 
-                    info(
-                      m_ctx,
-                      "    - push {}: kappa * k: {} objective amplifier: {}\n",
-                      pushed,
-                      (pushing_k_factor * kappa),
-                      (pushing_objective_amplifier));
-
                     remaining =
                       compute.push_and_run(slv,
                                            pushing_k_factor * kappa,
@@ -796,22 +808,18 @@ struct solver_functor
                                            theta,
                                            pushing_objective_amplifier);
 
-                    if (remaining == 0) {
-                        auto current =
-                          slv.results(original_costs, cost_constant);
-                        current.loop = i;
-                        current.remaining_constraints = 0;
-
-                        if (store_if_better(current))
-                            m_best_x = slv.x;
-                    }
+                    if (remaining == 0)
+                        store_if_better(
+                          slv.results(original_costs, cost_constant),
+                          slv.x,
+                          i);
                 }
 
                 if (pushed > p.pushes_limit) {
                     info(
                       m_ctx,
                       "    - Push system limit reached. Solution found: {}\n",
-                      m_best.value);
+                      best_solution_value(m_best));
                     return m_best;
                 }
             }
@@ -877,45 +885,32 @@ struct solver_functor
     }
 
 private:
-    bool store_if_better(const result& current) noexcept
+    void store_if_better(double current, const x_type& x, int i)
     {
-        if (current.status != result_status::success)
-            return false;
-
-        if (m_best.status != result_status::success or
-            is_better_solution(current.value, m_best.value, mode_type())) {
-
-            double t =
-              std::chrono::duration_cast<std::chrono::duration<double>>(
-                m_end - m_begin)
-                .count();
+        if (m_best.solutions.empty() or
+            is_better_solution(
+              current, m_best.solutions.back().value, modeT())) {
+            m_best.solutions.emplace_back(x, current);
+            m_best.duration = compute_duration(m_begin, m_end);
+            m_best.loop = i;
 
             info(m_ctx,
                  "  - Solution found: {} (i={} t={}s)\n",
-                 current.value,
-                 current.loop,
-                 t);
+                 current,
+                 m_best.loop,
+                 m_best.duration);
 
-            m_best = current;
-            m_best.duration = t;
-
+#if 0
             std::ofstream ofs("temp.sol");
-            ofs << m_best;
+            ofs << m_best << m_best.affected_vars
+                << best_solution_writer(m_best);
+#endif
+        } else {
+            m_best.solutions.emplace_back(x, current);
 
-            std::size_t i, e;
-
-            for (i = 0, e = m_affected_vars.names.size(); i != e; ++i)
-                ofs << m_affected_vars.names[i] << ':'
-                    << m_affected_vars.values[i] << '\n';
-
-            for (i = 0, e = m_variable_names.size(); i != e; ++i)
-                ofs << m_variable_names[i] << ':' << m_best.variable_value[i]
-                    << '\n';
-
-            return true;
+            std::swap(*(m_best.solutions.rbegin()),
+                      *(m_best.solutions.rbegin() + 1));
         }
-
-        return false;
     }
 };
 
@@ -939,11 +934,11 @@ struct best_solution_recorder
                 return false;
 
             if (m_best.status != result_status::success or
-                is_better_solution(current.value, m_best.value, modeT())) {
+                is_better_solution(current, m_best, modeT())) {
 
                 info(m_ctx,
                      "  - Solution found: {} (i={} t={}s)\n",
-                     current.value,
+                     best_solution_value(current),
                      current.loop,
                      current.duration);
 
@@ -979,9 +974,7 @@ struct optimize_functor
     const context_ptr& m_ctx;
     randomT m_rng;
     int m_thread_id;
-    const std::vector<std::string>& m_variable_names;
-    const affected_variables& m_affected_vars;
-    x_type m_best_x;
+
     result m_best;
 
     optimize_functor(const context_ptr& ctx,
@@ -992,9 +985,10 @@ struct optimize_functor
       : m_ctx(ctx)
       , m_rng(seed)
       , m_thread_id(thread_id)
-      , m_variable_names(variable_names)
-      , m_affected_vars(affected_vars)
-    {}
+    {
+        m_best.affected_vars = affected_vars;
+        m_best.variable_name = variable_names;
+    }
 
     result operator()(
       best_solution_recorder<floatingpointT, modeT>& best_recorder,
@@ -1042,19 +1036,11 @@ struct optimize_functor
              m_end = std::chrono::steady_clock::now(), ++i) {
 
             int remaining = compute.run(slv, kappa, delta, theta);
-
-            if (remaining == 0) {
-                auto current = slv.results(original_costs, cost_constant);
-                current.loop = i;
-                current.remaining_constraints = remaining;
-                if (store_if_better(current)) {
-                    m_best_x = slv.x;
-                    pushed = 0;
-
-                    if (best_recorder.try_update(m_best) and pushed > 0)
-                        info(m_ctx, "   * pushed solution.\n");
-                }
-            }
+            if (remaining == 0)
+                store_if_better(slv.results(original_costs, cost_constant),
+                                slv.x,
+                                i,
+                                best_recorder);
 
             if (i > p.w)
                 kappa += kappa_step *
@@ -1063,7 +1049,12 @@ struct optimize_functor
                                   alpha);
 
             if (i >= p.limit or kappa > kappa_max or pushed > p.pushes_limit) {
-                slv.reinit(m_best_x, p.init_policy, p.init_random);
+                if (m_best.solutions.empty())
+                    slv.reinit(x_type(), p.init_policy, p.init_random);
+                else
+                    slv.reinit(m_best.solutions.back().variables,
+                               p.init_policy,
+                               p.init_random);
 
                 i = 0;
                 kappa = static_cast<floatingpoint_type>(kappa_min);
@@ -1087,19 +1078,12 @@ struct optimize_functor
                                            theta,
                                            pushing_objective_amplifier);
 
-                    if (remaining == 0) {
-                        auto current =
-                          slv.results(original_costs, cost_constant);
-                        current.loop = i;
-                        current.remaining_constraints = 0;
-
-                        if (store_if_better(current)) {
-                            m_best_x = slv.x;
-
-                            if (best_recorder.try_update(m_best))
-                                info(m_ctx, "   * pushed solution.\n");
-                        }
-                    }
+                    if (remaining == 0)
+                        store_if_better(
+                          slv.results(original_costs, cost_constant),
+                          slv.x,
+                          i,
+                          best_recorder);
                 }
             }
         }
@@ -1108,39 +1092,34 @@ struct optimize_functor
     }
 
 private:
-    bool store_if_better(const result& current) noexcept
+    void store_if_better(
+      double current,
+      const x_type& x,
+      int i,
+      best_solution_recorder<floatingpointT, modeT>& best_recorder)
     {
-        if (current.status != result_status::success)
-            return false;
+        if (m_best.solutions.empty() or
+            is_better_solution(
+              current, m_best.solutions.back().value, modeT())) {
+            m_best.status = baryonyx::result_status::success;
+            m_best.solutions.emplace_back(x, current);
+            m_best.duration = compute_duration(m_begin, m_end);
+            m_best.loop = i;
 
-        if (m_best.status != result_status::success or
-            is_better_solution(current.value, m_best.value, mode_type())) {
+            best_recorder.try_update(m_best);
 
-            double t =
-              std::chrono::duration_cast<std::chrono::duration<double>>(
-                m_end - m_begin)
-                .count();
+#if 0
+                std::ofstream ofs(fmt::format("temp-{}.sol", m_thread_id));
+                ofs << m_best << m_affected_vars
+                    << best_solution_writer(m_best);
+#endif
 
-            m_best = current;
-            m_best.duration = t;
+        } else {
+            m_best.solutions.emplace_back(x, current);
 
-            std::ofstream ofs(fmt::format("temp-{}.sol", m_thread_id));
-            ofs << m_best;
-
-            std::size_t i, e;
-
-            for (i = 0, e = m_affected_vars.names.size(); i != e; ++i)
-                ofs << m_affected_vars.names[i] << ':'
-                    << m_affected_vars.values[i] << '\n';
-
-            for (i = 0, e = m_variable_names.size(); i != e; ++i)
-                ofs << m_variable_names[i] << ':' << m_best.variable_value[i]
-                    << '\n';
-
-            return true;
+            std::swap(*(m_best.solutions.rbegin()),
+                      *(m_best.solutions.rbegin() + 1));
         }
-
-        return false;
     }
 };
 
@@ -1195,8 +1174,8 @@ rng_normalize_costs(const CostT& c, randomT& rng)
         next = begin;
     }
 
-    // Reorder the vector according to the variable index, so, it restores the
-    // initial order.
+    // Reorder the vector according to the variable index, so, it restores
+    // the initial order.
 
     std::sort(r.begin(), r.end(), [](const auto& lhs, const auto& rhs) {
         return lhs.second < rhs.second;
@@ -1217,8 +1196,9 @@ rng_normalize_costs(const CostT& c, randomT& rng)
 }
 
 /**
- * Normalizes the cost vector, i.e. divides it by its l{1,2, +oo}norm. If the
- * input vector is too small or with infinity value, the c is unchanged.
+ * Normalizes the cost vector, i.e. divides it by its l{1,2, +oo}norm. If
+ * the input vector is too small or with infinity value, the c is
+ * unchanged.
  */
 template<typename CostT, typename floatingpointT, typename randomT>
 inline CostT
@@ -1442,7 +1422,7 @@ optimize_problem(const context_ptr& ctx,
             auto current = results[i].get();
             if (current.status == result_status::success) {
                 if (ret.status != result_status::success or
-                    is_better_solution(current.value, ret.value, modeT()))
+                    is_better_solution(current, ret, modeT()))
                     ret = current;
             }
         }

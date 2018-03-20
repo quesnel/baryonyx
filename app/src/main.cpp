@@ -365,8 +365,9 @@ main(int argc, const char* argv[])
                                        : baryonyx::solve(ctx, pb);
 
             if (ret.status == baryonyx::result_status::success) {
-                fmt::print(
-                  "Best solution found: {} in {}s\n", ret.value, ret.duration);
+                fmt::print("Best solution found: {} in {}s\n",
+                           ret.solutions.back().value,
+                           ret.duration);
             } else {
                 fmt::print("No solution found. Missing constraints: {}\n",
                            ret.remaining_constraints);
@@ -378,7 +379,9 @@ main(int argc, const char* argv[])
                 << '\n';
 
             if (ret.status == baryonyx::result_status::success) {
-                ofs << R"(\ Solution found: )" << ret.value << '\n' << ret;
+                ofs << R"(\ Solution found: )" << ret.solutions.back().value
+                    << '\n'
+                    << ret;
             } else {
                 ofs << R"(\ Solution not found. Missing constraints: )"
                     << ret.remaining_constraints << '\n';
@@ -435,7 +438,8 @@ main(int argc, const char* argv[])
                                            : baryonyx::solve(ctx, pb);
 
                 if (ret.status == baryonyx::result_status::success) {
-                    ofs << ret.value << " " << ret.duration << "\n";
+                    ofs << ret.solutions.back().value << " " << ret.duration
+                        << "\n";
                 } else {
                     ofs << "No solution found.\n";
                 }

@@ -23,6 +23,7 @@
 #include "unit-test.hpp"
 
 #include <fstream>
+#include <iostream>
 #include <map>
 #include <numeric>
 #include <random>
@@ -63,19 +64,22 @@ test_preprocessor()
         Ensures(result.affected_vars.values[0] == 0);
         Ensures(result.affected_vars.values[1] == 0);
         Ensures(result.affected_vars.values[2] == 1);
-
-        Ensures(result.variable_value.size() == 2);
+        Ensures(result.status == baryonyx::result_status::success);
+        Ensures(not result.solutions.empty());
+        Ensures(result.solutions.back().variables.size() == 2);
         Ensures(result.variable_name.size() == 2);
 
-        Ensures(result.status == baryonyx::result_status::success);
-        Ensures(baryonyx::is_valid_solution(pb, result.variable_value) ==
-                true);
+        Ensures(baryonyx::is_valid_solution(
+                  pb, result.solutions.back().variables) == true);
 
-        Ensures(is_essentially_equal(result.value, 1000.45, 0.01));
+        Ensures(
+          is_essentially_equal(result.solutions.back().value, 1000.45, 0.01));
 
         ss << result;
         if (not ss.good())
             Ensures(ss.good());
+
+        std::cout << result << '\n';
     }
 
     {
@@ -104,12 +108,16 @@ test_preprocessor_2()
         context_set_parameter(ctx, "preprocessing", "equal,less,greater");
         auto result = baryonyx::solve(ctx, pb);
 
-        fmt::print("result.value {:F} == 6212977\n", result.value);
+        Ensures(result);
+        Ensures(not result.solutions.empty());
 
-        r = result.value;
-        Ensures(result.value > 6000000);
-        Ensures(baryonyx::is_valid_solution(pb, result.variable_value) ==
-                true);
+        fmt::print("result.value {:F} == 6212977\n",
+                   result.solutions.back().value);
+
+        r = result.solutions.back().value;
+        Ensures(result.solutions.back().value > 6000000);
+        Ensures(baryonyx::is_valid_solution(
+                  pb, result.solutions.back().variables) == true);
 
         ss << result;
         if (not ss.good())
@@ -155,13 +163,15 @@ test_real_cost()
     baryonyx::preprocess(ctx, pb);
     auto result = baryonyx::solve(ctx, pb);
 
+    Ensures(result);
     Ensures(result.status == baryonyx::result_status::success);
+    Ensures(not result.solutions.empty());
 
-    Ensures(is_essentially_equal(result.value, -0.6, 0.01));
+    Ensures(is_essentially_equal(result.solutions.back().value, -0.6, 0.01));
 
     if (result)
-        Ensures(baryonyx::is_valid_solution(pb, result.variable_value) ==
-                true);
+        Ensures(baryonyx::is_valid_solution(
+                  pb, result.solutions.back().variables) == true);
 }
 
 static void
@@ -206,8 +216,8 @@ test_assignment_problem_random_coast()
         auto result = baryonyx::solve(ctx, pb);
 
         Ensures(result.status == baryonyx::result_status::success);
-        Ensures(baryonyx::is_valid_solution(pb, result.variable_value) ==
-                true);
+        Ensures(baryonyx::is_valid_solution(
+                  pb, result.solutions.back().variables) == true);
     }
 }
 
@@ -224,7 +234,8 @@ test_negative_coeff()
     auto result = baryonyx::solve(ctx, pb);
 
     Ensures(result.status == baryonyx::result_status::success);
-    Ensures(baryonyx::is_valid_solution(pb, result.variable_value) == true);
+    Ensures(baryonyx::is_valid_solution(
+              pb, result.solutions.back().variables) == true);
 }
 
 static void
@@ -256,7 +267,8 @@ test_negative_coeff3()
     auto result = baryonyx::solve(ctx, pb);
 
     Ensures(result.status == baryonyx::result_status::success);
-    Ensures(baryonyx::is_valid_solution(pb, result.variable_value) == true);
+    Ensures(baryonyx::is_valid_solution(
+              pb, result.solutions.back().variables) == true);
 }
 
 static void
@@ -272,7 +284,8 @@ test_negative_coeff4()
     auto result = baryonyx::solve(ctx, pb);
 
     Ensures(result.status == baryonyx::result_status::success);
-    Ensures(baryonyx::is_valid_solution(pb, result.variable_value) == true);
+    Ensures(baryonyx::is_valid_solution(
+              pb, result.solutions.back().variables) == true);
 }
 
 static void
@@ -301,8 +314,8 @@ test_negative_coeff5()
     Ensures(result.status == baryonyx::result_status::success);
 
     if (result)
-        Ensures(baryonyx::is_valid_solution(pb, result.variable_value) ==
-                true);
+        Ensures(baryonyx::is_valid_solution(
+                  pb, result.solutions.back().variables) == true);
 }
 
 static void
@@ -338,13 +351,14 @@ test_8_queens_puzzle_fixed_cost()
 
     for (int i = 0; i != 8; ++i) {
         for (int j = 0; j != 8; ++j)
-            fmt::print("{} ", result.variable_value[j * 8 + i]);
+            fmt::print("{} ", result.solutions.back().variables[j * 8 + i]);
 
         fmt::print("\n");
     }
 
     Ensures(result.status == baryonyx::result_status::success);
-    Ensures(baryonyx::is_valid_solution(pb, result.variable_value) == true);
+    Ensures(baryonyx::is_valid_solution(
+              pb, result.solutions.back().variables) == true);
 }
 
 static void
@@ -380,8 +394,8 @@ test_8_queens_puzzle_random_cost()
         auto result = baryonyx::solve(ctx, pb);
 
         Ensures(result.status == baryonyx::result_status::success);
-        Ensures(baryonyx::is_valid_solution(pb, result.variable_value) ==
-                true);
+        Ensures(baryonyx::is_valid_solution(
+                  pb, result.solutions.back().variables) == true);
     }
 }
 
@@ -403,7 +417,10 @@ test_qap()
     context_set_parameter(ctx, "w", 20);
 
     auto result = baryonyx::solve(ctx, pb);
-    Ensures(baryonyx::is_valid_solution(pb, result.variable_value) == true);
+
+    if (result)
+        Ensures(baryonyx::is_valid_solution(
+                  pb, result.solutions.back().variables) == true);
 }
 
 static void
@@ -424,7 +441,8 @@ test_flat30_7()
     auto result = baryonyx::solve(ctx, pb);
 
     Ensures(result.status == baryonyx::result_status::success);
-    Ensures(baryonyx::is_valid_solution(pb, result.variable_value) == true);
+    Ensures(baryonyx::is_valid_solution(
+              pb, result.solutions.back().variables) == true);
 }
 
 static void
@@ -450,7 +468,8 @@ test_uf50_0448()
     auto result = baryonyx::solve(ctx, pb);
 
     Ensures(result.status == baryonyx::result_status::success);
-    Ensures(baryonyx::is_valid_solution(pb, result.variable_value) == true);
+    Ensures(baryonyx::is_valid_solution(
+              pb, result.solutions.back().variables) == true);
 }
 
 static void
@@ -473,7 +492,8 @@ test_aim_50_1_6_yes1_2()
     auto result = baryonyx::solve(ctx, pb);
 
     Ensures(result.status == baryonyx::result_status::success);
-    Ensures(baryonyx::is_valid_solution(pb, result.variable_value) == true);
+    Ensures(baryonyx::is_valid_solution(
+              pb, result.solutions.back().variables) == true);
 }
 
 #if 0
@@ -500,7 +520,7 @@ test_Z_coefficient_1()
         Ensures(result.status == baryonyx::result_status::success);
 
         if (result)
-            Ensures(baryonyx::is_valid_solution(pb, result.variable_value) ==
+            Ensures(baryonyx::is_valid_solution(pb, result.solutions.back().variables) ==
                     true);
     }
 
@@ -522,7 +542,7 @@ test_Z_coefficient_1()
         Ensures(result.status == baryonyx::result_status::success);
 
         if (result)
-            Ensures(baryonyx::is_valid_solution(pb, result.variable_value) ==
+            Ensures(baryonyx::is_valid_solution(pb, result.solutions.back().variables) ==
                     true);
     }
 }
@@ -553,7 +573,7 @@ test_bibd1n()
     auto result = baryonyx::solve(ctx, pb);
 
     Ensures(result.status == baryonyx::result_status::success);
-    Ensures(baryonyx::is_valid_solution(pb, result.variable_value) == true);
+    Ensures(baryonyx::is_valid_solution(pb, result.solutions.back().variables) == true);
 }
 #endif
 
