@@ -24,6 +24,9 @@
 #include "itm-common.hpp"
 
 #include "itm-solver-equalities-01.hpp"
+#include "itm-solver-equalities-101.hpp"
+#include "itm-solver-inequalities-01.hpp"
+#include "itm-solver-inequalities-101.hpp"
 #include "itm-solver-inequalities-Z.hpp"
 
 #include <set>
@@ -415,7 +418,7 @@ dispatch_solver(const context_ptr& ctx, problem& pb, const itm::parameters& p)
           randomT>(ctx, pb, p);
     case problem_solver_type::equalities_101:
         return solve_problem<
-          solver_inequalities_Zcoeff<floatingpointT, modeT, randomT>,
+          solver_equalities_101coeff<floatingpointT, modeT, randomT>,
           floatingpointT,
           modeT,
           constraintOrderT,
@@ -429,14 +432,14 @@ dispatch_solver(const context_ptr& ctx, problem& pb, const itm::parameters& p)
           randomT>(ctx, pb, p);
     case problem_solver_type::inequalities_01:
         return solve_problem<
-          solver_inequalities_Zcoeff<floatingpointT, modeT, randomT>,
+          solver_inequalities_01coeff<floatingpointT, modeT, randomT>,
           floatingpointT,
           modeT,
           constraintOrderT,
           randomT>(ctx, pb, p);
     case problem_solver_type::inequalities_101:
         return solve_problem<
-          solver_inequalities_Zcoeff<floatingpointT, modeT, randomT>,
+          solver_inequalities_101coeff<floatingpointT, modeT, randomT>,
           floatingpointT,
           modeT,
           constraintOrderT,
@@ -473,7 +476,7 @@ dispatch_optimizer(const context_ptr& ctx,
           randomT>(ctx, pb, p, thread);
     case problem_solver_type::equalities_101:
         return optimize_problem<
-          solver_inequalities_Zcoeff<floatingpointT, modeT, randomT>,
+          solver_equalities_101coeff<floatingpointT, modeT, randomT>,
           floatingpointT,
           modeT,
           constraintOrderT,
@@ -487,14 +490,14 @@ dispatch_optimizer(const context_ptr& ctx,
           randomT>(ctx, pb, p, thread);
     case problem_solver_type::inequalities_01:
         return optimize_problem<
-          solver_inequalities_Zcoeff<floatingpointT, modeT, randomT>,
+          solver_inequalities_01coeff<floatingpointT, modeT, randomT>,
           floatingpointT,
           modeT,
           constraintOrderT,
           randomT>(ctx, pb, p, thread);
     case problem_solver_type::inequalities_101:
         return optimize_problem<
-          solver_inequalities_Zcoeff<floatingpointT, modeT, randomT>,
+          solver_inequalities_101coeff<floatingpointT, modeT, randomT>,
           floatingpointT,
           modeT,
           constraintOrderT,
