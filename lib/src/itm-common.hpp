@@ -25,6 +25,8 @@
 
 #include <baryonyx/core>
 
+#include "itm.hpp"
+
 #include <tuple>
 
 #include <cassert>

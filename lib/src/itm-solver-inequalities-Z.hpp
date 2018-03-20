@@ -176,7 +176,7 @@ struct solver_inequalities_Zcoeff
         }
 
         x_type empty;
-        reinit(empty, init_type, init_random);
+        init_solver(*this, empty, init_type, init_random);
     }
 
     int factor(int value) const noexcept
@@ -221,74 +221,6 @@ struct solver_inequalities_Zcoeff
                    pi[ht->row];
 
         return ret;
-    }
-
-    void reinit(const x_type& best_previous,
-                itm::init_policy_type type,
-                double init_random)
-    {
-        std::fill(
-          P.begin(), P.end(), static_cast<typename P_type::value_type>(0));
-        std::fill(
-          pi.begin(), pi.end(), static_cast<typename pi_type::value_type>(0));
-
-        //
-        // Default, we randomly change the init policy using using the
-        // bernoulli distribution with p = 0.1.
-        //
-
-        {
-            std::bernoulli_distribution d(0.1);
-
-            if (d(rng)) {
-                std::uniform_int_distribution<int> di(0, 2);
-                auto ret = di(rng);
-                type = (ret == 0) ? itm::init_policy_type::best
-                                  : (ret == 1) ? itm::init_policy_type::random
-                                               : itm::init_policy_type::best;
-            }
-        }
-
-        //
-        // If no solution was found previously and the policy type is best, we
-        // randomly replace the best policy init type with random or bastert
-        // policy solution using the berouilli distribution with p = 0.5.
-        //
-
-        if (best_previous.empty() and type == itm::init_policy_type::best) {
-            std::bernoulli_distribution d(0.5);
-            if (type == itm::init_policy_type::best) {
-                type = d(rng) ? itm::init_policy_type::random
-                              : itm::init_policy_type::bastert;
-            }
-        }
-
-        init_random = clamp(init_random, 0.0, 1.0);
-
-        std::bernoulli_distribution d(init_random);
-
-        switch (type) {
-        case itm::init_policy_type::bastert:
-            if (init_random == 0.0 or init_random == 1.0) {
-                bool value_if_cost_0 = init_random == 1.0;
-
-                for (int i = 0, e = n; i != e; ++i)
-                    x[i] = init_x(c(i), value_if_cost_0, mode_type());
-            } else {
-                for (int i = 0, e = n; i != e; ++i)
-                    x[i] = init_x(c(i), d(rng), mode_type());
-            }
-            break;
-        case itm::init_policy_type::random:
-            for (int i = 0; i != n; ++i)
-                x[i] = d(rng);
-            break;
-        case itm::init_policy_type::best:
-            for (int i = 0; i != n; ++i) {
-                x[i] = (d(rng)) ? (best_previous[i]) : d(rng);
-            }
-            break;
-        }
     }
 
     void print(const context_ptr& ctx,

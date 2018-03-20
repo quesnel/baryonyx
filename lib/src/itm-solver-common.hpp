@@ -43,6 +43,7 @@
 
 #include "branch-and-bound-solver.hpp"
 #include "fixed_array.hpp"
+#include "itm-common.hpp"
 #include "itm.hpp"
 #include "knapsack-dp-solver.hpp"
 #include "private.hpp"
@@ -225,6 +226,80 @@ inline int
 compute_missing_constraint(const Solver& s, Container& c)
 {
     return s.compute_violated_constraints(c);
+}
+
+template<typename Solver, typename x_type>
+inline void
+init_solver(Solver& slv,
+            const x_type& best_previous,
+            itm::init_policy_type type,
+            double init_random)
+{
+    std::fill(slv.P.begin(),
+              slv.P.end(),
+              static_cast<typename Solver::P_type::value_type>(0));
+    std::fill(slv.pi.begin(),
+              slv.pi.end(),
+              static_cast<typename Solver::pi_type::value_type>(0));
+
+    //
+    // Default, we randomly change the init policy using the bernoulli
+    // distribution with p = 0.1.
+    //
+
+    {
+        std::bernoulli_distribution d(0.1);
+
+        if (d(slv.rng)) {
+            std::uniform_int_distribution<int> di(0, 2);
+            auto ret = di(slv.rng);
+            type = (ret == 0) ? itm::init_policy_type::best
+                              : (ret == 1) ? itm::init_policy_type::random
+                                           : itm::init_policy_type::best;
+        }
+    }
+
+    //
+    // If no solution was found previously and the policy type is best, we
+    // randomly replace the best policy init type with random or bastert policy
+    // solution using the bernoulli distribution with p = 0.5.
+    //
+
+    if (best_previous.empty() and type == itm::init_policy_type::best) {
+        std::bernoulli_distribution d(0.5);
+
+        type = d(slv.rng) ? itm::init_policy_type::random
+                          : itm::init_policy_type::bastert;
+    }
+
+    init_random = clamp(init_random, 0.0, 1.0);
+
+    std::bernoulli_distribution d(init_random);
+
+    switch (type) {
+    case itm::init_policy_type::bastert:
+        if (init_random == 0.0 or init_random == 1.0) {
+            bool value_if_cost_0 = init_random == 1.0;
+
+            for (int i = 0; i != slv.n; ++i)
+                slv.x[i] = init_x(
+                  slv.c(i), value_if_cost_0, typename Solver::mode_type());
+        } else {
+            for (int i = 0; i != slv.n; ++i)
+                slv.x[i] =
+                  init_x(slv.c(i), d(slv.rng), typename Solver::mode_type());
+        }
+        break;
+    case itm::init_policy_type::random:
+        for (int i = 0; i != slv.n; ++i)
+            slv.x[i] = d(slv.rng);
+        break;
+    case itm::init_policy_type::best:
+        for (int i = 0; i != slv.n; ++i) {
+            slv.x[i] = (d(slv.rng)) ? (best_previous[i]) : (!best_previous[i]);
+        }
+        break;
+    }
 }
 
 template<typename Solver>
@@ -1050,11 +1125,12 @@ struct optimize_functor
 
             if (i >= p.limit or kappa > kappa_max or pushed > p.pushes_limit) {
                 if (m_best.solutions.empty())
-                    slv.reinit(x_type(), p.init_policy, p.init_random);
+                    init_solver(slv, x_type(), p.init_policy, p.init_random);
                 else
-                    slv.reinit(m_best.solutions.back().variables,
-                               p.init_policy,
-                               p.init_random);
+                    init_solver(slv,
+                                m_best.solutions.back().variables,
+                                p.init_policy,
+                                p.init_random);
 
                 i = 0;
                 kappa = static_cast<floatingpoint_type>(kappa_min);
