@@ -174,7 +174,7 @@ convert_result(const baryonyx::result& res,
 {
     bool solution;
     bool error;
-    double value = res.value;
+    double value = 0;
     double duration = res.duration;
     int variables = res.variables;
     int constraints = res.constraints;
@@ -182,7 +182,8 @@ convert_result(const baryonyx::result& res,
 
     switch (res.status) {
     case baryonyx::result_status::success:
-        Rprintf("Solution found: %f\n", res.value);
+        Rprintf("Solution found: %f\n", res.solutions.back().value);
+        value = res.solutions.back().value;
         solution = true;
         error = false;
         break;
