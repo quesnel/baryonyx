@@ -200,6 +200,13 @@ convert_result(const baryonyx::result& res,
         break;
     }
 
+    std::vector<double> solutions(res.solutions.size());
+    std::transform(
+      res.solutions.cbegin(),
+      res.solutions.cend(),
+      solutions.begin(),
+      [](const baryonyx::solution& elem) -> double { return elem.value; });
+
     return List::create(_["solution_found"] = solution,
                         _["error_found"] = error,
                         _["value"] = value,
@@ -208,7 +215,8 @@ convert_result(const baryonyx::result& res,
                         _["constraints"] = constraints,
                         _["remaining_constraints"] = remaining,
                         _["minimize"] = minimize,
-                        _["objective_function"] = objective);
+                        _["objective_function"] = objective,
+                        _["solutions"] = solutions);
 }
 
 //' Tries to solve the 01 linear programming problem.
@@ -257,6 +265,7 @@ convert_result(const baryonyx::result& res,
 //'   \item{minimize}{Boolean, TRUE is problem is a minimization, FALSE if
 //'     the problem is a maximization.}
 //'   \item{objective_function}{Vector, bound of the objective function.}
+//'   \item{solutions}{Vector, all solution found (may be empty).}
 //'
 //' @useDynLib rbaryonyx
 //' @importFrom Rcpp sourceCpp
@@ -384,6 +393,7 @@ solve_01lp_problem(std::string file_path,
 //'   \item{minimize}{Boolean, TRUE is problem is a minimization, FALSE if
 //'     the problem is a maximization.}
 //'   \item{objective_function}{Vector, bound of the objective function.}
+//'   \item{solutions}{Vector, all solution found (may be empty).}
 //'
 //' @useDynLib rbaryonyx
 //' @importFrom Rcpp sourceCpp
