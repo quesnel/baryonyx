@@ -2,25 +2,17 @@ os: Visual Studio 2017
 
 environment:
   matrix:
-    - COMPILER: mingw
-      GENERATOR: MinGW Makefiles
-      PLATFORM: Win32
-      BUILD_TYPE: Debug
-
-    - COMPILER: mingw
-      GENERATOR: MinGW Makefiles
-      PLATFORM: Win32
-      BUILD_TYPE: Release
-
     - COMPILER: mingw-w64
       GENERATOR: MinGW Makefiles
       PLATFORM: x64
       BUILD_TYPE: Debug
+      BINDIR: C:\mingw-w64\x86_64-7.2.0-posix-seh-rt_v5-rev1\mingw64\bin
 
     - COMPILER: mingw-w64
       GENERATOR: MinGW Makefiles
       PLATFORM: x64
       BUILD_TYPE: Release
+      BINDIR: C:\mingw-w64\x86_64-7.2.0-posix-seh-rt_v5-rev1\mingw64\bin
 
     - COMPILER: msvc
       GENERATOR: Visual Studio 15 2017 Win64
@@ -43,12 +35,12 @@ environment:
       BUILD_TYPE: Release
 
 install:
+  - echo Installing %COMPILER% %PLATFORM% %BUILD_TYPE%
   - git submodule -q update --init --recursive
-  - if "%COMPILER%"=="mingw" set PATH=C:\MinGW\bin;%PATH%
-  - if "%COMPILER%"=="mingw-w64" set PATH=C:\MinGW\bin;%PATH%
+  - if defined BINDIR (set "PATH=%BINDIR%;%PATH%")
 
 build_script:
-  - mkdir build
+  - md build
   - cd build
   - cmake -G "%GENERATOR%" -DCMAKE_BUILD_TYPE="%BUILD_TYPE%" -DCMAKE_SH=CMAKE_SH-NOTFOUND ..
   - if "%COMPILER%"=="msvc" cmake --build . --config "%BUILD_TYPE%"
