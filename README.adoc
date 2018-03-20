@@ -8,7 +8,10 @@ https://en.wikipedia.org/wiki/Baryonyx[Baryonyx] is an integer and binary linear
 programming solver based on the http://www.cse.chalmers.se/~dag/[Dag Wedelin]
 heuristic.
 
-https://travis-ci.org/quesnel/baryonyx[image:https://travis-ci.org/quesnel/baryonyx.png?branch=master[Build Status]]
+[width="15%"]
+|============
+| https://travis-ci.org/quesnel/baryonyx[image:https://travis-ci.org/quesnel/baryonyx.png?branch=master[Build Status]] | https://ci.appveyor.com/project/quesnel/baryonyx?branch=master[image:https://ci.appveyor.com/api/projects/status/github/quesnel/baryonyx?branch=master&svg=true[Build Status]]
+|============
 
 Copyright © 2017 http://www.inra.fr/en[INRA]
 
