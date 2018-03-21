@@ -40,15 +40,15 @@ struct solver_equalities_101coeff
     using b_type = baryonyx::fixed_array<int>;
     using c_type = baryonyx::fixed_array<floatingpointT>;
     using pi_type = baryonyx::fixed_array<floatingpointT>;
-    using A_type = fixed_array<int>;
+    using A_type = fixed_array<bool>;
     using P_type = fixed_array<floatingpointT>;
 
     random_type& rng;
 
     // Sparse matrix to store A and P values.
     AP_type ap;
-    fixed_array<bool> A;
-    fixed_array<floatingpointT> P;
+    A_type A;
+    P_type P;
 
     // Vector shared between all constraints to store the reduced cost.
     fixed_array<r_data<floatingpoint_type>> R;
@@ -120,7 +120,10 @@ struct solver_equalities_101coeff
                 int rsize = 0, csize = 0;
 
                 for (const auto& cst : csts[i].elements) {
-                    A[id] = cst.factor;
+                    assert(cst.factor == 1 or cst.factor == -1);
+
+                    // A stores true for positive, false for negative
+                    A[id] = cst.factor == 1 ? true : false;
                     ++id;
 
                     if (cst.factor < 0)
@@ -142,7 +145,8 @@ struct solver_equalities_101coeff
                 std::tie(it, et) = ap.row(i);
 
                 for (; it != et; ++it) {
-                    if (A[it->value] < 0) {
+                    // A stores true for positive, false for negative
+                    if (not A[it->value]) {
                         C[i][id_in_c].id_r = id_in_r;
                         ++id_in_c;
                     }
@@ -159,7 +163,7 @@ struct solver_equalities_101coeff
 
     int factor(int value) const noexcept
     {
-        return A[value];
+        return A[value] ? 1 : -1;
     }
 
     int bound_min(int constraint) const noexcept
@@ -214,7 +218,7 @@ struct solver_equalities_101coeff
             int v = 0;
 
             for (; it != et; ++it)
-                v += A[it->value] * x[it->column];
+                v += (A[it->value] ? 1 : -1)  * x[it->column];
 
             bool valid = b(k) == v;
             debug(ctx,
@@ -234,7 +238,7 @@ struct solver_equalities_101coeff
             int v = 0;
 
             for (; it != et; ++it)
-                v += A[it->value] * x[it->column];
+                v += (A[it->value] ? 1 : -1) * x[it->column];
 
             if (b[k] != v)
                 return false;
@@ -255,7 +259,7 @@ struct solver_equalities_101coeff
             int v = 0;
 
             for (; it != et; ++it)
-                v += A[it->value] * x[it->column];
+                v += (A[it->value] ? 1 : -1) * x[it->column];
 
             if (b[k] != v)
                 c.emplace_back(k);
@@ -404,7 +408,7 @@ struct solver_equalities_101coeff
             std::tie(ht, hend) = ap.column(begin->column);
 
             for (; ht != hend; ++ht) {
-                auto f = A[ht->value];
+                auto f = A[ht->value] ? 1 : -1;
                 auto a = static_cast<floatingpoint_type>(f);
 
                 sum_a_pi += a * pi[ht->row];
