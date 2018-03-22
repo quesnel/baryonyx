@@ -27,6 +27,7 @@
 
 #include <algorithm>
 #include <fstream>
+#include <iterator>
 #include <utility>
 
 #include <fmt/ostream.h>
