@@ -72,7 +72,13 @@ operator<<(std::ostream& os, const result& result)
 
         os << R"(\ value.................: )" << result.solutions.back().value
            << '\n'
-           << "\\ variables.............: \n";
+           << R"(\ other value...........: )";
+
+        for (const auto& elem : result.solutions)
+            os << elem.value << ' ';
+        os << '\n';
+
+        os << "\\ variables.............: \n";
 
         for (std::size_t i{ 0 }, e{ result.affected_vars.names.size() };
              i != e;
