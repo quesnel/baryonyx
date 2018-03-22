@@ -439,7 +439,12 @@ main(int argc, const char* argv[])
 
                 if (ret.status == baryonyx::result_status::success) {
                     ofs << ret.solutions.back().value << " " << ret.duration
-                        << "\n";
+                        << ' ';
+
+                    for (const auto& elem : ret.solutions)
+                        ofs << elem.value << ' ';
+                    ofs << "\n";
+
                 } else {
                     ofs << "No solution found.\n";
                 }
