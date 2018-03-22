@@ -5,7 +5,7 @@ environment:
     - COMPILER: mingw-w64
       GENERATOR: MinGW Makefiles
       PLATFORM: x64
-      BUILD_TYPE: Debug
+      BUILD_TYPE: RelWithDebInfo
       BINDIR: C:\mingw-w64\x86_64-7.2.0-posix-seh-rt_v5-rev1\mingw64\bin
 
     - COMPILER: mingw-w64
