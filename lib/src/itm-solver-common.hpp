@@ -1493,22 +1493,42 @@ optimize_problem(const context_ptr& ctx,
         for (auto& t : pool)
             t.join();
 
-        ret = results[0].get();
-        for (int i{ 1 }; i != thread; ++i) {
+        for (int i = 0; i != thread; ++i) {
             auto current = results[i].get();
             if (current.status == result_status::success) {
-                if (ret.status != result_status::success or
-                    is_better_solution(current, ret, modeT()))
+                if (ret.solutions.empty()) {
                     ret = current;
+                } else if (is_better_solution(current.solutions.back().value,
+                                              ret.solutions.back().value,
+                                              modeT())) {
+                    ret.solutions.insert(ret.solutions.end(),
+                                         current.solutions.begin(),
+                                         current.solutions.end());
+                    auto sols = std::move(ret.solutions);
+                    ret = current;
+                    ret.solutions = sols;
+                } else {
+                    current.solutions.insert(current.solutions.end(),
+                                             ret.solutions.begin(),
+                                             ret.solutions.end());
+                    ret.solutions = current.solutions;
+                }
             }
         }
 
-        ret.method = "inequalities_Zcoeff optimizer";
-        ret.variable_name = std::move(names);
-    } else {
-        ret.status = result_status::success;
+        std::sort(ret.solutions.begin(),
+                  ret.solutions.end(),
+                  [](const auto& lhs, const auto& rhs) -> bool {
+                      return rhs.value < lhs.value;
+                  });
+
+        auto last = std::unique(ret.solutions.begin(),
+                                ret.solutions.end(),
+                                [](const auto& lhs, const auto& rhs) -> bool {
+                                    return lhs.value == rhs.value;
+                                });
+        ret.solutions.erase(last, ret.solutions.end());
     }
-    ret.affected_vars = std::move(affected_vars);
 
     return ret;
 }
