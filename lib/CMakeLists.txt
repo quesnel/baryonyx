@@ -30,6 +30,8 @@ target_compile_definitions(libbaryonyx
   VERSION_MINOR=${PROJECT_VERSION_MINOR}
   VERSION_PATCH=${PROJECT_VERSION_PATCH}
   VERSION_TWEAK=${PROJECT_VERSION_TWEAK})
+target_compile_options(libbaryonyx PRIVATE
+  $<$<CXX_COMPILER_ID:MSVC>:/bigobj>)
 install(TARGETS libbaryonyx
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
@@ -57,6 +59,8 @@ target_compile_definitions(libbaryonyx-static
   VERSION_MINOR=${PROJECT_VERSION_MINOR}
   VERSION_PATCH=${PROJECT_VERSION_PATCH}
   VERSION_TWEAK=${PROJECT_VERSION_TWEAK})
+target_compile_options(libbaryonyx-static PRIVATE
+  $<$<CXX_COMPILER_ID:MSVC>:/bigobj>)
 install(TARGETS libbaryonyx-static
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
