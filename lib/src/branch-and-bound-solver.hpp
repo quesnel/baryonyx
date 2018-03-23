@@ -303,14 +303,12 @@ branch_and_bound_solver(const A& a,
                         iteratorT end,
                         int bound)
 {
-    assert(bound >= 0 && "No negative bound");
-
     details::branch_and_bound_solver<modeT, floatingpointT> slv(
       std::distance(begin, end), bound);
 
     for (int i = 0; begin != end; ++begin, ++i) {
         slv.items[i].r = reduced_cost[i].value;
-        slv.items[i].factor = std::abs(a[begin->value]);
+        slv.items[i].factor = a[begin->value];
         slv.items[i].variable = reduced_cost[i].id;
     }
 
@@ -331,14 +329,12 @@ branch_and_bound_solver(R& reduced_cost,
                         iteratorT end,
                         int bound)
 {
-    assert(bound >= 0 && "No negative bound");
-
     details::branch_and_bound_solver<modeT, floatingpointT> slv(
       std::distance(begin, end), bound);
 
     for (int i = 0; begin != end; ++begin, ++i) {
         slv.items[i].r = reduced_cost[i].value;
-        slv.items[i].factor = std::abs(*begin);
+        slv.items[i].factor = *begin;
         slv.items[i].variable = reduced_cost[i].id;
     }
 

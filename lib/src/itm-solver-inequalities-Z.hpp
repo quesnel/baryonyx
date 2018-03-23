@@ -23,7 +23,9 @@
 #ifndef ORG_VLEPROJECT_BARYONYX_SOLVER_INEQUALITIES_ZCOEFF_HPP
 #define ORG_VLEPROJECT_BARYONYX_SOLVER_INEQUALITIES_ZCOEFF_HPP
 
+#include "branch-and-bound-solver.hpp"
 #include "itm-solver-common.hpp"
+#include "knapsack-dp-solver.hpp"
 #include "sparse-matrix.hpp"
 
 namespace baryonyx {
@@ -47,8 +49,8 @@ struct solver_inequalities_Zcoeff
 
     // Sparse matrix to store A and P values.
     AP_type ap;
-    fixed_array<int> A;
-    fixed_array<floatingpointT> P;
+    A_type A;
+    P_type P;
 
     // Vector shared between all constraints to store the reduced cost.
     fixed_array<r_data<floatingpoint_type>> R;
@@ -359,8 +361,13 @@ struct solver_inequalities_Zcoeff
 
         bk += std::abs(bk_move);
 
-        int selected =
-          branch_and_bound_solver<modeT, floatingpoint_type>(A, R, it, et, bk);
+        calculator_sort(R.begin(), R.begin() + r_size, rng, mode_type());
+
+        //
+        //
+        //
+
+        int selected = select_variables_equality_Z(it, r_size, bk);
 
         affect_variables(it, k, selected, r_size, kappa, delta);
 
@@ -422,8 +429,13 @@ struct solver_inequalities_Zcoeff
         bkmin += std::abs(bk_move);
         bkmax += std::abs(bk_move);
 
-        int selected = branch_and_bound_solver<modeT, floatingpoint_type>(
-          A, R, it, et, bkmax);
+        calculator_sort(R.begin(), R.begin() + r_size, rng, mode_type());
+
+        //
+        //
+        //
+
+        int selected = select_variables_inequality_Z(it, r_size, bkmin, bkmax);
 
         affect_variables(it, k, selected, r_size, kappa, delta);
 
@@ -714,6 +726,61 @@ struct solver_inequalities_Zcoeff
         }
 
         return selected;
+    }
+
+    template<typename iteratorT>
+    int select_variables_equality_Z(iteratorT it, const int r_size, int bk)
+    {
+        int sum = A[ap_value(it, R[0].id)->value];
+        if (sum == bk)
+            return 0;
+
+        for (int i = 1; i != r_size; ++i) {
+            sum += A[ap_value(it, R[i].id)->value];
+
+            if (sum == bk)
+                return i;
+
+            if (sum > bk)
+                break;
+        }
+
+        //
+        // If the previous selection failed, we try a branch and bound
+        // algorithm to found the solution.
+        //
+
+        return knapsack_dp_solver<modeT, floatingpointT>(
+          A, R, it, it + r_size, bk);
+    }
+
+    template<typename iteratorT>
+    int select_variables_inequality_Z(iteratorT it,
+                                      const int r_size,
+                                      int bkmin,
+                                      int bkmax)
+    {
+        int sum = A[ap_value(it, R[0].id)->value];
+        if (bkmin <= sum and sum <= bkmax)
+            return 0;
+
+        for (int i = 1; i != r_size; ++i) {
+            sum += A[ap_value(it, R[i].id)->value];
+
+            if (bkmin <= sum and sum <= bkmax)
+                return i;
+
+            if (sum > bkmax)
+                break;
+        }
+
+        //
+        // If the previous selection failed, we try a branch and bound
+        // algorithm to found the solution.
+        //
+
+        return knapsack_dp_solver<modeT, floatingpointT>(
+          A, R, it, it + r_size, bkmax);
     }
 
     //

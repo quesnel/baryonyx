@@ -225,8 +225,10 @@ knapsack_dp_solver(const A& a,
 
     for (int i = 0; begin != end; ++begin, ++i) {
         slv.items[i].r = reduced_cost[i].value;
-        slv.items[i].factor = std::abs(a[begin->value]);
         slv.items[i].variable = reduced_cost[i].id;
+
+        auto var = (begin + reduced_cost[i].id);
+        slv.items[i].factor = std::abs(a[var->value]);
     }
 
     return slv.solve(reduced_cost);

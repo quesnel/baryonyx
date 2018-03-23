@@ -41,11 +41,9 @@
 #include <utility>
 #include <vector>
 
-#include "branch-and-bound-solver.hpp"
 #include "fixed_array.hpp"
 #include "itm-common.hpp"
 #include "itm.hpp"
-#include "knapsack-dp-solver.hpp"
 #include "private.hpp"
 #include "scoped_array.hpp"
 #include "utils.hpp"
