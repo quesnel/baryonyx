@@ -29,6 +29,10 @@
 
 #include <fmt/printf.h>
 
+#ifndef _WIN32
+#include <unistd.h>
+#endif
+
 namespace baryonyx {
 
 using string_logger_functor = std::function<void(int, std::string)>;
@@ -61,6 +65,11 @@ struct context
         if (verbose_level != 6)
             log_priority = static_cast<context::message_type>(
               verbose_level < 0 ? 0 : verbose_level > 7 ? 7 : verbose_level);
+
+#ifndef _WIN32
+        if (::isatty(::fileno(cfile_logger)))
+            color_cfile_logger = true;
+#endif
     }
 
     context(FILE* f, int verbose_level = 6)
@@ -71,6 +80,11 @@ struct context
         if (verbose_level != 6)
             log_priority = static_cast<context::message_type>(
               verbose_level < 0 ? 0 : verbose_level > 7 ? 7 : verbose_level);
+
+#ifndef _WIN32
+        if (::isatty(::fileno(cfile_logger)))
+            color_cfile_logger = true;
+#endif
     }
 
     context(string_logger_functor logger, int verbose_level = 6)
@@ -89,6 +103,7 @@ struct context
     FILE* cfile_logger = stdout;
     message_type log_priority = context::message_type::info;
     logger_type logger = context::logger_type::c_file;
+    bool color_cfile_logger = false;
 };
 
 template<typename... Args>
