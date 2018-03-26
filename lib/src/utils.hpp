@@ -40,7 +40,6 @@
 #include <utility>
 
 namespace baryonyx {
-
 namespace details {
 
 enum class colors
@@ -88,17 +87,12 @@ static const char setters_str[][10] = { "\033[0m",
 constexpr const char*
 color_to_str(baryonyx::details::colors c) noexcept
 {
-    assert(static_cast<int>(c) < static_cast<int>(array_lenght(colors_str)));
-
     return colors_str[static_cast<int>(c)];
 }
 
 constexpr inline const char*
 setter_to_str(baryonyx::details::setters s) noexcept
 {
-
-    assert(static_cast<int>(s) < static_cast<int>(array_lenght(setters_str)));
-
     return setters_str[static_cast<int>(s)];
 }
 
@@ -302,8 +296,9 @@ debug(const context_ptr& ctx, const char* fmt, const Args&... args)
 #ifndef BARYONYX_DISABLE_LOGGING
     //
     // Default, the logging system is active and the call to the @c log
-    // function are send to the logger functor. Define BARYONYX_DISABLE_LOGGING
-    // as preprocessor value to hide all logging message..
+    // function are send to the logger functor. Define
+    // BARYONYX_DISABLE_LOGGING as preprocessor value to hide all logging
+    // message..
     //
     log(ctx, context::message_type::debug, fmt, args...);
 #else
@@ -393,8 +388,9 @@ debug(const context_ptr& ctx,
 #ifndef BARYONYX_DISABLE_LOGGING
     //
     // Default, the logging system is active and the call to the @c log
-    // function are send to the logger functor. Define BARYONYX_DISABLE_LOGGING
-    // as preprocessor value to hide all logging message..
+    // function are send to the logger functor. Define
+    // BARYONYX_DISABLE_LOGGING as preprocessor value to hide all logging
+    // message..
     //
     log(ctx, context::message_type::debug, fmt, arg1, args...);
 #else
@@ -501,8 +497,9 @@ debug(const context_ptr& ctx, const T& msg)
 #ifndef BARYONYX_DISABLE_LOGGING
     //
     // Default, the logging system is active and the call to the @c log
-    // function are send to the logger functor. Define BARYONYX_DISABLE_LOGGING
-    // as preprocessor value to hide all logging message..
+    // function are send to the logger functor. Define
+    // BARYONYX_DISABLE_LOGGING as preprocessor value to hide all logging
+    // message..
     //
     log(ctx, context::message_type::debug, msg);
 #else
@@ -515,7 +512,8 @@ debug(const context_ptr& ctx, const T& msg)
 
 /**
  * @brief Compute the length of the @c container.
- * @details Return the @c size provided by the @c C::size() but cast it into a
+ * @details Return the @c size provided by the @c C::size() but cast it
+ * into a
  *     @c int. This is a specific baryonyx function, we know that number of
  *         variables and constraints are lower than the  @c int max value
  *         (INT_MAX).
@@ -540,8 +538,8 @@ length(const C& c) noexcept
 }
 
 /**
- * @details Reference to @c lo if @c v is less than @c lo, reference to @c hi
- *     if @c hi is less than @c v, otherwise reference to @c v.
+ * @details Reference to @c lo if @c v is less than @c lo, reference to @c
+ * hi if @c hi is less than @c v, otherwise reference to @c v.
  *
  * @code
  * assert(baryonyx::clamp(0.0, 0.0, 1.0) == 0.0);
@@ -570,8 +568,8 @@ clamp(const T& v, const T& lo, const T& hi)
 
 /**
  * @brief Compute the length of the C array.
- * @details Return the size of the C array but cast it into a @c int. This is a
- *     specific baryonyx function, we know that number of variables and
+ * @details Return the size of the C array but cast it into a @c int. This
+ * is a specific baryonyx function, we know that number of variables and
  *     constraints are lower than the  @c int max value (INT_MAX).
  *
  * @code
@@ -636,10 +634,11 @@ is_essentially_equal(const T v1, const T v2, const T epsilon)
 }
 
 /**
- * @brief Check if the duration between @c begin and @c end is greater than @c
- *     limit in second.
+ * @brief Check if the duration between @c begin and @c end is greater than
+ * @c limit in second.
  *
- * @details This function checks if @c end - @c begin is greater than @c limit.
+ * @details This function checks if @c end - @c begin is greater than @c
+ * limit.
  *
  * @code
  * auto begin = std::chrono::steady_clock::now();
