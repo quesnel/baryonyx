@@ -212,6 +212,18 @@ compute_duration(const TimePoint& first, const TimePoint& last) noexcept
     return dc.count();
 }
 
+inline std::size_t
+compute_reduced_costs_vector_size(
+  const std::vector<itm::merged_constraint>& csts) noexcept
+{
+    std::size_t rsizemax = csts[0].elements.size();
+
+    for (std::size_t i = 1, e = csts.size(); i != e; ++i)
+        rsizemax = std::max(rsizemax, csts[i].elements.size());
+
+    return rsizemax;
+}
+
 template<typename Solver>
 inline bool
 is_valid_solution(const Solver& s) noexcept
@@ -227,7 +239,7 @@ compute_missing_constraint(const Solver& s, Container& c)
 }
 
 template<typename Solver, typename x_type>
-inline void
+inline itm::init_policy_type
 init_solver(Solver& slv,
             const x_type& best_previous,
             itm::init_policy_type type,
@@ -240,38 +252,10 @@ init_solver(Solver& slv,
               slv.pi.end(),
               static_cast<typename Solver::pi_type::value_type>(0));
 
-    //
-    // Default, we randomly change the init policy using the bernoulli
-    // distribution with p = 0.1.
-    //
-
-    {
-        std::bernoulli_distribution d(0.1);
-
-        if (d(slv.rng)) {
-            std::uniform_int_distribution<int> di(0, 2);
-            auto ret = di(slv.rng);
-            type = (ret == 0) ? itm::init_policy_type::best
-                              : (ret == 1) ? itm::init_policy_type::random
-                                           : itm::init_policy_type::best;
-        }
-    }
-
-    //
-    // If no solution was found previously and the policy type is best, we
-    // randomly replace the best policy init type with random or bastert policy
-    // solution using the bernoulli distribution with p = 0.5.
-    //
-
-    if (best_previous.empty() and type == itm::init_policy_type::best) {
-        std::bernoulli_distribution d(0.5);
-
-        type = d(slv.rng) ? itm::init_policy_type::random
-                          : itm::init_policy_type::bastert;
-    }
+    if (best_previous.empty() and type == itm::init_policy_type::best)
+        type = itm::init_policy_type::bastert;
 
     init_random = clamp(init_random, 0.0, 1.0);
-
     std::bernoulli_distribution d(init_random);
 
     switch (type) {
@@ -287,49 +271,95 @@ init_solver(Solver& slv,
                 slv.x[i] =
                   init_x(slv.c(i), d(slv.rng), typename Solver::mode_type());
         }
+
+        type = itm::init_policy_type::random;
         break;
     case itm::init_policy_type::random:
         for (int i = 0; i != slv.n; ++i)
             slv.x[i] = d(slv.rng);
+
+        type = itm::init_policy_type::best;
         break;
     case itm::init_policy_type::best:
-        for (int i = 0; i != slv.n; ++i) {
+        for (int i = 0; i != slv.n; ++i)
             slv.x[i] = (d(slv.rng)) ? (best_previous[i]) : (!best_previous[i]);
-        }
+
+        type = itm::init_policy_type::bastert;
         break;
+    }
+
+    return type;
+}
+
+template<typename Solver>
+inline void
+print_solver(const Solver& slv,
+             const context_ptr& ctx,
+             const std::vector<std::string>& names,
+             int print_level)
+{
+    if (print_level <= 0)
+        return;
+
+    debug(ctx, "  - X: {} to {}\n", 0, slv.n);
+    for (int i = 0; i != slv.n; ++i)
+        debug(ctx,
+              "    - {} {}={}/c_i:{}\n",
+              i,
+              names[i],
+              (slv.x[i] ? 1 : 0),
+              slv.c[i]);
+    debug(ctx, "\n");
+
+    for (int k = 0; k != slv.m; ++k) {
+        typename Solver::AP_type::const_row_iterator it, et;
+
+        std::tie(it, et) = slv.ap.row(k);
+        int v = 0;
+
+        for (; it != et; ++it)
+            v += slv.factor(it->value) * slv.x[it->column];
+
+        bool valid = slv.bound_min(k) <= v and v <= slv.bound_max(k);
+
+        debug(ctx,
+              "C {}:{} (Lmult: {})\n",
+              k,
+              (valid ? "   valid" : "violated"),
+              slv.pi[k]);
     }
 }
 
 template<typename Solver>
 inline void
 print_missing_constraint(const baryonyx::context_ptr& ctx,
-                         const Solver& s,
+                         const Solver& slv,
                          const std::vector<std::string>& names) noexcept
 {
     std::vector<int> R;
 
-    compute_missing_constraint(s, R);
+    compute_missing_constraint(slv, R);
     info(ctx, "Constraints remaining: {}\n", length(R));
 
     typename Solver::AP_type::const_row_iterator it, et;
 
     for (auto k : R) {
-        std::tie(it, et) = s.ap.row(k);
+        std::tie(it, et) = slv.ap.row(k);
         int v = 0;
 
-        info(ctx, "{}: {} <= ", k, s.bound_min(k));
+        info(ctx, "{}: {} <= ", k, slv.bound_min(k));
 
         for (; it != et; ++it) {
-            v += s.factor(it->value) * s.x[it->column];
+            v += slv.factor(it->value) * slv.x[it->column];
 
             info(ctx,
                  "{:+d} [{} ({})] ",
-                 s.factor(it->value),
+                 slv.factor(it->value),
                  names[it->column],
-                 s.x[it->column]);
+                 slv.x[it->column]);
         }
 
-        info(ctx, " <= {} | value: {}\n", s.bound_max(k));
+        info(ctx, " <= {} | value: {}\n", slv.bound_max(k));
     }
 }
 
@@ -854,14 +884,14 @@ struct solver_functor
                     info(m_ctx,
                          "  - violated constraints: {}/{} at {}s (loop: {})\n",
                          remaining,
-                         slv.n,
+                         slv.m,
                          compute_duration(m_begin, m_end),
                          i);
                 }
             }
 
 #ifndef BARYONYX_FULL_OPTIMIZATION
-            slv.print(m_ctx, m_best.variable_name, p.print_level);
+            print_solver(slv, m_ctx, m_best.variable_name, p.print_level);
 #endif
 
             if (start_pushing) {
@@ -1079,6 +1109,7 @@ struct optimize_functor
         int pushed = -1;
         int pushing_iteration = 0;
 
+        itm::init_policy_type init_policy = p.init_policy;
         const auto kappa_min = static_cast<floatingpoint_type>(p.kappa_min);
         const auto kappa_step = static_cast<floatingpoint_type>(p.kappa_step);
         const auto kappa_max = static_cast<floatingpoint_type>(p.kappa_max);
@@ -1123,12 +1154,14 @@ struct optimize_functor
 
             if (i >= p.limit or kappa > kappa_max or pushed > p.pushes_limit) {
                 if (m_best.solutions.empty())
-                    init_solver(slv, x_type(), p.init_policy, p.init_random);
+                    init_policy =
+                      init_solver(slv, x_type(), init_policy, p.init_random);
                 else
-                    init_solver(slv,
-                                m_best.solutions.back().variables,
-                                p.init_policy,
-                                p.init_random);
+                    init_policy =
+                      init_solver(slv,
+                                  m_best.solutions.back().variables,
+                                  init_policy,
+                                  p.init_random);
 
                 i = 0;
                 kappa = static_cast<floatingpoint_type>(kappa_min);

@@ -814,7 +814,7 @@ get_coefficient_type(const baryonyx::problem& pb) noexcept
 
     for (const auto& cst : pb.equal_constraints) {
         for (const auto& elem : cst.elements) {
-            if (elem.factor > 1 or elem.factor < 1)
+            if (elem.factor > 1 or elem.factor < -1)
                 return 2;
 
             if (elem.factor == -1)
@@ -824,7 +824,7 @@ get_coefficient_type(const baryonyx::problem& pb) noexcept
 
     for (const auto& cst : pb.less_constraints) {
         for (const auto& elem : cst.elements) {
-            if (elem.factor > 1 or elem.factor < 1)
+            if (elem.factor > 1 or elem.factor < -1)
                 return 2;
 
             if (elem.factor == -1)
@@ -834,7 +834,7 @@ get_coefficient_type(const baryonyx::problem& pb) noexcept
 
     for (const auto& cst : pb.greater_constraints) {
         for (const auto& elem : cst.elements) {
-            if (elem.factor > 1 or elem.factor < 1)
+            if (elem.factor > 1 or elem.factor < -1)
                 return 2;
 
             if (elem.factor == -1)

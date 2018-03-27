@@ -44,14 +44,11 @@ struct solver_equalities_01coeff
 
     random_type& rng;
 
-    // Sparse matrix to store A and P values.
     AP_type ap;
-    fixed_array<floatingpointT> P;
+    P_type P;
 
-    // Vector shared between all constraints to store the reduced cost.
     fixed_array<r_data<floatingpoint_type>> R;
 
-    // Bound vector.
     b_type b;
     const c_type& c;
     x_type x;
@@ -68,6 +65,7 @@ struct solver_equalities_01coeff
       : rng(rng_)
       , ap(csts, length(csts), n_)
       , P(element_number(csts), 0)
+      , R(compute_reduced_costs_vector_size(csts))
       , b(length(csts))
       , c(c_)
       , x(n_)
@@ -75,46 +73,17 @@ struct solver_equalities_01coeff
       , m(length(csts))
       , n(n_)
     {
-        {
-            // Compute the minimal bounds for each constraints, default
-            // constraints are -oo <= ... <= bkmax, bkmin <= ... <= +oo and
-            // bkmin <= ... <= bkmax. This code remove infinity and replace
-            // with minimal or maximal value of the constraint.
+        //
+        // Assigns bound for each constraints.
+        //
 
-            for (int i = 0; i != m; ++i) {
-                int lower = 0, upper = 0;
+        for (int i = 0; i != m; ++i) {
+            for (const auto& cst : csts[i].elements)
+                Ensures(cst.factor == 1);
 
-                for (const auto& cst : csts[i].elements) {
-                    if (cst.factor > 0)
-                        upper += cst.factor;
+            Ensures(csts[i].min == csts[i].max);
 
-                    if (cst.factor < 0)
-                        lower += cst.factor;
-                }
-
-                assert(lower == 0);
-                assert(upper == length(csts[i].elements));
-                assert(csts[i].min == csts[i].max);
-                assert(lower == 0 and upper == length(csts[i].elements) and
-                       csts[i].min == csts[i].max and
-                       "Preprocessor select error");
-
-                b(i) = csts[i].min;
-            }
-        }
-
-        {
-            //
-            // Compute the R vector size and the C vectors for each constraints
-            // with negative coefficient.
-            //
-
-            int rsizemax = length(csts[0].elements);
-            for (int i = 1; i != m; ++i)
-                if (rsizemax < length(csts[i].elements))
-                    rsizemax = length(csts[i].elements);
-
-            R = fixed_array<r_data<floatingpoint_type>>(rsizemax);
+            b[i] = csts[i].min;
         }
 
         x_type empty;
@@ -154,46 +123,11 @@ struct solver_equalities_01coeff
         return ret;
     }
 
-    void print(const context_ptr& ctx,
-               const std::vector<std::string>& names,
-               int print_level) const
-    {
-        if (print_level <= 0)
-            return;
-
-        debug(ctx, "  - X: {} to {}\n", 0, length(x));
-        for (int i = 0, e = length(x); i != e; ++i)
-            debug(ctx,
-                  "    - {} {}={}/c_i:{}\n",
-                  i,
-                  names[i],
-                  static_cast<int>(x[i]),
-                  c[i]);
-        debug(ctx, "\n");
-
-        for (int k = 0, ek = m; k != ek; ++k) {
-            typename AP_type::const_row_iterator it, et;
-
-            std::tie(it, et) = ap.row(k);
-            int v = 0;
-
-            for (; it != et; ++it)
-                v += x[it->column];
-
-            bool valid = b(k) == v;
-            debug(ctx,
-                  "C {}:{} (Lmult: {})\n",
-                  k,
-                  (valid ? "   valid" : "violated"),
-                  pi[k]);
-        }
-    }
-
     bool is_valid_solution() const
     {
-        typename AP_type::const_row_iterator it, et;
-
         for (int k = 0; k != m; ++k) {
+            typename AP_type::const_row_iterator it, et;
+
             std::tie(it, et) = ap.row(k);
             int v = 0;
 
@@ -316,14 +250,16 @@ struct solver_equalities_01coeff
             for (int i = 0; i != r_size; ++i) {
                 auto var = ap_value(it, R[i].id);
 
-                x[var->column] = 0;
+                x[var->column] = false;
                 P[var->value] -= delta;
             }
         } else if (selected + 1 >= r_size) {
+            pi(k) += R[selected].value;
+
             for (int i = 0; i != r_size; ++i) {
                 auto var = ap_value(it, R[i].id);
 
-                x[var->column] = 1;
+                x[var->column] = true;
                 P[var->value] += delta;
             }
         } else {
@@ -339,14 +275,14 @@ struct solver_equalities_01coeff
             for (; i <= selected; ++i) {
                 auto var = ap_value(it, R[i].id);
 
-                x[var->column] = 1;
+                x[var->column] = true;
                 P[var->value] += d;
             }
 
             for (; i != r_size; ++i) {
                 auto var = ap_value(it, R[i].id);
 
-                x[var->column] = 0;
+                x[var->column] = false;
                 P[var->value] -= d;
             }
         }

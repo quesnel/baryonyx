@@ -40,23 +40,18 @@ struct solver_inequalities_101coeff
     using b_type = baryonyx::fixed_array<bound>;
     using c_type = baryonyx::fixed_array<floatingpointT>;
     using pi_type = baryonyx::fixed_array<floatingpointT>;
-    using A_type = fixed_array<bool>;
+    using A_type = fixed_array<int>;
     using P_type = fixed_array<floatingpointT>;
 
     random_type& rng;
 
-    // Sparse matrix to store A and P values.
     AP_type ap;
     A_type A;
     P_type P;
 
-    // Vector shared between all constraints to store the reduced cost.
     fixed_array<r_data<floatingpoint_type>> R;
-
-    // Vector for each constraint with negative coefficients.
     fixed_array<fixed_array<c_data>> C;
 
-    // Bound vector.
     b_type b;
     const c_type& c;
     x_type x;
@@ -75,6 +70,7 @@ struct solver_inequalities_101coeff
       , ap(csts, length(csts), n_)
       , A(element_number(csts), 0)
       , P(element_number(csts), 0)
+      , R(compute_reduced_costs_vector_size(csts))
       , C(length(csts))
       , b(length(csts))
       , c(c_)
@@ -83,73 +79,30 @@ struct solver_inequalities_101coeff
       , m(length(csts))
       , n(n_)
     {
-        {
-            // Compute the minimal bounds for each constraints, default
-            // constraints are -oo <= ... <= bkmax, bkmin <= ... <= +oo and
-            // bkmin <= ... <= bkmax. This code remove infinity and replace
-            // with minimal or maximal value of the constraint.
+        int id = 0;
+        for (int i = 0, e = length(csts); i != e; ++i) {
+            int lower = 0, upper = 0;
 
-            for (int i = 0, e = length(csts); i != e; ++i) {
-                int lower = 0, upper = 0;
+            for (const auto& cst : csts[i].elements) {
+                Ensures(std::abs(cst.factor) == 1);
+                A[id++] = cst.factor;
 
-                for (const auto& cst : csts[i].elements) {
-                    if (cst.factor > 0)
-                        upper += cst.factor;
-
-                    if (cst.factor < 0)
-                        lower += cst.factor;
-                }
-
-                if (csts[i].min == csts[i].max) {
-                    b(i).min = csts[i].min;
-                    b(i).max = csts[i].max;
-                } else {
-                    if (csts[i].min == std::numeric_limits<int>::min()) {
-                        b(i).min = lower;
-                    } else {
-                        if (lower < 0)
-                            b(i).min = std::max(lower, csts[i].min);
-                        else
-                            b(i).min = csts[i].min;
-                    }
-
-                    if (csts[i].max == std::numeric_limits<int>::max()) {
-                        b(i).max = upper;
-                    } else {
-                        b(i).max = csts[i].max;
-                    }
-                }
+                if (cst.factor > 0)
+                    upper++;
+                else
+                    lower++;
             }
-        }
 
-        {
-            //
-            // Compute the R vector size and the C vectors for each constraints
-            // with negative coefficient.
-            //
+            if (csts[i].min == csts[i].max) {
+                b[i].min = csts[i].min;
+                b[i].max = csts[i].max;
+            } else {
+                b[i].min = std::max(-lower, csts[i].min);
+                b[i].max = std::min(upper, csts[i].max);
+            }
 
-            int rsizemax = 0;
-            int id = 0;
-
-            for (int i = 0, e = length(csts); i != e; ++i) {
-                int rsize = 0, csize = 0;
-
-                for (const auto& cst : csts[i].elements) {
-                    assert(cst.factor == 1 or cst.factor == -1);
-                    A[id] = cst.factor == 1 ? true : false;
-                    ++id;
-
-                    if (cst.factor < 0)
-                        ++csize;
-                    ++rsize;
-                }
-
-                rsizemax = std::max(rsizemax, rsize);
-
-                if (csize <= 0) // No negative coefficient found in
-                    continue;   // constraint, try the next.
-
-                C[i] = fixed_array<c_data>(csize);
+            if (lower > 0) {
+                C[i] = fixed_array<c_data>(lower);
 
                 int id_in_r = 0;
                 int id_in_c = 0;
@@ -158,15 +111,13 @@ struct solver_inequalities_101coeff
                 std::tie(it, et) = ap.row(i);
 
                 for (; it != et; ++it) {
-                    if (A[it->value] == false) {
+                    if (A[it->value] < 0) {
                         C[i][id_in_c].id_r = id_in_r;
                         ++id_in_c;
                     }
                     ++id_in_r;
                 }
             }
-
-            R = fixed_array<r_data<floatingpoint_type>>(rsizemax);
         }
 
         x_type empty;
@@ -175,7 +126,7 @@ struct solver_inequalities_101coeff
 
     int factor(int value) const noexcept
     {
-        return A[value] ? 1 : -1;
+        return A[value];
     }
 
     int bound_min(int constraint) const noexcept
@@ -240,7 +191,7 @@ struct solver_inequalities_101coeff
             int v = 0;
 
             for (; it != et; ++it)
-                v += (A[it->value] ? 1 : -1) * x[it->column];
+                v += A[it->value] * x[it->column];
 
             bool valid = b(k).min <= v and v <= b(k).max;
             debug(ctx,
@@ -253,14 +204,14 @@ struct solver_inequalities_101coeff
 
     bool is_valid_solution() const
     {
-        for (int k = 0, ek = m; k != ek; ++k) {
+        for (int k = 0; k != m; ++k) {
             typename AP_type::const_row_iterator it, et;
 
             std::tie(it, et) = ap.row(k);
             int v = 0;
 
             for (; it != et; ++it)
-                v += (A[it->value] ? 1 : -1) * x[it->column];
+                v += A[it->value] * x[it->column];
 
             if (not(b[k].min <= v and v <= b[k].max))
                 return false;
@@ -281,7 +232,7 @@ struct solver_inequalities_101coeff
             int v = 0;
 
             for (; it != et; ++it)
-                v += (A[it->value] ? 1 : -1) * x[it->column];
+                v += A[it->value] * x[it->column];
 
             if (not(b(k).min <= v and v <= b(k).max))
                 c.emplace_back(k);
@@ -524,8 +475,7 @@ struct solver_inequalities_101coeff
             std::tie(ht, hend) = ap.column(begin->column);
 
             for (; ht != hend; ++ht) {
-                auto f = A[ht->value];
-                auto a = static_cast<floatingpoint_type>(f);
+                auto a = static_cast<floatingpoint_type>(A[ht->value]);
 
                 sum_a_pi += a * pi[ht->row];
                 sum_a_p += a * P[ht->value];
@@ -552,37 +502,14 @@ struct solver_inequalities_101coeff
 
     int select_variables_inequality(const int r_size, int bkmin, int bkmax)
     {
-        int i = 0;
-        int selected = -1;
-        int sum = 0;
+        (void)r_size;
+        assert(r_size >= bkmax);
 
-        for (; i != r_size; ++i) {
-            sum += 1;
+        for (int i = bkmin; i != bkmax; ++i)
+            if (stop_iterating(R[i].value, rng, mode_type()))
+                return i - 1;
 
-            if (bkmin <= sum)
-                break;
-        }
-
-        assert(bkmin <= sum && "b(0, k) can not be reached, this is an "
-                               "error of the preprocessing step.");
-
-        if (bkmin <= sum and sum <= bkmax) {
-            selected = i;
-            for (; i != r_size; ++i) {
-                sum += 1;
-
-                if (sum <= bkmax) {
-                    if (stop_iterating(R[i].value, rng, mode_type()))
-                        break;
-                    ++selected;
-                } else
-                    break;
-            }
-
-            assert(i != r_size && "unrealisable, preprocessing error");
-        }
-
-        return selected;
+        return bkmax - 1;
     }
 
     //
@@ -602,14 +529,16 @@ struct solver_inequalities_101coeff
             for (int i = 0; i != r_size; ++i) {
                 auto var = ap_value(it, R[i].id);
 
-                x[var->column] = 0;
+                x[var->column] = false;
                 P[var->value] -= delta;
             }
         } else if (selected + 1 >= r_size) {
+            pi(k) += R[selected].value;
+
             for (int i = 0; i != r_size; ++i) {
                 auto var = ap_value(it, R[i].id);
 
-                x[var->column] = 1;
+                x[var->column] = true;
                 P[var->value] += delta;
             }
         } else {
@@ -625,14 +554,14 @@ struct solver_inequalities_101coeff
             for (; i <= selected; ++i) {
                 auto var = ap_value(it, R[i].id);
 
-                x[var->column] = 1;
+                x[var->column] = true;
                 P[var->value] += d;
             }
 
             for (; i != r_size; ++i) {
                 auto var = ap_value(it, R[i].id);
 
-                x[var->column] = 0;
+                x[var->column] = false;
                 P[var->value] -= d;
             }
         }

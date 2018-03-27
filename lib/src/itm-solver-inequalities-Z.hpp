@@ -80,6 +80,7 @@ struct solver_inequalities_Zcoeff
       , ap(csts, length(csts), n_)
       , A(element_number(csts), 0)
       , P(element_number(csts), 0)
+      , R(compute_reduced_costs_vector_size(csts))
       , C(length(csts))
       , Z(length(csts), false)
       , b(length(csts))
@@ -89,75 +90,37 @@ struct solver_inequalities_Zcoeff
       , m(length(csts))
       , n(n_)
     {
-        {
-            // Compute the minimal bounds for each constraints, default
-            // constraints are -oo <= ... <= bkmax, bkmin <= ... <= +oo and
-            // bkmin <= ... <= bkmax. This code remove infinity and replace
-            // with minimal or maximal value of the constraint.
+        int id = 0;
+        for (int i = 0, e = length(csts); i != e; ++i) {
+            int lower_size = 0, upper_size = 0;
+            int lower = 0, upper = 0;
 
-            for (int i = 0, e = length(csts); i != e; ++i) {
-                int lower = 0, upper = 0;
+            for (const auto& cst : csts[i].elements) {
+                Ensures(cst.factor);
+                A[id++] = cst.factor;
 
-                for (const auto& cst : csts[i].elements) {
-                    if (cst.factor > 0)
-                        upper += cst.factor;
-
-                    if (cst.factor < 0)
-                        lower += cst.factor;
-
-                    if (std::abs(cst.factor) > 1)
-                        Z[i] = true;
-                }
-
-                if (csts[i].min == csts[i].max) {
-                    b(i).min = csts[i].min;
-                    b(i).max = csts[i].max;
+                if (cst.factor > 0) {
+                    upper_size++;
+                    upper += cst.factor;
                 } else {
-                    if (csts[i].min == std::numeric_limits<int>::min()) {
-                        b(i).min = lower;
-                    } else {
-                        if (lower < 0)
-                            b(i).min = std::max(lower, csts[i].min);
-                        else
-                            b(i).min = csts[i].min;
-                    }
-
-                    if (csts[i].max == std::numeric_limits<int>::max()) {
-                        b(i).max = upper;
-                    } else {
-                        b(i).max = csts[i].max;
-                    }
+                    lower_size++;
+                    lower += cst.factor;
                 }
+
+                if (std::abs(cst.factor) > 1)
+                    Z[i] = true;
             }
-        }
 
-        {
-            //
-            // Compute the R vector size and the C vectors for each constraints
-            // with negative coefficient.
-            //
+            if (csts[i].min == csts[i].max) {
+                b[i].min = csts[i].min;
+                b[i].max = csts[i].max;
+            } else {
+                b[i].min = std::max(-lower, csts[i].min);
+                b[i].max = std::min(upper, csts[i].max);
+            }
 
-            int rsizemax = 0;
-            int id = 0;
-
-            for (int i = 0, e = length(csts); i != e; ++i) {
-                int rsize = 0, csize = 0;
-
-                for (const auto& cst : csts[i].elements) {
-                    A[id] = cst.factor;
-                    ++id;
-
-                    if (cst.factor < 0)
-                        ++csize;
-                    ++rsize;
-                }
-
-                rsizemax = std::max(rsizemax, rsize);
-
-                if (csize <= 0) // No negative coefficient found in
-                    continue;   // constraint, try the next.
-
-                C[i] = fixed_array<c_data>(csize);
+            if (lower_size > 0) {
+                C[i] = fixed_array<c_data>(lower_size);
 
                 int id_in_r = 0;
                 int id_in_c = 0;
@@ -173,8 +136,6 @@ struct solver_inequalities_Zcoeff
                     ++id_in_r;
                 }
             }
-
-            R = fixed_array<r_data<floatingpoint_type>>(rsizemax);
         }
 
         x_type empty;
@@ -223,41 +184,6 @@ struct solver_inequalities_Zcoeff
                    pi[ht->row];
 
         return ret;
-    }
-
-    void print(const context_ptr& ctx,
-               const std::vector<std::string>& names,
-               int print_level) const
-    {
-        if (print_level <= 0)
-            return;
-
-        debug(ctx, "  - X: {} to {}\n", 0, length(x));
-        for (int i = 0, e = length(x); i != e; ++i)
-            debug(ctx,
-                  "    - {} {}={}/c_i:{}\n",
-                  i,
-                  names[i],
-                  static_cast<int>(x[i]),
-                  c[i]);
-        debug(ctx, "\n");
-
-        for (int k = 0, ek = m; k != ek; ++k) {
-            typename AP_type::const_row_iterator it, et;
-
-            std::tie(it, et) = ap.row(k);
-            int v = 0;
-
-            for (; it != et; ++it)
-                v += A[it->value] * x[it->column];
-
-            bool valid = b(k).min <= v and v <= b(k).max;
-            debug(ctx,
-                  "C {}:{} (Lmult: {})\n",
-                  k,
-                  (valid ? "   valid" : "violated"),
-                  pi[k]);
-        }
     }
 
     bool is_valid_solution() const
@@ -800,14 +726,16 @@ struct solver_inequalities_Zcoeff
             for (int i = 0; i != r_size; ++i) {
                 auto var = ap_value(it, R[i].id);
 
-                x[var->column] = 0;
+                x[var->column] = false;
                 P[var->value] -= delta;
             }
         } else if (selected + 1 >= r_size) {
+            pi(k) += R[selected].value;
+
             for (int i = 0; i != r_size; ++i) {
                 auto var = ap_value(it, R[i].id);
 
-                x[var->column] = 1;
+                x[var->column] = true;
                 P[var->value] += delta;
             }
         } else {
@@ -823,14 +751,14 @@ struct solver_inequalities_Zcoeff
             for (; i <= selected; ++i) {
                 auto var = ap_value(it, R[i].id);
 
-                x[var->column] = 1;
+                x[var->column] = true;
                 P[var->value] += d;
             }
 
             for (; i != r_size; ++i) {
                 auto var = ap_value(it, R[i].id);
 
-                x[var->column] = 0;
+                x[var->column] = false;
                 P[var->value] -= d;
             }
         }

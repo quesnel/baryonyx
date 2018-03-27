@@ -52,15 +52,15 @@ init_policy_type_to_string(init_policy_type type) noexcept
 inline init_policy_type
 get_init_policy_type(const context_ptr& ctx) noexcept
 {
-    auto str = context_get_string_parameter(ctx, "init-policy", "bastert");
+    auto str = context_get_string_parameter(ctx, "init-policy", "best");
+
+    if (str == "bastert")
+        return init_policy_type::bastert;
 
     if (str == "random")
         return init_policy_type::random;
 
-    if (str == "best")
-        return init_policy_type::best;
-
-    return init_policy_type::bastert;
+    return init_policy_type::best;
 }
 
 enum class floating_point_type

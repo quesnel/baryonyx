@@ -262,8 +262,6 @@ test_negative_coeff3()
     auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/negative-coeff3.lp");
     baryonyx::preprocess(ctx, pb);
 
-    context_set_parameter(ctx, "limit", 50);
-
     auto result = baryonyx::solve(ctx, pb);
 
     Ensures(result.status == baryonyx::result_status::success);
