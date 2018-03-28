@@ -236,6 +236,16 @@ public:
         return std::make_tuple(begin, end);
     }
 
+    size_type size() const noexcept
+    {
+        return m_rows_values.size();
+    }
+
+    int length() const noexcept
+    {
+        return static_cast<int>(size());
+    }
+
 private:
     void m_check_index(index_type row, index_type col) const noexcept
     {
@@ -243,10 +253,12 @@ private:
         (void)row;
         (void)col;
 #else
-        assert(col >= 0 && col < length(m_cols_access) &&
+        assert(col >= 0 &&
+               static_cast<size_type>(col) < m_cols_access.size() &&
                "SparseArray: bad column access");
 
-        assert(row >= 0 && row < length(m_rows_access) &&
+        assert(row >= 0 &&
+               static_cast<size_type>(row) < m_rows_access.size() &&
                "SparseArray: bad row access");
 #endif
     }

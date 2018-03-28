@@ -45,7 +45,7 @@
 #include "itm-common.hpp"
 #include "itm.hpp"
 #include "private.hpp"
-#include "scoped_array.hpp"
+#include "sparse-matrix.hpp"
 #include "utils.hpp"
 
 #include <cassert>
@@ -158,6 +158,20 @@ stop_iterating(floatingpointT value, randomT& rng, maximize_tag) noexcept
 
 template<typename floatingpointT>
 inline bool
+stop_iterating(floatingpointT value, minimize_tag) noexcept
+{
+    return value > 0;
+}
+
+template<typename floatingpointT>
+inline bool
+stop_iterating(floatingpointT value, maximize_tag) noexcept
+{
+    return value < 0;
+}
+
+template<typename floatingpointT>
+inline bool
 is_better_solution(floatingpointT lhs,
                    floatingpointT rhs,
                    minimize_tag) noexcept
@@ -245,12 +259,13 @@ init_solver(Solver& slv,
             itm::init_policy_type type,
             double init_random)
 {
-    std::fill(slv.P.begin(),
-              slv.P.end(),
-              static_cast<typename Solver::P_type::value_type>(0));
-    std::fill(slv.pi.begin(),
-              slv.pi.end(),
-              static_cast<typename Solver::pi_type::value_type>(0));
+    using floatingpointT = typename Solver::floatingpoint_type;
+
+    std::fill(slv.P.get(),
+              slv.P.get() + slv.ap.length(),
+              static_cast<floatingpointT>(0));
+    std::fill(
+      slv.pi.get(), slv.pi.get() + slv.m, static_cast<floatingpointT>(0));
 
     if (best_previous.empty() and type == itm::init_policy_type::best)
         type = itm::init_policy_type::bastert;
@@ -265,11 +280,11 @@ init_solver(Solver& slv,
 
             for (int i = 0; i != slv.n; ++i)
                 slv.x[i] = init_x(
-                  slv.c(i), value_if_cost_0, typename Solver::mode_type());
+                  slv.c[i], value_if_cost_0, typename Solver::mode_type());
         } else {
             for (int i = 0; i != slv.n; ++i)
                 slv.x[i] =
-                  init_x(slv.c(i), d(slv.rng), typename Solver::mode_type());
+                  init_x(slv.c[i], d(slv.rng), typename Solver::mode_type());
         }
 
         type = itm::init_policy_type::random;
@@ -312,7 +327,7 @@ print_solver(const Solver& slv,
     debug(ctx, "\n");
 
     for (int k = 0; k != slv.m; ++k) {
-        typename Solver::AP_type::const_row_iterator it, et;
+        sparse_matrix<int>::const_row_iterator it, et;
 
         std::tie(it, et) = slv.ap.row(k);
         int v = 0;
@@ -341,7 +356,7 @@ print_missing_constraint(const baryonyx::context_ptr& ctx,
     compute_missing_constraint(slv, R);
     info(ctx, "Constraints remaining: {}\n", length(R));
 
-    typename Solver::AP_type::const_row_iterator it, et;
+    sparse_matrix<int>::const_row_iterator it, et;
 
     for (auto k : R) {
         std::tie(it, et) = slv.ap.row(k);
@@ -363,6 +378,32 @@ print_missing_constraint(const baryonyx::context_ptr& ctx,
     }
 }
 
+template<typename floatingpointT>
+floatingpointT
+max_cost_init(const std::unique_ptr<floatingpointT[]>& c,
+              int n,
+              minimize_tag) noexcept
+{
+    auto it = std::max_element(c.get(), c.get() + n);
+    if (it == c.get() + n)
+        return *it;
+
+    return std::numeric_limits<floatingpointT>::max();
+}
+
+template<typename floatingpointT>
+floatingpointT
+max_cost_init(const std::unique_ptr<floatingpointT[]>& c,
+              int n,
+              maximize_tag) noexcept
+{
+    auto it = std::min_element(c.get(), c.get() + n);
+    if (it == c.get() + n)
+        return *it;
+
+    return std::numeric_limits<floatingpointT>::lowest();
+}
+
 /**
  * Compute a problem lower or upper bounds based on Lagrangian multipliers
  * (valid if there are equality constraints only?)
@@ -374,27 +415,10 @@ struct bounds_printer
     floatingpointT bestub;
     floatingpointT max_cost;
 
-    template<typename c_type>
-    static floatingpointT max_cost_init(const c_type& c, minimize_tag) noexcept
-    {
-        assert(not c.empty());
-
-        return *std::max_element(c.cbegin(), c.cend());
-    }
-
-    template<typename c_type>
-    static floatingpointT max_cost_init(const c_type& c, maximize_tag) noexcept
-    {
-        assert(not c.empty());
-
-        return *std::min_element(c.cbegin(), c.cend());
-    }
-
-    template<typename c_type>
-    bounds_printer(const c_type& c)
+    bounds_printer(floatingpointT max_cost_init)
       : bestlb(std::numeric_limits<floatingpointT>::lowest())
       , bestub(std::numeric_limits<floatingpointT>::max())
-      , max_cost(max_cost_init(c, modeT()))
+      , max_cost(max_cost_init)
     {}
 
     template<typename SolverT>
@@ -697,7 +721,7 @@ struct compute_infeasibility
         R.clear();
 
         for (int k = 0, e = solver.m; k != e; ++k) {
-            typename solverT::AP_type::const_row_iterator it, et;
+            sparse_matrix<int>::const_row_iterator it, et;
             std::tie(it, et) = solver.ap.row(k);
             int v = 0;
 
@@ -742,14 +766,17 @@ struct compute_infeasibility
     }
 };
 
-template<typename CostT, typename floatingpointT>
+template<typename floatingpointT>
 inline floatingpointT
-compute_delta(const context_ptr& ctx, const CostT& c, floatingpointT theta)
+compute_delta(const context_ptr& ctx,
+              const std::unique_ptr<floatingpointT[]>& c,
+              floatingpointT theta,
+              int n)
 {
     info(ctx, "  - delta not defined, compute it:\n");
 
     auto mini{ std::numeric_limits<floatingpointT>::max() };
-    for (int i = 0, e = numeric_cast<int>(c.size()); i != e; ++i)
+    for (int i = 0; i != n; ++i)
         if (c[i] != 0 and std::abs(c[i]) < mini)
             mini = std::abs(c[i]);
 
@@ -787,8 +814,6 @@ template<typename SolverT,
          typename randomT>
 struct solver_functor
 {
-    using c_type = typename SolverT::c_type;
-
     using floatingpoint_type = floatingpointT;
     using mode_type = modeT;
     using constraint_order_type = constraintOrderT;
@@ -815,8 +840,8 @@ struct solver_functor
 
     result operator()(const std::vector<itm::merged_constraint>& constraints,
                       int variables,
-                      const c_type& original_costs,
-                      const c_type& norm_costs,
+                      const std::unique_ptr<floatingpointT[]>& original_costs,
+                      const std::unique_ptr<floatingpointT[]>& norm_costs,
                       double cost_constant,
                       const itm::parameters& p)
     {
@@ -834,8 +859,8 @@ struct solver_functor
         const auto alpha = static_cast<floatingpoint_type>(p.alpha);
         const auto theta = static_cast<floatingpoint_type>(p.theta);
         const auto delta = p.delta < 0
-                             ? compute_delta<c_type, floatingpoint_type>(
-                                 m_ctx, norm_costs, theta)
+                             ? compute_delta<floatingpoint_type>(
+                                 m_ctx, norm_costs, theta, variables)
                              : static_cast<floatingpoint_type>(p.delta);
 
         const auto pushing_k_factor =
@@ -846,6 +871,7 @@ struct solver_functor
         auto kappa = kappa_min;
 
         SolverT slv(m_rng,
+                    length(constraints),
                     variables,
                     norm_costs,
                     constraints,
@@ -854,7 +880,8 @@ struct solver_functor
 
         constraint_order_type compute(m_ctx, slv, m_rng);
 
-        bounds_printer<floatingpointT, modeT> bound_print(original_costs);
+        auto max_cost = max_cost_init(original_costs, variables, mode_type());
+        bounds_printer<floatingpointT, modeT> bound_print(max_cost);
 
         info(m_ctx, "* solver starts:\n");
 
@@ -1064,8 +1091,6 @@ template<typename SolverT,
          typename randomT>
 struct optimize_functor
 {
-    using c_type = typename SolverT::c_type;
-
     using floatingpoint_type = floatingpointT;
     using mode_type = modeT;
     using constraint_order_type = constraintOrderT;
@@ -1097,8 +1122,8 @@ struct optimize_functor
       best_solution_recorder<floatingpointT, modeT>& best_recorder,
       const std::vector<itm::merged_constraint>& constraints,
       int variables,
-      const c_type& original_costs,
-      const c_type& norm_costs,
+      const std::unique_ptr<floatingpointT[]>& original_costs,
+      const std::unique_ptr<floatingpointT[]>& norm_costs,
       double cost_constant,
       const itm::parameters& p)
     {
@@ -1116,8 +1141,8 @@ struct optimize_functor
         const auto alpha = static_cast<floatingpoint_type>(p.alpha);
         const auto theta = static_cast<floatingpoint_type>(p.theta);
         const auto delta = p.delta < 0
-                             ? compute_delta<c_type, floatingpoint_type>(
-                                 m_ctx, norm_costs, theta)
+                             ? compute_delta<floatingpoint_type>(
+                                 m_ctx, norm_costs, theta, variables)
                              : static_cast<floatingpoint_type>(p.delta);
 
         const auto pushing_k_factor =
@@ -1128,6 +1153,7 @@ struct optimize_functor
         auto kappa = kappa_min;
 
         SolverT slv(m_rng,
+                    length(constraints),
                     variables,
                     norm_costs,
                     constraints,
@@ -1246,14 +1272,15 @@ random_epsilon_unique(iteratorT begin,
         begin->first += distribution(rng);
 }
 
-template<typename CostT, typename floatingpointT, typename randomT>
-inline CostT
-rng_normalize_costs(const CostT& c, randomT& rng)
+template<typename floatingpointT, typename randomT>
+inline std::unique_ptr<floatingpointT[]>
+rng_normalize_costs(const std::unique_ptr<floatingpointT[]>& c,
+                    randomT& rng,
+                    int n)
 {
-    std::vector<std::pair<floatingpointT, int>> r(c.size());
-    int i, e;
+    std::vector<std::pair<floatingpointT, int>> r(n);
 
-    for (i = 0, e = numeric_cast<int>(c.size()); i != e; ++i) {
+    for (int i = 0; i != n; ++i) {
         r[i].first = c[i];
         r[i].second = i;
     }
@@ -1288,16 +1315,16 @@ rng_normalize_costs(const CostT& c, randomT& rng)
         return lhs.second < rhs.second;
     });
 
-    CostT ret(c);
-    for (i = 0, e = numeric_cast<int>(c.size()); i != e; ++i)
+    auto ret = std::make_unique<floatingpointT[]>(n);
+    for (int i = 0; i != n; ++i)
         ret[i] = r[i].first;
 
     // Finally we compute the l+oo norm.
 
-    floatingpointT div = *std::max_element(c.cbegin(), c.cend());
+    floatingpointT div = *std::max_element(c.get(), c.get() + n);
     if (std::isnormal(div))
-        for (auto& elem : ret)
-            elem /= div;
+        for (int i = 0; i != n; ++i)
+            ret[i] /= div;
 
     return ret;
 }
@@ -1307,54 +1334,59 @@ rng_normalize_costs(const CostT& c, randomT& rng)
  * the input vector is too small or with infinity value, the c is
  * unchanged.
  */
-template<typename CostT, typename floatingpointT, typename randomT>
-inline CostT
+template<typename floatingpointT, typename randomT>
+inline std::unique_ptr<floatingpointT[]>
 normalize_costs(const context_ptr& ctx,
                 const std::string& norm,
-                const CostT& c,
-                randomT& rng)
+                const std::unique_ptr<floatingpointT[]>& c,
+                randomT& rng,
+                int n)
 {
+    auto ret = std::make_unique<floatingpointT[]>(n);
+    std::copy(c.get(), c.get() + n, ret.get());
+
     if (norm == "none") {
         info(ctx, "  - No norm");
-        return c;
+        return ret;
     }
 
     if (norm == "rng") {
         info(ctx, "  - Compute random norm\n");
-        return rng_normalize_costs<CostT, floatingpointT, randomT>(c, rng);
+        return rng_normalize_costs<floatingpointT, randomT>(c, rng, n);
     }
 
-    CostT ret(c);
     floatingpointT div{ 0 };
 
     if (norm == "l1") {
         info(ctx, "  - Compute l1 norm\n");
-        for (auto elem : ret)
-            div += std::abs(elem);
+        for (int i = 0; i != n; ++i)
+            div += std::abs(ret[i]);
     } else if (norm == "l2") {
         info(ctx, "  - Compute l2 norm\n");
-        for (auto elem : ret)
-            div += elem * elem;
+        for (int i = 0; i != n; ++i)
+            div += ret[i] * ret[i];
     } else {
         info(ctx, "  - Compute infinity-norm (default)\n");
-        div = *std::max_element(c.cbegin(), c.cend());
+        div = *std::max_element(c.get(), c.get() + n);
     }
 
     if (std::isnormal(div))
-        for (auto& elem : ret)
-            elem /= div;
+        for (int i = 0; i != n; ++i)
+            ret[i] /= div;
 
     return ret;
 }
 
-template<typename CostT, typename floatingpointT>
-inline CostT
+template<typename floatingpointT>
+inline std::unique_ptr<floatingpointT[]>
 make_objective_function(const objective_function& obj, int n)
 {
-    CostT ret(n, 0);
+    auto ret = std::make_unique<floatingpointT[]>(n);
 
-    for (const auto& elem : obj.elements)
-        ret(elem.variable_index) += static_cast<floatingpointT>(elem.factor);
+    for (const auto& elem : obj.elements) {
+        assert(0 <= n and elem.variable_index < n);
+        ret[elem.variable_index] += static_cast<floatingpointT>(elem.factor);
+    }
 
     return ret;
 }
@@ -1390,13 +1422,11 @@ solve_problem(const context_ptr& ctx, problem& pb, const itm::parameters& p)
 
         randomT rng(init_random_generator_seed<randomT>(ctx));
 
-        using CostT = typename SolverT::c_type;
-
         auto variables = numeric_cast<int>(pb.vars.values.size());
-        auto cost = make_objective_function<CostT, floatingpointT>(
-          pb.objective, variables);
-        auto norm_costs = normalize_costs<CostT, floatingpointT, randomT>(
-          ctx, p.norm, cost, rng);
+        auto cost =
+          make_objective_function<floatingpointT>(pb.objective, variables);
+        auto norm_costs = normalize_costs<floatingpointT, randomT>(
+          ctx, p.norm, cost, rng, variables);
         auto cost_constant = pb.objective.value;
         auto names = std::move(pb.vars.names);
 
@@ -1425,12 +1455,12 @@ solve_problem(const context_ptr& ctx, problem& pb, const itm::parameters& p)
  * Generates an array with unique seed value.
  */
 template<typename randomT>
-inline scoped_array<typename randomT::result_type>
+inline std::unique_ptr<typename randomT::result_type[]>
 generate_seed(randomT& rng, int thread)
 {
     using type = typename randomT::result_type;
 
-    scoped_array<type> ret(thread);
+    auto ret = std::make_unique<type[]>(thread);
 
     std::uniform_int_distribution<type> dst(std::numeric_limits<type>::min(),
                                             std::numeric_limits<type>::max());
@@ -1473,14 +1503,11 @@ optimize_problem(const context_ptr& ctx,
     if (not constraints.empty() and not pb.vars.values.empty()) {
         randomT rng(init_random_generator_seed<randomT>(ctx));
 
-        using CostT = typename SolverT::c_type;
-
         auto variables = numeric_cast<int>(pb.vars.values.size());
         auto cost =
-          make_objective_function<typename SolverT::c_type, floatingpointT>(
-            pb.objective, variables);
-        auto norm_costs = normalize_costs<CostT, floatingpointT, randomT>(
-          ctx, p.norm, cost, rng);
+          make_objective_function<floatingpointT>(pb.objective, variables);
+        auto norm_costs = normalize_costs<floatingpointT, randomT>(
+          ctx, p.norm, cost, rng, variables);
         auto cost_constant = pb.objective.value;
         auto names = std::move(pb.vars.names);
 

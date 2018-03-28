@@ -24,7 +24,6 @@
 #define ORG_VLEPROJECT_BARYONYX_SOLVER_EQUALITIES_101COEFF_HPP
 
 #include "itm-solver-common.hpp"
-#include "sparse-matrix.hpp"
 
 namespace baryonyx {
 namespace itm {
@@ -37,45 +36,49 @@ struct solver_equalities_101coeff
     using random_type = randomT;
 
     using AP_type = sparse_matrix<int>;
-    using b_type = baryonyx::fixed_array<int>;
-    using c_type = baryonyx::fixed_array<floatingpointT>;
-    using pi_type = baryonyx::fixed_array<floatingpointT>;
-    using A_type = fixed_array<int>;
-    using P_type = fixed_array<floatingpointT>;
+
+    using b_type = std::unique_ptr<int[]>;
+    using c_type = std::unique_ptr<floatingpointT[]>;
+    using pi_type = std::unique_ptr<floatingpointT[]>;
+    using P_type = std::unique_ptr<floatingpointT[]>;
+    using A_type = std::unique_ptr<int[]>;
+    using R_type = std::unique_ptr<r_data<floatingpoint_type>[]>;
 
     random_type& rng;
 
     AP_type ap;
-    A_type A;
+    x_type x;
     P_type P;
-
-    fixed_array<r_data<floatingpoint_type>> R;
+    A_type A;
+    R_type R;
     fixed_array<fixed_array<c_data>> C;
 
     b_type b;
-    const c_type& c;
-    x_type x;
     pi_type pi;
+
+    const c_type& c;
     int m;
     int n;
 
     solver_equalities_101coeff(random_type& rng_,
+                               int m_,
                                int n_,
                                const c_type& c_,
                                const std::vector<itm::merged_constraint>& csts,
                                itm::init_policy_type init_type,
                                double init_random)
       : rng(rng_)
-      , ap(csts, length(csts), n_)
-      , A(element_number(csts), 0)
-      , P(element_number(csts), 0)
-      , R(compute_reduced_costs_vector_size(csts))
-      , C(length(csts))
-      , b(length(csts))
-      , c(c_)
+      , ap(csts, m_, n_)
       , x(n_)
-      , pi(length(csts))
-      , m(length(csts))
+      , P(std::make_unique<floatingpointT[]>(ap.size()))
+      , A(std::make_unique<int[]>(ap.size()))
+      , R(std::make_unique<r_data<floatingpoint_type>[]>(
+          compute_reduced_costs_vector_size(csts)))
+      , C(m_)
+      , b(std::make_unique<int[]>(m_))
+      , pi(std::make_unique<floatingpointT[]>(m_))
+      , c(c_)
+      , m(m_)
       , n(n_)
     {
         int id = 0;
@@ -234,7 +237,7 @@ struct solver_equalities_101coeff
                 R[i].value +=
                   objective_amplifier * c[ap_value(it, R[i].id)->column];
 
-        calculator_sort(R.begin(), R.begin() + r_size, rng, mode_type());
+        calculator_sort(R.get(), R.get() + r_size, rng, mode_type());
 
         int selected = select_variables_equality(r_size, bk);
 
@@ -282,7 +285,7 @@ struct solver_equalities_101coeff
 
         bk += c_size;
 
-        calculator_sort(R.begin(), R.begin() + r_size, rng, mode_type());
+        calculator_sort(R.get(), R.get() + r_size, rng, mode_type());
 
         int selected = select_variables_equality(r_size, bk);
 
@@ -376,7 +379,7 @@ struct solver_equalities_101coeff
                 P[var->value] -= delta;
             }
         } else if (selected + 1 >= r_size) {
-            pi(k) += R[selected].value;
+            pi[k] += R[selected].value;
 
             for (int i = 0; i != r_size; ++i) {
                 auto var = ap_value(it, R[i].id);
@@ -385,7 +388,7 @@ struct solver_equalities_101coeff
                 P[var->value] += delta;
             }
         } else {
-            pi(k) += ((R[selected].value + R[selected + 1].value) /
+            pi[k] += ((R[selected].value + R[selected + 1].value) /
                       static_cast<floatingpoint_type>(2.0));
 
             floatingpoint_type d =

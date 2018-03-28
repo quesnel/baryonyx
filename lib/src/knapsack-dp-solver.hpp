@@ -100,7 +100,7 @@ struct knapsack_dp_solver
     }
 
     template<typename R>
-    int solve(R& reduced_cost)
+    int solve(R& reduced_cost, int r_size)
     {
         const std::size_t n = items.size();
         const std::size_t W = static_cast<size_t>(capacity);
@@ -149,7 +149,6 @@ struct knapsack_dp_solver
         {
             int selected = length(variables);
             int i = 0;
-            const int e = length(items);
 
             for (auto elem : variables) {
                 auto it = std::find_if(
@@ -170,26 +169,26 @@ struct knapsack_dp_solver
             if (i == 0 and sum > capacity)
                 return -1;
 
-            for (; i != e; ++i) {
+            for (; i != r_size; ++i) {
                 sum += items[i].factor;
 
                 if (sum > capacity or stop_iterating(items[i].r, modeT()))
                     break;
             }
 
-            if (i == e)
-                return length(items);
+            if (i == r_size)
+                return r_size;
 
             selected = i;
 
             // Sort reduced cost according to the items vector order.
 
-            for (i = 0; i != e; ++i) {
+            for (i = 0; i != r_size; ++i) {
                 int elem = items[i].variable;
 
                 auto it =
-                  std::find_if(reduced_cost.begin(),
-                               reduced_cost.begin() + items.size(),
+                  std::find_if(reduced_cost.get(),
+                               reduced_cost.get() + items.size(),
                                [elem](const auto& r) { return r.id == elem; });
 
                 std::swap(reduced_cost[i], *it);
@@ -210,53 +209,28 @@ template<typename modeT,
          typename floatingpointT,
          typename A,
          typename R,
-         typename iteratorT>
+         typename Iterator>
 int
 knapsack_dp_solver(const A& a,
                    R& reduced_cost,
-                   iteratorT begin,
-                   iteratorT end,
+                   Iterator it,
+                   int r_size,
                    int bound)
 {
     assert(bound >= 0 && "No negative bound");
 
-    details::knapsack_dp_solver<modeT, floatingpointT> slv(
-      std::distance(begin, end), bound);
+    details::knapsack_dp_solver<modeT, floatingpointT> slv(r_size, bound);
 
-    for (int i = 0; begin != end; ++begin, ++i) {
+    for (int i = 0; i != r_size; ++i) {
         slv.items[i].r = reduced_cost[i].value;
         slv.items[i].variable = reduced_cost[i].id;
 
-        auto var = (begin + reduced_cost[i].id);
+        auto var = (it + reduced_cost[i].id);
+
         slv.items[i].factor = std::abs(a[var->value]);
     }
 
-    return slv.solve(reduced_cost);
-}
-
-/*
- * @note For @c iteratorT (iterator to factor), we convert to absolute value
- *     negative factor to avoid the use of @c invert_a in the AP matrix.
- */
-template<typename modeT,
-         typename floatingpointT,
-         typename R,
-         typename iteratorT>
-int
-knapsack_dp_solver(R& reduced_cost, iteratorT begin, iteratorT end, int bound)
-{
-    assert(bound >= 0 && "No negative bound");
-
-    details::knapsack_dp_solver<modeT, floatingpointT> slv(
-      std::distance(begin, end), bound);
-
-    for (int i = 0; begin != end; ++begin, ++i) {
-        slv.items[i].factor = std::abs(*begin);
-        slv.items[i].r = reduced_cost[i].value;
-        slv.items[i].variable = reduced_cost[i].id;
-    }
-
-    return slv.solve(reduced_cost);
+    return slv.solve(reduced_cost, r_size);
 }
 
 } // namespace itm

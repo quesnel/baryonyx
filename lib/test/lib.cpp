@@ -24,7 +24,6 @@
 #include "fixed_2darray.hpp"
 #include "fixed_array.hpp"
 #include "knapsack-dp-solver.hpp"
-#include "scoped_array.hpp"
 #include "unit-test.hpp"
 
 #include <baryonyx/core>
@@ -163,58 +162,6 @@ check_parameter()
 }
 
 static void
-check_scoped_array()
-{
-    baryonyx::scoped_array<int> a(10);
-    if (not a) {
-        Ensures(a);
-        return;
-    }
-
-    int* array = a.data();
-
-    Ensures(a.data() == array);
-
-    array[0] = 1;
-    array[1] = 2;
-    array[2] = 3;
-    array[3] = 4;
-    array[4] = 5;
-    array[5] = 6;
-    array[6] = 7;
-    array[7] = 8;
-    array[8] = 9;
-    array[9] = 0;
-
-    Ensures(a[0] == 1);
-    Ensures(a[1] == 2);
-    Ensures(a[2] == 3);
-    Ensures(a[3] == 4);
-    Ensures(a[4] == 5);
-    Ensures(a[5] == 6);
-    Ensures(a[6] == 7);
-    Ensures(a[7] == 8);
-    Ensures(a[8] == 9);
-    Ensures(a[9] == 0);
-
-    baryonyx::scoped_array<int> b(std::move(a));
-
-    Ensures(b.data() == array);
-    Ensures(a.data() == nullptr);
-
-    std::swap(a, b);
-
-    Ensures(a.data() == array);
-    Ensures(b.data() == nullptr);
-
-    baryonyx::scoped_array<double> x(1000, 123.0);
-    if (x) {
-        for (int i{ 0 }; i < 1000; ++i)
-            Ensures(x[i] == 123.0);
-    }
-}
-
-static void
 check_fixed_array()
 {
     baryonyx::fixed_array<int> a(10);
@@ -323,6 +270,11 @@ struct rc
     int id;
 };
 
+struct ap
+{
+    int value;
+};
+
 static void
 check_knapsack_solver()
 {
@@ -331,22 +283,29 @@ check_knapsack_solver()
         // maximize: 16x1 + 19x2 + 23x3 + 26x4
         // st: 2x1 + 3x2 +4x3 + 5x4 <= 7
 
-        std::vector<rc> R{ { 15, 0 }, { 19, 1 }, { 23, 2 }, { 26, 3 } };
+        auto R = std::make_unique<rc[]>(4);
+        R[0] = { 16, 0 };
+        R[1] = { 19, 1 };
+        R[2] = { 23, 2 };
+        R[3] = { 26, 3 };
+
+        std::vector<ap> v{ { 0 }, { 1 }, { 2 }, { 3 } };
+
         std::vector<int> factors{ 2, 3, 4, 5 };
         int selected =
-          baryonyx::itm::knapsack_dp_solver<baryonyx::itm::maximize_tag, double>(
-            R, factors.begin(), factors.end(), 7);
+          baryonyx::itm::knapsack_dp_solver<baryonyx::itm::maximize_tag,
+                                            double>(
+            factors, R, v.begin(), 4, 7);
 
         Ensures(selected == 2);
         Ensures(R[0].id == 1 or R[1].id == 1);
         Ensures(R[0].id == 2 or R[1].id == 2);
 
-        Ensures(std::accumulate(R.begin(),
-                                R.begin() + selected,
-                                0.0,
-                                [](double init, const rc& elem) {
-                                    return init + elem.value;
-                                }) == 42.0);
+        Ensures(
+          std::accumulate(
+            R.get(), R.get() + selected, 0.0, [](double init, const rc& elem) {
+                return init + elem.value;
+            }) == 42.0);
     }
 }
 
@@ -361,7 +320,8 @@ check_branch_and_bound_solver()
         std::vector<rc> R{ { 15, 0 }, { 19, 1 }, { 23, 2 }, { 26, 3 } };
         std::vector<int> factors{ 2, 3, 4, 5 };
         int selected =
-          baryonyx::itm::branch_and_bound_solver<baryonyx::itm::maximize_tag, double>(
+          baryonyx::itm::branch_and_bound_solver<baryonyx::itm::maximize_tag,
+                                                 double>(
             R, factors.begin(), factors.end(), 7);
 
         Ensures(selected == 2);
@@ -381,7 +341,8 @@ check_branch_and_bound_solver()
         std::vector<int> factors{ 2, 1, 3, 2 };
 
         int selected =
-          baryonyx::itm::branch_and_bound_solver<baryonyx::itm::minimize_tag, double>(
+          baryonyx::itm::branch_and_bound_solver<baryonyx::itm::minimize_tag,
+                                                 double>(
             R, factors.begin(), factors.end(), 3);
 
         Ensures(selected == 1);
@@ -401,7 +362,8 @@ check_branch_and_bound_solver()
         std::vector<int> factors{ 2, 3, 4, 5, 7 };
 
         int selected =
-          baryonyx::itm::branch_and_bound_solver<baryonyx::itm::maximize_tag, double>(
+          baryonyx::itm::branch_and_bound_solver<baryonyx::itm::maximize_tag,
+                                                 double>(
             R, factors.begin(), factors.end(), 7);
 
         Ensures(selected == 2);
@@ -419,7 +381,8 @@ check_branch_and_bound_solver()
         std::vector<int> factors{ 1, 2, 3, 4, 5, 6 };
 
         auto selected =
-          baryonyx::itm::branch_and_bound_solver<baryonyx::itm::maximize_tag, double>(
+          baryonyx::itm::branch_and_bound_solver<baryonyx::itm::maximize_tag,
+                                                 double>(
             R, factors.begin(), factors.end(), 7);
 
         Ensures(selected == 3);
@@ -434,7 +397,8 @@ check_branch_and_bound_solver()
         std::vector<int> factors{ 1, 2, 3, 4, 5, 6 };
 
         auto selected =
-          baryonyx::itm::branch_and_bound_solver<baryonyx::itm::minimize_tag, double>(
+          baryonyx::itm::branch_and_bound_solver<baryonyx::itm::minimize_tag,
+                                                 double>(
             R, factors.begin(), factors.end(), 7);
 
         Ensures(selected == 1);
@@ -447,7 +411,8 @@ check_branch_and_bound_solver()
         std::vector<int> factors{ 1, 1, 6, 1, 1, 1 };
 
         auto selected =
-          baryonyx::itm::branch_and_bound_solver<baryonyx::itm::minimize_tag, double>(
+          baryonyx::itm::branch_and_bound_solver<baryonyx::itm::minimize_tag,
+                                                 double>(
             R, factors.begin(), factors.end(), 7);
 
         Ensures(selected == 1);
@@ -460,7 +425,6 @@ main(int /* argc */, char* /* argv */ [])
     check_clamp();
     check_numeric_cast();
     check_parameter();
-    check_scoped_array();
     check_fixed_array();
     check_fixed_2darray();
     check_knapsack_solver();
