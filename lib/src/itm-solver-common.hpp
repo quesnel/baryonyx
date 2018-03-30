@@ -829,6 +829,7 @@ struct solver_functor
 
     solver_functor(const context_ptr& ctx,
                    randomT& rng,
+
                    const std::vector<std::string>& variable_names,
                    const affected_variables& affected_vars)
       : m_ctx(ctx)
@@ -1099,6 +1100,8 @@ struct optimize_functor
     std::chrono::time_point<std::chrono::steady_clock> m_begin;
     std::chrono::time_point<std::chrono::steady_clock> m_end;
 
+    std::set<solution> m_all_solutions;
+
     const context_ptr& m_ctx;
     randomT m_rng;
     int m_thread_id;
@@ -1221,6 +1224,10 @@ struct optimize_functor
             }
         }
 
+        std::copy(m_all_solutions.begin(),
+                  m_all_solutions.end(),
+                  std::back_inserter(m_best.solutions));
+
         return m_best;
     }
 
@@ -1235,7 +1242,15 @@ private:
             is_better_solution(
               current, m_best.solutions.back().value, modeT())) {
             m_best.status = baryonyx::result_status::success;
-            m_best.solutions.emplace_back(x, current);
+
+            // Store only the best solution, other solutions are stored into
+            // the @c std::set to avoid duplicated solutions.
+
+            if (m_best.solutions.empty())
+                m_best.solutions.emplace_back(x, current);
+            else
+                m_best.solutions[0] = { x, current };
+
             m_best.duration = compute_duration(m_begin, m_end);
             m_best.loop = i;
 
@@ -1246,13 +1261,9 @@ private:
                 ofs << m_best << m_affected_vars
                     << best_solution_writer(m_best);
 #endif
-
-        } else {
-            m_best.solutions.emplace_back(x, current);
-
-            std::swap(*(m_best.solutions.rbegin()),
-                      *(m_best.solutions.rbegin() + 1));
         }
+
+        m_all_solutions.emplace(x, current);
     }
 };
 
@@ -1551,41 +1562,27 @@ optimize_problem(const context_ptr& ctx,
         for (auto& t : pool)
             t.join();
 
+        std::set<solution> all_solutions;
+
         for (int i = 0; i != thread; ++i) {
             auto current = results[i].get();
             if (current.status == result_status::success) {
-                if (ret.solutions.empty()) {
+                all_solutions.insert(current.solutions.begin(),
+                                     current.solutions.end());
+
+                if (ret.solutions.empty() or
+                    is_better_solution(current.solutions.back().value,
+                                       ret.solutions.back().value,
+                                       modeT()))
                     ret = current;
-                } else if (is_better_solution(current.solutions.back().value,
-                                              ret.solutions.back().value,
-                                              modeT())) {
-                    ret.solutions.insert(ret.solutions.end(),
-                                         current.solutions.begin(),
-                                         current.solutions.end());
-                    auto sols = std::move(ret.solutions);
-                    ret = current;
-                    ret.solutions = sols;
-                } else {
-                    current.solutions.insert(current.solutions.end(),
-                                             ret.solutions.begin(),
-                                             ret.solutions.end());
-                    ret.solutions = current.solutions;
-                }
             }
         }
 
-        std::sort(ret.solutions.begin(),
-                  ret.solutions.end(),
-                  [](const auto& lhs, const auto& rhs) -> bool {
-                      return rhs.value < lhs.value;
-                  });
+        ret.solutions.clear();
 
-        auto last = std::unique(ret.solutions.begin(),
-                                ret.solutions.end(),
-                                [](const auto& lhs, const auto& rhs) -> bool {
-                                    return lhs.value == rhs.value;
-                                });
-        ret.solutions.erase(last, ret.solutions.end());
+        std::copy(all_solutions.begin(),
+                  all_solutions.end(),
+                  std::back_inserter(ret.solutions));
     }
 
     return ret;

@@ -123,6 +123,18 @@ operator!=(const problem& lhs, const problem& rhs) noexcept
     return not(lhs == rhs);
 }
 
+inline bool
+operator==(const solution& lhs, const solution& rhs) noexcept
+{
+    return lhs.value == rhs.value and lhs.variables == rhs.variables;
+}
+
+inline bool
+operator<(const solution& lhs, const solution& rhs) noexcept
+{
+    return lhs.value < rhs.value;
+}
+
 } // namespace baryonyx
 
 #endif
