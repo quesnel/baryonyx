@@ -36,36 +36,27 @@ struct solver_inequalities_Zcoeff
     using mode_type = modeT;
     using random_type = randomT;
 
-    using AP_type = sparse_matrix<int>;
-
-    using b_type = std::unique_ptr<bound[]>;
-    using c_type = std::unique_ptr<floatingpointT[]>;
-    using pi_type = std::unique_ptr<floatingpointT[]>;
-    using P_type = std::unique_ptr<floatingpointT[]>;
-    using A_type = std::unique_ptr<int[]>;
-    using R_type = std::unique_ptr<r_data<floatingpoint_type>[]>;
-
     random_type& rng;
 
-    AP_type ap;
-    x_type x;
-    P_type P;
-    A_type A;
-    R_type R;
+    sparse_matrix<int> ap;
+    std::vector<bool> x;
+    std::unique_ptr<floatingpointT[]> P;
+    std::unique_ptr<int[]> A;
+    std::unique_ptr<r_data<floatingpoint_type>[]> R;
     fixed_array<fixed_array<c_data>> C;
     std::vector<bool> Z;
 
-    b_type b;
-    pi_type pi;
+    std::unique_ptr<bound[]> b;
+    std::unique_ptr<floatingpointT[]> pi;
 
-    const c_type& c;
+    const std::unique_ptr<floatingpointT[]>& c;
     int m;
     int n;
 
     solver_inequalities_Zcoeff(random_type& rng_,
                                int m_,
                                int n_,
-                               const c_type& c_,
+                               const std::unique_ptr<floatingpointT[]>& c_,
                                const std::vector<itm::merged_constraint>& csts,
                                itm::init_policy_type init_type,
                                double init_random)
@@ -119,7 +110,7 @@ struct solver_inequalities_Zcoeff
                 int id_in_r = 0;
                 int id_in_c = 0;
 
-                typename AP_type::const_row_iterator it, et;
+                typename sparse_matrix<int>::const_row_iterator it, et;
                 std::tie(it, et) = ap.row(i);
 
                 for (; it != et; ++it) {
@@ -170,7 +161,7 @@ struct solver_inequalities_Zcoeff
     {
         floatingpointT ret{ 0 };
 
-        AP_type::const_col_iterator ht, hend;
+        sparse_matrix<int>::const_col_iterator ht, hend;
         std::tie(ht, hend) = ap.column(variable);
 
         for (; ht != hend; ++ht)
@@ -183,7 +174,7 @@ struct solver_inequalities_Zcoeff
     bool is_valid_solution() const
     {
         for (int k = 0, ek = m; k != ek; ++k) {
-            typename AP_type::const_row_iterator it, et;
+            typename sparse_matrix<int>::const_row_iterator it, et;
 
             std::tie(it, et) = ap.row(k);
             int v = 0;
@@ -201,7 +192,7 @@ struct solver_inequalities_Zcoeff
     template<typename Container>
     int compute_violated_constraints(Container& c) const
     {
-        typename AP_type::const_row_iterator it, et;
+        typename sparse_matrix<int>::const_row_iterator it, et;
 
         c.clear();
 
@@ -219,7 +210,7 @@ struct solver_inequalities_Zcoeff
         return length(c);
     }
 
-    double results(const c_type& original_costs,
+    double results(const std::unique_ptr<floatingpointT[]>& original_costs,
                    const double cost_constant) const
     {
         assert(is_valid_solution());
@@ -232,12 +223,6 @@ struct solver_inequalities_Zcoeff
         return value;
     }
 
-    typename AP_type::row_iterator ap_value(typename AP_type::row_iterator it,
-                                            int id_in_r)
-    {
-        return it + id_in_r;
-    }
-
     void compute_update_row_Z_eq(int k,
                                  int bk,
                                  floatingpoint_type kappa,
@@ -245,7 +230,7 @@ struct solver_inequalities_Zcoeff
                                  floatingpoint_type theta,
                                  floatingpoint_type objective_amplifier)
     {
-        typename AP_type::row_iterator it, et;
+        typename sparse_matrix<int>::row_iterator it, et;
         std::tie(it, et) = ap.row(k);
 
         decrease_preference(it, et, theta);
@@ -263,7 +248,7 @@ struct solver_inequalities_Zcoeff
         if (objective_amplifier)
             for (int i = 0; i != r_size; ++i)
                 R[i].value +=
-                  objective_amplifier * c[ap_value(it, R[i].id)->column];
+                  objective_amplifier * c[(it + R[i].id)->column];
 
         //
         // Negate reduced costs and coefficients of these variables. We need to
@@ -273,7 +258,7 @@ struct solver_inequalities_Zcoeff
         for (int i = 0; i != c_size; ++i) {
             R[ck[i].id_r].value = -R[ck[i].id_r].value;
 
-            auto var = ap_value(it, ck[i].id_r);
+            auto var = it + ck[i].id_r;
 
             P[var->value] = -P[var->value];
             bk_move += A[var->value];
@@ -297,7 +282,7 @@ struct solver_inequalities_Zcoeff
         //
 
         for (int i = 0; i != c_size; ++i) {
-            auto var = ap_value(it, ck[i].id_r);
+            auto var = it + ck[i].id_r;
 
             P[var->value] = -P[var->value];
             x[var->column] = !x[var->column];
@@ -312,7 +297,7 @@ struct solver_inequalities_Zcoeff
                                    floatingpoint_type theta,
                                    floatingpoint_type objective_amplifier)
     {
-        typename AP_type::row_iterator it, et;
+        typename sparse_matrix<int>::row_iterator it, et;
         std::tie(it, et) = ap.row(k);
 
         decrease_preference(it, et, theta);
@@ -330,7 +315,7 @@ struct solver_inequalities_Zcoeff
         if (objective_amplifier)
             for (int i = 0; i != r_size; ++i)
                 R[i].value +=
-                  objective_amplifier * c[ap_value(it, R[i].id)->column];
+                  objective_amplifier * c[(it + R[i].id)->column];
 
         //
         // Negate reduced costs and coefficients of these variables. We need to
@@ -340,7 +325,7 @@ struct solver_inequalities_Zcoeff
         for (int i = 0; i != c_size; ++i) {
             R[ck[i].id_r].value = -R[ck[i].id_r].value;
 
-            auto var = ap_value(it, ck[i].id_r);
+            auto var = it + ck[i].id_r;
 
             P[var->value] = -P[var->value];
             bk_move += A[var->value];
@@ -365,7 +350,7 @@ struct solver_inequalities_Zcoeff
         //
 
         for (int i = 0; i != c_size; ++i) {
-            auto var = ap_value(it, ck[i].id_r);
+            auto var = it + ck[i].id_r;
 
             P[var->value] = -P[var->value];
             x[var->column] = !x[var->column];
@@ -379,7 +364,7 @@ struct solver_inequalities_Zcoeff
                                   floatingpoint_type theta,
                                   floatingpoint_type objective_amplifier)
     {
-        typename AP_type::row_iterator it, et;
+        typename sparse_matrix<int>::row_iterator it, et;
         std::tie(it, et) = ap.row(k);
 
         decrease_preference(it, et, theta);
@@ -394,7 +379,7 @@ struct solver_inequalities_Zcoeff
         if (objective_amplifier)
             for (int i = 0; i != r_size; ++i)
                 R[i].value +=
-                  objective_amplifier * c[ap_value(it, R[i].id)->column];
+                  objective_amplifier * c[(it + R[i].id)->column];
 
         calculator_sort(R.get(), R.get() + r_size, rng, mode_type());
 
@@ -411,7 +396,7 @@ struct solver_inequalities_Zcoeff
                                     floatingpoint_type theta,
                                     floatingpoint_type objective_amplifier)
     {
-        typename AP_type::row_iterator it, et;
+        typename sparse_matrix<int>::row_iterator it, et;
         std::tie(it, et) = ap.row(k);
 
         decrease_preference(it, et, theta);
@@ -426,7 +411,7 @@ struct solver_inequalities_Zcoeff
         if (objective_amplifier)
             for (int i = 0; i != r_size; ++i)
                 R[i].value +=
-                  objective_amplifier * c[ap_value(it, R[i].id)->column];
+                  objective_amplifier * c[(it + R[i].id)->column];
 
         calculator_sort(R.get(), R.get() + r_size, rng, mode_type());
 
@@ -442,7 +427,7 @@ struct solver_inequalities_Zcoeff
                                    floatingpoint_type theta,
                                    floatingpoint_type objective_amplifier)
     {
-        typename AP_type::row_iterator it, et;
+        typename sparse_matrix<int>::row_iterator it, et;
         std::tie(it, et) = ap.row(k);
 
         decrease_preference(it, et, theta);
@@ -459,7 +444,7 @@ struct solver_inequalities_Zcoeff
         if (objective_amplifier)
             for (int i = 0; i != r_size; ++i)
                 R[i].value +=
-                  objective_amplifier * c[ap_value(it, R[i].id)->column];
+                  objective_amplifier * c[(it + R[i].id)->column];
 
         //
         // Negate reduced costs and coefficients of these variables. We need to
@@ -469,7 +454,7 @@ struct solver_inequalities_Zcoeff
         for (int i = 0; i != c_size; ++i) {
             R[ck[i].id_r].value = -R[ck[i].id_r].value;
 
-            auto var = ap_value(it, ck[i].id_r);
+            auto var = it + ck[i].id_r;
 
             P[var->value] = -P[var->value];
         }
@@ -488,7 +473,7 @@ struct solver_inequalities_Zcoeff
         //
 
         for (int i = 0; i != c_size; ++i) {
-            auto var = ap_value(it, ck[i].id_r);
+            auto var = it + ck[i].id_r;
 
             P[var->value] = -P[var->value];
             x[var->column] = !x[var->column];
@@ -503,7 +488,7 @@ struct solver_inequalities_Zcoeff
                                      floatingpoint_type theta,
                                      floatingpoint_type objective_amplifier)
     {
-        typename AP_type::row_iterator it, et;
+        typename sparse_matrix<int>::row_iterator it, et;
         std::tie(it, et) = ap.row(k);
 
         decrease_preference(it, et, theta);
@@ -520,7 +505,7 @@ struct solver_inequalities_Zcoeff
         if (objective_amplifier)
             for (int i = 0; i != r_size; ++i)
                 R[i].value +=
-                  objective_amplifier * c[ap_value(it, R[i].id)->column];
+                  objective_amplifier * c[(it + R[i].id)->column];
 
         //
         // Negate reduced costs and coefficients of these variables. We need to
@@ -530,7 +515,7 @@ struct solver_inequalities_Zcoeff
         for (int i = 0; i != c_size; ++i) {
             R[ck[i].id_r].value = -R[ck[i].id_r].value;
 
-            auto var = ap_value(it, ck[i].id_r);
+            auto var = it + ck[i].id_r;
 
             P[var->value] = -P[var->value];
         }
@@ -550,7 +535,7 @@ struct solver_inequalities_Zcoeff
         //
 
         for (int i = 0; i != c_size; ++i) {
-            auto var = ap_value(it, ck[i].id_r);
+            auto var = it + ck[i].id_r;
 
             P[var->value] = -P[var->value];
             x[var->column] = !x[var->column];
@@ -583,7 +568,7 @@ struct solver_inequalities_Zcoeff
             floatingpoint_type sum_a_pi = 0;
             floatingpoint_type sum_a_p = 0;
 
-            typename AP_type::const_col_iterator ht, hend;
+            typename sparse_matrix<int>::const_col_iterator ht, hend;
             std::tie(ht, hend) = ap.column(begin->column);
 
             for (; ht != hend; ++ht) {
@@ -651,12 +636,12 @@ struct solver_inequalities_Zcoeff
     template<typename iteratorT>
     int select_variables_equality_Z(iteratorT it, const int r_size, int bk)
     {
-        int sum = A[ap_value(it, R[0].id)->value];
+        int sum = A[(it + R[0].id)->value];
         if (sum == bk)
             return 0;
 
         for (int i = 1; i != r_size; ++i) {
-            sum += A[ap_value(it, R[i].id)->value];
+            sum += A[(it + R[i].id)->value];
 
             if (sum == bk)
                 return i;
@@ -679,12 +664,12 @@ struct solver_inequalities_Zcoeff
                                       int bkmin,
                                       int bkmax)
     {
-        int sum = A[ap_value(it, R[0].id)->value];
+        int sum = A[(it + R[0].id)->value];
         if (bkmin <= sum and sum <= bkmax)
             return 0;
 
         for (int i = 1; i != r_size; ++i) {
-            sum += A[ap_value(it, R[i].id)->value];
+            sum += A[(it + R[i].id)->value];
 
             if (bkmin <= sum and sum <= bkmax)
                 return i;
@@ -717,7 +702,7 @@ struct solver_inequalities_Zcoeff
     {
         if (selected < 0) {
             for (int i = 0; i != r_size; ++i) {
-                auto var = ap_value(it, R[i].id);
+                auto var = it + R[i].id;
 
                 x[var->column] = false;
                 P[var->value] -= delta;
@@ -726,7 +711,7 @@ struct solver_inequalities_Zcoeff
             pi[k] += R[selected].value;
 
             for (int i = 0; i != r_size; ++i) {
-                auto var = ap_value(it, R[i].id);
+                auto var = it + R[i].id;
 
                 x[var->column] = true;
                 P[var->value] += delta;
@@ -742,14 +727,14 @@ struct solver_inequalities_Zcoeff
 
             int i = 0;
             for (; i <= selected; ++i) {
-                auto var = ap_value(it, R[i].id);
+                auto var = it + R[i].id;
 
                 x[var->column] = true;
                 P[var->value] += d;
             }
 
             for (; i != r_size; ++i) {
-                auto var = ap_value(it, R[i].id);
+                auto var = it + R[i].id;
 
                 x[var->column] = false;
                 P[var->value] -= d;

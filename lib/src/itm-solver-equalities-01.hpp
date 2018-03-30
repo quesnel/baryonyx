@@ -47,6 +47,7 @@ struct solver_equalities_01coeff
     std::unique_ptr<floatingpointT[]> pi;
 
     const std::unique_ptr<floatingpointT[]>& c;
+
     int m;
     int n;
 
@@ -171,13 +172,6 @@ struct solver_equalities_01coeff
         return value;
     }
 
-    sparse_matrix<int>::row_iterator ap_value(
-      sparse_matrix<int>::row_iterator it,
-      int id_in_r)
-    {
-        return it + id_in_r;
-    }
-
     //
     // Decrease influence of local preferences. 0 will completely reset the
     // preference values for the current row. > 0 will keep former decision
@@ -245,7 +239,7 @@ struct solver_equalities_01coeff
     {
         if (selected < 0) {
             for (int i = 0; i != r_size; ++i) {
-                auto var = ap_value(it, R[i].id);
+                auto var = it + R[i].id;
 
                 x[var->column] = false;
                 P[var->value] -= delta;
@@ -254,7 +248,7 @@ struct solver_equalities_01coeff
             pi[k] += R[selected].value;
 
             for (int i = 0; i != r_size; ++i) {
-                auto var = ap_value(it, R[i].id);
+                auto var = it + R[i].id;
 
                 x[var->column] = true;
                 P[var->value] += delta;
@@ -270,14 +264,14 @@ struct solver_equalities_01coeff
 
             int i = 0;
             for (; i <= selected; ++i) {
-                auto var = ap_value(it, R[i].id);
+                auto var = it + R[i].id;
 
                 x[var->column] = true;
                 P[var->value] += d;
             }
 
             for (; i != r_size; ++i) {
-                auto var = ap_value(it, R[i].id);
+                auto var = it + R[i].id;
 
                 x[var->column] = false;
                 P[var->value] -= d;

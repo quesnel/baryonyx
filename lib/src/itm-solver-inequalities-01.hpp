@@ -25,6 +25,8 @@
 
 #include "itm-solver-common.hpp"
 
+#include <memory>
+
 namespace baryonyx {
 namespace itm {
 
@@ -35,24 +37,16 @@ struct solver_inequalities_01coeff
     using mode_type = modeT;
     using random_type = randomT;
 
-    using AP_type = sparse_matrix<int>;
-
-    using b_type = std::unique_ptr<bound[]>;
-    using c_type = std::unique_ptr<floatingpointT[]>;
-    using pi_type = std::unique_ptr<floatingpointT[]>;
-    using P_type = std::unique_ptr<floatingpointT[]>;
-    using R_type = std::unique_ptr<r_data<floatingpoint_type>[]>;
-
     random_type& rng;
 
-    AP_type ap;
-    x_type x;
-    P_type P;
-    R_type R;
-    b_type b;
-    pi_type pi;
+    sparse_matrix<int> ap;
+    std::vector<bool> x;
+    std::unique_ptr<floatingpointT[]> P;
+    std::unique_ptr<r_data<floatingpoint_type>[]> R;
+    std::unique_ptr<bound[]> b;
+    std::unique_ptr<floatingpointT[]> pi;
 
-    const c_type& c;
+    const std::unique_ptr<floatingpointT[]>& c;
     int m;
     int n;
 
@@ -60,7 +54,7 @@ struct solver_inequalities_01coeff
       random_type& rng_,
       int m_,
       int n_,
-      const c_type& c_,
+      const std::unique_ptr<floatingpointT[]>& c_,
       const std::vector<itm::merged_constraint>& csts,
       itm::init_policy_type init_type,
       double init_random)
@@ -127,7 +121,7 @@ struct solver_inequalities_01coeff
     {
         floatingpointT ret{ 0 };
 
-        AP_type::const_col_iterator ht, hend;
+        sparse_matrix<int>::const_col_iterator ht, hend;
         std::tie(ht, hend) = ap.column(variable);
 
         for (; ht != hend; ++ht)
@@ -139,7 +133,7 @@ struct solver_inequalities_01coeff
     bool is_valid_solution() const
     {
         for (int k = 0; k != m; ++k) {
-            typename AP_type::const_row_iterator it, et;
+            typename sparse_matrix<int>::const_row_iterator it, et;
 
             std::tie(it, et) = ap.row(k);
             int v = 0;
@@ -157,7 +151,7 @@ struct solver_inequalities_01coeff
     template<typename Container>
     int compute_violated_constraints(Container& c) const
     {
-        typename AP_type::const_row_iterator it, et;
+        typename sparse_matrix<int>::const_row_iterator it, et;
 
         c.clear();
 
@@ -175,7 +169,7 @@ struct solver_inequalities_01coeff
         return length(c);
     }
 
-    double results(const c_type& original_costs,
+    double results(const std::unique_ptr<floatingpointT[]>& original_costs,
                    const double cost_constant) const
     {
         assert(is_valid_solution());
@@ -188,12 +182,6 @@ struct solver_inequalities_01coeff
         return value;
     }
 
-    typename AP_type::row_iterator ap_value(typename AP_type::row_iterator it,
-                                            int id_in_r)
-    {
-        return it + id_in_r;
-    }
-
     void compute_update_row_01_eq(int k,
                                   int bk,
                                   floatingpoint_type kappa,
@@ -201,7 +189,7 @@ struct solver_inequalities_01coeff
                                   floatingpoint_type theta,
                                   floatingpoint_type objective_amplifier)
     {
-        typename AP_type::row_iterator it, et;
+        typename sparse_matrix<int>::row_iterator it, et;
         std::tie(it, et) = ap.row(k);
 
         decrease_preference(it, et, theta);
@@ -216,7 +204,7 @@ struct solver_inequalities_01coeff
         if (objective_amplifier)
             for (int i = 0; i != r_size; ++i)
                 R[i].value +=
-                  objective_amplifier * c[ap_value(it, R[i].id)->column];
+                  objective_amplifier * c[(it + R[i].id)->column];
 
         calculator_sort(R.get(), R.get() + r_size, rng, mode_type());
 
@@ -233,7 +221,7 @@ struct solver_inequalities_01coeff
                                     floatingpoint_type theta,
                                     floatingpoint_type objective_amplifier)
     {
-        typename AP_type::row_iterator it, et;
+        typename sparse_matrix<int>::row_iterator it, et;
         std::tie(it, et) = ap.row(k);
 
         decrease_preference(it, et, theta);
@@ -248,7 +236,7 @@ struct solver_inequalities_01coeff
         if (objective_amplifier)
             for (int i = 0; i != r_size; ++i)
                 R[i].value +=
-                  objective_amplifier * c[ap_value(it, R[i].id)->column];
+                  objective_amplifier * c[(it + R[i].id)->column];
 
         calculator_sort(R.get(), R.get() + r_size, rng, mode_type());
 
@@ -283,7 +271,7 @@ struct solver_inequalities_01coeff
             floatingpoint_type sum_a_pi = 0;
             floatingpoint_type sum_a_p = 0;
 
-            typename AP_type::const_col_iterator ht, hend;
+            typename sparse_matrix<int>::const_col_iterator ht, hend;
             std::tie(ht, hend) = ap.column(begin->column);
 
             for (; ht != hend; ++ht) {
@@ -336,7 +324,7 @@ struct solver_inequalities_01coeff
     {
         if (selected < 0) {
             for (int i = 0; i != r_size; ++i) {
-                auto var = ap_value(it, R[i].id);
+                auto var = it + R[i].id;
 
                 x[var->column] = false;
                 P[var->value] -= delta;
@@ -345,7 +333,7 @@ struct solver_inequalities_01coeff
             pi[k] += R[selected].value;
 
             for (int i = 0; i != r_size; ++i) {
-                auto var = ap_value(it, R[i].id);
+                auto var = it + R[i].id;
 
                 x[var->column] = true;
                 P[var->value] += delta;
@@ -361,14 +349,14 @@ struct solver_inequalities_01coeff
 
             int i = 0;
             for (; i <= selected; ++i) {
-                auto var = ap_value(it, R[i].id);
+                auto var = it + R[i].id;
 
                 x[var->column] = true;
                 P[var->value] += d;
             }
 
             for (; i != r_size; ++i) {
-                auto var = ap_value(it, R[i].id);
+                auto var = it + R[i].id;
 
                 x[var->column] = false;
                 P[var->value] -= d;
