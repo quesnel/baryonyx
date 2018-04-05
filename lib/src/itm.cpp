@@ -26,6 +26,7 @@
 #include "itm-solver-equalities-01.hpp"
 #include "itm-solver-equalities-101.hpp"
 #include "itm-solver-inequalities-01.hpp"
+#include "itm-solver-inequalities-101-buffered.hpp"
 #include "itm-solver-inequalities-101.hpp"
 #include "itm-solver-inequalities-Z.hpp"
 
@@ -408,6 +409,19 @@ template<typename floatingpointT,
 inline result
 dispatch_solver(const context_ptr& ctx, problem& pb, const itm::parameters& p)
 {
+    if (p.method == "buffered") {
+        baryonyx::warning(ctx, "buffered method is experimental\n");
+
+        return solve_problem<
+          solver_inequalities_101coeff_buffered<floatingpointT,
+                                                modeT,
+                                                randomT>,
+          floatingpointT,
+          modeT,
+          constraintOrderT,
+          randomT>(ctx, pb, p);
+    }
+
     switch (pb.problem_type) {
     case problem_solver_type::equalities_01:
         return solve_problem<
@@ -468,6 +482,19 @@ dispatch_optimizer(const context_ptr& ctx,
                    const itm::parameters& p,
                    int thread)
 {
+    if (p.method == "buffered") {
+        baryonyx::warning(ctx, "buffered method is experimental\n");
+
+        return optimize_problem<
+          solver_inequalities_101coeff_buffered<floatingpointT,
+                                                modeT,
+                                                randomT>,
+          floatingpointT,
+          modeT,
+          constraintOrderT,
+          randomT>(ctx, pb, p, thread);
+    }
+
     switch (pb.problem_type) {
     case problem_solver_type::equalities_01:
         return optimize_problem<

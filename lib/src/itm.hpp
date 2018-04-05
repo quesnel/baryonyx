@@ -139,7 +139,8 @@ get_constraint_order(const context_ptr& ctx) noexcept
 struct parameters
 {
     parameters(const context_ptr& ctx)
-      : preprocessing(
+      : method(context_get_string_parameter(ctx, "method", ""))
+      , preprocessing(
           context_get_string_parameter(ctx, "preprocessing", "none"))
       , norm(context_get_string_parameter(ctx, "norm", "inf"))
       , time_limit(context_get_real_parameter(ctx, "time-limit", -1.0))
@@ -179,6 +180,9 @@ struct parameters
              time_limit,
              floating_point_type_to_string(float_type),
              print_level);
+
+        if (not method.empty())
+            info(ctx, "  - method: {}\n", method);
 
         info(ctx,
              " * In The Middle parameters:\n"
@@ -220,6 +224,7 @@ struct parameters
              init_random);
     }
 
+    std::string method;
     std::string preprocessing;
     std::string norm;
     double time_limit;
