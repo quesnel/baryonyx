@@ -536,6 +536,34 @@ struct bounds_printer
     }
 };
 
+namespace details {
+inline int
+constraint(std::vector<int>::iterator it)
+{
+    return *it;
+}
+
+inline int
+constraint(std::vector<int>::reverse_iterator it)
+{
+    return *it;
+}
+
+inline int
+constraint(std::vector<std::pair<int, int>>::iterator it)
+{
+    return it->first;
+}
+
+} // namespace details
+
+template<typename Iterator>
+int
+constraint(Iterator it)
+{
+    return details::constraint(it);
+}
+
 template<typename floatingpointT, typename randomT>
 struct compute_none
 {
@@ -559,9 +587,8 @@ struct compute_none
                      floatingpointT theta,
                      floatingpointT objective_amplifier)
     {
-        for (int k = 0, e = solver.m; k != e; ++k)
-            solver.push_and_compute_update_row(
-              k, kappa, delta, theta, objective_amplifier);
+        solver.push_and_compute_update_row(
+          R.begin(), R.end(), kappa, delta, theta, objective_amplifier);
 
         return compute_missing_constraint(solver, R);
     }
@@ -572,8 +599,7 @@ struct compute_none
             floatingpointT delta,
             floatingpointT theta)
     {
-        for (auto it = R.begin(), et = R.end(); it != et; ++it)
-            solver.compute_update_row(*it, kappa, delta, theta);
+        solver.compute_update_row(R.begin(), R.end(), kappa, delta, theta);
 
         return compute_missing_constraint(solver, R);
     }
@@ -603,9 +629,8 @@ struct compute_reversing
                      floatingpointT theta,
                      floatingpointT objective_amplifier)
     {
-        for (int k = 0, e = solver.m; k != e; ++k)
-            solver.push_and_compute_update_row(
-              k, kappa, delta, theta, objective_amplifier);
+        solver.push_and_compute_update_row(
+          R.rbegin(), R.rend(), kappa, delta, theta, objective_amplifier);
 
         return compute_missing_constraint(solver, R);
     }
@@ -616,8 +641,7 @@ struct compute_reversing
             floatingpointT delta,
             floatingpointT theta)
     {
-        for (auto it = R.rbegin(), et = R.rend(); it != et; ++it)
-            solver.compute_update_row(*it, kappa, delta, theta);
+        solver.compute_update_row(R.rbegin(), R.rend(), kappa, delta, theta);
 
         return compute_missing_constraint(solver, R);
     }
@@ -648,9 +672,10 @@ struct compute_random
                      floatingpointT theta,
                      floatingpointT objective_amplifier)
     {
-        for (int k = 0, e = solver.m; k != e; ++k)
-            solver.push_and_compute_update_row(
-              k, kappa, delta, theta, objective_amplifier);
+        std::shuffle(R.begin(), R.end(), rng);
+
+        solver.push_and_compute_update_row(
+          R.begin(), R.end(), kappa, delta, theta, objective_amplifier);
 
         return compute_missing_constraint(solver, R);
     }
@@ -663,8 +688,7 @@ struct compute_random
     {
         std::shuffle(R.begin(), R.end(), rng);
 
-        for (auto it = R.begin(), et = R.end(); it != et; ++it)
-            solver.compute_update_row(*it, kappa, delta, theta);
+        solver.compute_update_row(R.begin(), R.end(), kappa, delta, theta);
 
         return compute_missing_constraint(solver, R);
     }
@@ -744,9 +768,10 @@ struct compute_infeasibility
                      floatingpointT theta,
                      floatingpointT objective_amplifier)
     {
-        for (int k = 0; k != solver.m; ++k)
-            solver.push_and_compute_update_row(
-              k, kappa, delta, theta, objective_amplifier);
+        baryonyx::itm::sort(R.begin(), R.end(), direction_type());
+
+        solver.push_and_compute_update_row(
+          R.begin(), R.end(), kappa, delta, theta, objective_amplifier);
 
         return local_compute_missing_constraint(solver);
     }
@@ -759,8 +784,7 @@ struct compute_infeasibility
     {
         baryonyx::itm::sort(R.begin(), R.end(), direction_type());
 
-        for (auto it = R.begin(), et = R.end(); it != et; ++it)
-            solver.compute_update_row(it->first, kappa, delta, theta);
+        solver.compute_update_row(R.begin(), R.end(), kappa, delta, theta);
 
         return local_compute_missing_constraint(solver);
     }
@@ -829,7 +853,6 @@ struct solver_functor
 
     solver_functor(const context_ptr& ctx,
                    randomT& rng,
-
                    const std::vector<std::string>& variable_names,
                    const affected_variables& affected_vars)
       : m_ctx(ctx)

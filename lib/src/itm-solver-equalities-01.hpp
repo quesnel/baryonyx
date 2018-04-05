@@ -279,40 +279,52 @@ struct solver_equalities_01coeff
         }
     }
 
-    void push_and_compute_update_row(int k,
+    template<typename Iterator>
+    void push_and_compute_update_row(Iterator first,
+                                     Iterator last,
                                      floatingpoint_type kappa,
                                      floatingpoint_type delta,
                                      floatingpoint_type theta,
                                      floatingpoint_type objective_amplifier)
     {
-        sparse_matrix<int>::row_iterator it, et;
-        std::tie(it, et) = ap.row(k);
+        for (; first != last; ++first) {
+            auto k = constraint(first);
 
-        decrease_preference(it, et, theta);
-        const int r_size = compute_reduced_costs(it, et);
+            sparse_matrix<int>::row_iterator it, et;
+            std::tie(it, et) = ap.row(k);
 
-        if (objective_amplifier)
-            for (int i = 0; i != r_size; ++i)
-                R[i].value += objective_amplifier * c[R[i].id];
+            decrease_preference(it, et, theta);
+            const int r_size = compute_reduced_costs(it, et);
 
-        calculator_sort(R.get(), R.get() + r_size, rng, mode_type());
-        int selected = select_variables_equality(r_size, b[k]);
-        affect_variables(it, k, selected, r_size, kappa, delta);
+            if (objective_amplifier)
+                for (int i = 0; i != r_size; ++i)
+                    R[i].value += objective_amplifier * c[R[i].id];
+
+            calculator_sort(R.get(), R.get() + r_size, rng, mode_type());
+            int selected = select_variables_equality(r_size, b[k]);
+            affect_variables(it, k, selected, r_size, kappa, delta);
+        }
     }
 
-    void compute_update_row(int k,
+    template<typename Iterator>
+    void compute_update_row(Iterator first,
+                            Iterator last,
                             floatingpoint_type kappa,
                             floatingpoint_type delta,
                             floatingpoint_type theta)
     {
-        sparse_matrix<int>::row_iterator it, et;
-        std::tie(it, et) = ap.row(k);
+        for (; first != last; ++first) {
+            auto k = constraint(first);
 
-        decrease_preference(it, et, theta);
-        const int r_size = compute_reduced_costs(it, et);
-        calculator_sort(R.get(), R.get() + r_size, rng, mode_type());
-        int selected = select_variables_equality(r_size, b[k]);
-        affect_variables(it, k, selected, r_size, kappa, delta);
+            sparse_matrix<int>::row_iterator it, et;
+            std::tie(it, et) = ap.row(k);
+
+            decrease_preference(it, et, theta);
+            const int r_size = compute_reduced_costs(it, et);
+            calculator_sort(R.get(), R.get() + r_size, rng, mode_type());
+            int selected = select_variables_equality(r_size, b[k]);
+            affect_variables(it, k, selected, r_size, kappa, delta);
+        }
     }
 };
 

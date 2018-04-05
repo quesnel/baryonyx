@@ -247,8 +247,7 @@ struct solver_inequalities_Zcoeff
 
         if (objective_amplifier)
             for (int i = 0; i != r_size; ++i)
-                R[i].value +=
-                  objective_amplifier * c[(it + R[i].id)->column];
+                R[i].value += objective_amplifier * c[(it + R[i].id)->column];
 
         //
         // Negate reduced costs and coefficients of these variables. We need to
@@ -314,8 +313,7 @@ struct solver_inequalities_Zcoeff
 
         if (objective_amplifier)
             for (int i = 0; i != r_size; ++i)
-                R[i].value +=
-                  objective_amplifier * c[(it + R[i].id)->column];
+                R[i].value += objective_amplifier * c[(it + R[i].id)->column];
 
         //
         // Negate reduced costs and coefficients of these variables. We need to
@@ -378,8 +376,7 @@ struct solver_inequalities_Zcoeff
 
         if (objective_amplifier)
             for (int i = 0; i != r_size; ++i)
-                R[i].value +=
-                  objective_amplifier * c[(it + R[i].id)->column];
+                R[i].value += objective_amplifier * c[(it + R[i].id)->column];
 
         calculator_sort(R.get(), R.get() + r_size, rng, mode_type());
 
@@ -410,8 +407,7 @@ struct solver_inequalities_Zcoeff
 
         if (objective_amplifier)
             for (int i = 0; i != r_size; ++i)
-                R[i].value +=
-                  objective_amplifier * c[(it + R[i].id)->column];
+                R[i].value += objective_amplifier * c[(it + R[i].id)->column];
 
         calculator_sort(R.get(), R.get() + r_size, rng, mode_type());
 
@@ -443,8 +439,7 @@ struct solver_inequalities_Zcoeff
 
         if (objective_amplifier)
             for (int i = 0; i != r_size; ++i)
-                R[i].value +=
-                  objective_amplifier * c[(it + R[i].id)->column];
+                R[i].value += objective_amplifier * c[(it + R[i].id)->column];
 
         //
         // Negate reduced costs and coefficients of these variables. We need to
@@ -504,8 +499,7 @@ struct solver_inequalities_Zcoeff
 
         if (objective_amplifier)
             for (int i = 0; i != r_size; ++i)
-                R[i].value +=
-                  objective_amplifier * c[(it + R[i].id)->column];
+                R[i].value += objective_amplifier * c[(it + R[i].id)->column];
 
         //
         // Negate reduced costs and coefficients of these variables. We need to
@@ -742,90 +736,105 @@ struct solver_inequalities_Zcoeff
         }
     }
 
-    void push_and_compute_update_row(int k,
+    template<typename Iterator>
+    void push_and_compute_update_row(Iterator first,
+                                     Iterator last,
                                      floatingpoint_type kappa,
                                      floatingpoint_type delta,
                                      floatingpoint_type theta,
                                      floatingpoint_type obj_amp)
     {
-        if (Z[k]) {
-            if (b[k].min == b[k].max)
-                compute_update_row_Z_eq(
-                  k, b[k].min, kappa, delta, theta, obj_amp);
-            else
-                compute_update_row_Z_ineq(
-                  k, b[k].min, b[k].max, kappa, delta, theta, obj_amp);
-        } else if (!C[k]) {
-            if (b[k].min == b[k].max)
-                compute_update_row_01_eq(
-                  k, b[k].min, kappa, delta, theta, obj_amp);
-            else
-                compute_update_row_01_ineq(
-                  k, b[k].min, b[k].max, kappa, delta, theta, obj_amp);
-        } else {
-            if (b[k].min == b[k].max)
-                compute_update_row_101_eq(
-                  k, b[k].min, kappa, delta, theta, obj_amp);
-            else
-                compute_update_row_101_ineq(
-                  k, b[k].min, b[k].max, kappa, delta, theta, obj_amp);
+        for (; first != last; ++first) {
+            auto k = constraint(first);
+
+            if (Z[k]) {
+                if (b[k].min == b[k].max)
+                    compute_update_row_Z_eq(
+                      k, b[k].min, kappa, delta, theta, obj_amp);
+                else
+                    compute_update_row_Z_ineq(
+                      k, b[k].min, b[k].max, kappa, delta, theta, obj_amp);
+            } else if (!C[k]) {
+                if (b[k].min == b[k].max)
+                    compute_update_row_01_eq(
+                      k, b[k].min, kappa, delta, theta, obj_amp);
+                else
+                    compute_update_row_01_ineq(
+                      k, b[k].min, b[k].max, kappa, delta, theta, obj_amp);
+            } else {
+                if (b[k].min == b[k].max)
+                    compute_update_row_101_eq(
+                      k, b[k].min, kappa, delta, theta, obj_amp);
+                else
+                    compute_update_row_101_ineq(
+                      k, b[k].min, b[k].max, kappa, delta, theta, obj_amp);
+            }
         }
     }
-
-    void compute_update_row(int k,
+    template<typename Iterator>
+    void compute_update_row(Iterator first,
+                            Iterator last,
                             floatingpoint_type kappa,
                             floatingpoint_type delta,
                             floatingpoint_type theta)
     {
-        if (Z[k]) {
-            if (b[k].min == b[k].max)
-                compute_update_row_Z_eq(k,
-                                        b[k].min,
-                                        kappa,
-                                        delta,
-                                        theta,
-                                        static_cast<floatingpoint_type>(0));
-            else
-                compute_update_row_Z_ineq(k,
-                                          b[k].min,
-                                          b[k].max,
-                                          kappa,
-                                          delta,
-                                          theta,
-                                          static_cast<floatingpoint_type>(0));
-        } else if (!C[k]) {
-            if (b[k].min == b[k].max)
-                compute_update_row_01_eq(k,
-                                         b[k].min,
-                                         kappa,
-                                         delta,
-                                         theta,
-                                         static_cast<floatingpoint_type>(0));
-            else
-                compute_update_row_01_ineq(k,
-                                           b[k].min,
-                                           b[k].max,
-                                           kappa,
-                                           delta,
-                                           theta,
-                                           static_cast<floatingpoint_type>(0));
-        } else {
-            if (b[k].min == b[k].max)
-                compute_update_row_101_eq(k,
-                                          b[k].min,
-                                          kappa,
-                                          delta,
-                                          theta,
-                                          static_cast<floatingpoint_type>(0));
-            else
-                compute_update_row_101_ineq(
-                  k,
-                  b[k].min,
-                  b[k].max,
-                  kappa,
-                  delta,
-                  theta,
-                  static_cast<floatingpoint_type>(0));
+        for (; first != last; ++first) {
+            auto k = constraint(first);
+            if (Z[k]) {
+                if (b[k].min == b[k].max)
+                    compute_update_row_Z_eq(
+                      k,
+                      b[k].min,
+                      kappa,
+                      delta,
+                      theta,
+                      static_cast<floatingpoint_type>(0));
+                else
+                    compute_update_row_Z_ineq(
+                      k,
+                      b[k].min,
+                      b[k].max,
+                      kappa,
+                      delta,
+                      theta,
+                      static_cast<floatingpoint_type>(0));
+            } else if (!C[k]) {
+                if (b[k].min == b[k].max)
+                    compute_update_row_01_eq(
+                      k,
+                      b[k].min,
+                      kappa,
+                      delta,
+                      theta,
+                      static_cast<floatingpoint_type>(0));
+                else
+                    compute_update_row_01_ineq(
+                      k,
+                      b[k].min,
+                      b[k].max,
+                      kappa,
+                      delta,
+                      theta,
+                      static_cast<floatingpoint_type>(0));
+            } else {
+                if (b[k].min == b[k].max)
+                    compute_update_row_101_eq(
+                      k,
+                      b[k].min,
+                      kappa,
+                      delta,
+                      theta,
+                      static_cast<floatingpoint_type>(0));
+                else
+                    compute_update_row_101_ineq(
+                      k,
+                      b[k].min,
+                      b[k].max,
+                      kappa,
+                      delta,
+                      theta,
+                      static_cast<floatingpoint_type>(0));
+            }
         }
     }
 };
