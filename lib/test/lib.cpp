@@ -24,6 +24,7 @@
 #include "fixed_2darray.hpp"
 #include "fixed_array.hpp"
 #include "knapsack-dp-solver.hpp"
+#include "pnm.hpp"
 #include "unit-test.hpp"
 
 #include <baryonyx/core>
@@ -419,6 +420,52 @@ check_branch_and_bound_solver()
     }
 }
 
+void
+check_observer_pnm()
+{
+    {
+        std::vector<double> v{ 0,   -1, -3,  -2, 0,    3, 3,
+                               1.5, 2,  0.5, 2,  -1.5, 1, 4 };
+
+        baryonyx::pnm_array obs(7, 2);
+        Ensures(obs);
+
+        if (obs) {
+            std::transform(v.begin(),
+                           v.end(),
+                           obs.begin(),
+                           baryonyx::colormap_2<double>(-5.0, 0.0, +5.0));
+
+            for (auto it = obs.begin(); it != obs.end(); ++it)
+                fmt::print("{}/{}/{} ", it->red(), it->green(), it->blue());
+
+            obs("test.pnm");
+        }
+    }
+
+    {
+        baryonyx::pnm_vector obs("test2.pnm", 4, 4);
+        Ensures(obs);
+
+        if (obs) {
+            std::vector<double> v{ 0, 0.1, 0.2, 0.3 };
+
+            for (int i = 0; i != 4; ++i) {
+                std::transform(v.begin(),
+                               v.end(),
+                               obs.begin(),
+                               baryonyx::colormap<double>(-1.0, 1.0));
+                obs.flush();
+
+                std::transform(v.begin(),
+                               v.end(),
+                               v.begin(),
+                               std::bind1st(std::plus<double>(), 0.1));
+            }
+        }
+    }
+}
+
 int
 main(int /* argc */, char* /* argv */ [])
 {
@@ -429,6 +476,7 @@ main(int /* argc */, char* /* argv */ [])
     check_fixed_2darray();
     check_knapsack_solver();
     check_branch_and_bound_solver();
+    check_observer_pnm();
 
     return unit_test::report_errors();
 }

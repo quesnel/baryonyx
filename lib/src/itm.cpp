@@ -438,7 +438,7 @@ dispatch_solver(const context_ptr& ctx, problem& pb, const itm::parameters& p)
           constraintOrderT,
           randomT>(ctx, pb, p);
     case problem_solver_type::equalities_Z:
-        baryonyx::warning(ctx, "Z coefficient is experimental\n");
+        baryonyx::warning(ctx, " \u26A0 Z coefficient is experimental\n");
         return solve_problem<
           solver_inequalities_Zcoeff<floatingpointT, modeT, randomT>,
           floatingpointT,
@@ -460,7 +460,7 @@ dispatch_solver(const context_ptr& ctx, problem& pb, const itm::parameters& p)
           constraintOrderT,
           randomT>(ctx, pb, p);
     case problem_solver_type::inequalities_Z:
-        baryonyx::warning(ctx, "Z coefficient is experimental\n");
+        baryonyx::warning(ctx, " \u26A0 Z coefficient is experimental\n");
         return solve_problem<
           solver_inequalities_Zcoeff<floatingpointT, modeT, randomT>,
           floatingpointT,
@@ -511,7 +511,7 @@ dispatch_optimizer(const context_ptr& ctx,
           constraintOrderT,
           randomT>(ctx, pb, p, thread);
     case problem_solver_type::equalities_Z:
-        baryonyx::warning(ctx, "Z coefficient is experimental\n");
+        baryonyx::warning(ctx, " \u26A0 Z coefficient is experimental\n");
         return optimize_problem<
           solver_inequalities_Zcoeff<floatingpointT, modeT, randomT>,
           floatingpointT,
@@ -533,7 +533,7 @@ dispatch_optimizer(const context_ptr& ctx,
           constraintOrderT,
           randomT>(ctx, pb, p, thread);
     case problem_solver_type::inequalities_Z:
-        baryonyx::warning(ctx, "Z coefficient is experimental\n");
+        baryonyx::warning(ctx, " \u26A0 Z coefficient is experimental\n");
         return optimize_problem<
           solver_inequalities_Zcoeff<floatingpointT, modeT, randomT>,
           floatingpointT,

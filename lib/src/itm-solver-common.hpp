@@ -44,6 +44,7 @@
 #include "fixed_array.hpp"
 #include "itm-common.hpp"
 #include "itm.hpp"
+#include "observer.hpp"
 #include "private.hpp"
 #include "sparse-matrix.hpp"
 #include "utils.hpp"
@@ -835,7 +836,8 @@ template<typename SolverT,
          typename floatingpointT,
          typename modeT,
          typename constraintOrderT,
-         typename randomT>
+         typename randomT,
+         typename observerT>
 struct solver_functor
 {
     using floatingpoint_type = floatingpointT;
@@ -906,6 +908,7 @@ struct solver_functor
 
         auto max_cost = max_cost_init(original_costs, variables, mode_type());
         bounds_printer<floatingpointT, modeT> bound_print(max_cost);
+        observerT obs(slv, "img", p.limit);
 
         info(m_ctx, "* solver starts:\n");
 
@@ -916,6 +919,7 @@ struct solver_functor
 
         for (;;) {
             int remaining = compute.run(slv, kappa, delta, theta);
+            obs.make_observation();
 
             if (best_remaining == -1 or remaining < best_remaining) {
                 best_remaining = remaining;
@@ -1466,14 +1470,33 @@ solve_problem(const context_ptr& ctx, problem& pb, const itm::parameters& p)
 
         clear(pb);
 
-        solver_functor<SolverT,
-                       floatingpointT,
-                       modeT,
-                       constraintOrderT,
-                       randomT>
-          slv(ctx, rng, names, affected_vars);
+        if (ctx->use_observer) {
+            using obs = pnm_observer<SolverT, floatingpointT>;
 
-        ret = slv(constraints, variables, cost, norm_costs, cost_constant, p);
+            solver_functor<SolverT,
+                           floatingpointT,
+                           modeT,
+                           constraintOrderT,
+                           randomT,
+                           obs>
+              slv(ctx, rng, names, affected_vars);
+
+            ret =
+              slv(constraints, variables, cost, norm_costs, cost_constant, p);
+        } else {
+            using obs = none_observer<SolverT, floatingpointT>;
+
+            solver_functor<SolverT,
+                           floatingpointT,
+                           modeT,
+                           constraintOrderT,
+                           randomT,
+                           obs>
+              slv(ctx, rng, names, affected_vars);
+
+            ret =
+              slv(constraints, variables, cost, norm_costs, cost_constant, p);
+        }
 
         ret.method = "inequalities_Zcoeff solver";
         ret.variable_name = std::move(names);
