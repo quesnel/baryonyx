@@ -1470,7 +1470,8 @@ solve_problem(const context_ptr& ctx, problem& pb, const itm::parameters& p)
 
         clear(pb);
 
-        if (ctx->use_observer) {
+        switch (ctx->observer) {
+        case context::observer_type::pnm: {
             using obs = pnm_observer<SolverT, floatingpointT>;
 
             solver_functor<SolverT,
@@ -1483,7 +1484,22 @@ solve_problem(const context_ptr& ctx, problem& pb, const itm::parameters& p)
 
             ret =
               slv(constraints, variables, cost, norm_costs, cost_constant, p);
-        } else {
+        } break;
+        case context::observer_type::file: {
+            using obs = file_observer<SolverT, floatingpointT>;
+
+            solver_functor<SolverT,
+                           floatingpointT,
+                           modeT,
+                           constraintOrderT,
+                           randomT,
+                           obs>
+              slv(ctx, rng, names, affected_vars);
+
+            ret =
+              slv(constraints, variables, cost, norm_costs, cost_constant, p);
+        } break;
+        default: {
             using obs = none_observer<SolverT, floatingpointT>;
 
             solver_functor<SolverT,
@@ -1496,6 +1512,8 @@ solve_problem(const context_ptr& ctx, problem& pb, const itm::parameters& p)
 
             ret =
               slv(constraints, variables, cost, norm_costs, cost_constant, p);
+            break;
+        }
         }
 
         ret.method = "inequalities_Zcoeff solver";

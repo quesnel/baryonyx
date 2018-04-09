@@ -51,6 +51,13 @@ struct context
         debug,   ///< debug-level message
     };
 
+    enum class observer_type
+    {
+        none,
+        pnm,
+        file
+    };
+
     enum class logger_type
     {
         c_file, ///< log are send to a C FILE* structure.
@@ -104,7 +111,7 @@ struct context
     message_type log_priority = context::message_type::info;
     logger_type logger = context::logger_type::c_file;
     bool color_cfile_logger = false;
-    bool use_observer = true;
+    observer_type observer{ observer_type::pnm };
 };
 
 template<typename... Args>
