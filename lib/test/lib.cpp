@@ -434,7 +434,7 @@ check_observer_pnm()
             std::transform(v.begin(),
                            v.end(),
                            obs.begin(),
-                           baryonyx::colormap_2<double>(-5.0, 0.0, +5.0));
+                           baryonyx::colormap<double>(-5.0, 5.0));
 
             for (auto it = obs.begin(); it != obs.end(); ++it)
                 fmt::print("{}/{}/{} ", it->red(), it->green(), it->blue());

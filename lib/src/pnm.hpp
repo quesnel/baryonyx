@@ -32,51 +32,8 @@
 namespace baryonyx {
 
 template<typename T>
-struct colormap_2
-{
-    std::array<std::uint8_t, 3> lower_color{ { 000, 000, 255 } };
-    std::array<std::uint8_t, 3> middle_color{ { 000, 000, 000 } };
-    std::array<std::uint8_t, 3> upper_color{ { 255, 000, 000 } };
-    T m_lower, m_mid, m_upper;
-
-    colormap_2(T lower, T middle, T upper)
-      : m_lower(lower)
-      , m_mid(middle)
-      , m_upper(upper)
-    {
-        assert(lower < middle and middle < upper);
-    }
-
-    std::array<std::uint8_t, 3> operator()(T v) noexcept
-    {
-        if (v < m_lower)
-            return lower_color;
-
-        if (m_upper < v)
-            return upper_color;
-
-        std::array<std::uint8_t, 3> ret;
-
-        if (v < m_mid)
-            for (int i = 0; i != 3; ++i)
-                ret[i] = static_cast<std::uint8_t>(
-                  lower_color[i] + ((v - m_mid) / (m_upper - m_mid)) *
-                                     (middle_color[i] - lower_color[i]));
-        else
-            for (int i = 0; i != 3; ++i)
-                ret[i] = static_cast<std::uint8_t>(
-                  middle_color[i] + ((v - m_lower) / (m_mid - m_lower)) *
-                                      (upper_color[i] - middle_color[i]));
-
-        return ret;
-    }
-};
-
-template<typename T>
 struct colormap
 {
-    std::array<std::uint8_t, 3> lower_color{ { 000, 0, 255 } };
-    std::array<std::uint8_t, 3> upper_color{ { 255, 0, 000 } };
     T m_lower, m_upper;
 
     colormap(T lower, T upper)
@@ -89,17 +46,33 @@ struct colormap
     std::array<std::uint8_t, 3> operator()(T v) noexcept
     {
         if (v < m_lower)
-            return lower_color;
+            v = m_lower;
 
-        if (m_upper < v)
-            return upper_color;
+        if (v > m_upper)
+            v = m_upper;
 
-        std::array<std::uint8_t, 3> ret;
+        T dv = m_upper - m_lower;
+        T r = 1, g = 1, b = 1;
 
-        for (int i = 0; i != 3; ++i)
-            ret[i] = static_cast<std::uint8_t>(
-              lower_color[i] + ((v - m_lower) / (m_upper - m_lower)) *
-                                 (upper_color[i] - lower_color[i]));
+        if (v < (m_lower + 0.25 * dv)) {
+            r = 0;
+            g = 4 * (v - m_lower) / dv;
+        } else if (v < (m_lower + 0.5 * dv)) {
+            r = 0;
+            b = 1 + 4 * (m_lower + 0.25 * dv - v) / dv;
+        } else if (v < (m_lower + 0.75 * dv)) {
+            r = 4 * (v - m_lower - 0.5 * dv) / dv;
+            b = 0;
+        } else {
+            g = 1 + 4 * (m_lower + 0.75 * dv - v) / dv;
+            b = 0;
+        }
+
+        std::array<std::uint8_t, 3> ret{
+            { static_cast<std::uint8_t>(r * (T)255),
+              static_cast<std::uint8_t>(g * (T)255),
+              static_cast<std::uint8_t>(b * (T)255) }
+        };
 
         return ret;
     }

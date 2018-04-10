@@ -59,7 +59,7 @@ public:
         std::transform(m_pi.get(),
                        m_pi.get() + m_len,
                        m_pnm.begin(),
-                       colormap<floatingpointT>(-5.0, +5.0));
+                       colormap<floatingpointT>(-1.0, +1.0));
 
         m_pnm.flush();
     }
@@ -92,7 +92,7 @@ public:
 
     void make_observation()
     {
-        colormap_2<floatingpointT> cm(-10.0, 0.0, +10.0);
+        colormap<floatingpointT> cm(-1.0, 1.0);
         pnm_array pnm(m_m, m_n);
         if (not pnm)
             return;

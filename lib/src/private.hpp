@@ -111,6 +111,7 @@ struct context
     message_type log_priority = context::message_type::info;
     logger_type logger = context::logger_type::c_file;
     bool color_cfile_logger = false;
+
     observer_type observer{ observer_type::pnm };
 };
 
