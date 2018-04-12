@@ -693,23 +693,23 @@ is_time_limit(double limit,
 }
 
 /**
-* @brief @c is_numeric_castable checks if two integer are castable.
-*
-* @details Checks if the @c arg Source integer is castable into @c Target
-*     template. @c Source and @c Target must be integer. The test
-*     includes the limit of @c Target.
-*
-* @param arg The integer to test.
-* @return true if @c arg is castable to @c Target type.
-*
-* @code
-* int v1 = 10;
-* assert(lp::is_numeric_castable<std::int8_t>(v));
-*
-* int v2 = 278;
-* assert(not lp::is_numeric_castable<std::int8_t>(v2));
-* @endcode
-*/
+ * @brief @c is_numeric_castable checks if two integer are castable.
+ *
+ * @details Checks if the @c arg Source integer is castable into @c Target
+ *     template. @c Source and @c Target must be integer. The test
+ *     includes the limit of @c Target.
+ *
+ * @param arg The integer to test.
+ * @return true if @c arg is castable to @c Target type.
+ *
+ * @code
+ * int v1 = 10;
+ * assert(lp::is_numeric_castable<std::int8_t>(v));
+ *
+ * int v2 = 278;
+ * assert(not lp::is_numeric_castable<std::int8_t>(v2));
+ * @endcode
+ */
 template<typename Target, typename Source>
 inline bool
 is_numeric_castable(Source arg) noexcept
@@ -735,20 +735,20 @@ is_numeric_castable(Source arg) noexcept
 }
 
 /**
-* @brief @c numeric_cast cast @c s to @c Target type.
-*
-* @details Converts the integer type @c Source @c s into the integer type
-*     @c Target. If the value @c s is not castable to @c Target, @c
-*     numeric_cast throws an exception.
-*
-* @param s The integer to cast.
-* @return The cast integer.
-*
-* @code
-* std::vector<double> v(1024);
-* long int index = lp::numeric_cast<long int>(v); // No throw.
-* @endcode
-*/
+ * @brief @c numeric_cast cast @c s to @c Target type.
+ *
+ * @details Converts the integer type @c Source @c s into the integer type
+ *     @c Target. If the value @c s is not castable to @c Target, @c
+ *     numeric_cast throws an exception.
+ *
+ * @param s The integer to cast.
+ * @return The cast integer.
+ *
+ * @code
+ * std::vector<double> v(1024);
+ * long int index = lp::numeric_cast<long int>(v); // No throw.
+ * @endcode
+ */
 template<typename Target, typename Source>
 inline Target
 numeric_cast(Source s)
