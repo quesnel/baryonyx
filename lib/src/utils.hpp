@@ -84,6 +84,12 @@ static const char setters_str[][10] = { "\033[0m",
                                         "\033[2m",
                                         "\033[4m" };
 
+#ifdef __unix__
+static const char* error_symbol = "\u26d4";
+static const char* warning_symbol = "\u26a0";
+static const char* notice_symbol = "\u2757";
+#endif
+
 constexpr const char*
 color_to_str(baryonyx::details::colors c) noexcept
 {
@@ -107,26 +113,44 @@ struct log_color
         case context::message_type::emerg:
             fmt::print(f, color_to_str(colors::Red));
             fmt::print(f, setter_to_str(setters::Bold));
+#ifdef __unix__
+            fmt::print(f, error_symbol);
+#endif
             break;
         case context::message_type::alert:
             fmt::print(f, color_to_str(colors::Red));
             fmt::print(f, setter_to_str(setters::Reset));
+#ifdef __unix__
+            fmt::print(f, error_symbol);
+#endif
             break;
         case context::message_type::crit:
             fmt::print(f, color_to_str(colors::Magenta));
             fmt::print(f, setter_to_str(setters::Bold));
+#ifdef __unix__
+            fmt::print(f, error_symbol);
+#endif
             break;
         case context::message_type::err:
             fmt::print(f, color_to_str(colors::Magenta));
             fmt::print(f, setter_to_str(setters::Reset));
+#ifdef __unix__
+            fmt::print(f, error_symbol);
+#endif
             break;
         case context::message_type::warning:
             fmt::print(f, color_to_str(colors::Yellow));
             fmt::print(f, setter_to_str(setters::Bold));
+#ifdef __unix__
+            fmt::print(f, warning_symbol);
+#endif
             break;
         case context::message_type::notice:
             fmt::print(f, color_to_str(colors::Yellow));
             fmt::print(f, setter_to_str(setters::Underlined));
+#ifdef __unix__
+            fmt::print(f, notice_symbol);
+#endif
             break;
         case context::message_type::info:
             fmt::print(f, color_to_str(colors::Default));
