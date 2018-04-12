@@ -102,9 +102,40 @@ option to the command line:
 baryonyx-0.2 file.lp
 ....
 
-The baryonyx solver have many parameters. To assign it, use the
-`-p [name]:value` syntax in the command line:
+The baryonyx solver have many parameters. Some parameters are global, some specific for the optimization algorithms.
 
+.Table Command line global parameters
+[cols="1,1,5a", options="header"]
+|===
+|name| type| summary
+
+| --help -h
+|
+| Show help message
+
+| --quiet -q
+|
+| Remove many console output
+
+| --optimize -O
+|
+| Start Baryonyx in optimization mode, default is to use the solve mode
+
+| --limit -l -plimit
+| integer
+| number of loop to stop algorithm
+
+| --verbose -v
+| integer
+| verbose level from 0 (very very verbose in debug mode) to 7 (quiet)
+
+| --disable-preprocessing -np
+|
+| disable the use of preprocessing
+|===
+
+To assign parameters to solver or optimizer algorithms, use the `-p
+[name]:value` syntax in the command line:
 
 .Table Command line parameters
 [cols="1,1,5a", options="header"]
@@ -114,6 +145,14 @@ The baryonyx solver have many parameters. To assign it, use the
 | time-limit
 | real
 | time in second to stop algorithm or stop the optimize mode
+
+| observer
+| string
+| Select the type of observation mechanism
+
+* `none` no observation.
+* `pnm` produce picture files for the P matrix (one per loop) and Pi vector (Lagrangian multipliers) each loop
+* `file` produce CSV files for the P matrix (one per loop) and Pi vector (Lagrangian multipliers) each loop
 
 | limit
 | integer
