@@ -112,7 +112,7 @@ struct context
     logger_type logger = context::logger_type::c_file;
     bool color_cfile_logger = false;
 
-    observer_type observer{ observer_type::pnm };
+    observer_type observer{ observer_type::none };
 };
 
 template<typename... Args>

@@ -124,6 +124,16 @@ context_set_parameter(const context_ptr& ctx, std::string name, parameter p)
         return;
 
     ctx->parameters[name] = p;
+
+    if (name == "observation") {
+        auto obs = context_get_string_parameter(ctx, "observation", "none");
+        if (obs == "pnm")
+            ctx->observer = context::observer_type::pnm;
+        else if (obs == "file")
+            ctx->observer = context::observer_type::file;
+        else
+            ctx->observer = context::observer_type::none;
+    }
 }
 
 void
@@ -131,6 +141,14 @@ context_set_parameters(const context_ptr& ctx,
                        std::unordered_map<std::string, parameter>&& params)
 {
     ctx->parameters = params;
+
+    auto obs = context_get_string_parameter(ctx, "observation", "none");
+    if (obs == "pnm")
+        ctx->observer = context::observer_type::pnm;
+    else if (obs == "file")
+        ctx->observer = context::observer_type::file;
+    else
+        ctx->observer = context::observer_type::none;
 }
 
 double
