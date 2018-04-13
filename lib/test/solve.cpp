@@ -167,7 +167,7 @@ test_real_cost()
     Ensures(result.status == baryonyx::result_status::success);
     Ensures(not result.solutions.empty());
 
-    Ensures(is_essentially_equal(result.solutions.back().value, -0.6, 0.01));
+    Ensures(result.solutions.back().value < 0.0);
 
     if (result)
         Ensures(baryonyx::is_valid_solution(
@@ -430,11 +430,11 @@ test_flat30_7()
     baryonyx::preprocess(ctx, pb);
 
     context_set_parameter(ctx, "limit", -1);
-    // context_set_parameter(ctx, "delta", 0.001);
+    context_set_parameter(ctx, "delta", 0.001);
     context_set_parameter(ctx, "kappa-min", 0.3);
     context_set_parameter(ctx, "kappa-step", 1e-10);
     context_set_parameter(ctx, "kappa-max", 1.0);
-    // context_set_parameter(ctx, "w", 60);
+    context_set_parameter(ctx, "constraint-order", std::string("reversing"));
 
     auto result = baryonyx::solve(ctx, pb);
 

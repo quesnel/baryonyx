@@ -84,10 +84,10 @@ public:
     using const_col_iterator = typename col_vector_access::const_iterator;
 
     explicit sparse_matrix(const std::vector<itm::merged_constraint>& csts,
-                           int rows,
-                           int cols)
-      : m_rows_access(rows)
-      , m_cols_access(cols)
+                           const int rows,
+                           const int cols)
+      : m_rows_access(rows + 1)
+      , m_cols_access(cols + 1)
     {
         int elem = 0;
 
@@ -124,8 +124,8 @@ public:
 
         // using access = std::tuple<int, int, int, function_element>;
 
-        std::vector<access> accessors(elem);
-        accessors.clear();
+        std::vector<access> accessors;
+        accessors.reserve(elem);
         for (int i = 0; i != rows; ++i)
             for (const auto& fct_elem : csts[i].elements)
                 accessors.emplace_back(i, fct_elem.variable_index, fct_elem);
@@ -139,7 +139,7 @@ public:
         int row = accessors[0].row;
         int nb_row = 0;
         for (int i = 0; i != elem; ++i) {
-            if (row != accessors[i].row) {
+            if (row != accessors[i].row or i + 1 == elem) {
                 rinit[row] = nb_row;
                 nb_row = 0;
                 row = accessors[i].row;
@@ -160,7 +160,7 @@ public:
         int nb_col = 0;
 
         for (int i = 0; i != elem; ++i) {
-            if (col != accessors[i].col) {
+            if (col != accessors[i].col or i + 1 == elem) {
                 cinit[col] = nb_col;
                 nb_col = 0;
                 col = accessors[i].col;
@@ -171,15 +171,13 @@ public:
                                  accessors[i].row };
         }
 
-        for (int i = 0, current = 0; i != rows; ++i) {
-            m_rows_access[i] = current;
-            current += rinit[i];
-        }
+        m_rows_access[0] = 0;
+        for (int i = 0; i != rows; ++i)
+            m_rows_access[i + 1] = m_rows_access[i] + rinit[i];
 
-        for (int i = 0, current = 0; i != cols; ++i) {
-            m_cols_access[i] = current;
-            current += cinit[i];
-        }
+        m_cols_access[0] = 0;
+        for (int i = 0; i != cols; ++i)
+            m_cols_access[i + 1] = m_cols_access[i] + cinit[i];
     }
 
     std::tuple<row_iterator, row_iterator> row(int row) noexcept
@@ -187,10 +185,7 @@ public:
         m_check_index(row, 0);
 
         row_iterator begin = m_rows_values.begin() + m_rows_access[row];
-        row_iterator end = m_rows_values.end();
-
-        if (static_cast<std::size_t>(row + 1) < m_rows_access.size())
-            end = begin + (m_rows_access[row + 1] - m_rows_access[row]);
+        row_iterator end = m_rows_values.begin() + m_rows_access[row + 1];
 
         return std::make_tuple(begin, end);
     }
@@ -200,10 +195,7 @@ public:
         m_check_index(0, col);
 
         col_iterator begin = m_cols_values.begin() + m_cols_access[col];
-        col_iterator end = m_cols_values.end();
-
-        if (static_cast<std::size_t>(col + 1) < m_cols_access.size())
-            end = begin + (m_cols_access[col + 1] - m_cols_access[col]);
+        col_iterator end = m_cols_values.begin() + m_cols_access[col + 1];
 
         return std::make_tuple(begin, end);
     }
@@ -214,10 +206,8 @@ public:
         m_check_index(row, 0);
 
         const_row_iterator begin = m_rows_values.begin() + m_rows_access[row];
-        const_row_iterator end = m_rows_values.end();
-
-        if (static_cast<std::size_t>(row + 1) < m_rows_access.size())
-            end = begin + (m_rows_access[row + 1] - m_rows_access[row]);
+        const_row_iterator end =
+          m_rows_values.begin() + m_rows_access[row + 1];
 
         return std::make_tuple(begin, end);
     }
@@ -228,10 +218,8 @@ public:
         m_check_index(0, col);
 
         const_col_iterator begin = m_cols_values.begin() + m_cols_access[col];
-        const_col_iterator end = m_cols_values.end();
-
-        if (static_cast<std::size_t>(col + 1) < m_cols_access.size())
-            end = begin + (m_cols_access[col + 1] - m_cols_access[col]);
+        const_col_iterator end =
+          m_cols_values.begin() + m_cols_access[col + 1];
 
         return std::make_tuple(begin, end);
     }
@@ -254,11 +242,11 @@ private:
         (void)col;
 #else
         assert(col >= 0 &&
-               static_cast<size_type>(col) < m_cols_access.size() &&
+               static_cast<size_type>(col) < (m_cols_access.size() - 1) &&
                "SparseArray: bad column access");
 
         assert(row >= 0 &&
-               static_cast<size_type>(row) < m_rows_access.size() &&
+               static_cast<size_type>(row) < (m_rows_access.size() - 1) &&
                "SparseArray: bad row access");
 #endif
     }
