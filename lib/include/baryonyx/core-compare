@@ -132,7 +132,7 @@ operator==(const solution& lhs, const solution& rhs) noexcept
 inline bool
 operator<(const solution& lhs, const solution& rhs) noexcept
 {
-    return lhs.value < rhs.value;
+    return rhs.value < lhs.value;
 }
 
 } // namespace baryonyx
