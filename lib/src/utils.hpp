@@ -85,9 +85,9 @@ static const char setters_str[][10] = { "\033[0m",
                                         "\033[4m" };
 
 #ifdef __unix__
-static const char* error_symbol = "\u26d4";
-static const char* warning_symbol = "\u26a0";
-static const char* notice_symbol = "\u2757";
+#define error_symbol "\u26d4 "
+#define warning_symbol "\u26a0 "
+#define notice_symbol "\u2757 "
 #endif
 
 constexpr const char*
