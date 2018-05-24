@@ -146,11 +146,11 @@ To assign parameters to solver or optimizer algorithms, use the `-p
 | real
 | time in second to stop algorithm or stop the optimize mode
 
-| observer
+| observation
 | string
 | Select the type of observation mechanism
 
-* `none` no observation.
+* `none` no observation (default).
 * `pnm` produce picture files for the P matrix (one per loop) and Pi vector (Lagrangian multipliers) each loop
 * `file` produce CSV files for the P matrix (one per loop) and Pi vector (Lagrangian multipliers) each loop
 
