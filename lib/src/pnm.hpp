@@ -333,6 +333,12 @@ public:
         }
     }
 
+    ~pnm_vector()
+    {
+        for (; m_heigth > 0; --m_heigth)
+            m_ofs.write(reinterpret_cast<char*>(m_buffer.get()), size());
+    }
+
     explicit operator bool() const noexcept
     {
         return m_buffer.get() != nullptr and m_ofs.is_open();
