@@ -4,13 +4,16 @@ option(WITH_FULL_OPTIMIZATION "Disable all logging facilities and active heavy o
 
 option(WITH_DEBUG "enable debug log message. [default: ON]" ON)
 
-add_library(libbaryonyx SHARED include/baryonyx/core-out include/baryonyx/core-test include/baryonyx/core include/baryonyx/core-compare src/knapsack-dp-solver.hpp src/private.hpp src/itm.cpp src/select.cpp src/preprocessor.cpp src/fixed_array.hpp src/consistency.cpp src/lpcore.cpp src/branch-and-bound-solver.hpp src/utils.hpp src/fixed_2darray.hpp src/itm-solver-inequalities-Z.hpp src/itm-solver-common.hpp src/itm-common.hpp src/sol-format.cpp src/itm-solver-equalities-01.hpp src/itm-solver-inequalities-01.hpp src/itm-solver-equalities-101.hpp src/itm-solver-inequalities-101.hpp src/lpformat-io.cpp src/itm.hpp src/sparse-matrix.hpp src/observer.hpp src/pnm.hpp)
+add_library(libbaryonyx SHARED src/automatic-optimize.hpp src/automatic-optimize.cpp include/baryonyx/core-out include/baryonyx/core-test include/baryonyx/core include/baryonyx/core-compare src/knapsack-dp-solver.hpp src/private.hpp src/itm.cpp src/select.cpp src/preprocessor.cpp src/fixed_array.hpp src/consistency.cpp src/lpcore.cpp src/branch-and-bound-solver.hpp src/utils.hpp src/fixed_2darray.hpp src/itm-solver-inequalities-Z.hpp src/itm-solver-common.hpp src/itm-common.hpp src/sol-format.cpp src/itm-solver-equalities-01.hpp src/itm-solver-inequalities-01.hpp src/itm-solver-equalities-101.hpp src/itm-solver-inequalities-101.hpp src/lpformat-io.cpp src/itm.hpp src/sparse-matrix.hpp src/observer.hpp src/pnm.hpp)
 
 target_include_directories(libbaryonyx PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>
   PRIVATE src ${CMAKE_BINARY_DIR})
-target_link_libraries(libbaryonyx threads)
+
+target_link_libraries(libbaryonyx threads
+  $<$<BOOL:${NLOPT_FOUND}>:nlopt>)
+
 set_target_properties(libbaryonyx PROPERTIES
   OUTPUT_NAME "baryonyx-${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}"
   POSITION_INDEPENDENT_CODE ON
@@ -20,47 +23,58 @@ set_target_properties(libbaryonyx PROPERTIES
   VISIBILITY_INLINES_HIDDEN ON
   CXX_STANDARD 14
   CXX_STANDARD_REQUIRED ON)
+
 target_compile_definitions(libbaryonyx
   PRIVATE
   $<$<BOOL:${WITH_FULL_OPTIMIZATION}>:BARYONYX_FULL_OPTIMIZATION>
   $<$<BOOL:${WITH_DEBUG}>:BARYONYX_DISABLE_DEBUG>
+  $<$<BOOL:${NLOPT_FOUND}>:BARYONYX_HAVE_NLOPT>
   $<$<CXX_COMPILER_ID:MSVC>:_CRT_SECURE_NO_WARNINGS>
   $<$<CXX_COMPILER_ID:MSVC>:_SCL_SECURE_NO_WARNINGS>
   VERSION_MAJOR=${PROJECT_VERSION_MAJOR}
   VERSION_MINOR=${PROJECT_VERSION_MINOR}
   VERSION_PATCH=${PROJECT_VERSION_PATCH}
   VERSION_TWEAK=${PROJECT_VERSION_TWEAK})
+
 target_compile_options(libbaryonyx PRIVATE
   $<$<CXX_COMPILER_ID:MSVC>:/bigobj>)
+
 install(TARGETS libbaryonyx
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin)
 
-add_library(libbaryonyx-static STATIC include/baryonyx/core-out include/baryonyx/core-test include/baryonyx/core include/baryonyx/core-compare src/knapsack-dp-solver.hpp src/private.hpp src/itm.cpp src/select.cpp src/preprocessor.cpp src/fixed_array.hpp src/consistency.cpp src/lpcore.cpp src/branch-and-bound-solver.hpp src/utils.hpp src/fixed_2darray.hpp src/itm-solver-inequalities-Z.hpp src/itm-solver-common.hpp src/itm-common.hpp src/sol-format.cpp src/itm-solver-equalities-01.hpp src/lpformat-io.cpp src/itm.hpp src/sparse-matrix.hpp src/observer.hpp src/pnm.hpp)
+add_library(libbaryonyx-static STATIC src/automatic-optimize.hpp src/automatic-optimize.cpp include/baryonyx/core-out include/baryonyx/core-test include/baryonyx/core include/baryonyx/core-compare src/knapsack-dp-solver.hpp src/private.hpp src/itm.cpp src/select.cpp src/preprocessor.cpp src/fixed_array.hpp src/consistency.cpp src/lpcore.cpp src/branch-and-bound-solver.hpp src/utils.hpp src/fixed_2darray.hpp src/itm-solver-inequalities-Z.hpp src/itm-solver-common.hpp src/itm-common.hpp src/sol-format.cpp src/itm-solver-equalities-01.hpp src/itm-solver-inequalities-01.hpp src/itm-solver-equalities-101.hpp src/itm-solver-inequalities-101.hpp src/lpformat-io.cpp src/itm.hpp src/sparse-matrix.hpp src/observer.hpp src/pnm.hpp)
 
 target_include_directories(libbaryonyx-static PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>
   src ${CMAKE_BINARY_DIR})
-target_link_libraries(libbaryonyx-static threads)
+
+target_link_libraries(libbaryonyx-static threads
+  $<$<BOOL:${NLOPT_FOUND}>:nlopt>)
+
 set_target_properties(libbaryonyx-static PROPERTIES
   POSITION_INDEPENDENT_CODE true
   OUTPUT_NAME "baryonyx-${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}"
   CXX_STANDARD 14
   CXX_STANDARD_REQUIRED ON)
+
 target_compile_definitions(libbaryonyx-static
   PRIVATE
   $<$<BOOL:${WITH_FULL_OPTIMIZATION}>:BARYONYX_FULL_OPTIMIZATION>
   $<$<BOOL:${WITH_DEBUG}>:BARYONYX_DISABLE_DEBUG>
+  $<$<BOOL:${NLOPT_FOUND}>:BARYONYX_HAVE_NLOPT>
   $<$<CXX_COMPILER_ID:MSVC>:_CRT_SECURE_NO_WARNINGS>
   $<$<CXX_COMPILER_ID:MSVC>:_SCL_SECURE_NO_WARNINGS>
   VERSION_MAJOR=${PROJECT_VERSION_MAJOR}
   VERSION_MINOR=${PROJECT_VERSION_MINOR}
   VERSION_PATCH=${PROJECT_VERSION_PATCH}
   VERSION_TWEAK=${PROJECT_VERSION_TWEAK})
+
 target_compile_options(libbaryonyx-static PRIVATE
   $<$<CXX_COMPILER_ID:MSVC>:/bigobj>)
+
 install(TARGETS libbaryonyx-static
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib

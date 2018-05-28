@@ -64,6 +64,13 @@ struct context
         string  ///< log are store to the string_logger_functor.
     };
 
+    enum class auto_tune_parameters
+    {
+        disabled,
+        manual,
+        nlop
+    };
+
     context(int verbose_level = 6)
       : cfile_logger(stdout)
       , log_priority(context::message_type::info)
@@ -106,10 +113,12 @@ struct context
     }
 
     std::unordered_map<std::string, parameter> parameters;
+
     string_logger_functor string_logger;
     FILE* cfile_logger = stdout;
     message_type log_priority = context::message_type::info;
     logger_type logger = context::logger_type::c_file;
+    auto_tune_parameters auto_tune{ auto_tune_parameters::disabled };
     bool color_cfile_logger = false;
 
     observer_type observer{ observer_type::none };

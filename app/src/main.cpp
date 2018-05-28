@@ -199,6 +199,7 @@ help() noexcept
       "  --disable-preprocessing|-np   Disable preprocessing\n"
       "  --optimize|-O                 Optimize model (default "
       "feasibility search only)\n"
+      "  --auto:[manual,nlopt]|-a      Automatic parameters optimization\n"
       "  --check filename.sol          Check if the solution is correct."
       "\n"
       "  --quiet                       Remove any verbose message\n"
@@ -267,6 +268,12 @@ parse(int argc, const char* argv[])
 
         if (arg == "--optimize" or arg == "-O") {
             ret.optimize = true;
+            continue;
+        }
+
+        if ((opt = get(i, "--auto", "-a"))) {
+            ret.params["auto"] = opt;
+            i = get.i;
             continue;
         }
 

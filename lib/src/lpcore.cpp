@@ -134,6 +134,16 @@ context_set_parameter(const context_ptr& ctx, std::string name, parameter p)
         else
             ctx->observer = context::observer_type::none;
     }
+
+    if (name == "auto") {
+        auto str = context_get_string_parameter(ctx, "auto", "none");
+        if (str == "manual")
+            ctx->auto_tune = context::auto_tune_parameters::manual;
+        else if (str == "nlopt")
+            ctx->auto_tune = context::auto_tune_parameters::nlop;
+        else
+            ctx->auto_tune = context::auto_tune_parameters::manual;
+    }
 }
 
 void
@@ -149,6 +159,14 @@ context_set_parameters(const context_ptr& ctx,
         ctx->observer = context::observer_type::file;
     else
         ctx->observer = context::observer_type::none;
+
+    auto str = context_get_string_parameter(ctx, "auto", "none");
+    if (str == "manual")
+        ctx->auto_tune = context::auto_tune_parameters::manual;
+    else if (str == "nlopt")
+        ctx->auto_tune = context::auto_tune_parameters::nlop;
+    else
+        ctx->auto_tune = context::auto_tune_parameters::manual;
 }
 
 double
