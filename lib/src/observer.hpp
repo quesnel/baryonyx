@@ -39,25 +39,25 @@ class pi_pnm_observer
 {
 private:
     const std::unique_ptr<floatingpointT[]>& m_pi;
-    int m_len;
+    int m_m;
     int m_loop;
     pnm_vector m_pnm;
 
 public:
     pi_pnm_observer(std::string filename,
                     const std::unique_ptr<floatingpointT[]>& pi,
-                    int len,
+                    int m,
                     int loop)
       : m_pi(pi)
-      , m_len(len)
+      , m_m(m)
       , m_loop(loop)
-      , m_pnm(fmt::format("{}-pi.pnm", filename), loop, len)
+      , m_pnm(fmt::format("{}-pi.pnm", filename), m, loop)
     {}
 
     void make_observation()
     {
         std::transform(m_pi.get(),
-                       m_pi.get() + m_len,
+                       m_pi.get() + m_m,
                        m_pnm.begin(),
                        colormap<floatingpointT>(-1.0, +1.0));
 
@@ -97,6 +97,10 @@ public:
         if (not pnm)
             return;
 
+        // floatingpointT min_val = std::numeric_limits<floatingpointT>::max();
+        // floatingpointT max_val = std::numeric_limits<floatingpointT>::min();
+
+        pnm.clear();
         for (int k = 0; k != m_m; ++k) {
             sparse_matrix<int>::const_row_iterator it, et;
             std::tie(it, et) = m_ap.row(k);
@@ -104,13 +108,18 @@ public:
             for (; it != et; ++it) {
                 std::uint8_t* pointer = pnm(k, it->column);
 
+                // min_val = std::min(min_val, m_P[it->value]);
+                // max_val = std::max(max_val, m_P[it->value]);
+
                 auto array = cm(m_P[it->value]);
 
-                *pointer = array[0];
-                *(pointer + 1) = array[1];
-                *(pointer + 2) = array[2];
+                pointer[0] = array[0];
+                pointer[1] = array[1];
+                pointer[2] = array[2];
             }
         }
+
+        // fmt::print("range [{} {}]\n", min_val, max_val);
 
         pnm(fmt::format("{}-P-{}.pnm", m_basename, m_frame++));
     }

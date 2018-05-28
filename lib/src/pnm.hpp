@@ -83,28 +83,22 @@ class pnm_iterator;
 class pnm_iterator_entry
 {
 private:
-    std::uint8_t* m_red;
-    std::uint8_t* m_green;
-    std::uint8_t* m_blue;
+    std::uint8_t* m_colors;
 
 public:
     pnm_iterator_entry()
-      : m_red(nullptr)
-      , m_green(nullptr)
-      , m_blue(nullptr)
+      : m_colors(nullptr)
     {}
 
     pnm_iterator_entry(std::uint8_t* pointer)
-      : m_red(pointer)
-      , m_green(pointer + 1)
-      , m_blue(pointer + 2)
+      : m_colors(pointer)
     {}
 
     pnm_iterator_entry& operator=(const std::array<uint8_t, 3>& value)
     {
-        *m_red = value[0];
-        *m_green = value[1];
-        *m_blue = value[2];
+        m_colors[0] = value[0];
+        m_colors[1] = value[1];
+        m_colors[2] = value[2];
 
         return *this;
     }
@@ -112,29 +106,37 @@ public:
     pnm_iterator_entry(const pnm_iterator_entry& other) = default;
     ~pnm_iterator_entry() = default;
 
+    void advance() noexcept
+    {
+        if (m_colors == nullptr)
+            return;
+
+        m_colors += 3;
+    }
+
     std::uint8_t red() const noexcept
     {
-        return *m_red;
+        return m_colors[0];
     }
 
     std::uint8_t green() const noexcept
     {
-        return *m_green;
+        return m_colors[1];
     }
 
     std::uint8_t blue() const noexcept
     {
-        return *m_blue;
+        return m_colors[2];
     }
 
     bool operator==(const pnm_iterator_entry& other) const noexcept
     {
-        return m_red == other.m_red;
+        return m_colors == other.m_colors;
     }
 
     bool operator<(const pnm_iterator_entry& other) const noexcept
     {
-        return m_red < other.m_red;
+        return m_colors < other.m_colors;
     }
 
     friend pnm_iterator;
@@ -160,34 +162,34 @@ public:
 
     pnm_iterator operator++(int)
     {
-        if (m_entry.m_red == nullptr)
+        if (m_entry.m_colors == nullptr)
             return pnm_iterator();
 
-        return pnm_iterator(m_entry.m_red + 3);
+        pnm_iterator copy(*this);
+        copy.m_entry.advance();
+        return copy;
     }
 
     pnm_iterator& operator++()
     {
-        if (m_entry.m_red == nullptr)
+        if (m_entry.m_colors == nullptr)
             return *this;
 
-        m_entry.m_red += 3;
-        m_entry.m_green += 3;
-        m_entry.m_blue += 3;
+        m_entry.advance();
 
         return *this;
     }
 
     const pnm_iterator_entry* operator->() const
     {
-        assert(m_entry.m_red != nullptr && "Dereference pointer");
+        assert(m_entry.m_colors && "Dereference pointer");
 
         return &m_entry;
     }
 
     pnm_iterator_entry operator*() const
     {
-        assert(m_entry.m_red != nullptr && "Dereference pointer");
+        assert(m_entry.m_colors && "Dereference pointer");
 
         pnm_iterator_entry ret(m_entry);
         return ret;
@@ -229,15 +231,15 @@ public:
 
 private:
     std::unique_ptr<std::uint8_t[]> m_buffer;
-    unsigned int m_heigth;
     unsigned int m_width;
+    unsigned int m_heigth;
 
 public:
-    pnm_array(unsigned int h, unsigned int w)
-      : m_heigth(h)
-      , m_width(w)
+    pnm_array(unsigned int m, unsigned int n)
+      : m_width(n)
+      , m_heigth(m)
     {
-        if (h * w > 0)
+        if (m_width * m_heigth > 0)
             m_buffer = std::make_unique<std::uint8_t[]>(size());
     }
 
@@ -254,7 +256,7 @@ public:
     void operator()(std::string filename) const noexcept
     {
         std::ofstream ofs{ filename, std::ios::binary };
-        auto header{ fmt::format("P6 {} {} {} ", m_heigth, m_width, 255) };
+        auto header{ fmt::format("P6 {} {} {} ", m_width, m_heigth, 255) };
 
         ofs << header;
         ofs.write(reinterpret_cast<char*>(m_buffer.get()), size());
@@ -268,20 +270,6 @@ public:
     iterator end() noexcept
     {
         return m_buffer.get() + size();
-    }
-
-    iterator begin(size_type row) noexcept
-    {
-        assert(row < m_heigth);
-
-        return m_buffer.get() + row * m_width * 3;
-    }
-
-    iterator end(size_type row) noexcept
-    {
-        assert(row < m_heigth);
-
-        return m_buffer.get() + (row + 1) * m_width * 3;
     }
 
     pointer_type operator()(size_type row, size_type col) noexcept
@@ -317,18 +305,18 @@ public:
     using size_type = std::size_t;
     using difference_type = std::ptrdiff_t;
 
-    pnm_vector(std::string filename, unsigned int h, unsigned int w)
+    pnm_vector(std::string filename, unsigned int m, unsigned int loop)
       : m_ofs(filename, std::ios::binary)
-      , m_heigth(h)
-      , m_width(w)
+      , m_heigth(loop)
+      , m_width(m)
     {
         if (not m_ofs.is_open())
             return;
 
-        if (h * w > 0) {
+        if (m_heigth * m_width > 0) {
             m_buffer = std::make_unique<std::uint8_t[]>(size());
 
-            auto header{ fmt::format("P6 {} {} {} ", m_heigth, m_width, 255) };
+            auto header{ fmt::format("P6 {} {} {} ", m_width, m_heigth, 255) };
             m_ofs << header;
         }
     }
