@@ -23,7 +23,7 @@
 #ifndef ORG_VLEPROJECT_BARYONYX_BRANCH_AND_BOUND_HPP
 #define ORG_VLEPROJECT_BARYONYX_BRANCH_AND_BOUND_HPP
 
-#include "fixed_array.hpp"
+#include "fixed-array.hpp"
 #include "itm-common.hpp"
 #include "private.hpp"
 #include "utils.hpp"

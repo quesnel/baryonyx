@@ -40,19 +40,21 @@ test_qap(const baryonyx::context_ptr& ctx)
 {
     auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/small4.lp");
 
-    context_set_parameter(ctx, "limit", -1);
-    context_set_parameter(ctx, "theta", 0.5);
-    context_set_parameter(ctx, "delta", 0.2);
-    context_set_parameter(ctx, "kappa-step", 10e-4);
-    context_set_parameter(ctx, "kappa-max", 10.0);
-    context_set_parameter(ctx, "alpha", 0.0);
-    context_set_parameter(ctx, "w", 20);
-    context_set_parameter(ctx, "time-limit", 40.0);
-    context_set_parameter(ctx, "pushing-k-factor", 0.9);
-    context_set_parameter(ctx, "pushes-limit", 50);
-    context_set_parameter(ctx, "pushing-objective-amplifier", 10);
-    context_set_parameter(ctx, "pushing-iteration-limit", 50);
-    context_set_parameter(ctx, "thread", 2);
+    baryonyx::solver_parameters params;
+    params.limit = -1;
+    params.theta = 0.5;
+    params.delta = 0.2;
+    params.kappa_step = 10e-4;
+    params.kappa_max = 10.0;
+    params.alpha = 0.0;
+    params.w = 20;
+    params.time_limit = 40.0;
+    params.pushing_k_factor = 0.9;
+    params.pushes_limit = 50;
+    params.pushing_objective_amplifier = 10;
+    params.pushing_iteration_limit = 50;
+    params.thread = 2;
+    baryonyx::context_set_solver_parameters(ctx, params);
 
     auto result = baryonyx::optimize(ctx, pb);
 
@@ -96,21 +98,23 @@ test_n_queens_problem(const baryonyx::context_ptr& ctx)
             return;
     }
 
-    context_set_parameter(ctx, "limit", 100000);
-    context_set_parameter(ctx, "theta", 0.5);
-    context_set_parameter(ctx, "delta", 1.0);
-    context_set_parameter(ctx, "kappa-min", 0.30);
-    context_set_parameter(ctx, "kappa-step", 1e-2);
-    context_set_parameter(ctx, "kappa-max", 100.0);
-    context_set_parameter(ctx, "alpha", 1.0);
-    context_set_parameter(ctx, "w", 60);
-    context_set_parameter(
-      ctx, "constraint-order", std::string("random-sorting"));
-    context_set_parameter(ctx, "time-limit", 20.0);
-    context_set_parameter(ctx, "pushing-k-factor", 0.9);
-    context_set_parameter(ctx, "pushes-limit", 50);
-    context_set_parameter(ctx, "pushing-objective-amplifier", 10);
-    context_set_parameter(ctx, "pushing-iteration-limit", 10);
+    baryonyx::solver_parameters params;
+    params.limit = 100000;
+    params.theta = 0.5;
+    params.delta = 1.0;
+    params.kappa_min = 0.30;
+    params.kappa_step = 1e-2;
+    params.kappa_max = 100.0;
+    params.alpha = 1.0;
+    params.w = 60;
+    params.time_limit = 20.0;
+    params.pushing_k_factor = 0.9;
+    params.pushes_limit = 50;
+    params.pushing_objective_amplifier = 10;
+    params.pushing_iteration_limit = 10;
+    params.order =
+      baryonyx::solver_parameters::constraint_order::random_sorting;
+    baryonyx::context_set_solver_parameters(ctx, params);
 
     for (std::size_t i{ 0 }; i != valid_solutions.size(); ++i) {
         std::string filepath{ EXAMPLES_DIR "/n-queens/n-queens-problem-" };

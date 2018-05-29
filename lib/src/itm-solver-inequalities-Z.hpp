@@ -57,8 +57,8 @@ struct solver_inequalities_Zcoeff
                                int m_,
                                int n_,
                                const std::unique_ptr<floatingpointT[]>& c_,
-                               const std::vector<itm::merged_constraint>& csts,
-                               itm::init_policy_type init_type,
+                               const std::vector<merged_constraint>& csts,
+                               solver_parameters::init_policy_type init_type,
                                double init_random)
       : rng(rng_)
       , ap(csts, m_, n_)

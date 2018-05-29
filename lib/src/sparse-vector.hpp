@@ -25,8 +25,6 @@
 
 #include <baryonyx/core>
 
-#include "itm.hpp"
-
 #include <algorithm>
 #include <memory>
 #include <string>
@@ -59,7 +57,8 @@ protected:
     int m_values_length;
 
 public:
-    explicit sparse_vector(const std::vector<itm::merged_constraint>& csts)
+    template<typename Constraint>
+    explicit sparse_vector(const std::vector<Constraint>& csts)
       : m_access(std::make_unique<int[]>(csts.size() + 1))
       , m_access_length(static_cast<int>(csts.size()))
       , m_values_length(0)

@@ -221,6 +221,37 @@ operator<<(std::ostream& os, const resume& pb)
     return os;
 }
 
+inline std::ostream&
+operator<<(std::ostream& os, const affected_variables& var)
+{
+    std::size_t i = 0, e = var.names.size();
+
+    for (; i != e; ++i)
+        os << var.names[i] << ": " << (var.values[i] ? 1 : 0) << '\n';
+
+    return os;
+}
+
+struct best_solution_writer
+{
+    const baryonyx::result& res;
+
+    best_solution_writer(const baryonyx::result& res_)
+      : res(res_)
+    {}
+};
+
+inline std::ostream&
+operator<<(std::ostream& os, const best_solution_writer& writer)
+{
+    std::size_t i = 0, e = writer.res.variable_name.size();
+
+    for (; i != e; ++i)
+        os << writer.res.variable_name[i] << ": "
+           << (writer.res.solutions.back().variables[i] ? 1 : 0) << '\n';
+
+    return os;
+}
 } // namespace baryonyx
 
 #endif

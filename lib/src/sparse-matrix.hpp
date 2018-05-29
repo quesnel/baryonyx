@@ -29,8 +29,7 @@
 #include <memory>
 #include <string>
 
-#include "fixed_array.hpp"
-#include "itm.hpp"
+#include "fixed-array.hpp"
 
 namespace baryonyx {
 
@@ -83,7 +82,8 @@ public:
     using const_row_iterator = typename row_vector_access::const_iterator;
     using const_col_iterator = typename col_vector_access::const_iterator;
 
-    explicit sparse_matrix(const std::vector<itm::merged_constraint>& csts,
+    template<typename Constraint>
+    explicit sparse_matrix(const std::vector<Constraint>& csts,
                            const int rows,
                            const int cols)
       : m_rows_access(rows + 1)

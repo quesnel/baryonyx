@@ -52,7 +52,75 @@ r_write(int level, std::string msg)
     }
 
     Rprintf("%s", msg.c_str());
-};
+}
+
+static baryonyx::solver_parameters::constraint_order
+get_constrait_order(int order)
+{
+    namespace bx = baryonyx;
+
+    switch (order) {
+    case 1:
+        return bx::solver_parameters::constraint_order::reversing;
+    case 2:
+        return bx::solver_parameters::constraint_order::random_sorting;
+    case 3:
+        return bx::solver_parameters::constraint_order::infeasibility_decr;
+    case 4:
+        return bx::solver_parameters::constraint_order::infeasibility_incr;
+    default:
+        return bx::solver_parameters::constraint_order::none;
+    }
+}
+
+static baryonyx::solver_parameters::cost_norm_type
+get_cost_norm(int norm)
+{
+    namespace bx = baryonyx;
+
+    switch (norm) {
+    case 0:
+        return bx::solver_parameters::cost_norm_type::none;
+    case 1:
+        return bx::solver_parameters::cost_norm_type::random;
+    case 2:
+        return bx::solver_parameters::cost_norm_type::l1;
+    case 3:
+        return bx::solver_parameters::cost_norm_type::l2;
+    default:
+        return bx::solver_parameters::cost_norm_type::loo;
+    }
+}
+
+static baryonyx::solver_parameters::init_policy_type
+get_init_policy(int type)
+{
+    namespace bx = baryonyx;
+
+    switch (type) {
+    case 1:
+        return bx::solver_parameters::init_policy_type::random;
+    case 2:
+        return bx::solver_parameters::init_policy_type::best;
+    default:
+        return bx::solver_parameters::init_policy_type::bastert;
+    }
+}
+
+static baryonyx::solver_parameters::floating_point_type
+get_floating_point_type(int type)
+{
+    namespace bx = baryonyx;
+
+    switch (type) {
+    case 0:
+        return bx::solver_parameters::floating_point_type::float_type;
+    case 2:
+        return bx::solver_parameters::floating_point_type::longdouble_type;
+    default:
+        return bx::solver_parameters::floating_point_type::double_type;
+    }
+}
 
 static void
 assign_parameters(const baryonyx::context_ptr& ctx,
@@ -77,95 +145,34 @@ assign_parameters(const baryonyx::context_ptr& ctx,
                   double init_random,
                   int float_type)
 {
-    baryonyx::context_set_parameter(ctx, "limit", limit);
-    baryonyx::context_set_parameter(ctx, "theta", theta);
-    baryonyx::context_set_parameter(ctx, "delta", delta);
+    baryonyx::solver_parameters params;
 
-    std::string order("none");
-    switch (constraint_order) {
-    case 1:
-        order = "reversing";
-        break;
-    case 2:
-        order = "random-sorting";
-        break;
-    case 3:
-        order = "infeasibility-decr";
-        break;
-    case 4:
-        order = "infeasibility-incr";
-        break;
-    default:
-        break;
-    }
-    baryonyx::context_set_parameter(ctx, "constraint-order", order);
-
-    baryonyx::context_set_parameter(ctx, "kappa-min", kappa_min);
-    baryonyx::context_set_parameter(ctx, "kappa-step", kappa_step);
-    baryonyx::context_set_parameter(ctx, "kappa-max", kappa_max);
-    baryonyx::context_set_parameter(ctx, "alpha", alpha);
-    baryonyx::context_set_parameter(ctx, "w", w);
-    baryonyx::context_set_parameter(ctx, "time-limit", time_limit);
+    params.time_limit = time_limit;
+    params.theta = theta;
+    params.delta = delta;
+    params.kappa_min = kappa_min;
+    params.kappa_step = kappa_step;
+    params.kappa_max = kappa_max;
+    params.alpha = alpha;
+    params.pushing_k_factor = pushing_k_factor;
+    params.pushing_objective_amplifier = pushing_objective_amplifier;
+    params.init_random = init_random;
 
     if (seed > 0)
-        baryonyx::context_set_parameter(ctx, "seed", seed);
+        params.seed = seed;
 
-    baryonyx::context_set_parameter(ctx, "thread", thread);
+    params.thread = thread;
+    params.limit = limit;
+    params.w = w;
+    params.pushes_limit = pushes_limit;
+    params.pushing_iteration_limit = pushing_iteration_limit;
+    params.order = get_constrait_order(constraint_order);
+    params.cost_norm = get_cost_norm(norm);
+    params.init_policy = get_init_policy(init_policy);
+    params.float_type = get_floating_point_type(float_type);
 
-    baryonyx::context_set_parameter(
-      ctx,
-      "norm",
-      (norm == 0)
-        ? "none"
-        : (norm == 1) ? "rng"
-                      : (norm == 2) ? "l1" : (norm == 3) ? "l2" : "inf");
-
-    baryonyx::context_set_parameter(ctx, "pushing-k-factor", pushing_k_factor);
-    baryonyx::context_set_parameter(
-      ctx, "pushing-objective-amplifier", pushing_objective_amplifier);
-    baryonyx::context_set_parameter(ctx, "pushes-limit", pushes_limit);
-    baryonyx::context_set_parameter(
-      ctx, "pushing-iteration-limit", pushing_iteration_limit);
-
-    std::string policy("bastert");
-    switch (init_policy) {
-    case 1:
-        policy = "random";
-        break;
-    case 2:
-        policy = "best";
-        break;
-    default:
-        break;
-    }
-    baryonyx::context_set_parameter(ctx, "init-policy", policy);
-    baryonyx::context_set_parameter(ctx, "init-random", init_random);
-
-    baryonyx::context_set_parameter(
-      ctx,
-      "floating-point-type",
-      (float_type == 1) ? "double"
-                        : (float_type == 2) ? "longdouble" : "float");
+    baryonyx::context_set_solver_parameters(ctx, params);
 }
-
-// static double
-// linearize_result(const baryonyx::result& r,
-//                  double obj_min,
-//                  double obj_max,
-//                  baryonyx::objective_function_type type)
-// {
-//     if (r.status == baryonyx::result_status::success) {
-//         if (type == baryonyx::objective_function_type::maximize)
-//             return -r.value;
-//         else
-//             return r.value;
-//     }
-
-//     if (type == baryonyx::objective_function_type::maximize)
-//         return -obj_min + r.remaining_constraints;
-
-//     return obj_max + r.remaining_constraints;
-// }
 
 static List
 convert_result(const baryonyx::result& res,

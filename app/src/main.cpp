@@ -23,13 +23,15 @@
 #include <baryonyx/core-out>
 #include <baryonyx/core>
 
+#include <fmt/core.h>
 #include <fmt/ostream.h>
-#include <fmt/printf.h>
 
 #include <fstream>
 #include <iomanip>
 #include <limits>
 #include <sstream>
+#include <string>
+#include <tuple>
 
 #include <cmath>
 #include <cstring>
@@ -55,29 +57,29 @@ get_pid() noexcept
 }
 #endif
 
-double
-to_double(const char* s, double bad_value) noexcept
+static double
+to_double(std::string s, double bad_value) noexcept
 {
     char* c;
     errno = 0;
-    double value = std::strtod(s, &c);
+    double value = std::strtod(s.c_str(), &c);
 
     if ((errno == ERANGE and (value == HUGE_VAL or value == -HUGE_VAL)) or
-        (value == 0.0 and c == s))
+        (value == 0.0 and c == s.c_str()))
         return bad_value;
 
     return value;
 }
 
-int
-to_int(const char* s, int bad_value) noexcept
+static int
+to_int(std::string s, int bad_value) noexcept
 {
     char* c;
     errno = 0;
-    long value = std::strtol(s, &c, 10);
+    long value = std::strtol(s.c_str(), &c, 10);
 
     if ((errno == ERANGE and (value == LONG_MIN or value == LONG_MAX)) or
-        (value == 0 and c == s))
+        (value == 0 and c == s.c_str()))
         return bad_value;
 
     if (value < INT_MIN)
@@ -89,8 +91,8 @@ to_int(const char* s, int bad_value) noexcept
     return static_cast<int>(value);
 }
 
-std::tuple<std::string, baryonyx::parameter>
-split_param(const char* param) noexcept
+static std::tuple<std::string, std::string>
+split_argument(const char* param)
 {
     std::string name, value;
 
@@ -110,17 +112,7 @@ split_param(const char* param) noexcept
             value += *param++;
     }
 
-    auto valuel = to_int(value.c_str(), INT_MIN);
-    auto valued = to_double(value.c_str(), -HUGE_VAL);
-
-    double tmp;
-    if (valued != -HUGE_VAL and std::modf(valued, &tmp))
-        return std::make_tuple(name, baryonyx::parameter(valued));
-
-    if (valuel != INT_MIN)
-        return std::make_tuple(name, baryonyx::parameter(valuel));
-
-    return std::make_tuple(name, baryonyx::parameter(value));
+    return std::make_tuple(name, value);
 }
 
 struct get_param
@@ -140,7 +132,8 @@ struct get_param
         auto longp_length = strlen(longp);
         if (not strncmp(argv[arg], longp, longp_length) and
             strlen(argv[arg]) + 1 > longp_length and
-            argv[arg][longp_length] == '=') {
+            (argv[arg][longp_length] == '=' or
+             argv[arg][longp_length] == ':')) {
             return argv[arg] + longp_length + 1;
         }
 
@@ -233,13 +226,188 @@ help() noexcept
       "  - init-random: real [0, 1]\n");
 }
 
+static bool
+is_equal(std::string name, const char* longf, char shortf = '\0')
+{
+    if (name.compare(0, std::string::npos, longf) == 0)
+        return true;
+
+    if (shortf != '\0' and name.size() == 2 and name[1] == shortf)
+        return true;
+
+    return false;
+}
+
+static double
+assign_0oo(std::string value, double def)
+{
+    auto ret = ::to_double(value, def);
+
+    return ret < 0 ? 0 : not std::isnormal(ret) ? 1 : ret;
+}
+
+static double
+assign_01(std::string value, double def)
+{
+    auto ret = ::to_double(value, def);
+
+    return ret < 0 ? 0 : ret > 1 ? 1 : ret;
+}
+
+static int
+assign(std::string value, int mindef, int maxdef, int def)
+{
+    auto ret = ::to_int(value, def);
+
+    return ret < mindef ? mindef : ret > maxdef ? maxdef : ret;
+}
+
+static int
+assign_d(std::string value, double mindef, double maxdef, double def)
+{
+    auto ret = ::to_double(value, def);
+
+    return ret < mindef ? mindef : ret > maxdef ? maxdef : ret;
+}
+
+void
+assign_parameter(baryonyx::solver_parameters& params,
+                 std::string name,
+                 std::string value)
+{
+    if (is_equal(name, "limit", 'l')) {
+        params.limit =
+          assign(value, -1, std::numeric_limits<int>::max(), params.limit);
+    } else if (is_equal(name, "time-limit")) {
+        params.time_limit = ::to_double(value, 60);
+        if (params.time_limit <= 0)
+            params.time_limit = -1;
+    } else if (is_equal(name, "floating-point-type")) {
+        if (value == "float")
+            params.float_type =
+              baryonyx::solver_parameters::floating_point_type::float_type;
+        else if (value == "double")
+            params.float_type =
+              baryonyx::solver_parameters::floating_point_type::double_type;
+        else if (value == "longdouble")
+            params.float_type = baryonyx::solver_parameters::
+              floating_point_type::longdouble_type;
+    } else if (is_equal(name, "print-level")) {
+        params.print_level = assign(value, 0, 2, params.print_level);
+    } else if (is_equal(name, "preprocessing")) {
+        if (value == "none")
+            params.pre_order =
+              baryonyx::solver_parameters::pre_constraint_order::none;
+        else if (value == "variables-number")
+            params.pre_order = baryonyx::solver_parameters::
+              pre_constraint_order::variables_number;
+        else if (value == "variables-weight")
+            params.pre_order = baryonyx::solver_parameters::
+              pre_constraint_order::variables_weight;
+        else if (value == "constraints-weight")
+            params.pre_order = baryonyx::solver_parameters::
+              pre_constraint_order::constraints_weight;
+        else if (value == "implied")
+            params.pre_order =
+              baryonyx::solver_parameters::pre_constraint_order::implied;
+        else if (value == "less-greater-equal")
+            params.pre_order = baryonyx::solver_parameters::
+              pre_constraint_order::less_greater_equal;
+        else if (value == "less-equal-greater")
+            params.pre_order = baryonyx::solver_parameters::
+              pre_constraint_order::less_equal_greater;
+        else if (value == "greater-less-equal")
+            params.pre_order = baryonyx::solver_parameters::
+              pre_constraint_order::greater_less_equal;
+        else if (value == "greater-equal-less")
+            params.pre_order = baryonyx::solver_parameters::
+              pre_constraint_order::greater_equal_less;
+        else if (value == "equal-less-greater")
+            params.pre_order = baryonyx::solver_parameters::
+              pre_constraint_order::equal_less_greater;
+        else if (value == "equal-greater-less")
+            params.pre_order = baryonyx::solver_parameters::
+              pre_constraint_order::equal_greater_less;
+    } else if (is_equal(name, "constraint-order")) {
+        if (value == "none")
+            params.order = baryonyx::solver_parameters::constraint_order::none;
+        else if (value == "reversing")
+            params.order =
+              baryonyx::solver_parameters::constraint_order::reversing;
+        else if (value == "random_sorting")
+            params.order =
+              baryonyx::solver_parameters::constraint_order::random_sorting;
+        else if (value == "infeasibility_decr")
+            params.order = baryonyx::solver_parameters::constraint_order::
+              infeasibility_decr;
+        else if (value == "infeasibility_incr")
+            params.order = baryonyx::solver_parameters::constraint_order::
+              infeasibility_incr;
+    } else if (is_equal(name, "theta")) {
+        params.theta = assign_01(value, params.theta);
+    } else if (is_equal(name, "delta")) {
+        params.delta = assign_0oo(value, params.delta);
+    } else if (is_equal(name, "kappa-min")) {
+        params.kappa_min = assign_01(value, params.kappa_min);
+    } else if (is_equal(name, "kappa-step")) {
+        params.kappa_step = assign_01(value, params.kappa_step);
+    } else if (is_equal(name, "kappa-max")) {
+        params.kappa_max = assign_01(value, params.kappa_max);
+    } else if (is_equal(name, "alpha")) {
+        params.alpha = assign_d(value, 0, 2, params.alpha);
+    } else if (is_equal(name, "w")) {
+        params.w = assign(value, 0, std::numeric_limits<int>::max(), params.w);
+    } else if (is_equal(name, "norm")) {
+        if (value == "none")
+            params.cost_norm =
+              baryonyx::solver_parameters::cost_norm_type::none;
+        else if (value == "random")
+            params.cost_norm =
+              baryonyx::solver_parameters::cost_norm_type::random;
+        else if (value == "l1")
+            params.cost_norm = baryonyx::solver_parameters::cost_norm_type::l1;
+        else if (value == "l2")
+            params.cost_norm = baryonyx::solver_parameters::cost_norm_type::l2;
+        else if (value == "loo")
+            params.cost_norm =
+              baryonyx::solver_parameters::cost_norm_type::loo;
+    } else if (is_equal(name, "pushes-limit")) {
+        params.pushes_limit = assign(
+          value, 0, std::numeric_limits<int>::max(), params.pushes_limit);
+    } else if (is_equal(name, "pushing-objective-amplifier")) {
+        params.pushing_objective_amplifier =
+          assign_0oo(value, params.pushing_objective_amplifier);
+    } else if (is_equal(name, "pushing-iteration-limit")) {
+        params.pushing_iteration_limit =
+          assign(value,
+                 0,
+                 std::numeric_limits<int>::max(),
+                 params.pushing_iteration_limit);
+    } else if (is_equal(name, "pushing-k-factor")) {
+        params.pushing_k_factor = assign_0oo(value, params.pushing_k_factor);
+    } else if (is_equal(name, "init-policy")) {
+        if (value == "bastert")
+            params.init_policy =
+              baryonyx::solver_parameters::init_policy_type::bastert;
+        else if (value == "random")
+            params.init_policy =
+              baryonyx::solver_parameters::init_policy_type::random;
+        else if (value == "best")
+            params.init_policy =
+              baryonyx::solver_parameters::init_policy_type::best;
+    } else if (is_equal(name, "init-random")) {
+        params.init_random = assign_01(value, params.init_random);
+    } else
+        fmt::print(
+          stderr, "Unknown parameters {} = {}, ignoring.\n", name, value);
+}
+
 struct main_parameters
 {
-    std::unordered_map<std::string, baryonyx::parameter> params;
+    baryonyx::solver_parameters parameters;
     std::vector<std::string> filenames;
     std::string check_filename;
     int verbose = 6;
-    int limit = 1000;
     bool check = false;
     bool optimize = false;
     bool quiet = false;
@@ -271,25 +439,33 @@ parse(int argc, const char* argv[])
             continue;
         }
 
-        if ((opt = get(i, "--auto", "-a"))) {
-            ret.params["auto"] = opt;
-            i = get.i;
-            continue;
-        }
-
         if (arg == "--disable-preprocessing" or arg == "-np") {
             ret.preprocessing = false;
             continue;
         }
 
         if ((opt = get(i, "--limit", "-l"))) {
-            ret.params["limit"] = ::to_int(opt, 1000);
+            ret.parameters.limit = ::to_int(opt, ret.parameters.limit);
+            i = get.i;
+            continue;
+        }
+
+        if ((opt = get(i, "--auto", "-a"))) {
+            std::string str(opt);
+
+            if (str == "manual")
+                ret.parameters.auto_tune =
+                  baryonyx::solver_parameters::auto_tune_parameters::manual;
+            else if (str == "nlopt")
+                ret.parameters.auto_tune =
+                  baryonyx::solver_parameters::auto_tune_parameters::nlopt;
+
             i = get.i;
             continue;
         }
 
         if ((opt = get(i, "--verbose", "-v"))) {
-            ret.verbose = ::to_int(opt, 3);
+            ret.verbose = ::to_int(opt, 6);
             i = get.i;
             continue;
         }
@@ -301,10 +477,9 @@ parse(int argc, const char* argv[])
         }
 
         if ((opt = get(i, "--param", "-p"))) {
-            std::string name;
-            baryonyx::parameter value;
-            std::tie(name, value) = ::split_param(opt);
-            ret.params[name] = value;
+            std::string name, value;
+            std::tie(name, value) = split_argument(opt);
+            assign_parameter(ret.parameters, name, value);
             i = get.i;
             continue;
         }
@@ -325,10 +500,9 @@ main(int argc, const char* argv[])
         return EXIT_SUCCESS;
     }
 
-    auto ctx =
-      baryonyx::make_context(stdout, params.quiet ? 3 : params.verbose);
-
-    context_set_parameters(ctx, std::move(params.params));
+    params.verbose = params.quiet ? 3 : params.verbose;
+    auto ctx = baryonyx::make_context(stdout, params.verbose);
+    context_set_solver_parameters(ctx, params.parameters);
 
     if (params.filenames.size() == 1) {
         try {

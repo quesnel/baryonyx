@@ -27,7 +27,7 @@
 
 #include <unordered_map>
 
-#include <fmt/printf.h>
+#include <fmt/format.h>
 
 #ifndef _WIN32
 #include <unistd.h>
@@ -51,24 +51,10 @@ struct context
         debug,   ///< debug-level message
     };
 
-    enum class observer_type
-    {
-        none,
-        pnm,
-        file
-    };
-
     enum class logger_type
     {
         c_file, ///< log are send to a C FILE* structure.
         string  ///< log are store to the string_logger_functor.
-    };
-
-    enum class auto_tune_parameters
-    {
-        disabled,
-        manual,
-        nlop
     };
 
     context(int verbose_level = 6)
@@ -112,17 +98,22 @@ struct context
               verbose_level < 0 ? 0 : verbose_level > 7 ? 7 : verbose_level);
     }
 
-    std::unordered_map<std::string, parameter> parameters;
+    solver_parameters parameters;
+    std::string method;
 
     string_logger_functor string_logger;
     FILE* cfile_logger = stdout;
     message_type log_priority = context::message_type::info;
     logger_type logger = context::logger_type::c_file;
-    auto_tune_parameters auto_tune{ auto_tune_parameters::disabled };
     bool color_cfile_logger = false;
-
-    observer_type observer{ observer_type::none };
 };
+
+/**
+ * @brief Shows value of all baryonyx parameters.
+ *
+ */
+void
+print(const context_ptr& ctx);
 
 template<typename... Args>
 void
@@ -153,21 +144,6 @@ log(const context_ptr& ctx, context::message_type level, const T& msg);
 template<typename T>
 void
 log(baryonyx::context* ctx, context::message_type level, const T& msg);
-
-double
-context_get_real_parameter(const context_ptr& ctx,
-                           const std::string& name,
-                           double def) noexcept;
-
-int
-context_get_integer_parameter(const context_ptr& ctx,
-                              const std::string& name,
-                              int def) noexcept;
-
-std::string
-context_get_string_parameter(const context_ptr& ctx,
-                             const std::string& name,
-                             std::string def) noexcept;
 
 baryonyx::problem
 read_problem(std::istream& is);

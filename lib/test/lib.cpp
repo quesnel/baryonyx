@@ -21,8 +21,8 @@
  */
 
 #include "branch-and-bound-solver.hpp"
-#include "fixed_2darray.hpp"
-#include "fixed_array.hpp"
+#include "fixed-2darray.hpp"
+#include "fixed-array.hpp"
 #include "knapsack-dp-solver.hpp"
 #include "pnm.hpp"
 #include "unit-test.hpp"
@@ -106,60 +106,6 @@ check_numeric_cast()
 
     auto checked_size = baryonyx::numeric_cast<unsigned int>(v.size());
     Ensures(0 == checked_size);
-}
-
-static void
-check_parameter()
-{
-    baryonyx::parameter real{ 3.0 };
-    Ensures(real.type == baryonyx::parameter::tag::real);
-
-    baryonyx::parameter integer{ 1000 };
-    Ensures(integer.type == baryonyx::parameter::tag::integer);
-
-    baryonyx::parameter str{ "hello world" };
-    Ensures(str.type == baryonyx::parameter::tag::string);
-
-    str = real;
-    Ensures(str.type == baryonyx::parameter::tag::real);
-    Ensures(str.d == 3.0);
-
-    str = integer;
-    Ensures(str.type == baryonyx::parameter::tag::integer);
-    Ensures(str.l == 1000);
-
-    std::vector<baryonyx::parameter> x(100);
-    for (auto& elem : x) {
-        Ensures(elem.type == baryonyx::parameter::tag::integer);
-        Ensures(elem.l == 0);
-    }
-
-    auto y = baryonyx::parameter(4.0);
-    Ensures(y.type == baryonyx::parameter::tag::real);
-    Ensures(y.d == 4.0);
-
-    x[0] = baryonyx::parameter(5.0);
-    Ensures(x[0].type == baryonyx::parameter::tag::real);
-    Ensures(x[0].d == 5.0);
-
-    x[0].swap(x[1]);
-    Ensures(x[0].type == baryonyx::parameter::tag::integer);
-    Ensures(x[0].l == 0l);
-    Ensures(x[1].type == baryonyx::parameter::tag::real);
-    Ensures(x[1].d == 5.0);
-
-    x[2] = std::move(x[1]);
-    Ensures(x[0].type == baryonyx::parameter::tag::integer);
-    Ensures(x[0].l == 0l);
-    Ensures(x[1].type == baryonyx::parameter::tag::integer);
-    Ensures(x[1].l == 0l);
-    Ensures(x[2].type == baryonyx::parameter::tag::real);
-    EnsuresEqual(x[2].d, 5.0);
-    EnsuresNotEqual(x[2].d, 6.0);
-
-    x[3] = baryonyx::parameter(std::string("hello world!"));
-    Ensures(x[3].type == baryonyx::parameter::tag::string);
-    Ensures(x[3].s == "hello world!");
 }
 
 static void
@@ -471,7 +417,6 @@ main(int /* argc */, char* /* argv */ [])
 {
     check_clamp();
     check_numeric_cast();
-    check_parameter();
     check_fixed_array();
     check_fixed_2darray();
     check_knapsack_solver();

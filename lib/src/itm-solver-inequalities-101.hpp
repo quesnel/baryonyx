@@ -55,14 +55,13 @@ struct solver_inequalities_101coeff
     int m;
     int n;
 
-    solver_inequalities_101coeff(
-      random_type& rng_,
-      int m_,
-      int n_,
-      const std::unique_ptr<floatingpointT[]>& c_,
-      const std::vector<itm::merged_constraint>& csts,
-      itm::init_policy_type init_type,
-      double init_random)
+    solver_inequalities_101coeff(random_type& rng_,
+                                 int m_,
+                                 int n_,
+                                 const std::unique_ptr<floatingpointT[]>& c_,
+                                 const std::vector<merged_constraint>& csts,
+                                 solver_parameters::init_policy_type init_type,
+                                 double init_random)
       : rng(rng_)
       , ap(csts, m_, n_)
       , x(n_)

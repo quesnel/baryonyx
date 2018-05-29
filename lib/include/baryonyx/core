@@ -24,14 +24,12 @@
 #define ORG_VLEPROJECT_BARYONYX_SOLVER_CORE
 
 #include <algorithm>
-#include <chrono>
 #include <functional>
 #include <limits>
 #include <memory>
 #include <stdexcept>
 #include <string>
 #include <tuple>
-#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -258,242 +256,100 @@ private:
 };
 
 /**
- * @brief @c baryonyx::parameter is a simple class to represent a union between
- *     an integer, a real and a string (resp. @c int, @c double and @c
- *     std::string).
+ * @brief Stores the solver parameters options.
  *
- * @details Waiting for a compiler with the @c std::optional class, @c
- *     baryonyx::parameter implements an union between a @c int, a @c double
- *     and a @c std::string. @c baryonyx::parameter, by default, defines a @c
- *     int with the value of @c 0. Use the @c baryonyx::parameter::type
- *     function to get the current type stored into the @c baryonyx::parameter.
+ * @details @c baryonyx::solver_parameters manage behaviour of baryonyx
+ *     solvers. If bad value are provided, for instance negative value for the
+ *     @c delta or @c kappa-step variables, the default is used.
+ *
  */
-class BARYONYX_API parameter
+struct BARYONYX_API solver_parameters
 {
-public:
-    enum class tag
+    enum class pre_constraint_order
     {
-        integer,
-        real,
-        string
+        none = 0,
+        variables_number,
+        variables_weight,
+        constraints_weight,
+        implied,
+        less_greater_equal,
+        less_equal_greater,
+        greater_less_equal,
+        greater_equal_less,
+        equal_less_greater,
+        equal_greater_less,
     };
 
-    union
+    enum class init_policy_type
     {
-        int l;
-        double d;
-        std::string s;
+        bastert = 0,
+        random,
+        best
     };
 
-    tag type{ tag::integer };
-
-    parameter()
-      : l(0)
-    {}
-
-    parameter(int value_)
-      : l(value_)
-      , type(tag::integer)
-    {}
-
-    parameter(double value_)
-      : d(value_)
-      , type(tag::real)
-    {}
-
-    parameter(std::string value_)
-      : s(std::move(value_))
-      , type(tag::string)
-    {}
-
-    parameter(const char* value_)
-      : s(value_)
-      , type(tag::string)
-    {}
-
-    parameter(const parameter& w)
-      : type(w.type)
+    enum class floating_point_type
     {
-        switch (w.type) {
-        case tag::integer:
-            l = w.l;
-            break;
-        case tag::real:
-            d = w.d;
-            break;
-        case tag::string:
-            new (&s) std::string(w.s);
-            break;
-        }
-    }
+        float_type = 0,
+        double_type,
+        longdouble_type
+    };
 
-    parameter(parameter&& w)
-      : type(w.type)
+    enum class constraint_order
     {
-        switch (w.type) {
-        case tag::integer:
-            l = w.l;
-            break;
-        case tag::real:
-            d = w.d;
-            break;
-        case tag::string:
-            new (&s) std::string(w.s);
-            break;
-        }
+        none = 0,
+        reversing,
+        random_sorting,
+        infeasibility_decr,
+        infeasibility_incr,
+    };
 
-        w.type = tag::integer;
-        w.l = 0;
-    }
-
-    parameter& operator=(const parameter& w)
+    enum class cost_norm_type
     {
-        if (type == tag::string and w.type == tag::string) {
-            s = w.s;
-            return *this;
-        }
+        none = 0,
+        random,
+        l1,
+        l2,
+        loo
+    };
 
-        if (type == tag::string) {
-            using std::string;
-            s.~string();
-        }
-
-        switch (w.type) {
-        case tag::integer:
-            l = w.l;
-            break;
-        case tag::real:
-            d = w.d;
-            break;
-        case tag::string:
-            new (&s) std::string(w.s);
-            break;
-        }
-
-        type = w.type;
-        return *this;
-    }
-
-    parameter& operator=(parameter&& w)
+    enum class auto_tune_parameters
     {
-        if (type == tag::string and w.type == tag::string) {
-            new (&s) std::string(w.s);
-            w.type = tag::integer;
-            w.l = 0;
-            return *this;
-        }
+        disabled,
+        manual,
+        nlopt
+    };
 
-        if (type == tag::string) {
-            using std::string;
-            s.~string();
-        }
-
-        switch (w.type) {
-        case tag::integer:
-            l = w.l;
-            break;
-        case tag::real:
-            d = w.d;
-            break;
-        case tag::string:
-            new (&s) std::string(w.s);
-            break;
-        }
-
-        type = w.type;
-
-        w.type = tag::integer;
-        w.l = 0;
-
-        return *this;
-    }
-
-    parameter& operator=(double value)
+    enum class observer_type
     {
-        if (type == tag::real) {
-            d = value;
-            return *this;
-        }
+        none,
+        pnm,
+        file
+    };
 
-        if (type == tag::string) {
-            using std::string;
-            s.~string();
-        }
-
-        type = tag::real;
-        d = value;
-
-        return *this;
-    }
-
-    parameter& operator=(int value)
-    {
-        if (type == tag::integer) {
-            l = value;
-            return *this;
-        }
-
-        if (type == tag::string) {
-            using std::string;
-            s.~string();
-        }
-
-        type = tag::integer;
-        l = value;
-
-        return *this;
-    }
-
-    parameter& operator=(const std::string& value)
-    {
-        if (type == tag::string) {
-            s = value;
-            return *this;
-        }
-
-        if (type == tag::string) {
-            using std::string;
-            s.~string();
-        }
-
-        type = tag::string;
-        new (&s) std::string(value);
-
-        return *this;
-    }
-
-    parameter& operator=(const char* value)
-    {
-        if (type == tag::string) {
-            s = value;
-            return *this;
-        }
-
-        if (type == tag::string) {
-            using std::string;
-            s.~string();
-        }
-
-        type = tag::string;
-        new (&s) std::string(value);
-
-        return *this;
-    }
-
-    ~parameter() noexcept
-    {
-        if (type == tag::string) {
-            using std::string;
-            s.~string();
-        }
-    }
-
-    void swap(parameter& p)
-    {
-        parameter copy(*this);
-        *this = p;
-        p = copy;
-    }
+    double time_limit{ -1 }; ///< value <= 0 means infinity time.
+    double theta{ 0.5 };
+    double delta{ -1 }; ///< value == -1 means automatic.
+    double kappa_min{ 0 };
+    double kappa_step{ 1.e-3 };
+    double kappa_max{ 0.6 };
+    double alpha{ 1 };
+    double pushing_k_factor{ 0.9 };
+    double pushing_objective_amplifier{ 5 };
+    double init_random{ 0.5 };
+    unsigned int seed{ 0 }; ///< value == 0 means automatic seed.
+    int thread{ 0 };        ///< value <= 0 means automatic detection.
+    int limit{ 1000 };      ///< value <= 0 means infinity loop.
+    int print_level{ 0 };
+    int w{ 20 };
+    int pushes_limit{ 100 };
+    int pushing_iteration_limit{ 50 };
+    pre_constraint_order pre_order{ pre_constraint_order::none };
+    constraint_order order{ constraint_order::none };
+    floating_point_type float_type{ floating_point_type::double_type };
+    init_policy_type init_policy{ init_policy_type::bastert };
+    cost_norm_type cost_norm{ cost_norm_type::loo };
+    auto_tune_parameters auto_tune{ auto_tune_parameters::disabled };
+    observer_type observer{ observer_type::none };
 };
 
 /**
@@ -542,14 +398,46 @@ copy_context(const context_ptr& ctx,
              std::function<void(int, std::string)> logger,
              int verbose_level);
 
+/**
+ * @brief Assign baryonyx internal parameters.
+ *
+ * @details This function is used to provide internal parameters to Baryonyx
+ *     library and to ensures a stable API and ABI (for example extends the
+ *     solver without change in @c solver_parameters). Normally, this function
+ *     is not used.
+ *
+ * @param ctx Solver's internal state.
+ * @param name The name of the parameters.
+ * @param value A string representation of the parameters.
+ */
 BARYONYX_API void
 context_set_parameters(const context_ptr& ctx,
-                       std::unordered_map<std::string, parameter>&& params);
+                       std::string name,
+                       std::string value);
 
+/**
+ * @brief Affects parameters to the solver.
+ *
+ * @details For each variables of @c params, value is check and assign to the
+ *     solver's internal variables.
+ *
+ * @param ctx Solver's internal state.
+ * @param params Parameters to be copied.
+ */
 BARYONYX_API void
-context_set_parameter(const context_ptr& ctx,
-                      std::string name,
-                      parameter param);
+context_set_solver_parameters(const context_ptr& ctx,
+                              const solver_parameters& params);
+
+/**
+ * @brief Get solver's internal state.
+ *
+ * @param ctx Solver's internal state.
+ *
+ * @return A copy of the internal state.
+ */
+BARYONYX_API
+solver_parameters
+context_get_solver_parameters(const context_ptr& ctx);
 
 enum class variable_type
 {

@@ -27,25 +27,28 @@
 #include <iterator>
 #include <thread>
 
-#include "automatic-optimize.hpp"
 #include "itm-common.hpp"
 #include "itm-solver-common.hpp"
-#include "itm.hpp"
 #include "private.hpp"
 #include "utils.hpp"
 
 //
-// Get number of thread to use in optimizer from parameters list or from the
-// standard thread API. If an error occurred, this function returns 1.
+// Get number of thread to use in optimizer from parameters list or
+// from the standard thread API. If an error occurred, this function
+// returns 1.
 //
-
 static inline int
 get_thread_number(const baryonyx::context_ptr& ctx) noexcept
 {
-    auto t = context_get_integer_parameter(
-      ctx, "thread", std::thread::hardware_concurrency());
+    int thread = ctx->parameters.thread;
 
-    return t <= 0 ? 1 : baryonyx::numeric_cast<int>(t);
+    if (thread <= 0)
+        thread = static_cast<int>(std::thread::hardware_concurrency());
+
+    if (thread <= 0)
+        return 1;
+
+    return thread;
 }
 
 namespace baryonyx {
@@ -61,9 +64,10 @@ optimizer_select(const baryonyx::context_ptr& ctx, baryonyx::problem& pb)
 {
     auto th = get_thread_number(ctx);
 
-    if (ctx->auto_tune == context::auto_tune_parameters::disabled)
+    if (ctx->parameters.auto_tune ==
+        solver_parameters::auto_tune_parameters::disabled)
         return baryonyx::itm::optimize(ctx, pb, th);
     else
-        return baryonyx::automatic_optimize(ctx, pb, th);
+        return baryonyx::itm::automatic_optimizer(ctx, pb, th);
 }
 } // namespace baryonyx

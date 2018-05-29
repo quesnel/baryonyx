@@ -23,7 +23,7 @@
 #ifndef ORG_VLEPROJECT_BARYONYX_SOLVER_KNAPSACK_SOLVER_HPP
 #define ORG_VLEPROJECT_BARYONYX_SOLVER_KNAPSACK_SOLVER_HPP
 
-#include "fixed_2darray.hpp"
+#include "fixed-2darray.hpp"
 #include "itm-common.hpp"
 #include "private.hpp"
 

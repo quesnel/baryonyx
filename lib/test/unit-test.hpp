@@ -280,6 +280,7 @@ report_errors()
         if (not(expr)) {                                                      \
             unit_test::detail::ensures_impl(                                  \
               #expr, __FILE__, __LINE__, __func__);                           \
+            return;                                                           \
         }                                                                     \
     } while (0)
 
@@ -288,6 +289,7 @@ report_errors()
         if (not((expr1) == (expr2))) {                                        \
             unit_test::detail::ensures_equal_impl(                            \
               #expr1, #expr2, __FILE__, __LINE__, __func__);                  \
+            return;                                                           \
         }                                                                     \
     } while (0)
 
@@ -296,6 +298,7 @@ report_errors()
         if (not((expr1) != (expr2))) {                                        \
             unit_test::detail::ensures_not_equal_impl(                        \
               #expr1, #expr2, __FILE__, __LINE__, __func__);                  \
+            return;                                                           \
         }                                                                     \
     } while (0)
 
@@ -305,10 +308,12 @@ report_errors()
             expr;                                                             \
             unit_test::detail::ensures_throw_impl(                            \
               #Excep, __FILE__, __LINE__, __func__);                          \
+            return;                                                           \
         } catch (const Excep&) {                                              \
         } catch (...) {                                                       \
             unit_test::detail::ensures_throw_impl(                            \
               #Excep, __FILE__, __LINE__, __func__);                          \
+            return;                                                           \
         }                                                                     \
     } while (0)
 
@@ -319,6 +324,7 @@ report_errors()
         } catch (const Excep&) {                                              \
             unit_test::detail::ensures_not_throw_impl(                        \
               #Excep, __FILE__, __LINE__, __func__);                          \
+            return;                                                           \
         } catch (...) {                                                       \
         }                                                                     \
     } while (0)

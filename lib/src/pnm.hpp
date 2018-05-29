@@ -69,9 +69,9 @@ struct colormap
         }
 
         std::array<std::uint8_t, 3> ret{
-            { static_cast<std::uint8_t>(r * (T)255),
-              static_cast<std::uint8_t>(g * (T)255),
-              static_cast<std::uint8_t>(b * (T)255) }
+            { static_cast<std::uint8_t>(r * static_cast<T>(255)),
+              static_cast<std::uint8_t>(g * static_cast<T>(255)),
+              static_cast<std::uint8_t>(b * static_cast<T>(255)) }
         };
 
         return ret;

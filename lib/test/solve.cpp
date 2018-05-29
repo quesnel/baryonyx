@@ -56,7 +56,10 @@ test_preprocessor()
 
     {
         auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/prepro.lp");
-        context_set_parameter(ctx, "norm", "infinity");
+        baryonyx::solver_parameters params;
+        params.cost_norm = baryonyx::solver_parameters::cost_norm_type::loo;
+        baryonyx::context_set_solver_parameters(ctx, params);
+
         baryonyx::preprocess(ctx, pb);
         auto result = baryonyx::solve(ctx, pb);
 
@@ -105,7 +108,10 @@ test_preprocessor_2()
           baryonyx::make_problem(ctx, EXAMPLES_DIR "/capmo1_direct.lp");
         baryonyx::preprocess(ctx, pb);
 
-        context_set_parameter(ctx, "preprocessing", "equal,less,greater");
+        baryonyx::solver_parameters params;
+        params.pre_order = baryonyx::solver_parameters::pre_constraint_order::
+          equal_less_greater;
+
         auto result = baryonyx::solve(ctx, pb);
 
         Ensures(result);
@@ -181,7 +187,10 @@ test_assignment_problem()
 
     auto pb =
       baryonyx::make_problem(ctx, EXAMPLES_DIR "/assignment_problem_1.lp");
-    context_set_parameter(ctx, "limit", 50);
+
+    baryonyx::solver_parameters params;
+    params.limit = 50;
+    baryonyx::context_set_solver_parameters(ctx, params);
 
     auto result = baryonyx::solve(ctx, pb);
 
@@ -193,13 +202,15 @@ test_assignment_problem_random_coast()
 {
     auto ctx = baryonyx::make_context();
 
-    context_set_parameter(ctx, "limit", 1000000);
-    context_set_parameter(ctx, "theta", 0.5);
-    context_set_parameter(ctx, "delta", 0.2);
-    context_set_parameter(ctx, "kappa-step", 10e-4);
-    context_set_parameter(ctx, "kappa-max", 10.0);
-    context_set_parameter(ctx, "alpha", 0.0);
-    context_set_parameter(ctx, "w", 20);
+    baryonyx::solver_parameters params;
+    params.limit = 1000000;
+    params.theta = 0.5;
+    params.delta = 0.2;
+    params.kappa_step = 10e-4;
+    params.kappa_max = 10.0;
+    params.alpha = 0.0;
+    params.w = 20;
+    baryonyx::context_set_solver_parameters(ctx, params);
 
     for (int i{ 0 }, e{ 10 }; i != e; ++i) {
         auto pb =
@@ -229,7 +240,9 @@ test_negative_coeff()
     auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/negative-coeff.lp");
     baryonyx::preprocess(ctx, pb);
 
-    context_set_parameter(ctx, "limit", 50);
+    baryonyx::solver_parameters params;
+    params.limit = 50;
+    baryonyx::context_set_solver_parameters(ctx, params);
 
     auto result = baryonyx::solve(ctx, pb);
 
@@ -246,7 +259,9 @@ test_negative_coeff2()
     auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/negative-coeff2.lp");
     baryonyx::preprocess(ctx, pb);
 
-    context_set_parameter(ctx, "limit", 2);
+    baryonyx::solver_parameters params;
+    params.limit = 2;
+    baryonyx::context_set_solver_parameters(ctx, params);
 
     auto result = baryonyx::solve(ctx, pb);
 
@@ -277,7 +292,9 @@ test_negative_coeff4()
     auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/negative-coeff4.lp");
     baryonyx::preprocess(ctx, pb);
 
-    context_set_parameter(ctx, "limit", 50);
+    baryonyx::solver_parameters params;
+    params.limit = 50;
+    baryonyx::context_set_solver_parameters(ctx, params);
 
     auto result = baryonyx::solve(ctx, pb);
 
@@ -324,13 +341,15 @@ test_8_queens_puzzle_fixed_cost()
     auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/8_queens_puzzle.lp");
     baryonyx::preprocess(ctx, pb);
 
-    context_set_parameter(ctx, "limit", -1);
-    context_set_parameter(ctx, "theta", 0.5);
-    context_set_parameter(ctx, "delta", 0.02);
-    context_set_parameter(ctx, "kappa-step", 0.01);
-    context_set_parameter(ctx, "kappa-max", 60.0);
-    context_set_parameter(ctx, "alpha", 1.0);
-    context_set_parameter(ctx, "w", 40);
+    baryonyx::solver_parameters params;
+    params.limit = -1;
+    params.theta = 0.5;
+    params.delta = 0.02;
+    params.kappa_step = 0.01;
+    params.kappa_max = 60.0;
+    params.alpha = 1.0;
+    params.w = 40;
+    baryonyx::context_set_solver_parameters(ctx, params);
 
     {
         std::vector<int> cost{ 25, 89, 12, 22, 84, 3,  61, 14, 93, 97, 68,
@@ -346,6 +365,8 @@ test_8_queens_puzzle_fixed_cost()
     }
 
     auto result = baryonyx::solve(ctx, pb);
+    Ensures(result.status == baryonyx::result_status::success);
+    Ensures(not result.solutions.empty());
 
     for (int i = 0; i != 8; ++i) {
         for (int j = 0; j != 8; ++j)
@@ -364,18 +385,20 @@ test_8_queens_puzzle_random_cost()
 {
     auto ctx = baryonyx::make_context();
 
-    std::map<std::string, baryonyx::parameter> params;
-    context_set_parameter(ctx, "limit", -1);
-    context_set_parameter(ctx, "theta", 0.5);
-    context_set_parameter(ctx, "delta", 0.02);
-    context_set_parameter(ctx, "kappa-step", 0.01);
-    context_set_parameter(ctx, "kappa-max", 60.0);
-    context_set_parameter(ctx, "alpha", 1.0);
-    context_set_parameter(ctx, "w", 40);
-    context_set_parameter(
-      ctx, "constraint-order", std::string("infeasibility-decr"));
-    context_set_parameter(
-      ctx, "preprocessing", std::string("variables-weight"));
+    baryonyx::solver_parameters params;
+    params.limit = -1;
+    params.theta = 0.5;
+    params.delta = 0.02;
+    params.kappa_step = 0.01;
+    params.kappa_max = 60.0;
+    params.alpha = 1.0;
+    params.w = 40;
+    params.order =
+      baryonyx::solver_parameters::constraint_order::infeasibility_decr;
+    params.pre_order =
+      baryonyx::solver_parameters::pre_constraint_order::variables_weight;
+
+    baryonyx::context_set_solver_parameters(ctx, params);
 
     for (int i{ 0 }, e{ 10 }; i != e; ++i) {
         auto pb =
@@ -405,14 +428,15 @@ test_qap()
     auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/small4.lp");
     baryonyx::preprocess(ctx, pb);
 
-    std::map<std::string, baryonyx::parameter> params;
-    context_set_parameter(ctx, "limit", -1);
-    context_set_parameter(ctx, "theta", 0.5);
-    context_set_parameter(ctx, "delta", 0.01);
-    context_set_parameter(ctx, "kappa-step", 10e-4);
-    context_set_parameter(ctx, "kappa-max", 10.0);
-    context_set_parameter(ctx, "alpha", 0.0);
-    context_set_parameter(ctx, "w", 20);
+    baryonyx::solver_parameters params;
+    params.limit = -1;
+    params.theta = 0.5;
+    params.delta = 0.01;
+    params.kappa_step = 10e-4;
+    params.kappa_max = 10.0;
+    params.alpha = 0.0;
+    params.w = 20;
+    baryonyx::context_set_solver_parameters(ctx, params);
 
     auto result = baryonyx::solve(ctx, pb);
 
@@ -429,12 +453,14 @@ test_flat30_7()
     auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/flat30-7.lp");
     baryonyx::preprocess(ctx, pb);
 
-    context_set_parameter(ctx, "limit", -1);
-    context_set_parameter(ctx, "delta", 0.001);
-    context_set_parameter(ctx, "kappa-min", 0.3);
-    context_set_parameter(ctx, "kappa-step", 1e-10);
-    context_set_parameter(ctx, "kappa-max", 1.0);
-    context_set_parameter(ctx, "constraint-order", std::string("reversing"));
+    baryonyx::solver_parameters params;
+    params.limit = -1;
+    params.delta = 0.001;
+    params.kappa_min = 0.3;
+    params.kappa_step = 1e-10;
+    params.kappa_max = 1.0;
+    params.order = baryonyx::solver_parameters::constraint_order::reversing;
+    baryonyx::context_set_solver_parameters(ctx, params);
 
     auto result = baryonyx::solve(ctx, pb);
 
@@ -451,17 +477,18 @@ test_uf50_0448()
     auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/uf50-0448.lp");
     baryonyx::preprocess(ctx, pb);
 
-    std::map<std::string, baryonyx::parameter> params;
-    context_set_parameter(ctx, "limit", -1);
-    context_set_parameter(ctx, "theta", 0.5);
-    context_set_parameter(ctx, "delta", 1.0);
-    context_set_parameter(ctx, "kappa-min", 0.1);
-    context_set_parameter(ctx, "kappa-step", 1e-17);
-    context_set_parameter(ctx, "kappa-max", 1.0);
-    context_set_parameter(ctx, "alpha", 2.0);
-    context_set_parameter(ctx, "w", 60);
-    context_set_parameter(
-      ctx, "constraint-order", std::string("random-sorting"));
+    baryonyx::solver_parameters params;
+    params.limit = -1;
+    params.theta = 0.5;
+    params.delta = 1.0;
+    params.kappa_min = 0.1;
+    params.kappa_step = 1e-17;
+    params.kappa_max = 1.0;
+    params.alpha = 2.0;
+    params.w = 60;
+    params.order =
+      baryonyx::solver_parameters::constraint_order::random_sorting;
+    baryonyx::context_set_solver_parameters(ctx, params);
 
     auto result = baryonyx::solve(ctx, pb);
 
@@ -479,13 +506,15 @@ test_aim_50_1_6_yes1_2()
       baryonyx::make_problem(ctx, EXAMPLES_DIR "/aim-50-1_6-yes1-2.lp");
     baryonyx::preprocess(ctx, pb);
 
-    context_set_parameter(ctx, "limit", -1);
-    context_set_parameter(ctx, "theta", 0.6);
-    context_set_parameter(ctx, "delta", 0.01);
-    context_set_parameter(ctx, "kappa-step", 2 * 10e-4);
-    context_set_parameter(ctx, "kappa-max", 100.0);
-    context_set_parameter(ctx, "alpha", 1.0);
-    context_set_parameter(ctx, "w", 20);
+    baryonyx::solver_parameters params;
+    params.limit = -1;
+    params.theta = 0.6;
+    params.delta = 0.01;
+    params.kappa_step = 2 * 10e-4;
+    params.kappa_max = 100.0;
+    params.alpha = 1.0;
+    params.w = 20;
+    baryonyx::context_set_solver_parameters(ctx, params);
 
     auto result = baryonyx::solve(ctx, pb);
 

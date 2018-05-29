@@ -20,7 +20,8 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include "automatic-optimize.hpp"
+#include <array>
+
 #include "private.hpp"
 #include "utils.hpp"
 
@@ -62,7 +63,8 @@ struct manual_course
 static baryonyx::result
 manual_optimize(const baryonyx::context_ptr& ctx, baryonyx::problem& pb)
 {
-    ctx->auto_tune = baryonyx::context::auto_tune_parameters::disabled;
+    ctx->parameters.auto_tune =
+      baryonyx::solver_parameters::auto_tune_parameters::disabled;
 
     manual_course array;
 
@@ -70,11 +72,11 @@ manual_optimize(const baryonyx::context_ptr& ctx, baryonyx::problem& pb)
     double best = +HUGE_VAL;
 
     do {
-        ctx->parameters["theta"] = array.theta[array.it[0]];
-        ctx->parameters["delta"] = array.delta[array.it[1]];
-        ctx->parameters["kappa-min"] = array.kappa_min[array.it[2]];
-        ctx->parameters["kappa-step"] = array.kappa_step[array.it[3]];
-        ctx->parameters["init-random"] = array.init_random[array.it[4]];
+        ctx->parameters.theta = array.theta[array.it[0]];
+        ctx->parameters.delta = array.delta[array.it[1]];
+        ctx->parameters.kappa_min = array.kappa_min[array.it[2]];
+        ctx->parameters.kappa_step = array.kappa_step[array.it[3]];
+        ctx->parameters.init_random = array.init_random[array.it[4]];
 
         auto ret = baryonyx::optimize(ctx, pb);
         if (ret) {
@@ -127,11 +129,11 @@ nlopt_optimize_fun(const std::vector<double>& x,
 {
     nlopt_data* data = reinterpret_cast<nlopt_data*>(data_orig);
 
-    data->ctx->parameters["theta"] = x[param_theta];
-    data->ctx->parameters["delta"] = x[param_delta];
-    data->ctx->parameters["kappa-min"] = x[param_kappa_min];
-    data->ctx->parameters["kappa-step"] = x[param_kappa_step];
-    data->ctx->parameters["init-random"] = x[param_init_random];
+    data->ctx->parameters.theta = x[param_theta];
+    data->ctx->parameters.delta = x[param_delta];
+    data->ctx->parameters.kappa_min = x[param_kappa_min];
+    data->ctx->parameters.kappa_step = x[param_kappa_step];
+    data->ctx->parameters.init_random = x[param_init_random];
 
     auto copy_pb(data->pb);
     auto ret = baryonyx::optimize(data->ctx, copy_pb);
@@ -144,7 +146,8 @@ nlopt_optimize_fun(const std::vector<double>& x,
 static baryonyx::result
 nlopt_optimize(const baryonyx::context_ptr& ctx, baryonyx::problem& pb)
 {
-    ctx->auto_tune = baryonyx::context::auto_tune_parameters::disabled;
+    ctx->parameters.auto_tune =
+      baryonyx::solver_parameters::auto_tune_parameters::disabled;
     nlopt_data data(ctx, pb);
 
     const std::vector<double> low{ 0, 1e-3, 0, 1e-5, 0 };
@@ -179,11 +182,11 @@ nlopt_optimize(const baryonyx::context_ptr& ctx, baryonyx::problem& pb)
           x[param_kappa_step],
           x[param_init_random]);
 
-        ctx->parameters["theta"] = x[param_theta];
-        ctx->parameters["delta"] = x[param_delta];
-        ctx->parameters["kappa-min"] = x[param_kappa_min];
-        ctx->parameters["kappa-step"] = x[param_kappa_step];
-        ctx->parameters["init-random"] = x[param_init_random];
+        ctx->parameters.theta = x[param_theta];
+        ctx->parameters.delta = x[param_delta];
+        ctx->parameters.kappa_min = x[param_kappa_min];
+        ctx->parameters.kappa_step = x[param_kappa_step];
+        ctx->parameters.init_random = x[param_init_random];
 
         return baryonyx::optimize(ctx, pb);
     } else {
@@ -197,20 +200,23 @@ nlopt_optimize(const baryonyx::context_ptr& ctx, baryonyx::problem& pb)
 #endif
 
 namespace baryonyx {
+namespace itm {
 
 result
-automatic_optimize(const baryonyx::context_ptr& ctx,
-                   baryonyx::problem& pb,
-                   int thread)
+automatic_optimizer(const baryonyx::context_ptr& ctx,
+                    baryonyx::problem& pb,
+                    int thread)
 {
     baryonyx::notice(ctx, "- Automatic optimization starts\n");
 
-    assert(ctx->auto_tune != context::auto_tune_parameters::disabled);
+    assert(ctx->parameters.auto_tune !=
+           solver_parameters::auto_tune_parameters::disabled);
 
     (void)thread;
 
 #ifdef BARYONYX_HAVE_NLOPT
-    if (ctx->auto_tune == context::auto_tune_parameters::manual)
+    if (ctx->parameters.auto_tune ==
+        solver_parameters::auto_tune_parameters::manual)
         return ::manual_optimize(ctx, pb);
     else
         return ::nlopt_optimize(ctx, pb);
@@ -223,5 +229,5 @@ automatic_optimize(const baryonyx::context_ptr& ctx,
     return ::manual_optimize(ctx, pb);
 #endif
 }
-
+} // namespace itm
 } // namespace baryonyx

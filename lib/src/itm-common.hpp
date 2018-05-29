@@ -25,8 +25,6 @@
 
 #include <baryonyx/core>
 
-#include "itm.hpp"
-
 #include <tuple>
 
 #include <cassert>
@@ -34,18 +32,18 @@
 namespace baryonyx {
 namespace itm {
 
-struct maximize_tag
-{};
-
-struct minimize_tag
-{};
-
 /**
  * x_type is a std::vector<bool> instead of a baryonyx::fixed_array<bool> to
  * use the specialized version of vector, which is used for elements of type
  * bool and optimizes for space.
  */
 using x_type = std::vector<bool>;
+
+struct maximize_tag
+{};
+
+struct minimize_tag
+{};
 
 inline double
 best_solution_value(const baryonyx::result& res) noexcept
@@ -72,45 +70,51 @@ is_better_solution(const baryonyx::result& lhs,
     return best_solution_value(lhs) < best_solution_value(rhs);
 }
 
-inline std::ostream&
-operator<<(std::ostream& os, const baryonyx::affected_variables& var)
+struct merged_constraint
 {
-    std::size_t i = 0, e = var.names.size();
-
-    assert(var.names.size() == var.values.size());
-
-    for (; i != e; ++i)
-        os << var.names[i] << ": " << (var.values[i] ? 1 : 0) << '\n';
-
-    return os;
-}
-
-struct best_solution_writer
-{
-    const baryonyx::result& res;
-
-    best_solution_writer(const baryonyx::result& res_)
-      : res(res_)
+    merged_constraint(std::vector<function_element> elements_,
+                      int min_,
+                      int max_,
+                      int id_)
+      : elements(std::move(elements_))
+      , min(min_)
+      , max(max_)
+      , id(id_)
     {}
+
+    std::vector<function_element> elements;
+    int min;
+    int max;
+    int id;
 };
 
-inline std::ostream&
-operator<<(std::ostream& os, const best_solution_writer& writer)
-{
-    assert(writer.res.status == baryonyx::result_status::success);
-    assert(not writer.res.solutions.empty());
-    assert(writer.res.variable_name.size() ==
-           writer.res.solutions.back().variables.size());
+std::vector<merged_constraint>
+make_merged_constraints(const context_ptr& ctx, const problem& pb);
 
-    std::size_t i = 0, e = writer.res.variable_name.size();
+baryonyx::result
+solve(const baryonyx::context_ptr& ctx, baryonyx::problem& pb);
 
-    for (; i != e; ++i)
-        os << writer.res.variable_name[i] << ": "
-           << (writer.res.solutions.back().variables[i] ? 1 : 0) << '\n';
+baryonyx::result
+optimize(const baryonyx::context_ptr& ctx, baryonyx::problem& pb, int thread);
 
-    return os;
-}
-}
-}
+/**
+ * @brief Auto-tune baryonyx solver parameters to optimize the problem.
+ *
+ * @details The @c nlopt library or a manual test is used to found the best
+ *     parameters @c baryonyx::optimize function for the specified problem.
+ *
+ * @param ctx A context.
+ * @param pb Problem definition.
+ * @param thread Number of thread available for running optimization.
+ * @return A representation of the result.
+ * @throw @c baryonyx::solver_error
+ */
+baryonyx::result
+automatic_optimizer(const baryonyx::context_ptr& ctx,
+                    baryonyx::problem& pb,
+                    int thread);
+
+} // namespace itm
+} // namespace baryonyx
 
 #endif

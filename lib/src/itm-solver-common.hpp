@@ -41,9 +41,7 @@
 #include <utility>
 #include <vector>
 
-#include "fixed_array.hpp"
 #include "itm-common.hpp"
-#include "itm.hpp"
 #include "observer.hpp"
 #include "private.hpp"
 #include "sparse-matrix.hpp"
@@ -229,7 +227,7 @@ compute_duration(const TimePoint& first, const TimePoint& last) noexcept
 
 inline std::size_t
 compute_reduced_costs_vector_size(
-  const std::vector<itm::merged_constraint>& csts) noexcept
+  const std::vector<merged_constraint>& csts) noexcept
 {
     std::size_t rsizemax = csts[0].elements.size();
 
@@ -254,10 +252,10 @@ compute_missing_constraint(const Solver& s, Container& c)
 }
 
 template<typename Solver, typename x_type>
-inline itm::init_policy_type
+inline solver_parameters::init_policy_type
 init_solver(Solver& slv,
             const x_type& best_previous,
-            itm::init_policy_type type,
+            solver_parameters::init_policy_type type,
             double init_random)
 {
     using floatingpointT = typename Solver::floatingpoint_type;
@@ -268,14 +266,15 @@ init_solver(Solver& slv,
     std::fill(
       slv.pi.get(), slv.pi.get() + slv.m, static_cast<floatingpointT>(0));
 
-    if (best_previous.empty() and type == itm::init_policy_type::best)
-        type = itm::init_policy_type::bastert;
+    if (best_previous.empty() and
+        type == solver_parameters::init_policy_type::best)
+        type = solver_parameters::init_policy_type::bastert;
 
     init_random = clamp(init_random, 0.0, 1.0);
     std::bernoulli_distribution d(init_random);
 
     switch (type) {
-    case itm::init_policy_type::bastert:
+    case solver_parameters::init_policy_type::bastert:
         if (init_random == 0.0 or init_random == 1.0) {
             bool value_if_cost_0 = init_random == 1.0;
 
@@ -288,19 +287,19 @@ init_solver(Solver& slv,
                   init_x(slv.c[i], d(slv.rng), typename Solver::mode_type());
         }
 
-        type = itm::init_policy_type::random;
+        type = solver_parameters::init_policy_type::random;
         break;
-    case itm::init_policy_type::random:
+    case solver_parameters::init_policy_type::random:
         for (int i = 0; i != slv.n; ++i)
             slv.x[i] = d(slv.rng);
 
-        type = itm::init_policy_type::best;
+        type = solver_parameters::init_policy_type::best;
         break;
-    case itm::init_policy_type::best:
+    case solver_parameters::init_policy_type::best:
         for (int i = 0; i != slv.n; ++i)
             slv.x[i] = (d(slv.rng)) ? (best_previous[i]) : (!best_previous[i]);
 
-        type = itm::init_policy_type::bastert;
+        type = solver_parameters::init_policy_type::bastert;
         break;
     }
 
@@ -822,7 +821,7 @@ compute_delta(const context_ptr& ctx,
 }
 
 inline int
-element_number(const std::vector<itm::merged_constraint>& csts)
+element_number(const std::vector<merged_constraint>& csts)
 {
     std::size_t ret{ 0 };
 
@@ -864,12 +863,11 @@ struct solver_functor
         m_best.variable_name = variable_names;
     }
 
-    result operator()(const std::vector<itm::merged_constraint>& constraints,
+    result operator()(const std::vector<merged_constraint>& constraints,
                       int variables,
                       const std::unique_ptr<floatingpointT[]>& original_costs,
                       const std::unique_ptr<floatingpointT[]>& norm_costs,
-                      double cost_constant,
-                      const itm::parameters& p)
+                      double cost_constant)
     {
         m_begin = std::chrono::steady_clock::now();
         m_end = m_begin;
@@ -877,7 +875,8 @@ struct solver_functor
         int i = 0;
         int pushed = -1;
         int best_remaining = -1;
-        int pushing_iteration = p.pushing_iteration_limit;
+        int pushing_iteration = m_ctx->parameters.pushing_iteration_limit;
+        const auto& p = m_ctx->parameters;
 
         const auto kappa_min = static_cast<floatingpoint_type>(p.kappa_min);
         const auto kappa_step = static_cast<floatingpoint_type>(p.kappa_step);
@@ -988,7 +987,8 @@ struct solver_functor
                                     static_cast<floatingpointT>(slv.m),
                                   alpha);
 
-            if (++i > p.limit) {
+            ++i;
+            if (p.limit > 0 and i > p.limit) {
                 info(m_ctx, "  - Loop limit reached: {}\n", i);
                 if (pushed == -1)
                     m_best.status = result_status::limit_reached;
@@ -1150,12 +1150,11 @@ struct optimize_functor
 
     result operator()(
       best_solution_recorder<floatingpointT, modeT>& best_recorder,
-      const std::vector<itm::merged_constraint>& constraints,
+      const std::vector<merged_constraint>& constraints,
       int variables,
       const std::unique_ptr<floatingpointT[]>& original_costs,
       const std::unique_ptr<floatingpointT[]>& norm_costs,
-      double cost_constant,
-      const itm::parameters& p)
+      double cost_constant)
     {
         m_begin = std::chrono::steady_clock::now();
         m_end = m_begin;
@@ -1163,8 +1162,9 @@ struct optimize_functor
         int i = 0;
         int pushed = -1;
         int pushing_iteration = 0;
+        const auto& p = m_ctx->parameters;
 
-        itm::init_policy_type init_policy = p.init_policy;
+        auto init_policy = p.init_policy;
         const auto kappa_min = static_cast<floatingpoint_type>(p.kappa_min);
         const auto kappa_step = static_cast<floatingpoint_type>(p.kappa_step);
         const auto kappa_max = static_cast<floatingpoint_type>(p.kappa_max);
@@ -1208,7 +1208,8 @@ struct optimize_functor
                                     static_cast<floatingpoint_type>(slv.m),
                                   alpha);
 
-            if (i >= p.limit or kappa > kappa_max or pushed > p.pushes_limit) {
+            if ((p.limit > 0 and i >= p.limit) or kappa > kappa_max or
+                pushed > p.pushes_limit) {
                 if (m_best.solutions.empty())
                     init_policy =
                       init_solver(slv, x_type(), init_policy, p.init_random);
@@ -1375,7 +1376,6 @@ rng_normalize_costs(const std::unique_ptr<floatingpointT[]>& c,
 template<typename floatingpointT, typename randomT>
 inline std::unique_ptr<floatingpointT[]>
 normalize_costs(const context_ptr& ctx,
-                const std::string& norm,
                 const std::unique_ptr<floatingpointT[]>& c,
                 randomT& rng,
                 int n)
@@ -1383,23 +1383,25 @@ normalize_costs(const context_ptr& ctx,
     auto ret = std::make_unique<floatingpointT[]>(n);
     std::copy(c.get(), c.get() + n, ret.get());
 
-    if (norm == "none") {
+    if (ctx->parameters.cost_norm == solver_parameters::cost_norm_type::none) {
         info(ctx, "  - No norm");
         return ret;
     }
 
-    if (norm == "rng") {
+    if (ctx->parameters.cost_norm ==
+        solver_parameters::cost_norm_type::random) {
         info(ctx, "  - Compute random norm\n");
         return rng_normalize_costs<floatingpointT, randomT>(c, rng, n);
     }
 
     floatingpointT div{ 0 };
 
-    if (norm == "l1") {
+    if (ctx->parameters.cost_norm == solver_parameters::cost_norm_type::l1) {
         info(ctx, "  - Compute l1 norm\n");
         for (int i = 0; i != n; ++i)
             div += std::abs(ret[i]);
-    } else if (norm == "l2") {
+    } else if (ctx->parameters.cost_norm ==
+               solver_parameters::cost_norm_type::l2) {
         info(ctx, "  - Compute l2 norm\n");
         for (int i = 0; i != n; ++i)
             div += ret[i] * ret[i];
@@ -1434,9 +1436,9 @@ typename randomT::result_type
 init_random_generator_seed(const context_ptr& ctx)
 {
     auto epoch = std::chrono::system_clock::now().time_since_epoch().count();
-    auto param = context_get_integer_parameter(ctx, "seed", -1);
+    auto param = ctx->parameters.seed;
 
-    if (param == -1)
+    if (param <= 0)
         return static_cast<typename randomT::result_type>(epoch);
 
     return static_cast<typename randomT::result_type>(param);
@@ -1448,30 +1450,29 @@ template<typename SolverT,
          typename constraintOrderT,
          typename randomT>
 inline result
-solve_problem(const context_ptr& ctx, problem& pb, const itm::parameters& p)
+solve_problem(const context_ptr& ctx, problem& pb)
 {
     info(ctx, "Solver initializing\n");
 
     result ret;
     auto affected_vars = std::move(pb.affected_vars);
 
-    auto constraints{ itm::make_merged_constraints(ctx, pb, p) };
+    auto constraints{ make_merged_constraints(ctx, pb) };
     if (not constraints.empty() and not pb.vars.values.empty()) {
-
         randomT rng(init_random_generator_seed<randomT>(ctx));
 
         auto variables = numeric_cast<int>(pb.vars.values.size());
         auto cost =
           make_objective_function<floatingpointT>(pb.objective, variables);
-        auto norm_costs = normalize_costs<floatingpointT, randomT>(
-          ctx, p.norm, cost, rng, variables);
+        auto norm_costs =
+          normalize_costs<floatingpointT, randomT>(ctx, cost, rng, variables);
         auto cost_constant = pb.objective.value;
         auto names = std::move(pb.vars.names);
 
         clear(pb);
 
-        switch (ctx->observer) {
-        case context::observer_type::pnm: {
+        switch (ctx->parameters.observer) {
+        case solver_parameters::observer_type::pnm: {
             using obs = pnm_observer<SolverT, floatingpointT>;
 
             solver_functor<SolverT,
@@ -1482,10 +1483,9 @@ solve_problem(const context_ptr& ctx, problem& pb, const itm::parameters& p)
                            obs>
               slv(ctx, rng, names, affected_vars);
 
-            ret =
-              slv(constraints, variables, cost, norm_costs, cost_constant, p);
+            ret = slv(constraints, variables, cost, norm_costs, cost_constant);
         } break;
-        case context::observer_type::file: {
+        case solver_parameters::observer_type::file: {
             using obs = file_observer<SolverT, floatingpointT>;
 
             solver_functor<SolverT,
@@ -1496,8 +1496,7 @@ solve_problem(const context_ptr& ctx, problem& pb, const itm::parameters& p)
                            obs>
               slv(ctx, rng, names, affected_vars);
 
-            ret =
-              slv(constraints, variables, cost, norm_costs, cost_constant, p);
+            ret = slv(constraints, variables, cost, norm_costs, cost_constant);
         } break;
         default: {
             using obs = none_observer<SolverT, floatingpointT>;
@@ -1510,8 +1509,7 @@ solve_problem(const context_ptr& ctx, problem& pb, const itm::parameters& p)
                            obs>
               slv(ctx, rng, names, affected_vars);
 
-            ret =
-              slv(constraints, variables, cost, norm_costs, cost_constant, p);
+            ret = slv(constraints, variables, cost, norm_costs, cost_constant);
             break;
         }
         }
@@ -1565,24 +1563,22 @@ template<typename SolverT,
          typename constraintOrderT,
          typename randomT>
 inline result
-optimize_problem(const context_ptr& ctx,
-                 problem& pb,
-                 const itm::parameters& p,
-                 int thread)
+optimize_problem(const context_ptr& ctx, problem& pb, int thread)
 {
+
     info(ctx, "Optimizer initializing\n");
     result ret;
     auto affected_vars = std::move(pb.affected_vars);
 
-    auto constraints{ itm::make_merged_constraints(ctx, pb, p) };
+    auto constraints{ make_merged_constraints(ctx, pb) };
     if (not constraints.empty() and not pb.vars.values.empty()) {
         randomT rng(init_random_generator_seed<randomT>(ctx));
 
         auto variables = numeric_cast<int>(pb.vars.values.size());
         auto cost =
           make_objective_function<floatingpointT>(pb.objective, variables);
-        auto norm_costs = normalize_costs<floatingpointT, randomT>(
-          ctx, p.norm, cost, rng, variables);
+        auto norm_costs =
+          normalize_costs<floatingpointT, randomT>(ctx, cost, rng, variables);
         auto cost_constant = pb.objective.value;
         auto names = std::move(pb.vars.names);
 
@@ -1615,8 +1611,7 @@ optimize_problem(const context_ptr& ctx,
                         variables,
                         std::ref(cost),
                         std::ref(norm_costs),
-                        cost_constant,
-                        std::ref(p)));
+                        cost_constant));
 
             results.emplace_back(task.get_future());
 
