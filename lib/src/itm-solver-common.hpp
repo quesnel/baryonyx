@@ -1565,7 +1565,6 @@ template<typename SolverT,
 inline result
 optimize_problem(const context_ptr& ctx, problem& pb, int thread)
 {
-
     info(ctx, "Optimizer initializing\n");
     result ret;
     auto affected_vars = std::move(pb.affected_vars);

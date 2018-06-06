@@ -36,7 +36,7 @@ struct manual_course
     std::array<double, 5> kappa_min = { { 0, 1e-2, 0.05, 0.1, 0.3 } };
     std::array<double, 5> kappa_step = { { 1e-7, 1e-5, 1e-3, 1e-2, 1e-1 } };
     std::array<double, 5> init_random = { { 0.0, 0.3, 0.5, 0.7, 1.0 } };
-    std::array<int, 5> it = { { 0, 0, 0, 0 } };
+    std::array<int, 5> it = { { 0, 0, 0, 0, 0 } };
 
     void reset()
     {
@@ -48,7 +48,7 @@ struct manual_course
         int size = static_cast<int>(it.size() - 1);
 
         for (int i = size; i >= 0; --i) {
-            if (it[i] + 1 > 5) {
+            if (it[i] + 1 > 4) {
                 it[i] = 0;
             } else {
                 ++it[i];
@@ -78,7 +78,8 @@ manual_optimize(const baryonyx::context_ptr& ctx, baryonyx::problem& pb)
         ctx->parameters.kappa_step = array.kappa_step[array.it[3]];
         ctx->parameters.init_random = array.init_random[array.it[4]];
 
-        auto ret = baryonyx::optimize(ctx, pb);
+        auto copy_pb = pb;
+        auto ret = baryonyx::optimize(ctx, copy_pb);
         if (ret) {
             if (best > ret.solutions.back().value) {
                 best = ret.solutions.back().value;
@@ -122,40 +123,66 @@ struct nlopt_data
     const baryonyx::problem pb;
 };
 
-double
+static double
 nlopt_optimize_fun(const std::vector<double>& x,
                    std::vector<double>& /*grad*/,
                    void* data_orig)
 {
-    nlopt_data* data = reinterpret_cast<nlopt_data*>(data_orig);
+    try {
+        nlopt_data* data = reinterpret_cast<nlopt_data*>(data_orig);
 
-    data->ctx->parameters.theta = x[param_theta];
-    data->ctx->parameters.delta = x[param_delta];
-    data->ctx->parameters.kappa_min = x[param_kappa_min];
-    data->ctx->parameters.kappa_step = x[param_kappa_step];
-    data->ctx->parameters.init_random = x[param_init_random];
+        data->ctx->parameters.theta = x[static_cast<int>(param_theta)];
+        data->ctx->parameters.delta = x[static_cast<int>(param_delta)];
+        data->ctx->parameters.kappa_min = x[static_cast<int>(param_kappa_min)];
+        data->ctx->parameters.kappa_step =
+          x[static_cast<int>(param_kappa_step)];
+        data->ctx->parameters.init_random =
+          x[static_cast<int>(param_init_random)];
 
-    auto copy_pb(data->pb);
-    auto ret = baryonyx::optimize(data->ctx, copy_pb);
-    if (not(ret))
-        return HUGE_VAL;
+        auto copy_pb(data->pb);
+        auto ret = baryonyx::optimize(data->ctx, copy_pb);
+        if (not(ret))
+            return HUGE_VAL;
 
-    return ret.solutions.back().value;
+        baryonyx::notice(data->ctx,
+                         "theta: {} delta: {} kappa_min: {} kappa_step: {} "
+                         "init_random: {}: {}",
+                         data->ctx->parameters.theta,
+                         data->ctx->parameters.delta,
+                         data->ctx->parameters.kappa_min,
+                         data->ctx->parameters.kappa_step,
+                         data->ctx->parameters.init_random,
+                         ret.solutions.back().value);
+        baryonyx::notice(data->ctx, "\n");
+
+        return ret.solutions.back().value;
+    } catch (const std::exception& e) {
+        fmt::print("Exception in nlopt_optimize_fun: {}\n", e.what());
+    }
+    return HUGE_VAL;
 }
 
 static baryonyx::result
 nlopt_optimize(const baryonyx::context_ptr& ctx, baryonyx::problem& pb)
 {
+    auto old_log_priority = ctx->log_priority;
+    ctx->log_priority = baryonyx::context::message_type::notice;
+
     ctx->parameters.auto_tune =
       baryonyx::solver_parameters::auto_tune_parameters::disabled;
     nlopt_data data(ctx, pb);
 
-    const std::vector<double> low{ 0, 1e-3, 0, 1e-5, 0 };
-    const std::vector<double> up{ 1, 0.5, 0.5, 0.1, 1 };
+    const std::vector<double> low{ 0, 0.001, 0.0, 1e-5, 0 };
+    const std::vector<double> up{ 1, 0.500, 0.5, 1e-1, 1 };
     std::vector<double> x(5);
 
+    std::transform(
+      low.begin(), low.end(), up.begin(), x.begin(), [](double l, double u) {
+          return (u + l) / 2.0;
+      });
+
     nlopt::opt opt(nlopt::LN_NELDERMEAD, 5);
-    opt.set_maxtime(600);
+    opt.set_maxtime(3600);
     opt.set_vector_storage(100);
     opt.set_lower_bounds(low);
     opt.set_upper_bounds(up);
@@ -170,17 +197,21 @@ nlopt_optimize(const baryonyx::context_ptr& ctx, baryonyx::problem& pb)
 
     double value;
     auto result = opt.optimize(x, value);
+
+    ctx->log_priority = old_log_priority;
+
     if (result >= 1 or result == -4) {
         baryonyx::notice(
           ctx,
           "  - nlopt optimization found solution {}: with theta:{} "
-          "delta:{} kappa-min:{} kappa-step:{} init-random:{}\n",
+          "delta:{} kappa-min:{} kappa-step:{} init-random:{}",
           value,
           x[param_theta],
           x[param_delta],
           x[param_kappa_min],
           x[param_kappa_step],
           x[param_init_random]);
+        baryonyx::notice(ctx, "\n");
 
         ctx->parameters.theta = x[param_theta];
         ctx->parameters.delta = x[param_delta];
@@ -202,7 +233,7 @@ nlopt_optimize(const baryonyx::context_ptr& ctx, baryonyx::problem& pb)
 namespace baryonyx {
 namespace itm {
 
-result
+baryonyx::result
 automatic_optimizer(const baryonyx::context_ptr& ctx,
                     baryonyx::problem& pb,
                     int thread)
@@ -210,13 +241,13 @@ automatic_optimizer(const baryonyx::context_ptr& ctx,
     baryonyx::notice(ctx, "- Automatic optimization starts\n");
 
     assert(ctx->parameters.auto_tune !=
-           solver_parameters::auto_tune_parameters::disabled);
+           baryonyx::solver_parameters::auto_tune_parameters::disabled);
 
     (void)thread;
 
 #ifdef BARYONYX_HAVE_NLOPT
     if (ctx->parameters.auto_tune ==
-        solver_parameters::auto_tune_parameters::manual)
+        baryonyx::solver_parameters::auto_tune_parameters::manual)
         return ::manual_optimize(ctx, pb);
     else
         return ::nlopt_optimize(ctx, pb);
