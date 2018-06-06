@@ -120,7 +120,7 @@ public:
     const_reference operator()(size_type row, size_type col) const;
     reference operator()(size_type row, size_type col);
 
-    void swap(fixed_2darray& c) noexcept(noexcept(swap(m_buffer, c.m_buffer)));
+    void swap(fixed_2darray& c) noexcept(noexcept(m_buffer.swap(c.m_buffer)));
 
 private:
     bool m_is_valid(size_type row, size_type col) const noexcept;
@@ -406,8 +406,7 @@ fixed_2darray<T>::operator()(size_type row, size_type column)
 
 template<typename T>
 void
-fixed_2darray<T>::swap(fixed_2darray& c) noexcept(noexcept(swap(m_buffer,
-                                                                c.m_buffer)))
+fixed_2darray<T>::swap(fixed_2darray& c) noexcept(noexcept(m_buffer.swap(c.m_buffer)))
 {
     std::swap(m_buffer, c.m_buffer);
     std::swap(m_columns, c.m_columns);
