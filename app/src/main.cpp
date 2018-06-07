@@ -397,6 +397,10 @@ assign_parameter(baryonyx::solver_parameters& params,
               baryonyx::solver_parameters::init_policy_type::best;
     } else if (is_equal(name, "init-random")) {
         params.init_random = assign_01(value, params.init_random);
+    } else if (is_equal(name, "thread")) {
+        params.thread = assign(value, 0, std::numeric_limits<int>::max(), 0);
+    } else if (is_equal(name, "seed")) {
+        params.seed = assign(value, 0, std::numeric_limits<int>::max(), 0);
     } else
         fmt::print(
           stderr, "Unknown parameters {} = {}, ignoring.\n", name, value);
