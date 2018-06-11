@@ -382,8 +382,8 @@ check_observer_pnm()
                            obs.begin(),
                            baryonyx::colormap<double>(-5.0, 5.0));
 
-            for (auto it = obs.begin(); it != obs.end(); ++it)
-                fmt::print("{}/{}/{} ", it->red(), it->green(), it->blue());
+            for (auto ob : obs)
+                fmt::print("{}/{}/{} ", ob.red(), ob.green(), ob.blue());
 
             obs("test.pnm");
         }

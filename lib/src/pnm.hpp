@@ -83,12 +83,10 @@ class pnm_iterator;
 class pnm_iterator_entry
 {
 private:
-    std::uint8_t* m_colors;
+    std::uint8_t* m_colors{ nullptr };
 
 public:
-    pnm_iterator_entry()
-      : m_colors(nullptr)
-    {}
+    pnm_iterator_entry() = default;
 
     pnm_iterator_entry(std::uint8_t* pointer)
       : m_colors(pointer)
@@ -156,9 +154,7 @@ public:
       : m_entry(ptr)
     {}
 
-    pnm_iterator(const pnm_iterator& other)
-      : m_entry(other.m_entry)
-    {}
+    pnm_iterator(const pnm_iterator& other) = default;
 
     pnm_iterator operator++(int)
     {

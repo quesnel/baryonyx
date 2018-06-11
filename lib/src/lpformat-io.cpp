@@ -295,7 +295,7 @@ struct parser_stack
 
     void push_front(std::string str)
     {
-        int length = static_cast<int>(str.length());
+        auto length = static_cast<int>(str.length());
         m_position_stack.emplace_front(m_line, m_column + (m_column - length));
 
         stack.push_front(std::move(str));

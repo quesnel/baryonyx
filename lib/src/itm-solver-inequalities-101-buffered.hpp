@@ -210,7 +210,7 @@ struct solver_inequalities_101coeff_buffered
     {
         assert(is_valid_solution());
 
-        double value = static_cast<double>(cost_constant);
+        auto value = static_cast<double>(cost_constant);
 
         for (int i{ 0 }, ei{ n }; i != ei; ++i)
             value += static_cast<double>(original_costs[i] * x[i]);

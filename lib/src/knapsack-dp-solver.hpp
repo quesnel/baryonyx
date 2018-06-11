@@ -103,7 +103,7 @@ struct knapsack_dp_solver
     int solve(R& reduced_cost, int r_size)
     {
         const std::size_t n = items.size();
-        const std::size_t W = static_cast<size_t>(capacity);
+        const auto W = static_cast<size_t>(capacity);
         std::vector<int> variables;
 
         {

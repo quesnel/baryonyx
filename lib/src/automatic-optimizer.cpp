@@ -27,6 +27,7 @@
 
 #ifdef BARYONYX_HAVE_NLOPT
 #include <nlopt.hpp>
+#include <utility>
 #endif
 
 struct manual_course
@@ -45,7 +46,7 @@ struct manual_course
 
     bool next()
     {
-        int size = static_cast<int>(it.size() - 1);
+        auto size = static_cast<int>(it.size() - 1);
 
         for (int i = size; i >= 0; --i) {
             if (it[i] + 1 > 4) {
@@ -106,7 +107,7 @@ manual_optimize(const baryonyx::context_ptr& ctx, baryonyx::problem& pb)
 enum param
 {
     param_theta = 0,
-    param_delta,
+    // param_delta,
     param_kappa_min,
     param_kappa_step,
     param_init_random
@@ -114,9 +115,9 @@ enum param
 
 struct nlopt_data
 {
-    nlopt_data(const baryonyx::context_ptr& ctx_, const baryonyx::problem& pb_)
+    nlopt_data(const baryonyx::context_ptr& ctx_, baryonyx::problem  pb_)
       : ctx(ctx_)
-      , pb(pb_)
+      , pb(std::move(pb_))
     {}
 
     const baryonyx::context_ptr& ctx;
@@ -129,10 +130,10 @@ nlopt_optimize_fun(const std::vector<double>& x,
                    void* data_orig)
 {
     try {
-        nlopt_data* data = reinterpret_cast<nlopt_data*>(data_orig);
+        auto* data = reinterpret_cast<nlopt_data*>(data_orig);
 
         data->ctx->parameters.theta = x[static_cast<int>(param_theta)];
-        data->ctx->parameters.delta = x[static_cast<int>(param_delta)];
+        // data->ctx->parameters.delta = x[static_cast<int>(param_delta)];
         data->ctx->parameters.kappa_min = x[static_cast<int>(param_kappa_min)];
         data->ctx->parameters.kappa_step =
           x[static_cast<int>(param_kappa_step)];
@@ -144,16 +145,24 @@ nlopt_optimize_fun(const std::vector<double>& x,
         if (not(ret))
             return HUGE_VAL;
 
+        // baryonyx::notice(data->ctx,
+        //                  "theta: {} delta: {} kappa_min: {} kappa_step: {} "
+        //                  "init_random: {}: {}\n",
+        //                  data->ctx->parameters.theta,
+        //                  data->ctx->parameters.delta,
+        //                  data->ctx->parameters.kappa_min,
+        //                  data->ctx->parameters.kappa_step,
+        //                  data->ctx->parameters.init_random,
+        //                  ret.solutions.back().value);
+
         baryonyx::notice(data->ctx,
-                         "theta: {} delta: {} kappa_min: {} kappa_step: {} "
-                         "init_random: {}: {}",
+                         "theta: {} kappa_min: {} kappa_step: {} "
+                         "init_random: {}: {}\n",
                          data->ctx->parameters.theta,
-                         data->ctx->parameters.delta,
                          data->ctx->parameters.kappa_min,
                          data->ctx->parameters.kappa_step,
                          data->ctx->parameters.init_random,
                          ret.solutions.back().value);
-        baryonyx::notice(data->ctx, "\n");
 
         return ret.solutions.back().value;
     } catch (const std::exception& e) {
@@ -172,16 +181,11 @@ nlopt_optimize(const baryonyx::context_ptr& ctx, baryonyx::problem& pb)
       baryonyx::solver_parameters::auto_tune_parameters::disabled;
     nlopt_data data(ctx, pb);
 
-    const std::vector<double> low{ 0, 0.001, 0.0, 1e-5, 0 };
-    const std::vector<double> up{ 1, 0.500, 0.5, 1e-1, 1 };
-    std::vector<double> x(5);
+    const std::vector<double> low{ 0, 0.0, 1e-7, 0 };
+    const std::vector<double> up{ 1, 0.5, 0.01, 1 };
+    std::vector<double> x{ 0.5, 0, 0.001, 0.5 };
 
-    std::transform(
-      low.begin(), low.end(), up.begin(), x.begin(), [](double l, double u) {
-          return (u + l) / 2.0;
-      });
-
-    nlopt::opt opt(nlopt::LN_NELDERMEAD, 5);
+    nlopt::opt opt(nlopt::LN_NELDERMEAD, 4);
     opt.set_maxtime(3600);
     opt.set_vector_storage(100);
     opt.set_lower_bounds(low);
@@ -203,18 +207,17 @@ nlopt_optimize(const baryonyx::context_ptr& ctx, baryonyx::problem& pb)
     if (result >= 1 or result == -4) {
         baryonyx::notice(
           ctx,
-          "  - nlopt optimization found solution {}: with theta:{} "
-          "delta:{} kappa-min:{} kappa-step:{} init-random:{}",
+          "  - nlopt optimization found solution {}: with theta:xxx "
+          "delta:{} kappa-min:{} kappa-step:{} init-random:{}\n",
           value,
           x[param_theta],
-          x[param_delta],
+          // x[param_delta],
           x[param_kappa_min],
           x[param_kappa_step],
           x[param_init_random]);
-        baryonyx::notice(ctx, "\n");
 
         ctx->parameters.theta = x[param_theta];
-        ctx->parameters.delta = x[param_delta];
+        // ctx->parameters.delta = x[param_delta];
         ctx->parameters.kappa_min = x[param_kappa_min];
         ctx->parameters.kappa_step = x[param_kappa_step];
         ctx->parameters.init_random = x[param_init_random];

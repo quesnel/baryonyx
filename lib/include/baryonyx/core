@@ -473,11 +473,7 @@ enum class operator_type
 
 struct variable_value
 {
-    variable_value()
-      : min(0)
-      , max(std::numeric_limits<int>::max())
-      , type(variable_type::real)
-    {}
+    variable_value() = default;
 
     variable_value(int min_, int max_, variable_type type_)
       : min(min_)
@@ -485,9 +481,9 @@ struct variable_value
       , type(type_)
     {}
 
-    int min;
-    int max;
-    variable_type type;
+    int min{ 0 };
+    int max{ std::numeric_limits<int>::max() };
+    variable_type type{ variable_type::real };
 };
 
 struct variables
@@ -612,8 +608,8 @@ struct solution
 {
     solution() = default;
 
-    solution(const std::vector<bool>& variables_, double value_)
-      : variables(variables_)
+    solution(std::vector<bool> variables_, double value_)
+      : variables(std::move(variables_))
       , value(value_)
     {}
 
@@ -636,11 +632,9 @@ struct result
     index constraints = 0;
     index remaining_constraints = std::numeric_limits<index>::max();
 
-    result_status status;
+    result_status status{ result_status::uninitialized };
 
-    result()
-      : status(result_status::uninitialized)
-    {}
+    result() = default;
 
     result(result_status status_)
       : status(status_)

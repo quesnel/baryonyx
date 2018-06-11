@@ -29,6 +29,7 @@
 #include <algorithm>
 #include <fstream>
 #include <memory>
+#include <utility>
 
 namespace baryonyx {
 
@@ -78,12 +79,12 @@ private:
 
 public:
     ap_pnm_observer(std::string basename,
-                    const sparse_matrix<int>& ap,
+                    sparse_matrix<int>  ap,
                     const std::unique_ptr<floatingpointT[]>& P,
                     int m,
                     int n)
-      : m_basename(basename)
-      , m_ap(ap)
+      : m_basename(std::move(basename))
+      , m_ap(std::move(ap))
       , m_P(P)
       , m_m(m)
       , m_n(n)
@@ -170,12 +171,12 @@ private:
 
 public:
     ap_file_observer(std::string basename,
-                     const sparse_matrix<int>& ap,
+                     sparse_matrix<int>  ap,
                      const std::unique_ptr<floatingpointT[]>& P,
                      int m,
                      int n)
-      : m_basename(basename)
-      , m_ap(ap)
+      : m_basename(std::move(basename))
+      , m_ap(std::move(ap))
       , m_P(P)
       , m_m(m)
       , m_n(n)

@@ -26,6 +26,7 @@
 #include <baryonyx/core>
 
 #include <unordered_map>
+#include <utility>
 
 #include <fmt/format.h>
 
@@ -41,14 +42,14 @@ struct context
 {
     enum class message_type
     {
-        emerg,   ///< system is unusable
-        alert,   ///< action must be taken immediately
-        crit,    ///< critical conditions
-        err,     ///< error conditions
-        warning, ///< warning conditions
-        notice,  ///< normal, but significant, condition
-        info,    ///< informational message
-        debug,   ///< debug-level message
+        emerg = 0, ///< system is unusable
+        alert,     ///< action must be taken immediately
+        crit,      ///< critical conditions
+        err,       ///< error conditions
+        warning,   ///< warning conditions
+        notice,    ///< normal, but significant, condition
+        info,      ///< informational message
+        debug,     ///< debug-level message
     };
 
     enum class logger_type
@@ -59,8 +60,6 @@ struct context
 
     context(int verbose_level = 6)
       : cfile_logger(stdout)
-      , log_priority(context::message_type::info)
-      , logger(context::logger_type::c_file)
     {
         if (verbose_level != 6)
             log_priority = static_cast<context::message_type>(
@@ -74,8 +73,6 @@ struct context
 
     context(FILE* f, int verbose_level = 6)
       : cfile_logger(f ? f : stdout)
-      , log_priority(context::message_type::info)
-      , logger(context::logger_type::c_file)
     {
         if (verbose_level != 6)
             log_priority = static_cast<context::message_type>(
@@ -88,9 +85,8 @@ struct context
     }
 
     context(string_logger_functor logger, int verbose_level = 6)
-      : string_logger(logger)
+      : string_logger(std::move(logger))
       , cfile_logger(nullptr)
-      , log_priority(context::message_type::info)
       , logger(context::logger_type::string)
     {
         if (verbose_level != 6)

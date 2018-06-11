@@ -119,7 +119,6 @@ struct log_color
             break;
         case context::message_type::alert:
             fmt::print(f, color_to_str(colors::Red));
-            fmt::print(f, setter_to_str(setters::Reset));
 #ifdef __unix__
             fmt::print(f, error_symbol);
 #endif
@@ -133,7 +132,6 @@ struct log_color
             break;
         case context::message_type::err:
             fmt::print(f, color_to_str(colors::Magenta));
-            fmt::print(f, setter_to_str(setters::Reset));
 #ifdef __unix__
             fmt::print(f, error_symbol);
 #endif
@@ -147,23 +145,20 @@ struct log_color
             break;
         case context::message_type::notice:
             fmt::print(f, color_to_str(colors::Yellow));
-            fmt::print(f, setter_to_str(setters::Underlined));
 #ifdef __unix__
             fmt::print(f, notice_symbol);
 #endif
             break;
         case context::message_type::info:
             fmt::print(f, color_to_str(colors::Default));
-            fmt::print(f, setter_to_str(setters::Reset));
             break;
         case context::message_type::debug:
             fmt::print(f, color_to_str(colors::Dark_gray));
-            fmt::print(f, setter_to_str(setters::Reset));
             break;
         }
     }
 
-    ~log_color()
+    ~log_color() noexcept
     {
         try {
             fmt::print(f, color_to_str(colors::Default));
