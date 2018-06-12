@@ -255,7 +255,8 @@ automatic_optimizer(const baryonyx::context_ptr& ctx,
     else
         return ::nlopt_optimize(ctx, pb);
 #else
-    if (ctx->parameters.auto_tune == context::auto_tune_parameters::nlop)
+    if (ctx->parameters.auto_tune ==
+        baryonyx::solver_parameters::auto_tune_parameters::nlopt)
         baryonyx::error(ctx,
                         "Baryonyx does not have nlopt. "
                         "Toggle to manual parameters optimization.\n");
