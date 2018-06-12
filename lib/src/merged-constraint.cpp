@@ -23,6 +23,7 @@
 #include <baryonyx/core-compare>
 
 #include "itm-common.hpp"
+#include "memory.hpp"
 #include "utils.hpp"
 
 #include <set>
@@ -385,8 +386,10 @@ make_merged_constraints(const context_ptr& ctx, const problem& pb)
     }
 
     info(ctx,
-         "  - merged constraints removed: {}\n",
-         original_nb - static_cast<int>(ret.size()));
+         "  - merged constraints removed: {}\n"
+         "  - problem memory used: {}\n",
+         original_nb - static_cast<int>(ret.size()),
+         to_string(memory_consumed_size(memory_consumed(pb))));
 
     return ret;
 }

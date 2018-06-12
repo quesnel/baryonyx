@@ -23,6 +23,7 @@
 #include <baryonyx/core-compare>
 #include <baryonyx/core>
 
+#include "memory.hpp"
 #include "private.hpp"
 #include "utils.hpp"
 
@@ -850,7 +851,9 @@ namespace baryonyx {
 void
 preprocess(const baryonyx::context_ptr& ctx, baryonyx::problem& pb)
 {
-    info(ctx, "Preprocessing:\n");
+    info(ctx,
+         "Preprocessing starts (size: {}:\n",
+         to_string(memory_consumed_size(memory_consumed(pb))));
 
     {
         info(ctx,
@@ -935,6 +938,10 @@ preprocess(const baryonyx::context_ptr& ctx, baryonyx::problem& pb)
             }
         }
     }
+
+    info(ctx,
+         "Preprocessing finished (size: {}:\n",
+         to_string(memory_consumed_size(memory_consumed(pb))));
 
 #ifndef BARYONYX_FULL_OPTIMIZATION
     {

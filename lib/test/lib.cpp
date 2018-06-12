@@ -24,6 +24,7 @@
 #include "fixed-2darray.hpp"
 #include "fixed-array.hpp"
 #include "knapsack-dp-solver.hpp"
+#include "memory.hpp"
 #include "pnm.hpp"
 #include "unit-test.hpp"
 
@@ -412,6 +413,34 @@ check_observer_pnm()
     }
 }
 
+void
+check_show_size()
+{
+    double size;
+    baryonyx::show_size_type type;
+
+    std::tie(size, type) = baryonyx::memory_consumed_size(0);
+    Ensures(size == 0 and type == baryonyx::show_size_type::B);
+
+    std::tie(size, type) = baryonyx::memory_consumed_size(1024);
+    Ensures(size == 1 and type == baryonyx::show_size_type::KB);
+
+    std::tie(size, type) = baryonyx::memory_consumed_size(2048);
+    Ensures(size == 2 and type == baryonyx::show_size_type::KB);
+
+    std::tie(size, type) = baryonyx::memory_consumed_size(2048);
+    Ensures(size == 2 and type == baryonyx::show_size_type::KB);
+
+    std::tie(size, type) = baryonyx::memory_consumed_size(1049088);
+    Ensures(size > 1 and size < 2 and type == baryonyx::show_size_type::MB);
+
+    std::tie(size, type) = baryonyx::memory_consumed_size(1049088);
+    Ensures(size > 1 and size < 2 and type == baryonyx::show_size_type::MB);
+
+    std::tie(size, type) = baryonyx::memory_consumed_size(17179869696);
+    Ensures(size > 16 and size < 17 and type == baryonyx::show_size_type::GB);
+}
+
 int
 main(int /* argc */, char* /* argv */ [])
 {
@@ -422,6 +451,7 @@ main(int /* argc */, char* /* argv */ [])
     check_knapsack_solver();
     check_branch_and_bound_solver();
     check_observer_pnm();
+    check_show_size();
 
     return unit_test::report_errors();
 }
