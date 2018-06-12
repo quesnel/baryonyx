@@ -235,7 +235,7 @@ make_special_merged_constraints(const baryonyx::context_ptr& ctx,
 
     info(ctx,
          "  - merge constraint according to the `{}` algorithm\n",
-         ctx->parameters.pre_order);
+         baryonyx::to_string(ctx->parameters.pre_order));
 
     auto ret = make_unsorted_merged_constraints(ctx, pb);
 
