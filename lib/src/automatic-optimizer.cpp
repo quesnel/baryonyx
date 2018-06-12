@@ -115,7 +115,7 @@ enum param
 
 struct nlopt_data
 {
-    nlopt_data(const baryonyx::context_ptr& ctx_, baryonyx::problem  pb_)
+    nlopt_data(const baryonyx::context_ptr& ctx_, baryonyx::problem pb_)
       : ctx(ctx_)
       , pb(std::move(pb_))
     {}
@@ -255,7 +255,7 @@ automatic_optimizer(const baryonyx::context_ptr& ctx,
     else
         return ::nlopt_optimize(ctx, pb);
 #else
-    if (ctx->auto_tune == context::auto_tune_parameters::nlop)
+    if (ctx->parameters.auto_tune == context::auto_tune_parameters::nlop)
         baryonyx::error(ctx,
                         "Baryonyx does not have nlopt. "
                         "Toggle to manual parameters optimization.\n");
