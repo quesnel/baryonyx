@@ -23,6 +23,7 @@
 #ifndef ORG_VLEPROJECT_BARYONYX_PNM_HPP
 #define ORG_VLEPROJECT_BARYONYX_PNM_HPP
 
+#include <array>
 #include <fstream>
 #include <memory>
 
