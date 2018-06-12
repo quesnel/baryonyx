@@ -263,6 +263,55 @@ numeric_cast(Source s)
     return static_cast<Target>(s);
 }
 
+/**
+ * @brief A class to compute time spent during object life.
+ *
+ * @code
+ * {
+ *    ...
+ *    timer t([](double t){std::cout << t << "s."; });
+ *    ...
+ * } // Show time spend since timer object instantiation.
+ * @endcode
+ */
+class timer
+{
+private:
+    std::chrono::time_point<std::chrono::steady_clock> m_start;
+    std::function<void(double)> m_fct;
+
+public:
+    /**
+     * @brief Build timer with output function.
+     *
+     * @param fct Output function called in destructor.
+     */
+    template<typename Function>
+    timer(Function fct)
+      : m_start(std::chrono::steady_clock::now())
+      , m_fct(fct)
+    {}
+
+    double time_elapsed() const
+    {
+        namespace sc = std::chrono;
+
+        auto diff = std::chrono::steady_clock::now() - m_start;
+        auto dc = sc::duration_cast<sc::duration<double, std::ratio<1>>>(diff);
+
+        return dc.count();
+    }
+
+    ~timer() noexcept
+    {
+        try {
+            if (m_fct)
+                m_fct(time_elapsed());
+        } catch (...) {
+        }
+    }
+};
+
 } // namespace baryonyx
 
 #endif
