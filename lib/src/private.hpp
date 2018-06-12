@@ -624,10 +624,11 @@ bool
 check_consistency(const baryonyx::problem& pb);
 
 baryonyx::result
-solver_select(const baryonyx::context_ptr& ctx, baryonyx::problem& pb);
+solver_select(const baryonyx::context_ptr& ctx, const baryonyx::problem& pb);
 
 baryonyx::result
-optimizer_select(const baryonyx::context_ptr& ctx, baryonyx::problem& pb);
+optimizer_select(const baryonyx::context_ptr& ctx,
+                 const baryonyx::problem& pb);
 
 } // namespace baryonyx
 

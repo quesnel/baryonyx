@@ -554,7 +554,6 @@ struct problem
     affected_variables affected_vars;
 
     objective_function_type type = { objective_function_type::maximize };
-
     problem_solver_type problem_type = { problem_solver_type::equalities_01 };
 };
 
@@ -569,29 +568,6 @@ size(const baryonyx::problem& pb) noexcept
 {
     return pb.equal_constraints.size() + pb.greater_constraints.size() +
            pb.less_constraints.size();
-}
-
-/**
- * @details Recover all memory allocated for all container of the @c
- *     baryonyx::problem. After this function, the @c baryonyx::problem is
- *     completely empty of data and can be reuse.
- *
- * @param pb The problem to clear.
- */
-inline void
-clear(baryonyx::problem& pb) noexcept
-{
-    std::vector<objective_function_element>().swap(pb.objective.elements);
-
-    std::vector<constraint>().swap(pb.equal_constraints);
-    std::vector<constraint>().swap(pb.greater_constraints);
-    std::vector<constraint>().swap(pb.less_constraints);
-
-    std::vector<std::string>().swap(pb.vars.names);
-    std::vector<variable_value>().swap(pb.vars.values);
-
-    std::vector<std::string>().swap(pb.affected_vars.names);
-    std::vector<bool>().swap(pb.affected_vars.values);
 }
 
 enum class result_status
@@ -710,8 +686,8 @@ operator<<(std::ostream& os, const problem& p);
  * @exception baryonyx::precondition_failure
  */
 BARYONYX_API
-void
-preprocess(const baryonyx::context_ptr& ctx, problem& pb);
+problem
+preprocess(const baryonyx::context_ptr& ctx, const problem& pb);
 
 /**
  * @details Try to solve or find a feasible solution for the @c
@@ -722,8 +698,9 @@ preprocess(const baryonyx::context_ptr& ctx, problem& pb);
  * @exception baryonyx::solver_error
  * @exception baryonyx::problem_definition
  */
-BARYONYX_API result
-solve(const baryonyx::context_ptr& ctx, problem& pb);
+BARYONYX_API
+result
+solve(const baryonyx::context_ptr& ctx, const problem& pb);
 
 /**
  * @details Try to optimize the @c baryonyx::problem with a set of
@@ -737,7 +714,7 @@ solve(const baryonyx::context_ptr& ctx, problem& pb);
  */
 BARYONYX_API
 result
-optimize(const baryonyx::context_ptr& ctx, problem& pb);
+optimize(const baryonyx::context_ptr& ctx, const problem& pb);
 
 BARYONYX_API
 bool

@@ -848,9 +848,16 @@ get_coefficient_type(const baryonyx::problem& pb) noexcept
 
 namespace baryonyx {
 
-void
-preprocess(const baryonyx::context_ptr& ctx, baryonyx::problem& pb)
+baryonyx::problem
+preprocess(const baryonyx::context_ptr& ctx, const baryonyx::problem& pb_)
 {
+    //
+    // TODO To removed API breaks with const problem. Now, write a second
+    // preprocess function to quicky preprocess.
+    //
+
+    auto pb(pb_);
+
     info(ctx,
          "Preprocessing starts (size: {}:\n",
          to_string(memory_consumed_size(memory_consumed(pb))));
@@ -957,5 +964,7 @@ preprocess(const baryonyx::context_ptr& ctx, baryonyx::problem& pb)
         }
     }
 #endif
+
+    return pb;
 }
 }

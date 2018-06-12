@@ -171,7 +171,7 @@ operator<<(std::ostream& os, const problem& p)
 }
 
 result
-solve(const baryonyx::context_ptr& ctx, problem& pb)
+solve(const baryonyx::context_ptr& ctx, const problem& pb)
 {
     check_consistency(pb);
 
@@ -179,7 +179,7 @@ solve(const baryonyx::context_ptr& ctx, problem& pb)
 }
 
 result
-optimize(const baryonyx::context_ptr& ctx, problem& pb)
+optimize(const baryonyx::context_ptr& ctx, const problem& pb)
 {
     check_consistency(pb);
 

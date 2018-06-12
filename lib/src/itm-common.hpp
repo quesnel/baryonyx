@@ -92,10 +92,12 @@ std::vector<merged_constraint>
 make_merged_constraints(const context_ptr& ctx, const problem& pb);
 
 baryonyx::result
-solve(const baryonyx::context_ptr& ctx, baryonyx::problem& pb);
+solve(const baryonyx::context_ptr& ctx, const baryonyx::problem& pb);
 
 baryonyx::result
-optimize(const baryonyx::context_ptr& ctx, baryonyx::problem& pb, int thread);
+optimize(const baryonyx::context_ptr& ctx,
+         const baryonyx::problem& pb,
+         int thread);
 
 /**
  * @brief Auto-tune baryonyx solver parameters to optimize the problem.
@@ -111,7 +113,7 @@ optimize(const baryonyx::context_ptr& ctx, baryonyx::problem& pb, int thread);
  */
 baryonyx::result
 automatic_optimizer(const baryonyx::context_ptr& ctx,
-                    baryonyx::problem& pb,
+                    const baryonyx::problem& pb,
                     int thread);
 
 } // namespace itm

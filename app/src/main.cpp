@@ -530,7 +530,7 @@ main(int argc, const char* argv[])
             }
 
             if (params.preprocessing)
-                baryonyx::preprocess(ctx, pb);
+                pb = baryonyx::preprocess(ctx, pb);
             fmt::print("{}", baryonyx::resume(pb, false));
 
             std::ofstream ofs(filename);
@@ -614,7 +614,7 @@ main(int argc, const char* argv[])
                 auto pb = baryonyx::make_problem(ctx, elem);
 
                 if (params.preprocessing)
-                    baryonyx::preprocess(ctx, pb);
+                    pb = baryonyx::preprocess(ctx, pb);
 
                 fmt::print("{}", baryonyx::resume(pb, false));
                 ofs << elem << " ";

@@ -1450,7 +1450,7 @@ template<typename SolverT,
          typename constraintOrderT,
          typename randomT>
 inline result
-solve_problem(const context_ptr& ctx, problem& pb)
+solve_problem(const context_ptr& ctx, const problem& pb)
 {
     info(ctx, "Solver initializing\n");
 
@@ -1468,8 +1468,6 @@ solve_problem(const context_ptr& ctx, problem& pb)
           normalize_costs<floatingpointT, randomT>(ctx, cost, rng, variables);
         auto cost_constant = pb.objective.value;
         auto names = std::move(pb.vars.names);
-
-        clear(pb);
 
         switch (ctx->parameters.observer) {
         case solver_parameters::observer_type::pnm: {
@@ -1563,7 +1561,7 @@ template<typename SolverT,
          typename constraintOrderT,
          typename randomT>
 inline result
-optimize_problem(const context_ptr& ctx, problem& pb, int thread)
+optimize_problem(const context_ptr& ctx, const problem& pb, int thread)
 {
     info(ctx, "Optimizer initializing\n");
     result ret;
@@ -1580,8 +1578,6 @@ optimize_problem(const context_ptr& ctx, problem& pb, int thread)
           normalize_costs<floatingpointT, randomT>(ctx, cost, rng, variables);
         auto cost_constant = pb.objective.value;
         auto names = std::move(pb.vars.names);
-
-        clear(pb);
 
         std::vector<std::thread> pool(thread);
         pool.clear();

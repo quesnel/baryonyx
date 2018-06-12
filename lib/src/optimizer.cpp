@@ -44,7 +44,7 @@ template<typename floatingpointT,
          typename constraintOrderT,
          typename randomT>
 inline result
-dispatch_optimizer(const context_ptr& ctx, problem& pb, int thread)
+dispatch_optimizer(const context_ptr& ctx, const problem& pb, int thread)
 {
     if (ctx->method == "buffered") {
         baryonyx::warning(ctx, "buffered method is experimental\n");
@@ -111,7 +111,9 @@ dispatch_optimizer(const context_ptr& ctx, problem& pb, int thread)
 
 template<typename realT, typename modeT, typename randomT>
 inline result
-dispatch_optimizer_parameters(const context_ptr& ctx, problem& pb, int thread)
+dispatch_optimizer_parameters(const context_ptr& ctx,
+                              const problem& pb,
+                              int thread)
 {
     switch (ctx->parameters.order) {
     case solver_parameters::constraint_order::none:
@@ -147,7 +149,7 @@ dispatch_optimizer_parameters(const context_ptr& ctx, problem& pb, int thread)
 }
 
 result
-optimize(const baryonyx::context_ptr& ctx, problem& pb, int thread)
+optimize(const baryonyx::context_ptr& ctx, const problem& pb, int thread)
 {
     info(ctx, "Optimize mode\n");
     baryonyx::print(ctx);

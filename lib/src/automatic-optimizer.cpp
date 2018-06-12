@@ -62,7 +62,7 @@ struct manual_course
 };
 
 static baryonyx::result
-manual_optimize(const baryonyx::context_ptr& ctx, baryonyx::problem& pb)
+manual_optimize(const baryonyx::context_ptr& ctx, const baryonyx::problem& pb)
 {
     ctx->parameters.auto_tune =
       baryonyx::solver_parameters::auto_tune_parameters::disabled;
@@ -172,7 +172,7 @@ nlopt_optimize_fun(const std::vector<double>& x,
 }
 
 static baryonyx::result
-nlopt_optimize(const baryonyx::context_ptr& ctx, baryonyx::problem& pb)
+nlopt_optimize(const baryonyx::context_ptr& ctx, const baryonyx::problem& pb)
 {
     auto old_log_priority = ctx->log_priority;
     ctx->log_priority = baryonyx::context::message_type::notice;
@@ -238,7 +238,7 @@ namespace itm {
 
 baryonyx::result
 automatic_optimizer(const baryonyx::context_ptr& ctx,
-                    baryonyx::problem& pb,
+                    const baryonyx::problem& pb,
                     int thread)
 {
     baryonyx::notice(ctx, "- Automatic optimization starts\n");

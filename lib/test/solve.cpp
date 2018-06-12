@@ -60,7 +60,7 @@ test_preprocessor()
         params.cost_norm = baryonyx::solver_parameters::cost_norm_type::loo;
         baryonyx::context_set_solver_parameters(ctx, params);
 
-        baryonyx::preprocess(ctx, pb);
+        pb = baryonyx::preprocess(ctx, pb);
         auto result = baryonyx::solve(ctx, pb);
 
         Ensures(result.affected_vars.names.size() == 21);
@@ -106,7 +106,7 @@ test_preprocessor_2()
     {
         auto pb =
           baryonyx::make_problem(ctx, EXAMPLES_DIR "/capmo1_direct.lp");
-        baryonyx::preprocess(ctx, pb);
+        pb = baryonyx::preprocess(ctx, pb);
 
         baryonyx::solver_parameters params;
         params.pre_order = baryonyx::solver_parameters::pre_constraint_order::
@@ -166,7 +166,7 @@ test_real_cost()
     std::istringstream iss(str_pb);
 
     auto pb = baryonyx::make_problem(ctx, iss);
-    baryonyx::preprocess(ctx, pb);
+    pb = baryonyx::preprocess(ctx, pb);
     auto result = baryonyx::solve(ctx, pb);
 
     Ensures(result);
@@ -215,7 +215,7 @@ test_assignment_problem_random_coast()
     for (int i{ 0 }, e{ 10 }; i != e; ++i) {
         auto pb =
           baryonyx::make_problem(ctx, EXAMPLES_DIR "/assignment_problem_1.lp");
-        baryonyx::preprocess(ctx, pb);
+        pb = baryonyx::preprocess(ctx, pb);
 
         std::random_device rd;
         std::mt19937 gen(rd());
@@ -238,7 +238,7 @@ test_negative_coeff()
     auto ctx = baryonyx::make_context();
 
     auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/negative-coeff.lp");
-    baryonyx::preprocess(ctx, pb);
+    pb = baryonyx::preprocess(ctx, pb);
 
     baryonyx::solver_parameters params;
     params.limit = 50;
@@ -257,7 +257,7 @@ test_negative_coeff2()
     auto ctx = baryonyx::make_context();
 
     auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/negative-coeff2.lp");
-    baryonyx::preprocess(ctx, pb);
+    pb = baryonyx::preprocess(ctx, pb);
 
     baryonyx::solver_parameters params;
     params.limit = 2;
@@ -275,7 +275,7 @@ test_negative_coeff3()
     auto ctx = baryonyx::make_context();
 
     auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/negative-coeff3.lp");
-    baryonyx::preprocess(ctx, pb);
+    pb = baryonyx::preprocess(ctx, pb);
 
     auto result = baryonyx::solve(ctx, pb);
 
@@ -290,7 +290,7 @@ test_negative_coeff4()
     auto ctx = baryonyx::make_context();
 
     auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/negative-coeff4.lp");
-    baryonyx::preprocess(ctx, pb);
+    pb = baryonyx::preprocess(ctx, pb);
 
     baryonyx::solver_parameters params;
     params.limit = 50;
@@ -339,7 +339,7 @@ test_8_queens_puzzle_fixed_cost()
     auto ctx = baryonyx::make_context();
 
     auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/8_queens_puzzle.lp");
-    baryonyx::preprocess(ctx, pb);
+    pb = baryonyx::preprocess(ctx, pb);
 
     baryonyx::solver_parameters params;
     params.limit = -1;
@@ -403,7 +403,7 @@ test_8_queens_puzzle_random_cost()
     for (int i{ 0 }, e{ 10 }; i != e; ++i) {
         auto pb =
           baryonyx::make_problem(ctx, EXAMPLES_DIR "/8_queens_puzzle.lp");
-        baryonyx::preprocess(ctx, pb);
+        pb = baryonyx::preprocess(ctx, pb);
 
         std::random_device rd;
         std::mt19937 gen(rd());
@@ -426,7 +426,7 @@ test_qap()
     auto ctx = baryonyx::make_context();
 
     auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/small4.lp");
-    baryonyx::preprocess(ctx, pb);
+    pb = baryonyx::preprocess(ctx, pb);
 
     baryonyx::solver_parameters params;
     params.limit = -1;
@@ -451,7 +451,7 @@ test_flat30_7()
     auto ctx = baryonyx::make_context();
 
     auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/flat30-7.lp");
-    baryonyx::preprocess(ctx, pb);
+    pb = baryonyx::preprocess(ctx, pb);
 
     baryonyx::solver_parameters params;
     params.limit = -1;
@@ -475,7 +475,7 @@ test_uf50_0448()
     auto ctx = baryonyx::make_context();
 
     auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/uf50-0448.lp");
-    baryonyx::preprocess(ctx, pb);
+    pb = baryonyx::preprocess(ctx, pb);
 
     baryonyx::solver_parameters params;
     params.limit = -1;
@@ -504,7 +504,7 @@ test_aim_50_1_6_yes1_2()
 
     auto pb =
       baryonyx::make_problem(ctx, EXAMPLES_DIR "/aim-50-1_6-yes1-2.lp");
-    baryonyx::preprocess(ctx, pb);
+    pb = baryonyx::preprocess(ctx, pb);
 
     baryonyx::solver_parameters params;
     params.limit = -1;
@@ -541,7 +541,7 @@ test_Z_coefficient_1()
         std::istringstream iss(str_pb);
 
         auto pb = baryonyx::make_problem(ctx, iss);
-        baryonyx::preprocess(ctx, pb);
+        pb = baryonyx::preprocess(ctx, pb);
         auto result = baryonyx::solve(ctx, pb);
 
         Ensures(result.status == baryonyx::result_status::success);
@@ -563,7 +563,7 @@ test_Z_coefficient_1()
         std::istringstream iss(str_pb);
 
         auto pb = baryonyx::make_problem(ctx, iss);
-        baryonyx::preprocess(ctx, pb);
+        pb = baryonyx::preprocess(ctx, pb);
         auto result = baryonyx::solve(ctx, pb);
 
         Ensures(result.status == baryonyx::result_status::success);
@@ -581,7 +581,7 @@ test_bibd1n()
 
 
     auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/bibd1n.lp");
-        baryonyx::preprocess(ctx, pb);
+        pb = baryonyx::preprocess(ctx, pb);
 
     context_set_parameter(ctx, "limit", -1);
     context_set_parameter(ctx, "theta", 0.5);

@@ -44,7 +44,7 @@ template<typename floatingpointT,
          typename constraintOrderT,
          typename randomT>
 inline result
-dispatch_solver(const context_ptr& ctx, problem& pb)
+dispatch_solver(const context_ptr& ctx, const problem& pb)
 {
     if (ctx->method == "buffered") {
         baryonyx::warning(ctx, "buffered method is experimental\n");
@@ -111,7 +111,7 @@ dispatch_solver(const context_ptr& ctx, problem& pb)
 
 template<typename realT, typename modeT, typename randomT>
 inline result
-dispatch_solver_parameters(const context_ptr& ctx, problem& pb)
+dispatch_solver_parameters(const context_ptr& ctx, const problem& pb)
 {
     switch (ctx->parameters.order) {
     case solver_parameters::constraint_order::none:
@@ -147,7 +147,7 @@ dispatch_solver_parameters(const context_ptr& ctx, problem& pb)
 }
 
 result
-solve(const baryonyx::context_ptr& ctx, problem& pb)
+solve(const baryonyx::context_ptr& ctx, const problem& pb)
 {
     info(ctx, "Solve mode\n");
     baryonyx::print(ctx);
