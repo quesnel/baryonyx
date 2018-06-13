@@ -262,7 +262,7 @@ assign(std::string value, int mindef, int maxdef, int def)
     return ret < mindef ? mindef : ret > maxdef ? maxdef : ret;
 }
 
-static int
+static double
 assign_d(std::string value, double mindef, double maxdef, double def)
 {
     auto ret = ::to_double(value, def);
