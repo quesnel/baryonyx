@@ -20,10 +20,9 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef ORG_VLEPROJECT_BARYONYX_SOLVER_EQUALITIES_01COEFF_HPP
-#define ORG_VLEPROJECT_BARYONYX_SOLVER_EQUALITIES_01COEFF_HPP
-
 #include "itm-solver-common.hpp"
+#include "solver.hpp"
+#include "optimizer.hpp"
 
 #include <memory>
 
@@ -328,7 +327,21 @@ struct solver_equalities_01coeff
     }
 };
 
+result
+solve_equalities_01coeff(const context_ptr& ctx, const problem& pb)
+{
+    info(ctx, "solver: equalities-01coeff\n");
+
+    return dispatch_solver_parameters<solver_equalities_01coeff>(ctx, pb);
+}
+
+result
+optimize_equalities_01coeff(const context_ptr& ctx, const problem& pb)
+{
+    info(ctx, "optimizer: equalities-01coeff\n");
+
+    return dispatch_optimizer_parameters<solver_equalities_01coeff>(ctx, pb);
+}
+
 } // namespace itm
 } // namespace baryonyx
-
-#endif

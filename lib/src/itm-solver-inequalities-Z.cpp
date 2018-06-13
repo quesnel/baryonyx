@@ -20,11 +20,10 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef ORG_VLEPROJECT_BARYONYX_SOLVER_INEQUALITIES_ZCOEFF_HPP
-#define ORG_VLEPROJECT_BARYONYX_SOLVER_INEQUALITIES_ZCOEFF_HPP
-
 #include "itm-solver-common.hpp"
 #include "knapsack-dp-solver.hpp"
+#include "solver.hpp"
+#include "optimizer.hpp"
 
 namespace baryonyx {
 namespace itm {
@@ -839,7 +838,47 @@ struct solver_inequalities_Zcoeff
     }
 };
 
+result
+solve_inequalities_Zcoeff(const context_ptr& ctx, const problem& pb)
+{
+    info(ctx, "solver: inequalities-101coeff\n");
+
+    using random_type = std::default_random_engine;
+
+    if (pb.type == baryonyx::objective_function_type::minimize) {
+        switch (ctx->parameters.float_type) {
+        case solver_parameters::floating_point_type::float_type:
+            return solve_problem<solver_inequalities_Zcoeff<float, minimize_tag, random_type>, float, minimize_tag, compute_none<float, random_type>, random_type>(ctx, pb);
+
+        case solver_parameters::floating_point_type::double_type:
+            return solve_problem<solver_inequalities_Zcoeff<double, minimize_tag, random_type>, double, minimize_tag, compute_none<double, random_type>, random_type>(ctx, pb);
+
+        case solver_parameters::floating_point_type::longdouble_type:
+            return solve_problem<solver_inequalities_Zcoeff<long double, minimize_tag, random_type>, long double, minimize_tag, compute_none<long double, random_type>, random_type>(ctx, pb);
+        }
+    } else {
+        switch (ctx->parameters.float_type) {
+        case solver_parameters::floating_point_type::float_type:
+            return solve_problem<solver_inequalities_Zcoeff<float, maximize_tag, random_type>, float, maximize_tag, compute_none<float, random_type>, random_type>(ctx, pb);
+
+        case solver_parameters::floating_point_type::double_type:
+            return solve_problem<solver_inequalities_Zcoeff<double, maximize_tag, random_type>, double, maximize_tag, compute_none<double, random_type>, random_type>(ctx, pb);
+
+        case solver_parameters::floating_point_type::longdouble_type:
+            return solve_problem<solver_inequalities_Zcoeff<long double, maximize_tag, random_type>, long double, maximize_tag, compute_none<long double, random_type>, random_type>(ctx, pb);
+        }
+    }
+
+    return result(result_status::internal_error);
+}
+
+result
+optimize_inequalities_Zcoeff(const context_ptr& ctx, const problem& pb)
+{
+    info(ctx, "optimizer: inequalities-101coeff\n");
+
+    return dispatch_optimizer_parameters<solver_inequalities_Zcoeff>(ctx, pb);
+}
+
 } // namespace itm
 } // namespace baryonyx
-
-#endif

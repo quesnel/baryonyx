@@ -20,9 +20,6 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef ORG_VLEPROJECT_BARYONYX_SOLVER_EQUALITIES_101COEFF_HPP
-#define ORG_VLEPROJECT_BARYONYX_SOLVER_EQUALITIES_101COEFF_HPP
-
 #include "itm-solver-common.hpp"
 
 #include <memory>
@@ -31,7 +28,7 @@ namespace baryonyx {
 namespace itm {
 
 template<typename floatingpointT, typename modeT, typename randomT>
-struct solver_equalities_101coeff
+struct solver_inequalities_101coeff_buffered
 {
     using floatingpoint_type = floatingpointT;
     using mode_type = modeT;
@@ -45,21 +42,23 @@ struct solver_equalities_101coeff
     std::unique_ptr<int[]> A;
     std::unique_ptr<r_data<floatingpoint_type>[]> R;
     fixed_array<fixed_array<c_data>> C;
-    std::unique_ptr<int[]> b;
+    std::unique_ptr<bound[]> b;
     std::unique_ptr<floatingpointT[]> pi;
 
-    const std::unique_ptr<floatingpointT[]>& c;
+    std::unique_ptr<std::tuple<floatingpointT, floatingpointT>[]> sum_ap;
 
+    const std::unique_ptr<floatingpointT[]>& c;
     int m;
     int n;
 
-    solver_equalities_101coeff(random_type& rng_,
-                               int m_,
-                               int n_,
-                               const std::unique_ptr<floatingpointT[]>& c_,
-                               const std::vector<merged_constraint>& csts,
-                               solver_parameters::init_policy_type init_type,
-                               double init_random)
+    solver_inequalities_101coeff_buffered(
+      random_type& rng_,
+      int m_,
+      int n_,
+      const std::unique_ptr<floatingpointT[]>& c_,
+      const std::vector<merged_constraint>& csts,
+      solver_parameters::init_policy_type init_type,
+      double init_random)
       : rng(rng_)
       , ap(csts, m_, n_)
       , x(n_)
@@ -68,14 +67,16 @@ struct solver_equalities_101coeff
       , R(std::make_unique<r_data<floatingpoint_type>[]>(
           compute_reduced_costs_vector_size(csts)))
       , C(m_)
-      , b(std::make_unique<int[]>(m_))
+      , b(std::make_unique<bound[]>(m_))
       , pi(std::make_unique<floatingpointT[]>(m_))
+      , sum_ap(
+          std::make_unique<std::tuple<floatingpointT, floatingpointT>[]>(n_))
       , c(c_)
       , m(m_)
       , n(n_)
     {
         int id = 0;
-        for (int i = 0; i != m; ++i) {
+        for (int i = 0, e = length(csts); i != e; ++i) {
             int lower = 0, upper = 0;
 
             for (const auto& cst : csts[i].elements) {
@@ -88,9 +89,13 @@ struct solver_equalities_101coeff
                     lower++;
             }
 
-            Ensures(csts[i].min == csts[i].max);
-
-            b[i] = csts[i].min;
+            if (csts[i].min == csts[i].max) {
+                b[i].min = csts[i].min;
+                b[i].max = csts[i].max;
+            } else {
+                b[i].min = std::max(-lower, csts[i].min);
+                b[i].max = std::min(upper, csts[i].max);
+            }
 
             if (lower > 0) {
                 C[i] = fixed_array<c_data>(lower);
@@ -122,17 +127,27 @@ struct solver_equalities_101coeff
 
     int bound_min(int constraint) const noexcept
     {
-        return b[constraint];
+        return b[constraint].min;
     }
 
     int bound_max(int constraint) const noexcept
     {
-        return b[constraint];
+        return b[constraint].max;
     }
 
     int bound_init(int constraint) const
     {
-        return b[constraint];
+        return bound_init(constraint, modeT());
+    }
+
+    int bound_init(int constraint, minimize_tag) const
+    {
+        return b[constraint].min;
+    }
+
+    int bound_init(int constraint, maximize_tag) const
+    {
+        return b[constraint].max;
     }
 
     floatingpointT compute_sum_A_pi(int variable) const
@@ -159,7 +174,7 @@ struct solver_equalities_101coeff
             for (; it != et; ++it)
                 v += A[it->value] * x[it->column];
 
-            if (b[k] != v)
+            if (not(b[k].min <= v and v <= b[k].max))
                 return false;
         }
 
@@ -180,7 +195,7 @@ struct solver_equalities_101coeff
             for (; it != et; ++it)
                 v += A[it->value] * x[it->column];
 
-            if (b[k] != v)
+            if (not(b[k].min <= v and v <= b[k].max))
                 c.emplace_back(k);
         }
 
@@ -204,14 +219,10 @@ struct solver_equalities_101coeff
                                   int bk,
                                   floatingpoint_type kappa,
                                   floatingpoint_type delta,
-                                  floatingpoint_type theta,
                                   floatingpoint_type objective_amplifier)
     {
         typename sparse_matrix<int>::row_iterator it, et;
         std::tie(it, et) = ap.row(k);
-
-        decrease_preference(it, et, theta);
-
         const int r_size = compute_reduced_costs(it, et);
 
         //
@@ -230,21 +241,44 @@ struct solver_equalities_101coeff
         affect_variables(it, k, selected, r_size, kappa, delta);
     }
 
+    void compute_update_row_01_ineq(int k,
+                                    int bkmin,
+                                    int bkmax,
+                                    floatingpoint_type kappa,
+                                    floatingpoint_type delta,
+                                    floatingpoint_type objective_amplifier)
+    {
+        typename sparse_matrix<int>::row_iterator it, et;
+        std::tie(it, et) = ap.row(k);
+        const int r_size = compute_reduced_costs(it, et);
+
+        //
+        // Before sort and select variables, we apply the push method: for each
+        // reduces cost, we had the cost multiply with an objective amplifier.
+        //
+
+        if (objective_amplifier)
+            for (int i = 0; i != r_size; ++i)
+                R[i].value += objective_amplifier * c[(it + R[i].id)->column];
+
+        calculator_sort(R.get(), R.get() + r_size, rng, mode_type());
+
+        int selected = select_variables_inequality(r_size, bkmin, bkmax);
+
+        affect_variables(it, k, selected, r_size, kappa, delta);
+    }
+
     void compute_update_row_101_eq(int k,
                                    int bk,
                                    floatingpoint_type kappa,
                                    floatingpoint_type delta,
-                                   floatingpoint_type theta,
                                    floatingpoint_type objective_amplifier)
     {
         typename sparse_matrix<int>::row_iterator it, et;
         std::tie(it, et) = ap.row(k);
-
-        decrease_preference(it, et, theta);
-
+        const int r_size = compute_reduced_costs(it, et);
         const auto& ck = C[k];
         const int c_size = length(ck);
-        const int r_size = compute_reduced_costs(it, et);
 
         //
         // Before sort and select variables, we apply the push method: for each
@@ -289,18 +323,62 @@ struct solver_equalities_101coeff
         }
     }
 
-    //
-    // Decrease influence of local preferences. 0 will completely reset the
-    // preference values for the current row. > 0 will keep former decision in
-    // mind.
-    //
-    template<typename iteratorT>
-    void decrease_preference(iteratorT begin,
-                             iteratorT end,
-                             floatingpoint_type theta) noexcept
+    void compute_update_row_101_ineq(int k,
+                                     int bkmin,
+                                     int bkmax,
+                                     floatingpoint_type kappa,
+                                     floatingpoint_type delta,
+                                     floatingpoint_type objective_amplifier)
     {
-        for (; begin != end; ++begin)
-            P[begin->value] *= theta;
+        typename sparse_matrix<int>::row_iterator it, et;
+        std::tie(it, et) = ap.row(k);
+
+        const int r_size = compute_reduced_costs(it, et);
+        const auto& ck = C[k];
+        const int c_size = (ck) ? length(ck) : 0;
+
+        //
+        // Before sort and select variables, we apply the push method: for each
+        // reduces cost, we had the cost multiply with an objective amplifier.
+        //
+
+        if (objective_amplifier)
+            for (int i = 0; i != r_size; ++i)
+                R[i].value += objective_amplifier * c[(it + R[i].id)->column];
+
+        //
+        // Negate reduced costs and coefficients of these variables. We need to
+        // parse the row Ak[i] because we need to use r[i] not available in C.
+        //
+
+        for (int i = 0; i != c_size; ++i) {
+            R[ck[i].id_r].value = -R[ck[i].id_r].value;
+
+            auto var = it + ck[i].id_r;
+
+            P[var->value] = -P[var->value];
+        }
+
+        bkmin += c_size;
+        bkmax += c_size;
+
+        calculator_sort(R.get(), R.get() + r_size, rng, mode_type());
+
+        int selected = select_variables_inequality(r_size, bkmin, bkmax);
+
+        affect_variables(it, k, selected, r_size, kappa, delta);
+
+        //
+        // Clean up: correct negated costs and adjust value of negated
+        // variables.
+        //
+
+        for (int i = 0; i != c_size; ++i) {
+            auto var = it + ck[i].id_r;
+
+            P[var->value] = -P[var->value];
+            x[var->column] = !x[var->column];
+        }
     }
 
     //
@@ -312,21 +390,10 @@ struct solver_equalities_101coeff
         int r_size = 0;
 
         for (; begin != end; ++begin) {
-            floatingpoint_type sum_a_pi = 0;
-            floatingpoint_type sum_a_p = 0;
-
-            typename sparse_matrix<int>::const_col_iterator ht, hend;
-            std::tie(ht, hend) = ap.column(begin->column);
-
-            for (; ht != hend; ++ht) {
-                auto a = static_cast<floatingpoint_type>(A[ht->value]);
-
-                sum_a_pi += a * pi[ht->row];
-                sum_a_p += a * P[ht->value];
-            }
-
             R[r_size].id = r_size;
-            R[r_size].value = c[begin->column] - sum_a_pi - sum_a_p;
+            R[r_size].value = c[begin->column] -
+                              std::get<0>(sum_ap[begin->column]) -
+                              std::get<1>(sum_ap[begin->column]);
             ++r_size;
         }
 
@@ -337,10 +404,22 @@ struct solver_equalities_101coeff
     {
         (void)r_size;
 
-        assert(bk <= r_size && "b(k) can not be reached, this is an "
+        assert(bk <= r_size && "b[k] can not be reached, this is an "
                                "error of the preprocessing step.");
 
         return bk - 1;
+    }
+
+    int select_variables_inequality(const int r_size, int bkmin, int bkmax)
+    {
+        (void)r_size;
+        assert(r_size >= bkmax);
+
+        for (int i = bkmin; i != bkmax; ++i)
+            if (stop_iterating(R[i].value, rng, mode_type()))
+                return i - 1;
+
+        return bkmax - 1;
     }
 
     //
@@ -406,15 +485,55 @@ struct solver_equalities_101coeff
                                      floatingpoint_type theta,
                                      floatingpoint_type obj_amp)
     {
-        for (; first != last; ++first) {
-            auto k = constraint(first);
+        for (int i = 0; i != n; ++i)
+            sum_ap[i] = std::make_tuple(static_cast<floatingpointT>(0),
+                                        static_cast<floatingpointT>(0));
+
+        std::transform(P.get(),
+                       P.get() + ap.length(),
+                       P.get(),
+                       std::bind1st(std::multiplies<floatingpointT>(), theta));
+
+        for (auto it = first; it != last; ++it) {
+            auto k = constraint(it);
+
+            sparse_matrix<int>::row_iterator rit, ret;
+            std::tie(rit, ret) = ap.row(k);
+
+            for (; rit != ret; ++rit) {
+                if (std::get<0>(sum_ap[rit->column]) == 0 and
+                    std::get<1>(sum_ap[rit->column]) == 0) {
+                    sparse_matrix<int>::const_col_iterator ht, hend;
+                    std::tie(ht, hend) = ap.column(rit->column);
+
+                    for (; ht != hend; ++ht) {
+                        auto f = A[ht->value];
+                        auto a = static_cast<floatingpoint_type>(f);
+
+                        std::get<0>(sum_ap[rit->column]) += a * pi[ht->row];
+                        std::get<1>(sum_ap[rit->column]) += a * P[ht->value];
+                    }
+                }
+            }
+        }
+
+        for (auto it = first; it != last; ++it) {
+            auto k = constraint(it);
 
             if (!C[k]) {
-                compute_update_row_01_eq(
-                  k, b[k], kappa, delta, theta, obj_amp);
+                if (b[k].min == b[k].max)
+                    compute_update_row_01_eq(
+                      k, b[k].min, kappa, delta, obj_amp);
+                else
+                    compute_update_row_01_ineq(
+                      k, b[k].min, b[k].max, kappa, delta, obj_amp);
             } else {
-                compute_update_row_101_eq(
-                  k, b[k], kappa, delta, theta, obj_amp);
+                if (b[k].min == b[k].max)
+                    compute_update_row_101_eq(
+                      k, b[k].min, kappa, delta, obj_amp);
+                else
+                    compute_update_row_101_ineq(
+                      k, b[k].min, b[k].max, kappa, delta, obj_amp);
             }
         }
     }
@@ -426,29 +545,94 @@ struct solver_equalities_101coeff
                             floatingpoint_type delta,
                             floatingpoint_type theta)
     {
-        for (; first != last; ++first) {
-            auto k = constraint(first);
+        for (int i = 0; i != n; ++i)
+            sum_ap[i] = std::make_tuple(static_cast<floatingpointT>(0),
+                                        static_cast<floatingpointT>(0));
+
+        std::transform(P.get(),
+                       P.get() + ap.length(),
+                       P.get(),
+                       std::bind1st(std::multiplies<floatingpointT>(), theta));
+
+        for (auto it = first; it != last; ++it) {
+            auto k = constraint(it);
+
+            sparse_matrix<int>::row_iterator rit, ret;
+            std::tie(rit, ret) = ap.row(k);
+
+            for (; rit != ret; ++rit) {
+                if (std::get<0>(sum_ap[rit->column]) == 0 and
+                    std::get<1>(sum_ap[rit->column]) == 0) {
+                    sparse_matrix<int>::const_col_iterator ht, hend;
+                    std::tie(ht, hend) = ap.column(rit->column);
+
+                    for (; ht != hend; ++ht) {
+                        auto f = A[ht->value];
+                        auto a = static_cast<floatingpoint_type>(f);
+
+                        std::get<0>(sum_ap[rit->column]) += a * pi[ht->row];
+                        std::get<1>(sum_ap[rit->column]) += a * P[ht->value];
+                    }
+                }
+            }
+        }
+
+        for (auto it = first; it != last; ++it) {
+            auto k = constraint(it);
 
             if (!C[k]) {
-                compute_update_row_01_eq(k,
-                                         b[k],
-                                         kappa,
-                                         delta,
-                                         theta,
-                                         static_cast<floatingpoint_type>(0));
+                if (b[k].min == b[k].max)
+                    compute_update_row_01_eq(
+                      k,
+                      b[k].min,
+                      kappa,
+                      delta,
+                      static_cast<floatingpoint_type>(0));
+                else
+                    compute_update_row_01_ineq(
+                      k,
+                      b[k].min,
+                      b[k].max,
+                      kappa,
+                      delta,
+                      static_cast<floatingpoint_type>(0));
             } else {
-                compute_update_row_101_eq(k,
-                                          b[k],
-                                          kappa,
-                                          delta,
-                                          theta,
-                                          static_cast<floatingpoint_type>(0));
+                if (b[k].min == b[k].max)
+                    compute_update_row_101_eq(
+                      k,
+                      b[k].min,
+                      kappa,
+                      delta,
+                      static_cast<floatingpoint_type>(0));
+                else
+                    compute_update_row_101_ineq(
+                      k,
+                      b[k].min,
+                      b[k].max,
+                      kappa,
+                      delta,
+                      static_cast<floatingpoint_type>(0));
             }
         }
     }
 };
 
+result
+solve_inequalities_101coeff_buffered(const context_ptr& ctx, const problem& pb)
+{
+    info(ctx, "solver: inequalities-101coeff\n");
+
+    return dispatch_solver_parameters<solver_inequalities_101coeff_buffered>(ctx, pb);
+}
+
+result
+optimize_inequalities_101coeff_buffered(const context_ptr& ctx, const problem& pb)
+{
+    info(ctx, "optimizer: inequalities-101coeff\n");
+
+    return dispatch_optimizer_parameters<solver_inequalities_101coeff_buffered>(ctx, pb);
+}
+
+
 } // namespace itm
 } // namespace baryonyx
-
-#endif
