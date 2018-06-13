@@ -73,7 +73,8 @@ static std::size_t
 memory_consumed(const std::vector<baryonyx::constraint>& csts) noexcept
 {
     return std::accumulate(
-      csts.cbegin(), csts.cend(), 0, [](std::size_t size, const auto& elem) {
+      csts.cbegin(), csts.cend(), static_cast<std::size_t>(0),
+        [](std::size_t size, const auto& elem) {
           return size + memory_consumed(elem);
       });
 }

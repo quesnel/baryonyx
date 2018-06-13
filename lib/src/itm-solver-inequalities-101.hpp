@@ -296,7 +296,7 @@ struct solver_inequalities_101coeff
             P[var->value] = -P[var->value];
         }
 
-        bk += std::distance(c_begin, c_end);
+        bk += static_cast<int>(std::distance(c_begin, c_end));
 
         calculator_sort(R.get(), R.get() + r_size, rng, mode_type());
 
@@ -354,8 +354,8 @@ struct solver_inequalities_101coeff
             P[var->value] = -P[var->value];
         }
 
-        bkmin += std::distance(c_begin, c_end);
-        bkmax += std::distance(c_begin, c_end);
+        bkmin += static_cast<int>(std::distance(c_begin, c_end));
+        bkmax += static_cast<int>(std::distance(c_begin, c_end));
 
         calculator_sort(R.get(), R.get() + r_size, rng, mode_type());
 
