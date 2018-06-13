@@ -60,7 +60,7 @@ public:
         std::transform(m_pi.get(),
                        m_pi.get() + m_m,
                        m_pnm.begin(),
-                       colormap<floatingpointT>(-1.0, +1.0));
+                       colormap(-1.0f, +1.0f));
 
         m_pnm.flush();
     }
@@ -93,7 +93,7 @@ public:
 
     void make_observation()
     {
-        colormap<floatingpointT> cm(-1.0, 1.0);
+        colormap cm(-1.0f, 1.0f);
         pnm_array pnm(m_m, m_n);
         if (not pnm)
             return;
@@ -112,11 +112,11 @@ public:
                 // min_val = std::min(min_val, m_P[it->value]);
                 // max_val = std::max(max_val, m_P[it->value]);
 
-                auto array = cm(m_P[it->value]);
+                auto color_rgb = cm(m_P[it->value]);
 
-                pointer[0] = array[0];
-                pointer[1] = array[1];
-                pointer[2] = array[2];
+                pointer[0] = color_rgb.red;
+                pointer[1] = color_rgb.green;
+                pointer[2] = color_rgb.blue;
             }
         }
 

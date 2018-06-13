@@ -32,50 +32,61 @@
 
 namespace baryonyx {
 
-template<typename T>
 struct colormap
 {
-    T m_lower, m_upper;
+    float m_lower, m_upper;
 
+    struct rgb {
+        rgb(std::uint8_t red_, std::uint8_t green_, std::uint8_t blue_)
+            : red(red_)
+            , green(green_)
+            , blue(blue_)
+        {}
+
+        std::uint8_t red;
+        std::uint8_t green;
+        std::uint8_t blue;
+    };
+
+    template<typename T>
     colormap(T lower, T upper)
-      : m_lower(lower)
-      , m_upper(upper)
+      : m_lower(static_cast<float>(lower))
+      , m_upper(static_cast<float>(upper))
     {
         assert(lower < upper);
     }
 
-    std::array<std::uint8_t, 3> operator()(T v) noexcept
+    template<typename T>
+    rgb operator()(T v_) noexcept
     {
+        float v = static_cast<float>(v_);
+
         if (v < m_lower)
             v = m_lower;
 
         if (v > m_upper)
             v = m_upper;
 
-        T dv = m_upper - m_lower;
-        T r = 1, g = 1, b = 1;
+        float dv = m_upper - m_lower;
+        float r = 1.f, g = 1.f, b = 1.f;
 
-        if (v < (m_lower + 0.25 * dv)) {
-            r = 0;
-            g = 4 * (v - m_lower) / dv;
-        } else if (v < (m_lower + 0.5 * dv)) {
-            r = 0;
-            b = 1 + 4 * (m_lower + 0.25 * dv - v) / dv;
-        } else if (v < (m_lower + 0.75 * dv)) {
-            r = 4 * (v - m_lower - 0.5 * dv) / dv;
-            b = 0;
+        if (v < (m_lower + 0.25f * dv)) {
+            r = 0.f;
+            g = 4.f * (v - m_lower) / dv;
+        } else if (v < (m_lower + 0.5f * dv)) {
+            r = 0.f;
+            b = 1.f + 4.f * (m_lower + 0.25f * dv - v) / dv;
+        } else if (v < (m_lower + 0.75f * dv)) {
+            r = 4.f * (v - m_lower - 0.5f * dv) / dv;
+            b = 0.f;
         } else {
-            g = 1 + 4 * (m_lower + 0.75 * dv - v) / dv;
-            b = 0;
+            g = 1.f + 4.f * (m_lower + 0.75f * dv - v) / dv;
+            b = 0.f;
         }
 
-        std::array<std::uint8_t, 3> ret{
-            { static_cast<std::uint8_t>(r * static_cast<T>(255)),
-              static_cast<std::uint8_t>(g * static_cast<T>(255)),
-              static_cast<std::uint8_t>(b * static_cast<T>(255)) }
-        };
-
-        return ret;
+        return rgb(static_cast<std::uint8_t>(r * 255.f),
+            static_cast<std::uint8_t>(g * 255.f),
+            static_cast<std::uint8_t>(b * 255.f));
     }
 };
 
@@ -93,11 +104,11 @@ public:
       : m_colors(pointer)
     {}
 
-    pnm_iterator_entry& operator=(const std::array<uint8_t, 3>& value)
+    pnm_iterator_entry& operator=(const colormap::rgb& value)
     {
-        m_colors[0] = value[0];
-        m_colors[1] = value[1];
-        m_colors[2] = value[2];
+        m_colors[0] = value.red;
+        m_colors[1] = value.green;
+        m_colors[2] = value.blue;
 
         return *this;
     }
@@ -142,6 +153,7 @@ public:
 };
 
 class pnm_iterator
+    : public std::iterator<std::forward_iterator_tag, pnm_iterator_entry>
 {
 private:
     pnm_iterator_entry m_entry;
