@@ -27,7 +27,6 @@
 #include <iterator>
 #include <thread>
 
-#include "itm-common.hpp"
 #include "itm-solver-common.hpp"
 #include "private.hpp"
 #include "utils.hpp"
@@ -62,12 +61,13 @@ solver_select(const baryonyx::context_ptr& ctx, const baryonyx::problem& pb)
 baryonyx::result
 optimizer_select(const baryonyx::context_ptr& ctx, const baryonyx::problem& pb)
 {
-    auto th = get_thread_number(ctx);
+    ctx->parameters.thread = ::get_thread_number(ctx);
 
     if (ctx->parameters.auto_tune ==
         solver_parameters::auto_tune_parameters::disabled)
-        return baryonyx::itm::optimize(ctx, pb, th);
+        return baryonyx::itm::optimize(ctx, pb);
     else
-        return baryonyx::itm::automatic_optimizer(ctx, pb, th);
+        return baryonyx::itm::automatic_optimizer(ctx, pb);
 }
+
 } // namespace baryonyx

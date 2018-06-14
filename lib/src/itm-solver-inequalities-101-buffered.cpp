@@ -620,19 +620,25 @@ struct solver_inequalities_101coeff_buffered
 result
 solve_inequalities_101coeff_buffered(const context_ptr& ctx, const problem& pb)
 {
-    info(ctx, "solver: inequalities-101coeff\n");
+    info(ctx, "solver: inequalities-101coeff-buffered\n");
 
-    return dispatch_solver_parameters<solver_inequalities_101coeff_buffered>(ctx, pb);
+    using random_type = std::default_random_engine;
+
+    return select_solver_parameters<solver_inequalities_101coeff_buffered,
+                                    random_type>(ctx, pb);
 }
 
 result
-optimize_inequalities_101coeff_buffered(const context_ptr& ctx, const problem& pb)
+optimize_inequalities_101coeff_buffered(const context_ptr& ctx,
+                                        const problem& pb)
 {
-    info(ctx, "optimizer: inequalities-101coeff\n");
+    info(ctx, "optimizer: inequalities-101coeff-buffered\n");
 
-    return dispatch_optimizer_parameters<solver_inequalities_101coeff_buffered>(ctx, pb);
+    using random_type = std::default_random_engine;
+
+    return select_optimizer_parameters<solver_inequalities_101coeff_buffered,
+                                       random_type>(ctx, pb);
 }
-
 
 } // namespace itm
 } // namespace baryonyx

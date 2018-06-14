@@ -52,785 +52,6 @@
 namespace baryonyx {
 namespace itm {
 
-struct bound
-{
-    bound() = default;
-
-    bound(int min_, int max_)
-      : min(min_)
-      , max(max_)
-    {}
-
-    int min;
-    int max;
-};
-
-template<typename floatingpointT>
-struct r_data
-{
-    r_data() = default;
-
-    r_data(floatingpointT value_, int index_)
-      : value(value_)
-      , id(index_)
-    {}
-
-    floatingpointT value; ///< Reduced cost value.
-    int id;               ///< Index in ap.row() vector.
-};
-
-struct c_data
-{
-    c_data() = default;
-
-    c_data(int id_r_)
-      : id_r(id_r_)
-    {}
-
-    int id_r; ///< Index in ap.row() vector.
-};
-
-template<typename iteratorT, typename randomT>
-inline void
-random_shuffle_unique(iteratorT begin, iteratorT end, randomT& rng) noexcept
-{
-    auto ret = begin++;
-    for (; begin != end; ++begin) {
-        if (ret->value != begin->value) {
-            std::shuffle(ret, begin, rng);
-            ret = begin;
-        }
-    }
-
-    std::shuffle(ret, begin, rng);
-}
-
-template<typename iteratorT, typename randomT>
-inline void
-calculator_sort(iteratorT begin, iteratorT end, randomT& rng, minimize_tag)
-{
-    if (std::distance(begin, end) > 1) {
-        std::sort(begin, end, [](const auto& lhs, const auto& rhs) {
-            return lhs.value < rhs.value;
-        });
-
-        random_shuffle_unique(begin, end, rng);
-    }
-}
-
-template<typename iteratorT, typename randomT>
-inline void
-calculator_sort(iteratorT begin, iteratorT end, randomT& rng, maximize_tag)
-{
-    if (std::distance(begin, end) > 1) {
-        std::sort(begin, end, [](const auto& lhs, const auto& rhs) {
-            return rhs.value < lhs.value;
-        });
-
-        random_shuffle_unique(begin, end, rng);
-    }
-}
-
-template<typename floatingpointT, typename randomT>
-inline bool
-stop_iterating(floatingpointT value, randomT& rng, minimize_tag) noexcept
-{
-    if (value == 0) {
-        std::bernoulli_distribution d(0.5);
-        return d(rng);
-    }
-
-    return value > 0;
-}
-
-template<typename floatingpointT, typename randomT>
-inline bool
-stop_iterating(floatingpointT value, randomT& rng, maximize_tag) noexcept
-{
-    if (value == 0) {
-        std::bernoulli_distribution d(0.5);
-        return d(rng);
-    }
-
-    return value < 0;
-}
-
-template<typename floatingpointT>
-inline bool
-stop_iterating(floatingpointT value, minimize_tag) noexcept
-{
-    return value > 0;
-}
-
-template<typename floatingpointT>
-inline bool
-stop_iterating(floatingpointT value, maximize_tag) noexcept
-{
-    return value < 0;
-}
-
-template<typename floatingpointT>
-inline bool
-is_better_solution(floatingpointT lhs,
-                   floatingpointT rhs,
-                   minimize_tag) noexcept
-{
-    return lhs < rhs;
-}
-
-template<typename floatingpointT>
-inline bool
-is_better_solution(floatingpointT lhs,
-                   floatingpointT rhs,
-                   maximize_tag) noexcept
-{
-    return lhs > rhs;
-}
-
-template<typename floatingpointT>
-inline bool
-init_x(floatingpointT cost, int value_if_cost_0, minimize_tag) noexcept
-{
-    if (cost < 0)
-        return true;
-
-    if (cost == 0)
-        return value_if_cost_0;
-
-    return false;
-}
-
-template<typename floatingpointT>
-inline bool
-init_x(floatingpointT cost, int value_if_cost_0, maximize_tag) noexcept
-{
-    if (cost > 0)
-        return true;
-
-    if (cost == 0)
-        return value_if_cost_0;
-
-    return false;
-}
-
-template<typename TimePoint>
-double
-compute_duration(const TimePoint& first, const TimePoint& last) noexcept
-{
-    namespace sc = std::chrono;
-
-    auto diff = last - first;
-    auto dc = sc::duration_cast<sc::duration<double, std::ratio<1>>>(diff);
-
-    return dc.count();
-}
-
-inline std::size_t
-compute_reduced_costs_vector_size(
-  const std::vector<merged_constraint>& csts) noexcept
-{
-    std::size_t rsizemax = csts[0].elements.size();
-
-    for (std::size_t i = 1, e = csts.size(); i != e; ++i)
-        rsizemax = std::max(rsizemax, csts[i].elements.size());
-
-    return rsizemax;
-}
-
-template<typename Solver>
-inline bool
-is_valid_solution(const Solver& s) noexcept
-{
-    return s.is_valid_solution();
-}
-
-template<typename Solver, typename Container>
-inline int
-compute_missing_constraint(const Solver& s, Container& c)
-{
-    return s.compute_violated_constraints(c);
-}
-
-template<typename Solver, typename x_type>
-inline solver_parameters::init_policy_type
-init_solver(Solver& slv,
-            const x_type& best_previous,
-            solver_parameters::init_policy_type type,
-            double init_random)
-{
-    using floatingpointT = typename Solver::floatingpoint_type;
-
-    std::fill(slv.P.get(),
-              slv.P.get() + slv.ap.length(),
-              static_cast<floatingpointT>(0));
-    std::fill(
-      slv.pi.get(), slv.pi.get() + slv.m, static_cast<floatingpointT>(0));
-
-    if (best_previous.empty() and
-        type == solver_parameters::init_policy_type::best)
-        type = solver_parameters::init_policy_type::bastert;
-
-    init_random = clamp(init_random, 0.0, 1.0);
-    std::bernoulli_distribution d(init_random);
-
-    switch (type) {
-    case solver_parameters::init_policy_type::bastert:
-        if (init_random == 0.0 or init_random == 1.0) {
-            bool value_if_cost_0 = init_random == 1.0;
-
-            for (int i = 0; i != slv.n; ++i)
-                slv.x[i] = init_x(
-                  slv.c[i], value_if_cost_0, typename Solver::mode_type());
-        } else {
-            for (int i = 0; i != slv.n; ++i)
-                slv.x[i] =
-                  init_x(slv.c[i], d(slv.rng), typename Solver::mode_type());
-        }
-
-        type = solver_parameters::init_policy_type::random;
-        break;
-    case solver_parameters::init_policy_type::random:
-        for (int i = 0; i != slv.n; ++i)
-            slv.x[i] = d(slv.rng);
-
-        type = solver_parameters::init_policy_type::best;
-        break;
-    case solver_parameters::init_policy_type::best:
-        for (int i = 0; i != slv.n; ++i)
-            slv.x[i] = (d(slv.rng)) ? (best_previous[i]) : (!best_previous[i]);
-
-        type = solver_parameters::init_policy_type::bastert;
-        break;
-    }
-
-    return type;
-}
-
-template<typename Solver>
-inline void
-print_solver(const Solver& slv,
-             const context_ptr& ctx,
-             const std::vector<std::string>& names,
-             int print_level)
-{
-    if (print_level <= 0)
-        return;
-
-    debug(ctx, "  - X: {} to {}\n", 0, slv.n);
-    for (int i = 0; i != slv.n; ++i)
-        debug(ctx,
-              "    - {} {}={}/c_i:{}\n",
-              i,
-              names[i],
-              (slv.x[i] ? 1 : 0),
-              slv.c[i]);
-    debug(ctx, "\n");
-
-    for (int k = 0; k != slv.m; ++k) {
-        sparse_matrix<int>::const_row_iterator it, et;
-
-        std::tie(it, et) = slv.ap.row(k);
-        int v = 0;
-
-        for (; it != et; ++it)
-            v += slv.factor(it->value) * slv.x[it->column];
-
-        bool valid = slv.bound_min(k) <= v and v <= slv.bound_max(k);
-
-        debug(ctx,
-              "C {}:{} (Lmult: {})\n",
-              k,
-              (valid ? "   valid" : "violated"),
-              slv.pi[k]);
-    }
-}
-
-template<typename Solver>
-inline void
-print_missing_constraint(const baryonyx::context_ptr& ctx,
-                         const Solver& slv,
-                         const std::vector<std::string>& names) noexcept
-{
-    std::vector<int> R;
-
-    compute_missing_constraint(slv, R);
-    info(ctx, "Constraints remaining: {}\n", length(R));
-
-    sparse_matrix<int>::const_row_iterator it, et;
-
-    for (auto k : R) {
-        std::tie(it, et) = slv.ap.row(k);
-        int v = 0;
-
-        info(ctx, "{}: {} <= ", k, slv.bound_min(k));
-
-        for (; it != et; ++it) {
-            v += slv.factor(it->value) * slv.x[it->column];
-
-            info(ctx,
-                 "{:+d} [{} ({})] ",
-                 slv.factor(it->value),
-                 names[it->column],
-                 slv.x[it->column]);
-        }
-
-        info(ctx, " <= {} | value: {}\n", slv.bound_max(k));
-    }
-}
-
-template<typename floatingpointT>
-floatingpointT
-max_cost_init(const std::unique_ptr<floatingpointT[]>& c,
-              int n,
-              minimize_tag) noexcept
-{
-    auto it = std::max_element(c.get(), c.get() + n);
-    if (it == c.get() + n)
-        return *it;
-
-    return std::numeric_limits<floatingpointT>::max();
-}
-
-template<typename floatingpointT>
-floatingpointT
-max_cost_init(const std::unique_ptr<floatingpointT[]>& c,
-              int n,
-              maximize_tag) noexcept
-{
-    auto it = std::min_element(c.get(), c.get() + n);
-    if (it == c.get() + n)
-        return *it;
-
-    return std::numeric_limits<floatingpointT>::lowest();
-}
-
-/**
- * Compute a problem lower or upper bounds based on Lagrangian multipliers
- * (valid if there are equality constraints only?)
- */
-template<typename floatingpointT, typename modeT>
-struct bounds_printer
-{
-    floatingpointT bestlb;
-    floatingpointT bestub;
-    floatingpointT max_cost;
-
-    bounds_printer(floatingpointT max_cost_init)
-      : bestlb(std::numeric_limits<floatingpointT>::lowest())
-      , bestub(std::numeric_limits<floatingpointT>::max())
-      , max_cost(max_cost_init)
-    {}
-
-    template<typename SolverT>
-    floatingpointT init_bound(const SolverT& slv)
-    {
-        floatingpointT b{ 0 };
-
-        for (auto c = 0; c != slv.m; ++c)
-            b += slv.pi[c] * static_cast<floatingpointT>(slv.bound_init(c));
-
-        return b;
-    }
-
-    template<typename SolverT>
-    floatingpointT add_bound(const SolverT& slv,
-                             int j,
-                             floatingpointT sum_a_pi,
-                             minimize_tag)
-    {
-        if (slv.c[j] - sum_a_pi < 0)
-            return slv.c[j] - sum_a_pi;
-
-        return { 0 };
-    }
-
-    template<typename SolverT>
-    floatingpointT add_bound(const SolverT& slv,
-                             int j,
-                             floatingpointT sum_a_pi,
-                             maximize_tag)
-    {
-        if (slv.c[j] - sum_a_pi > 0)
-            return slv.c[j] - sum_a_pi;
-
-        return { 0 };
-    }
-
-    void print_bound(const context_ptr& ctx,
-                     floatingpointT lower_bound,
-                     floatingpointT upper_bound,
-                     minimize_tag)
-    {
-        bool better_gap = (lower_bound > bestlb || upper_bound < bestub);
-
-        if (upper_bound < bestub)
-            bestub = upper_bound;
-
-        if (lower_bound > bestlb)
-            bestlb = lower_bound;
-
-        if (better_gap) {
-            if (bestub == static_cast<floatingpointT>(0.0))
-                info(ctx, "  - Lower bound: {}   (gap: 0%)\n", bestlb);
-            else
-                info(ctx,
-                     "  - Lower bound: {}   (gap: {}%)\n",
-                     bestlb,
-                     static_cast<floatingpointT>(100.) * (bestub - bestlb) /
-                       bestub);
-        }
-    }
-
-    void print_bound(const context_ptr& ctx,
-                     floatingpointT lower_bound,
-                     floatingpointT upper_bound,
-                     maximize_tag)
-    {
-        bool better_gap = (lower_bound > bestlb || upper_bound < bestub);
-
-        if (upper_bound < bestub)
-            bestub = upper_bound;
-
-        if (lower_bound > bestlb)
-            bestlb = lower_bound;
-
-        if (better_gap) {
-            if (bestlb == static_cast<floatingpointT>(0.0))
-                info(ctx, "  - Upper bound: {}   (gap: 0%)\n", bestub);
-            else
-                info(ctx,
-                     "  - Upper bound: {}   (gap: {}%)\n",
-                     bestub,
-                     static_cast<floatingpointT>(100.) * (bestlb - bestub) /
-                       bestlb);
-        }
-    }
-
-    floatingpointT init_ub(minimize_tag)
-    {
-        return std::numeric_limits<floatingpointT>::max();
-    }
-
-    floatingpointT init_ub(maximize_tag)
-    {
-        return std::numeric_limits<floatingpointT>::lowest();
-    }
-
-    template<typename SolverT>
-    void operator()(const SolverT& slv,
-                    const context_ptr& ctx,
-                    const baryonyx::result& best)
-    {
-        floatingpointT lb = init_bound(slv);
-        floatingpointT ub = init_ub(modeT());
-
-        if (not best.solutions.empty())
-            ub = static_cast<floatingpointT>(best.solutions.back().value);
-
-        for (auto j = 0; j != slv.n; ++j)
-            lb += add_bound(slv, j, slv.compute_sum_A_pi(j), modeT());
-
-        lb *= max_cost; // restore original cost
-
-        print_bound(ctx, lb, ub, modeT());
-    }
-};
-
-namespace details {
-inline int
-constraint(std::vector<int>::iterator it)
-{
-    return *it;
-}
-
-inline int
-constraint(std::vector<int>::reverse_iterator it)
-{
-    return *it;
-}
-
-inline int
-constraint(std::vector<std::pair<int, int>>::iterator it)
-{
-    return it->first;
-}
-
-} // namespace details
-
-template<typename Iterator>
-int
-constraint(Iterator it)
-{
-    return details::constraint(it);
-}
-
-template<typename floatingpointT, typename randomT>
-struct compute_none
-{
-    using random_type = randomT;
-
-    const context_ptr& m_ctx;
-    std::vector<int> R;
-
-    template<typename solverT>
-    compute_none(const context_ptr& ctx, const solverT& s, randomT&)
-      : m_ctx(ctx)
-      , R(s.m)
-    {
-        compute_missing_constraint(s, R);
-    }
-
-    template<typename solverT>
-    int push_and_run(solverT& solver,
-                     floatingpointT kappa,
-                     floatingpointT delta,
-                     floatingpointT theta,
-                     floatingpointT objective_amplifier)
-    {
-        solver.push_and_compute_update_row(
-          R.begin(), R.end(), kappa, delta, theta, objective_amplifier);
-
-        return compute_missing_constraint(solver, R);
-    }
-
-    template<typename solverT>
-    int run(solverT& solver,
-            floatingpointT kappa,
-            floatingpointT delta,
-            floatingpointT theta)
-    {
-        solver.compute_update_row(R.begin(), R.end(), kappa, delta, theta);
-
-        return compute_missing_constraint(solver, R);
-    }
-};
-
-template<typename floatingpointT, typename randomT>
-struct compute_reversing
-{
-    using random_type = randomT;
-
-    const context_ptr& m_ctx;
-    std::vector<int> R;
-    int nb = 0;
-
-    template<typename solverT>
-    compute_reversing(const context_ptr& ctx, solverT& s, randomT&)
-      : m_ctx(ctx)
-      , R(s.m)
-    {
-        compute_missing_constraint(s, R);
-    }
-
-    template<typename solverT>
-    int push_and_run(solverT& solver,
-                     floatingpointT kappa,
-                     floatingpointT delta,
-                     floatingpointT theta,
-                     floatingpointT objective_amplifier)
-    {
-        solver.push_and_compute_update_row(
-          R.rbegin(), R.rend(), kappa, delta, theta, objective_amplifier);
-
-        return compute_missing_constraint(solver, R);
-    }
-
-    template<typename solverT>
-    int run(solverT& solver,
-            floatingpointT kappa,
-            floatingpointT delta,
-            floatingpointT theta)
-    {
-        solver.compute_update_row(R.rbegin(), R.rend(), kappa, delta, theta);
-
-        return compute_missing_constraint(solver, R);
-    }
-};
-
-template<typename floatingpointT, typename randomT>
-struct compute_random
-{
-    using random_type = randomT;
-
-    const context_ptr& m_ctx;
-    std::vector<int> R;
-    random_type& rng;
-
-    template<typename solverT>
-    compute_random(const context_ptr& ctx, solverT& s, random_type& rng_)
-      : m_ctx(ctx)
-      , R(s.m)
-      , rng(rng_)
-    {
-        compute_missing_constraint(s, R);
-    }
-
-    template<typename solverT>
-    int push_and_run(solverT& solver,
-                     floatingpointT kappa,
-                     floatingpointT delta,
-                     floatingpointT theta,
-                     floatingpointT objective_amplifier)
-    {
-        std::shuffle(R.begin(), R.end(), rng);
-
-        solver.push_and_compute_update_row(
-          R.begin(), R.end(), kappa, delta, theta, objective_amplifier);
-
-        return compute_missing_constraint(solver, R);
-    }
-
-    template<typename solverT>
-    int run(solverT& solver,
-            floatingpointT kappa,
-            floatingpointT delta,
-            floatingpointT theta)
-    {
-        std::shuffle(R.begin(), R.end(), rng);
-
-        solver.compute_update_row(R.begin(), R.end(), kappa, delta, theta);
-
-        return compute_missing_constraint(solver, R);
-    }
-};
-
-struct compute_infeasibility_incr
-{};
-
-struct compute_infeasibility_decr
-{};
-
-template<typename iteratorT>
-void
-sort(iteratorT begin, iteratorT end, compute_infeasibility_incr)
-{
-    std::sort(begin, end, [](const auto& lhs, const auto& rhs) {
-        return lhs.second < rhs.second;
-    });
-}
-
-template<typename iteratorT>
-void
-sort(iteratorT begin, iteratorT end, compute_infeasibility_decr)
-{
-    std::sort(begin, end, [](const auto& lhs, const auto& rhs) {
-        return rhs.second < lhs.second;
-    });
-}
-
-template<typename floatingpointT, typename randomT, typename directionT>
-struct compute_infeasibility
-{
-    using random_type = randomT;
-    using direction_type = directionT;
-
-    const context_ptr& m_ctx;
-    std::vector<std::pair<int, int>> R;
-    random_type& rng;
-
-    template<typename solverT>
-    compute_infeasibility(const context_ptr& ctx,
-                          solverT& s,
-                          random_type& rng_)
-      : m_ctx(ctx)
-      , R(s.m)
-      , rng(rng_)
-    {
-        local_compute_missing_constraint(s);
-    }
-
-    template<typename solverT>
-    int local_compute_missing_constraint(solverT& solver)
-    {
-        R.clear();
-
-        for (int k = 0, e = solver.m; k != e; ++k) {
-            sparse_matrix<int>::const_row_iterator it, et;
-            std::tie(it, et) = solver.ap.row(k);
-            int v = 0;
-
-            for (; it != et; ++it)
-                v += solver.factor(it->value) * solver.x[it->column];
-
-            if (solver.bound_min(k) > v)
-                R.push_back(std::make_pair(k, solver.bound_min(k) - v));
-            else if (solver.bound_max(k) < v)
-                R.push_back(std::make_pair(k, v - solver.bound_max(k)));
-        }
-
-        return length(R);
-    }
-
-    template<typename solverT>
-    int push_and_run(solverT& solver,
-                     floatingpointT kappa,
-                     floatingpointT delta,
-                     floatingpointT theta,
-                     floatingpointT objective_amplifier)
-    {
-        baryonyx::itm::sort(R.begin(), R.end(), direction_type());
-
-        solver.push_and_compute_update_row(
-          R.begin(), R.end(), kappa, delta, theta, objective_amplifier);
-
-        return local_compute_missing_constraint(solver);
-    }
-
-    template<typename solverT>
-    int run(solverT& solver,
-            floatingpointT kappa,
-            floatingpointT delta,
-            floatingpointT theta)
-    {
-        baryonyx::itm::sort(R.begin(), R.end(), direction_type());
-
-        solver.compute_update_row(R.begin(), R.end(), kappa, delta, theta);
-
-        return local_compute_missing_constraint(solver);
-    }
-};
-
-template<typename floatingpointT>
-inline floatingpointT
-compute_delta(const context_ptr& ctx,
-              const std::unique_ptr<floatingpointT[]>& c,
-              floatingpointT theta,
-              int n)
-{
-    info(ctx, "  - delta not defined, compute it:\n");
-
-    auto mini{ std::numeric_limits<floatingpointT>::max() };
-    for (int i = 0; i != n; ++i)
-        if (c[i] != 0 and std::abs(c[i]) < mini)
-            mini = std::abs(c[i]);
-
-    if (mini == std::numeric_limits<floatingpointT>::max()) {
-        info(ctx, "    - All costs equal 0. Default value is used.\n");
-        mini = static_cast<floatingpointT>(0.01);
-    }
-
-    const auto ret = mini - theta * mini;
-
-    info(ctx,
-         "    - delta={} (min normalized cost:{} / theta: {})\n",
-         ret,
-         mini,
-         theta);
-
-    return ret;
-}
-
-inline int
-element_number(const std::vector<merged_constraint>& csts)
-{
-    std::size_t ret{ 0 };
-
-    for (const auto& elem : csts)
-        ret += elem.elements.size();
-
-    return numeric_cast<int>(ret);
-}
-
 template<typename SolverT,
          typename floatingpointT,
          typename modeT,
@@ -1072,6 +293,583 @@ private:
     }
 };
 
+template<typename Enum>
+constexpr std::size_t
+enum_value(Enum e)
+{
+    return static_cast<std::size_t>(e);
+};
+
+template<typename Enum>
+struct enum_size
+{
+};
+
+template<>
+struct enum_size<solver_parameters::floating_point_type>
+{
+    static constexpr std::size_t size { 3 };
+};
+
+template<>
+struct enum_size<objective_function_type>
+{
+    static constexpr std::size_t size { 2 };
+};
+
+template<>
+struct enum_size<solver_parameters::constraint_order>
+{
+    static constexpr std::size_t size { 5 };
+};
+
+template<typename Enum1, typename Enum2, typename Enum3>
+constexpr std::size_t
+combine_enums(Enum1 e1, Enum2 e2, Enum3 e3)
+{
+    return enum_value(e1) + enum_size<Enum1>::size * enum_value(e2) +
+        enum_size<Enum1>::size * enum_size<Enum2>::size *
+        enum_value(e3);
+}
+
+
+template<typename SolverT, typename constraintOrderT, typename randomT>
+inline result
+solve_problem(const context_ptr& ctx, const problem& pb);
+
+/**
+ * Template function to select the good template parameter for the underlying
+ * itm::solver.
+ */
+template<template<typename floatingpointT, typename modeT, typename randomT>
+         class Solver,
+         typename random_type>
+inline result
+select_solver_parameters(const context_ptr& ctx, const problem& pb)
+{
+    switch (combine_enums(ctx->parameters.float_type, pb.type, ctx->parameters.order)) {
+    case combine_enums(solver_parameters::floating_point_type::float_type,
+                       baryonyx::objective_function_type::minimize,
+                       solver_parameters::constraint_order::none):
+        return solve_problem<Solver<float, minimize_tag, random_type>,
+                             compute_none<float, random_type>,
+                             random_type>(ctx, pb);
+
+    case combine_enums(solver_parameters::floating_point_type::double_type,
+                       baryonyx::objective_function_type::minimize,
+                       solver_parameters::constraint_order::none):
+        return solve_problem<Solver<double, minimize_tag, random_type>,
+                             compute_none<double, random_type>,
+                             random_type>(ctx, pb);
+
+    case combine_enums(solver_parameters::floating_point_type::longdouble_type,
+                       baryonyx::objective_function_type::minimize,
+                       solver_parameters::constraint_order::none):
+        return solve_problem<Solver<long double, minimize_tag, random_type>,
+                             compute_none<long double, random_type>,
+                             random_type>(ctx, pb);
+
+    case combine_enums(solver_parameters::floating_point_type::float_type,
+                       baryonyx::objective_function_type::maximize,
+                       solver_parameters::constraint_order::none):
+        return solve_problem<Solver<float, maximize_tag, random_type>,
+                             compute_none<float, random_type>,
+                             random_type>(ctx, pb);
+
+    case combine_enums(solver_parameters::floating_point_type::double_type,
+                       baryonyx::objective_function_type::maximize,
+                       solver_parameters::constraint_order::none):
+        return solve_problem<Solver<double, maximize_tag, random_type>,
+                             compute_none<double, random_type>,
+                             random_type>(ctx, pb);
+
+    case combine_enums(solver_parameters::floating_point_type::longdouble_type,
+                       baryonyx::objective_function_type::maximize,
+                       solver_parameters::constraint_order::none):
+        return solve_problem<Solver<long double, minimize_tag, random_type>,
+                             compute_none<long double, random_type>,
+                             random_type>(ctx, pb);
+
+    case combine_enums(solver_parameters::floating_point_type::float_type,
+                       baryonyx::objective_function_type::minimize,
+                       solver_parameters::constraint_order::reversing):
+        return solve_problem<Solver<float, minimize_tag, random_type>,
+                             compute_reversing<float, random_type>,
+                             random_type>(ctx, pb);
+
+    case combine_enums(solver_parameters::floating_point_type::double_type,
+                       baryonyx::objective_function_type::minimize,
+                       solver_parameters::constraint_order::reversing):
+        return solve_problem<Solver<double, minimize_tag, random_type>,
+                             compute_reversing<double, random_type>,
+                             random_type>(ctx, pb);
+
+    case combine_enums(solver_parameters::floating_point_type::longdouble_type,
+                       baryonyx::objective_function_type::minimize,
+                       solver_parameters::constraint_order::reversing):
+        return solve_problem<Solver<long double, minimize_tag, random_type>,
+                             compute_reversing<long double, random_type>,
+                             random_type>(ctx, pb);
+
+    case combine_enums(solver_parameters::floating_point_type::float_type,
+                       baryonyx::objective_function_type::maximize,
+                       solver_parameters::constraint_order::reversing):
+        return solve_problem<Solver<float, maximize_tag, random_type>,
+                             compute_reversing<float, random_type>,
+                             random_type>(ctx, pb);
+
+    case combine_enums(solver_parameters::floating_point_type::double_type,
+                       baryonyx::objective_function_type::maximize,
+                       solver_parameters::constraint_order::reversing):
+        return solve_problem<Solver<double, maximize_tag, random_type>,
+                             compute_reversing<double, random_type>,
+                             random_type>(ctx, pb);
+
+    case combine_enums(solver_parameters::floating_point_type::longdouble_type,
+                       baryonyx::objective_function_type::maximize,
+                       solver_parameters::constraint_order::reversing):
+        return solve_problem<Solver<long double, minimize_tag, random_type>,
+                             compute_reversing<long double, random_type>,
+                             random_type>(ctx, pb);
+
+    case combine_enums(solver_parameters::floating_point_type::float_type,
+                       baryonyx::objective_function_type::minimize,
+                       solver_parameters::constraint_order::random_sorting):
+        return solve_problem<Solver<float, minimize_tag, random_type>,
+                             compute_random<float, random_type>,
+                             random_type>(ctx, pb);
+
+    case combine_enums(solver_parameters::floating_point_type::double_type,
+                       baryonyx::objective_function_type::minimize,
+                       solver_parameters::constraint_order::random_sorting):
+        return solve_problem<Solver<double, minimize_tag, random_type>,
+                             compute_random<double, random_type>,
+                             random_type>(ctx, pb);
+
+    case combine_enums(solver_parameters::floating_point_type::longdouble_type,
+                       baryonyx::objective_function_type::minimize,
+                       solver_parameters::constraint_order::random_sorting):
+        return solve_problem<Solver<long double, minimize_tag, random_type>,
+                             compute_random<long double, random_type>,
+                             random_type>(ctx, pb);
+
+    case combine_enums(solver_parameters::floating_point_type::float_type,
+                       baryonyx::objective_function_type::maximize,
+                       solver_parameters::constraint_order::random_sorting):
+        return solve_problem<Solver<float, maximize_tag, random_type>,
+                             compute_random<float, random_type>,
+                             random_type>(ctx, pb);
+
+    case combine_enums(solver_parameters::floating_point_type::double_type,
+                       baryonyx::objective_function_type::maximize,
+                       solver_parameters::constraint_order::random_sorting):
+        return solve_problem<Solver<double, maximize_tag, random_type>,
+                             compute_random<double, random_type>,
+                             random_type>(ctx, pb);
+
+    case combine_enums(solver_parameters::floating_point_type::longdouble_type,
+                       baryonyx::objective_function_type::maximize,
+                       solver_parameters::constraint_order::random_sorting):
+        return solve_problem<Solver<long double, minimize_tag, random_type>,
+                             compute_random<long double, random_type>,
+                             random_type>(ctx, pb);
+
+    case combine_enums(solver_parameters::floating_point_type::float_type,
+                       baryonyx::objective_function_type::minimize,
+                       solver_parameters::constraint_order::infeasibility_decr):
+        return solve_problem<Solver<float, minimize_tag, random_type>,
+                             compute_infeasibility<float,
+                                                   random_type,
+                                                   compute_infeasibility_decr>,
+                             random_type>(ctx, pb);
+
+    case combine_enums(solver_parameters::floating_point_type::double_type,
+                       baryonyx::objective_function_type::minimize,
+                       solver_parameters::constraint_order::infeasibility_decr):
+        return solve_problem<Solver<double, minimize_tag, random_type>,
+                             compute_infeasibility<double,
+                                                   random_type,
+                                                   compute_infeasibility_decr>,
+                             random_type>(ctx, pb);
+
+    case combine_enums(solver_parameters::floating_point_type::longdouble_type,
+                       baryonyx::objective_function_type::minimize,
+                       solver_parameters::constraint_order::infeasibility_decr):
+        return solve_problem<Solver<long double, minimize_tag, random_type>,
+                             compute_infeasibility<long double,
+                                                   random_type,
+                                                   compute_infeasibility_decr>,
+                             random_type>(ctx, pb);
+
+    case combine_enums(solver_parameters::floating_point_type::float_type,
+                       baryonyx::objective_function_type::maximize,
+                       solver_parameters::constraint_order::infeasibility_decr):
+        return solve_problem<Solver<float, maximize_tag, random_type>,
+                             compute_infeasibility<float,
+                                                   random_type,
+                                                   compute_infeasibility_decr>,
+                             random_type>(ctx, pb);
+
+    case combine_enums(solver_parameters::floating_point_type::double_type,
+                       baryonyx::objective_function_type::maximize,
+                       solver_parameters::constraint_order::infeasibility_decr):
+        return solve_problem<Solver<double, maximize_tag, random_type>,
+                             compute_infeasibility<double,
+                                                   random_type,
+                                                   compute_infeasibility_decr>,
+                             random_type>(ctx, pb);
+
+    case combine_enums(solver_parameters::floating_point_type::longdouble_type,
+                       baryonyx::objective_function_type::maximize,
+                       solver_parameters::constraint_order::infeasibility_decr):
+        return solve_problem<Solver<long double, minimize_tag, random_type>,
+                             compute_infeasibility<long double,
+                                                   random_type,
+                                                   compute_infeasibility_decr>,
+                             random_type>(ctx, pb);
+
+    case combine_enums(solver_parameters::floating_point_type::float_type,
+                       baryonyx::objective_function_type::minimize,
+                       solver_parameters::constraint_order::infeasibility_incr):
+        return solve_problem<Solver<float, minimize_tag, random_type>,
+                             compute_infeasibility<float,
+                                                   random_type,
+                                                   compute_infeasibility_incr>,
+                             random_type>(ctx, pb);
+
+    case combine_enums(solver_parameters::floating_point_type::double_type,
+                       baryonyx::objective_function_type::minimize,
+                       solver_parameters::constraint_order::infeasibility_incr):
+        return solve_problem<Solver<double, minimize_tag, random_type>,
+                             compute_infeasibility<double,
+                                                   random_type,
+                                                   compute_infeasibility_incr>,
+                             random_type>(ctx, pb);
+
+    case combine_enums(solver_parameters::floating_point_type::longdouble_type,
+                       baryonyx::objective_function_type::minimize,
+                       solver_parameters::constraint_order::infeasibility_incr):
+        return solve_problem<Solver<long double, minimize_tag, random_type>,
+                             compute_infeasibility<long double,
+                                                   random_type,
+                                                   compute_infeasibility_incr>,
+                             random_type>(ctx, pb);
+
+    case combine_enums(solver_parameters::floating_point_type::float_type,
+                       baryonyx::objective_function_type::maximize,
+                       solver_parameters::constraint_order::infeasibility_incr):
+        return solve_problem<Solver<float, maximize_tag, random_type>,
+                             compute_infeasibility<float,
+                                                   random_type,
+                                                   compute_infeasibility_incr>,
+                             random_type>(ctx, pb);
+
+    case combine_enums(solver_parameters::floating_point_type::double_type,
+                       baryonyx::objective_function_type::maximize,
+                       solver_parameters::constraint_order::infeasibility_incr):
+        return solve_problem<Solver<double, maximize_tag, random_type>,
+                             compute_infeasibility<double,
+                                                   random_type,
+                                                   compute_infeasibility_incr>,
+                             random_type>(ctx, pb);
+
+    case combine_enums(solver_parameters::floating_point_type::longdouble_type,
+                       baryonyx::objective_function_type::maximize,
+                       solver_parameters::constraint_order::infeasibility_incr):
+        return solve_problem<Solver<long double, minimize_tag, random_type>,
+                             compute_infeasibility<long double,
+                                                   random_type,
+                                                   compute_infeasibility_incr>,
+                             random_type>(ctx, pb);
+    }
+
+    return result(result_status::internal_error);
+}
+
+template<typename SolverT, typename constraintOrderT, typename randomT>
+inline result
+optimize_problem(const context_ptr& ctx, const problem& pb);
+
+/**
+ * Template function to select the good template parameter for the underlying
+ * itm::solver.
+ */
+template<template<typename floatingpointT, typename modeT, typename randomT>
+         class Solver,
+         typename random_type>
+auto
+select_optimizer_parameters(const context_ptr& ctx, const problem& pb)
+{
+    switch (combine_enums(ctx->parameters.float_type, pb.type, ctx->parameters.order)) {
+    case combine_enums(solver_parameters::floating_point_type::float_type,
+             baryonyx::objective_function_type::minimize,
+             solver_parameters::constraint_order::none):
+        return optimize_problem<Solver<float, minimize_tag, random_type>,
+                                compute_none<float, random_type>,
+                                random_type>(ctx, pb);
+
+    case combine_enums(solver_parameters::floating_point_type::double_type,
+             baryonyx::objective_function_type::minimize,
+             solver_parameters::constraint_order::none):
+        return optimize_problem<Solver<double, minimize_tag, random_type>,
+                                compute_none<double, random_type>,
+                                random_type>(ctx, pb);
+
+    case combine_enums(solver_parameters::floating_point_type::longdouble_type,
+             baryonyx::objective_function_type::minimize,
+             solver_parameters::constraint_order::none):
+        return optimize_problem<Solver<long double, minimize_tag, random_type>,
+                                compute_none<long double, random_type>,
+                                random_type>(ctx, pb);
+
+    case combine_enums(solver_parameters::floating_point_type::float_type,
+             baryonyx::objective_function_type::maximize,
+             solver_parameters::constraint_order::none):
+        return optimize_problem<Solver<float, maximize_tag, random_type>,
+                                compute_none<float, random_type>,
+                                random_type>(ctx, pb);
+
+    case combine_enums(solver_parameters::floating_point_type::double_type,
+             baryonyx::objective_function_type::maximize,
+             solver_parameters::constraint_order::none):
+        return optimize_problem<Solver<double, maximize_tag, random_type>,
+                                compute_none<double, random_type>,
+                                random_type>(ctx, pb);
+
+    case combine_enums(solver_parameters::floating_point_type::longdouble_type,
+             baryonyx::objective_function_type::maximize,
+             solver_parameters::constraint_order::none):
+        return optimize_problem<Solver<long double, minimize_tag, random_type>,
+                                compute_none<long double, random_type>,
+                                random_type>(ctx, pb);
+
+    case combine_enums(solver_parameters::floating_point_type::float_type,
+             baryonyx::objective_function_type::minimize,
+             solver_parameters::constraint_order::reversing):
+        return optimize_problem<Solver<float, minimize_tag, random_type>,
+                                compute_reversing<float, random_type>,
+                                random_type>(ctx, pb);
+
+    case combine_enums(solver_parameters::floating_point_type::double_type,
+             baryonyx::objective_function_type::minimize,
+             solver_parameters::constraint_order::reversing):
+        return optimize_problem<Solver<double, minimize_tag, random_type>,
+                                compute_reversing<double, random_type>,
+                                random_type>(ctx, pb);
+
+    case combine_enums(solver_parameters::floating_point_type::longdouble_type,
+             baryonyx::objective_function_type::minimize,
+             solver_parameters::constraint_order::reversing):
+        return optimize_problem<Solver<long double, minimize_tag, random_type>,
+                                compute_reversing<long double, random_type>,
+                                random_type>(ctx, pb);
+
+    case combine_enums(solver_parameters::floating_point_type::float_type,
+             baryonyx::objective_function_type::maximize,
+             solver_parameters::constraint_order::reversing):
+        return optimize_problem<Solver<float, maximize_tag, random_type>,
+                                compute_reversing<float, random_type>,
+                                random_type>(ctx, pb);
+
+    case combine_enums(solver_parameters::floating_point_type::double_type,
+             baryonyx::objective_function_type::maximize,
+             solver_parameters::constraint_order::reversing):
+        return optimize_problem<Solver<double, maximize_tag, random_type>,
+                                compute_reversing<double, random_type>,
+                                random_type>(ctx, pb);
+
+    case combine_enums(solver_parameters::floating_point_type::longdouble_type,
+             baryonyx::objective_function_type::maximize,
+             solver_parameters::constraint_order::reversing):
+        return optimize_problem<Solver<long double, minimize_tag, random_type>,
+                                compute_reversing<long double, random_type>,
+                                random_type>(ctx, pb);
+
+    case combine_enums(solver_parameters::floating_point_type::float_type,
+             baryonyx::objective_function_type::minimize,
+             solver_parameters::constraint_order::random_sorting):
+        return optimize_problem<Solver<float, minimize_tag, random_type>,
+                                compute_random<float, random_type>,
+                                random_type>(ctx, pb);
+
+    case combine_enums(solver_parameters::floating_point_type::double_type,
+             baryonyx::objective_function_type::minimize,
+             solver_parameters::constraint_order::random_sorting):
+        return optimize_problem<Solver<double, minimize_tag, random_type>,
+                                compute_random<double, random_type>,
+                                random_type>(ctx, pb);
+
+    case combine_enums(solver_parameters::floating_point_type::longdouble_type,
+             baryonyx::objective_function_type::minimize,
+             solver_parameters::constraint_order::random_sorting):
+        return optimize_problem<Solver<long double, minimize_tag, random_type>,
+                                compute_random<long double, random_type>,
+                                random_type>(ctx, pb);
+
+    case combine_enums(solver_parameters::floating_point_type::float_type,
+             baryonyx::objective_function_type::maximize,
+             solver_parameters::constraint_order::random_sorting):
+        return optimize_problem<Solver<float, maximize_tag, random_type>,
+                                compute_random<float, random_type>,
+                                random_type>(ctx, pb);
+
+    case combine_enums(solver_parameters::floating_point_type::double_type,
+             baryonyx::objective_function_type::maximize,
+             solver_parameters::constraint_order::random_sorting):
+        return optimize_problem<Solver<double, maximize_tag, random_type>,
+                                compute_random<double, random_type>,
+                                random_type>(ctx, pb);
+
+    case combine_enums(solver_parameters::floating_point_type::longdouble_type,
+             baryonyx::objective_function_type::maximize,
+             solver_parameters::constraint_order::random_sorting):
+        return optimize_problem<Solver<long double, minimize_tag, random_type>,
+                                compute_random<long double, random_type>,
+                                random_type>(ctx, pb);
+
+    case combine_enums(solver_parameters::floating_point_type::float_type,
+             baryonyx::objective_function_type::minimize,
+             solver_parameters::constraint_order::infeasibility_decr):
+        return optimize_problem<
+          Solver<float, minimize_tag, random_type>,
+          compute_infeasibility<float,
+                                random_type,
+                                compute_infeasibility_decr>,
+          random_type>(ctx, pb);
+
+    case combine_enums(solver_parameters::floating_point_type::double_type,
+             baryonyx::objective_function_type::minimize,
+             solver_parameters::constraint_order::infeasibility_decr):
+        return optimize_problem<
+          Solver<double, minimize_tag, random_type>,
+          compute_infeasibility<double,
+                                random_type,
+                                compute_infeasibility_decr>,
+          random_type>(ctx, pb);
+
+    case combine_enums(solver_parameters::floating_point_type::longdouble_type,
+             baryonyx::objective_function_type::minimize,
+             solver_parameters::constraint_order::infeasibility_decr):
+        return optimize_problem<
+          Solver<long double, minimize_tag, random_type>,
+          compute_infeasibility<long double,
+                                random_type,
+                                compute_infeasibility_decr>,
+          random_type>(ctx, pb);
+
+    case combine_enums(solver_parameters::floating_point_type::float_type,
+             baryonyx::objective_function_type::maximize,
+             solver_parameters::constraint_order::infeasibility_decr):
+        return optimize_problem<
+          Solver<float, maximize_tag, random_type>,
+          compute_infeasibility<float,
+                                random_type,
+                                compute_infeasibility_decr>,
+          random_type>(ctx, pb);
+
+    case combine_enums(solver_parameters::floating_point_type::double_type,
+             baryonyx::objective_function_type::maximize,
+             solver_parameters::constraint_order::infeasibility_decr):
+        return optimize_problem<
+          Solver<double, maximize_tag, random_type>,
+          compute_infeasibility<double,
+                                random_type,
+                                compute_infeasibility_decr>,
+          random_type>(ctx, pb);
+
+    case combine_enums(solver_parameters::floating_point_type::longdouble_type,
+             baryonyx::objective_function_type::maximize,
+             solver_parameters::constraint_order::infeasibility_decr):
+        return optimize_problem<
+          Solver<long double, minimize_tag, random_type>,
+          compute_infeasibility<long double,
+                                random_type,
+                                compute_infeasibility_decr>,
+          random_type>(ctx, pb);
+
+    case combine_enums(solver_parameters::floating_point_type::float_type,
+             baryonyx::objective_function_type::minimize,
+             solver_parameters::constraint_order::infeasibility_incr):
+        return optimize_problem<
+          Solver<float, minimize_tag, random_type>,
+          compute_infeasibility<float,
+                                random_type,
+                                compute_infeasibility_incr>,
+          random_type>(ctx, pb);
+
+    case combine_enums(solver_parameters::floating_point_type::double_type,
+             baryonyx::objective_function_type::minimize,
+             solver_parameters::constraint_order::infeasibility_incr):
+        return optimize_problem<
+          Solver<double, minimize_tag, random_type>,
+          compute_infeasibility<double,
+                                random_type,
+                                compute_infeasibility_incr>,
+          random_type>(ctx, pb);
+
+    case combine_enums(solver_parameters::floating_point_type::longdouble_type,
+             baryonyx::objective_function_type::minimize,
+             solver_parameters::constraint_order::infeasibility_incr):
+        return optimize_problem<
+          Solver<long double, minimize_tag, random_type>,
+          compute_infeasibility<long double,
+                                random_type,
+                                compute_infeasibility_incr>,
+          random_type>(ctx, pb);
+
+    case combine_enums(solver_parameters::floating_point_type::float_type,
+             baryonyx::objective_function_type::maximize,
+             solver_parameters::constraint_order::infeasibility_incr):
+        return optimize_problem<
+          Solver<float, maximize_tag, random_type>,
+          compute_infeasibility<float,
+                                random_type,
+                                compute_infeasibility_incr>,
+          random_type>(ctx, pb);
+
+    case combine_enums(solver_parameters::floating_point_type::double_type,
+             baryonyx::objective_function_type::maximize,
+             solver_parameters::constraint_order::infeasibility_incr):
+        return optimize_problem<
+          Solver<double, maximize_tag, random_type>,
+          compute_infeasibility<double,
+                                random_type,
+                                compute_infeasibility_incr>,
+          random_type>(ctx, pb);
+
+    case combine_enums(solver_parameters::floating_point_type::longdouble_type,
+             baryonyx::objective_function_type::maximize,
+             solver_parameters::constraint_order::infeasibility_incr):
+        return optimize_problem<
+          Solver<long double, minimize_tag, random_type>,
+          compute_infeasibility<long double,
+                                random_type,
+                                compute_infeasibility_incr>,
+          random_type>(ctx, pb);
+    }
+
+    return result(result_status::internal_error);
+}
+
+result
+solve_equalities_01coeff(const context_ptr& ctx, const problem& pb);
+
+result
+solve_equalities_101coeff(const context_ptr& ctx, const problem& pb);
+
+result
+solve_inequalities_01coeff(const context_ptr& ctx, const problem& pb);
+
+result
+solve_inequalities_101coeff(const context_ptr& ctx, const problem& pb);
+
+result
+solve_inequalities_101coeff_buffered(const context_ptr& ctx,
+                                     const problem& pb);
+
+result
+solve_inequalities_Zcoeff(const context_ptr& ctx, const problem& pb);
+
 template<typename floatingpointT, typename modeT>
 struct best_solution_recorder
 {
@@ -1295,164 +1093,14 @@ private:
     }
 };
 
-template<typename floatingpointT, typename iteratorT, typename randomT>
-inline void
-random_epsilon_unique(iteratorT begin,
-                      iteratorT end,
-                      randomT& rng,
-                      floatingpointT min,
-                      floatingpointT max)
-{
-    assert(min != max && "rng_normalize_cost fail to define min and max");
-
-    std::uniform_real_distribution<floatingpointT> distribution(min, max);
-
-    for (; begin != end; ++begin)
-        begin->first += distribution(rng);
-}
-
-template<typename floatingpointT, typename randomT>
-inline std::unique_ptr<floatingpointT[]>
-rng_normalize_costs(const std::unique_ptr<floatingpointT[]>& c,
-                    randomT& rng,
-                    int n)
-{
-    std::vector<std::pair<floatingpointT, int>> r(n);
-
-    for (int i = 0; i != n; ++i) {
-        r[i].first = c[i];
-        r[i].second = i;
-    }
-
-    std::sort(r.begin(), r.end(), [](const auto& lhs, const auto& rhs) {
-        return lhs.first < rhs.first;
-    });
-
-    auto begin = r.begin();
-    auto end = r.end();
-    auto next = r.begin()++;
-    for (; begin != end; ++begin) {
-        if (next->first != begin->first) {
-            floatingpointT min = next->first;
-            floatingpointT max;
-
-            if (begin != end)
-                max = begin->first;
-            else
-                max = next->first + 1;
-
-            random_epsilon_unique(next, begin, rng, min, max);
-        }
-
-        next = begin;
-    }
-
-    // Reorder the vector according to the variable index, so, it restores
-    // the initial order.
-
-    std::sort(r.begin(), r.end(), [](const auto& lhs, const auto& rhs) {
-        return lhs.second < rhs.second;
-    });
-
-    auto ret = std::make_unique<floatingpointT[]>(n);
-    for (int i = 0; i != n; ++i)
-        ret[i] = r[i].first;
-
-    // Finally we compute the l+oo norm.
-
-    floatingpointT div = *std::max_element(c.get(), c.get() + n);
-    if (std::isnormal(div))
-        for (int i = 0; i != n; ++i)
-            ret[i] /= div;
-
-    return ret;
-}
-
-/**
- * Normalizes the cost vector, i.e. divides it by its l{1,2, +oo}norm. If
- * the input vector is too small or with infinity value, the c is
- * unchanged.
- */
-template<typename floatingpointT, typename randomT>
-inline std::unique_ptr<floatingpointT[]>
-normalize_costs(const context_ptr& ctx,
-                const std::unique_ptr<floatingpointT[]>& c,
-                randomT& rng,
-                int n)
-{
-    auto ret = std::make_unique<floatingpointT[]>(n);
-    std::copy(c.get(), c.get() + n, ret.get());
-
-    if (ctx->parameters.cost_norm == solver_parameters::cost_norm_type::none) {
-        info(ctx, "  - No norm");
-        return ret;
-    }
-
-    if (ctx->parameters.cost_norm ==
-        solver_parameters::cost_norm_type::random) {
-        info(ctx, "  - Compute random norm\n");
-        return rng_normalize_costs<floatingpointT, randomT>(c, rng, n);
-    }
-
-    floatingpointT div{ 0 };
-
-    if (ctx->parameters.cost_norm == solver_parameters::cost_norm_type::l1) {
-        info(ctx, "  - Compute l1 norm\n");
-        for (int i = 0; i != n; ++i)
-            div += std::abs(ret[i]);
-    } else if (ctx->parameters.cost_norm ==
-               solver_parameters::cost_norm_type::l2) {
-        info(ctx, "  - Compute l2 norm\n");
-        for (int i = 0; i != n; ++i)
-            div += ret[i] * ret[i];
-    } else {
-        info(ctx, "  - Compute infinity-norm (default)\n");
-        div = *std::max_element(c.get(), c.get() + n);
-    }
-
-    if (std::isnormal(div))
-        for (int i = 0; i != n; ++i)
-            ret[i] /= div;
-
-    return ret;
-}
-
-template<typename floatingpointT>
-inline std::unique_ptr<floatingpointT[]>
-make_objective_function(const objective_function& obj, int n)
-{
-    auto ret = std::make_unique<floatingpointT[]>(n);
-
-    for (const auto& elem : obj.elements) {
-        assert(0 <= n and elem.variable_index < n);
-        ret[elem.variable_index] += static_cast<floatingpointT>(elem.factor);
-    }
-
-    return ret;
-}
-
-template<typename randomT>
-typename randomT::result_type
-init_random_generator_seed(const context_ptr& ctx)
-{
-    auto epoch = std::chrono::system_clock::now().time_since_epoch().count();
-    auto param = ctx->parameters.seed;
-
-    if (param <= 0)
-        return static_cast<typename randomT::result_type>(epoch);
-
-    return static_cast<typename randomT::result_type>(param);
-}
-
-template<typename SolverT,
-         typename floatingpointT,
-         typename modeT,
-         typename constraintOrderT,
-         typename randomT>
+template<typename SolverT, typename constraintOrderT, typename randomT>
 inline result
 solve_problem(const context_ptr& ctx, const problem& pb)
 {
     info(ctx, "Solver initializing\n");
+
+    using floatingpoint_type = typename SolverT::floatingpoint_type;
+    using mode_type = typename SolverT::mode_type;
 
     result ret;
     auto affected_vars = std::move(pb.affected_vars);
@@ -1463,19 +1111,19 @@ solve_problem(const context_ptr& ctx, const problem& pb)
 
         auto variables = numeric_cast<int>(pb.vars.values.size());
         auto cost =
-          make_objective_function<floatingpointT>(pb.objective, variables);
-        auto norm_costs =
-          normalize_costs<floatingpointT, randomT>(ctx, cost, rng, variables);
+          make_objective_function<floatingpoint_type>(pb.objective, variables);
+        auto norm_costs = normalize_costs<floatingpoint_type, randomT>(
+          ctx, cost, rng, variables);
         auto cost_constant = pb.objective.value;
         auto names = std::move(pb.vars.names);
 
         switch (ctx->parameters.observer) {
         case solver_parameters::observer_type::pnm: {
-            using obs = pnm_observer<SolverT, floatingpointT>;
+            using obs = pnm_observer<SolverT, floatingpoint_type>;
 
             solver_functor<SolverT,
-                           floatingpointT,
-                           modeT,
+                           floatingpoint_type,
+                           mode_type,
                            constraintOrderT,
                            randomT,
                            obs>
@@ -1484,11 +1132,11 @@ solve_problem(const context_ptr& ctx, const problem& pb)
             ret = slv(constraints, variables, cost, norm_costs, cost_constant);
         } break;
         case solver_parameters::observer_type::file: {
-            using obs = file_observer<SolverT, floatingpointT>;
+            using obs = file_observer<SolverT, floatingpoint_type>;
 
             solver_functor<SolverT,
-                           floatingpointT,
-                           modeT,
+                           floatingpoint_type,
+                           mode_type,
                            constraintOrderT,
                            randomT,
                            obs>
@@ -1497,11 +1145,11 @@ solve_problem(const context_ptr& ctx, const problem& pb)
             ret = slv(constraints, variables, cost, norm_costs, cost_constant);
         } break;
         default: {
-            using obs = none_observer<SolverT, floatingpointT>;
+            using obs = none_observer<SolverT, floatingpoint_type>;
 
             solver_functor<SolverT,
-                           floatingpointT,
-                           modeT,
+                           floatingpoint_type,
+                           mode_type,
                            constraintOrderT,
                            randomT,
                            obs>
@@ -1522,47 +1170,13 @@ solve_problem(const context_ptr& ctx, const problem& pb)
     return ret;
 }
 
-/**
- * Generates an array with unique seed value.
- */
-template<typename randomT>
-inline std::unique_ptr<typename randomT::result_type[]>
-generate_seed(randomT& rng, int thread)
-{
-    using type = typename randomT::result_type;
-
-    auto ret = std::make_unique<type[]>(thread);
-
-    std::uniform_int_distribution<type> dst(std::numeric_limits<type>::min(),
-                                            std::numeric_limits<type>::max());
-
-    ret[0] = numeric_cast<type>(dst(rng));
-
-    for (int i = 1; i != thread; ++i) {
-        ret[i] = numeric_cast<type>(dst(rng));
-
-        int j = i - 1;
-        while (j > 0) {
-            if (ret[j] == ret[i]) {
-                ret[j] = numeric_cast<type>(dst(rng));
-                j = i;
-            }
-
-            --j;
-        }
-    }
-
-    return ret;
-}
-
-template<typename SolverT,
-         typename floatingpointT,
-         typename modeT,
-         typename constraintOrderT,
-         typename randomT>
+template<typename SolverT, typename constraintOrderT, typename randomT>
 inline result
-optimize_problem(const context_ptr& ctx, const problem& pb, int thread)
+optimize_problem(const context_ptr& ctx, const problem& pb)
 {
+    using floatingpoint_type = typename SolverT::floatingpoint_type;
+    using mode_type = typename SolverT::mode_type;
+
     info(ctx, "Optimizer initializing\n");
     result ret;
     auto affected_vars = std::move(pb.affected_vars);
@@ -1573,18 +1187,19 @@ optimize_problem(const context_ptr& ctx, const problem& pb, int thread)
 
         auto variables = numeric_cast<int>(pb.vars.values.size());
         auto cost =
-          make_objective_function<floatingpointT>(pb.objective, variables);
-        auto norm_costs =
-          normalize_costs<floatingpointT, randomT>(ctx, cost, rng, variables);
+          make_objective_function<floatingpoint_type>(pb.objective, variables);
+        auto norm_costs = normalize_costs<floatingpoint_type, randomT>(
+          ctx, cost, rng, variables);
         auto cost_constant = pb.objective.value;
         auto names = std::move(pb.vars.names);
 
-        std::vector<std::thread> pool(thread);
+        const auto thread = static_cast<std::size_t>(ctx->parameters.thread);
+        std::vector<std::thread> pool(ctx->parameters.thread);
         pool.clear();
         std::vector<std::future<result>> results(thread);
         results.clear();
 
-        best_solution_recorder<floatingpointT, modeT> result(ctx);
+        best_solution_recorder<floatingpoint_type, mode_type> result(ctx);
 
         if (thread == 1)
             info(ctx, "optimizer starts with one thread\n");
@@ -1593,11 +1208,11 @@ optimize_problem(const context_ptr& ctx, const problem& pb, int thread)
 
         auto seeds = generate_seed(rng, thread);
 
-        for (int i{ 0 }; i != thread; ++i) {
+        for (std::size_t i{ 0 }; i != thread; ++i) {
             std::packaged_task<baryonyx::result()> task(
               std::bind(optimize_functor<SolverT,
-                                         floatingpointT,
-                                         modeT,
+                                         floatingpoint_type,
+                                         mode_type,
                                          constraintOrderT,
                                          randomT>(
                           ctx, i, seeds[i], names, affected_vars),
@@ -1618,7 +1233,7 @@ optimize_problem(const context_ptr& ctx, const problem& pb, int thread)
 
         std::set<solution> all_solutions;
 
-        for (int i = 0; i != thread; ++i) {
+        for (std::size_t i = 0; i != thread; ++i) {
             auto current = results[i].get();
             if (current.status == result_status::success) {
                 all_solutions.insert(current.solutions.begin(),
@@ -1627,7 +1242,7 @@ optimize_problem(const context_ptr& ctx, const problem& pb, int thread)
                 if (ret.solutions.empty() or
                     is_better_solution(current.solutions.back().value,
                                        ret.solutions.back().value,
-                                       modeT()))
+                                       mode_type()))
                     ret = current;
             }
         }
@@ -1641,7 +1256,48 @@ optimize_problem(const context_ptr& ctx, const problem& pb, int thread)
 
     return ret;
 }
-}
-}
+
+result
+optimize_equalities_01coeff(const context_ptr& ctx, const problem& pb);
+
+result
+optimize_equalities_101coeff(const context_ptr& ctx, const problem& pb);
+
+result
+optimize_inequalities_01coeff(const context_ptr& ctx, const problem& pb);
+
+result
+optimize_inequalities_101coeff(const context_ptr& ctx, const problem& pb);
+
+result
+optimize_inequalities_101coeff_buffered(const context_ptr& ctx,
+                                        const problem& pb);
+
+result
+optimize_inequalities_Zcoeff(const context_ptr& ctx, const problem& pb);
+
+result
+solve(const context_ptr& ctx, const problem& pb);
+
+result
+optimize(const context_ptr& ctx, const problem& pb);
+
+/**
+ * @brief Auto-tune baryonyx solver parameters to optimize the problem.
+ *
+ * @details The @c nlopt library or a manual test is used to found the best
+ *     parameters @c baryonyx::optimize function for the specified problem.
+ *
+ * @param ctx A context.
+ * @param pb Problem definition.
+ * @return A representation of the result.
+ * @throw @c baryonyx::solver_error
+ */
+baryonyx::result
+automatic_optimizer(const baryonyx::context_ptr& ctx,
+                    const baryonyx::problem& pb);
+  
+} // namespace itm
+} // namespace baryonyx
 
 #endif

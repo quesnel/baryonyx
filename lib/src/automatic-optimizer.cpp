@@ -238,15 +238,12 @@ namespace itm {
 
 baryonyx::result
 automatic_optimizer(const baryonyx::context_ptr& ctx,
-                    const baryonyx::problem& pb,
-                    int thread)
+                    const baryonyx::problem& pb)
 {
     baryonyx::notice(ctx, "- Automatic optimization starts\n");
 
     assert(ctx->parameters.auto_tune !=
            baryonyx::solver_parameters::auto_tune_parameters::disabled);
-
-    (void)thread;
 
 #ifdef BARYONYX_HAVE_NLOPT
     if (ctx->parameters.auto_tune ==

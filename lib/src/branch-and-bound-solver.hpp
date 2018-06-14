@@ -38,20 +38,6 @@ namespace baryonyx {
 namespace itm {
 namespace details {
 
-template<typename floatingpointT>
-inline bool
-stop_iterating(floatingpointT value, minimize_tag) noexcept
-{
-    return value > 0;
-}
-
-template<typename floatingpointT>
-inline bool
-stop_iterating(floatingpointT value, maximize_tag) noexcept
-{
-    return value < 0;
-}
-
 template<typename modeT, typename floatingpointT>
 struct branch_and_bound_solver
 {

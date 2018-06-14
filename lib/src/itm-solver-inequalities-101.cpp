@@ -22,8 +22,6 @@
 
 #include "itm-solver-common.hpp"
 #include "sparse-vector.hpp"
-#include "solver.hpp"
-#include "optimizer.hpp"
 
 #include <memory>
 
@@ -581,7 +579,10 @@ solve_inequalities_101coeff(const context_ptr& ctx, const problem& pb)
 {
     info(ctx, "solver: inequalities-101coeff\n");
 
-    return dispatch_solver_parameters<solver_inequalities_101coeff>(ctx, pb);
+    using random_type = std::default_random_engine;
+
+    return select_solver_parameters<solver_inequalities_101coeff, random_type>(
+      ctx, pb);
 }
 
 result
@@ -589,7 +590,10 @@ optimize_inequalities_101coeff(const context_ptr& ctx, const problem& pb)
 {
     info(ctx, "optimizer: inequalities-101coeff\n");
 
-    return dispatch_optimizer_parameters<solver_inequalities_101coeff>(ctx, pb);
+    using random_type = std::default_random_engine;
+
+    return select_optimizer_parameters<solver_inequalities_101coeff,
+                                       random_type>(ctx, pb);
 }
 
 } // namespace itm

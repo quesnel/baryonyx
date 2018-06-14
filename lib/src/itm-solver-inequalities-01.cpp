@@ -21,8 +21,6 @@
  */
 
 #include "itm-solver-common.hpp"
-#include "solver.hpp"
-#include "optimizer.hpp"
 
 #include <memory>
 
@@ -414,7 +412,10 @@ solve_inequalities_01coeff(const context_ptr& ctx, const problem& pb)
 {
     info(ctx, "solver: inequalities-01coeff\n");
 
-    return dispatch_solver_parameters<solver_inequalities_01coeff>(ctx, pb);
+    using random_type = std::default_random_engine;
+
+    return select_solver_parameters<solver_inequalities_01coeff, random_type>(
+      ctx, pb);
 }
 
 result
@@ -422,7 +423,10 @@ optimize_inequalities_01coeff(const context_ptr& ctx, const problem& pb)
 {
     info(ctx, "optimizer: inequalities-01coeff\n");
 
-    return dispatch_optimizer_parameters<solver_inequalities_01coeff>(ctx, pb);
+    using random_type = std::default_random_engine;
+
+    return select_optimizer_parameters<solver_inequalities_01coeff,
+                                       random_type>(ctx, pb);
 }
 
 } // namespace itm
