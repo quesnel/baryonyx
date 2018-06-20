@@ -934,7 +934,7 @@ struct optimize_functor
     result m_best;
 
     optimize_functor(const context_ptr& ctx,
-                     int thread_id,
+                     unsigned thread_id,
                      typename random_type::result_type seed,
                      const std::vector<std::string>& variable_names,
                      const affected_variables& affected_vars)
@@ -1193,7 +1193,7 @@ optimize_problem(const context_ptr& ctx, const problem& pb)
         auto cost_constant = pb.objective.value;
         auto names = std::move(pb.vars.names);
 
-        const auto thread = static_cast<std::size_t>(ctx->parameters.thread);
+        const auto thread = static_cast<unsigned>(ctx->parameters.thread);
         std::vector<std::thread> pool(ctx->parameters.thread);
         pool.clear();
         std::vector<std::future<result>> results(thread);
@@ -1208,7 +1208,7 @@ optimize_problem(const context_ptr& ctx, const problem& pb)
 
         auto seeds = generate_seed(rng, thread);
 
-        for (std::size_t i{ 0 }; i != thread; ++i) {
+        for (unsigned i = 0; i != thread; ++i) {
             std::packaged_task<baryonyx::result()> task(
               std::bind(optimize_functor<SolverT,
                                          floatingpoint_type,
@@ -1233,7 +1233,7 @@ optimize_problem(const context_ptr& ctx, const problem& pb)
 
         std::set<solution> all_solutions;
 
-        for (std::size_t i = 0; i != thread; ++i) {
+        for (unsigned i = 0; i != thread; ++i) {
             auto current = results[i].get();
             if (current.status == result_status::success) {
                 all_solutions.insert(current.solutions.begin(),

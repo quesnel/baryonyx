@@ -1033,7 +1033,7 @@ init_random_generator_seed(const context_ptr& ctx)
  */
 template<typename randomT>
 inline std::unique_ptr<typename randomT::result_type[]>
-generate_seed(randomT& rng, int thread)
+generate_seed(randomT& rng, unsigned thread)
 {
     using type = typename randomT::result_type;
 
