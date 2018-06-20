@@ -26,8 +26,8 @@
 #include <baryonyx/core>
 
 #include "private.hpp"
-#include "utils.hpp"
 #include "sparse-matrix.hpp"
+#include "utils.hpp"
 
 #include <algorithm>
 #include <chrono>
@@ -777,9 +777,7 @@ struct compute_infeasibility
     random_type& rng;
 
     template<typename solverT>
-    compute_infeasibility(const context_ptr& ctx,
-                          solverT& s,
-                          random_type& rng_)
+    compute_infeasibility(const context_ptr& ctx, solverT& s, random_type& rng_)
       : m_ctx(ctx)
       , R(s.m)
       , rng(rng_)
@@ -1044,10 +1042,10 @@ generate_seed(randomT& rng, unsigned thread)
 
     ret[0] = numeric_cast<type>(dst(rng));
 
-    for (int i = 1; i != thread; ++i) {
+    for (unsigned i = 1; i != thread; ++i) {
         ret[i] = numeric_cast<type>(dst(rng));
 
-        int j = i - 1;
+        unsigned j = i - 1;
         while (j > 0) {
             if (ret[j] == ret[i]) {
                 ret[j] = numeric_cast<type>(dst(rng));
