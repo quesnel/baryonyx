@@ -28,9 +28,9 @@
 #include "private.hpp"
 
 #include <chrono>
+#include <functional>
 #include <utility>
 
-#include <cassert>
 #include <climits>
 #include <cmath>
 
@@ -40,11 +40,9 @@ namespace baryonyx {
 
 /**
  * @brief Compute the length of the @c container.
- * @details Return the @c size provided by the @c C::size() but cast it
- * into a
+ * @details Return the @c size provided by the @c C::size() but cast it into a
  *     @c int. This is a specific baryonyx function, we know that number of
- *         variables and constraints are lower than the  @c int max value
- *         (INT_MAX).
+ *         variables and constraints are lower than the @c INT_MAX value.
  *
  * @code
  * std::vector<int> v(z);
@@ -60,7 +58,10 @@ template<class C>
 constexpr int
 length(const C& c) noexcept
 {
-    assert(c.size() <= static_cast<std::size_t>(INT_MAX));
+#ifdef NDEBUG
+    Expects(c.size() <= static_cast<std::size_t>(INT_MAX),
+            "length(): container too big");
+#endif
 
     return static_cast<int>(c.size());
 }
@@ -89,7 +90,9 @@ template<class T>
 constexpr const T&
 clamp(const T& v, const T& lo, const T& hi)
 {
-    assert(lo < hi);
+#ifdef NDEBUG
+    Expects(lo < hi, "clamp(): low > high");
+#endif
 
     return v < lo ? lo : v > hi ? hi : v;
 }
@@ -116,7 +119,10 @@ length(const T (&array)[N]) noexcept
 {
     (void)array;
 
-    assert(N <= INT_MAX);
+#ifdef NDEBUG
+    Expects(N > static_cast<std::size_t>(INT_MAX),
+            "length(): container too big");
+#endif
 
     return static_cast<int>(N);
 }
@@ -155,7 +161,7 @@ is_essentially_equal(const T v1, const T v2, const T epsilon)
 {
     static_assert(std::is_floating_point<T>::value,
                   "is_essentially_equal required a float/double "
-                  "as template arguement");
+                  "as template argument");
 
     return fabs((v1) - (v2)) <=
            ((fabs(v1) > fabs(v2) ? fabs(v2) : fabs(v1)) * (epsilon));
@@ -250,7 +256,7 @@ is_numeric_castable(Source arg) noexcept
  *
  * @code
  * std::vector<double> v(1024);
- * long int index = lp::numeric_cast<long int>(v); // No throw.
+ * long int index = baryonyx::numeric_cast<long int>(v); // No throw.
  * @endcode
  */
 template<typename Target, typename Source>
