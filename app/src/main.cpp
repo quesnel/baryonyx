@@ -626,8 +626,8 @@ main(int argc, const char* argv[])
                     ofs << ret.solutions.back().value << " " << ret.duration
                         << ' ';
 
-                    for (const auto& elem : ret.solutions)
-                        ofs << elem.value << ' ';
+                    for (const auto& sol : ret.solutions)
+                        ofs << sol.value << ' ';
                     ofs << "\n";
 
                 } else {
