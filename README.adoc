@@ -13,11 +13,9 @@ heuristic.
 | https://travis-ci.org/quesnel/baryonyx[image:https://travis-ci.org/quesnel/baryonyx.png?branch=master[Build Status]] | https://ci.appveyor.com/project/quesnel/baryonyx?branch=master[image:https://ci.appveyor.com/api/projects/status/github/quesnel/baryonyx?branch=master&svg=true[Build Status]]
 |============
 
-Copyright © 2017 http://www.inra.fr/en[INRA]
+Copyright © 2017-2018 http://www.inra.fr/en[INRA]
 
 The software is released under the MIT license. See the LICENSE file.
-
-
 
 == Baryonyx
 
@@ -26,16 +24,22 @@ The software is released under the MIT license. See the LICENSE file.
 * `cmake` (≥ 3)
 * c++ compiler with c++14 support (`gcc` ≥ 5, `clang` ≥ 3.5)
 
-For recent Debian and Ubuntu derivatives (remove clang to only use gcc):
+For recent Debian GNU/Linux and Ubuntu derivatives (remove clang to only use
+gcc):
 
 [source,bash]
 ....
 apt-get install build-essential cmake clang
 ....
 
-=== Installation
+=== Recommended
 
-First, we clone baryonyx git repository and the submodule.
+* `nlopt` library - optimization library to automatic parametrization of
+  Baryonyx solver.
+
+=== First installation
+
+First, we clone Baryonyx git repository and the submodule.
 
 ....
 git clone https://github.com/quesnel/baryonyx.git
@@ -84,6 +88,26 @@ export CC=gcc-7
 export CXX=g++-7
 export CXXFLAGS='-Wall -Wextra -Werror -ftree-vectorize -mmmx -msse -msse2 -msse3 -O3'
 cmake -DCMAKE_INSTALL_PREFIX=$HOME/usr ..
+....
+
+=== Update installation
+
+First, we need to update the Git repository with the following commands:
+
+....
+cd baryonyx
+git pull -r
+git submodule update --recursive
+....
+
+Then go to the build directory and restart compilation and installation :
+
+....
+cd baryonyx
+mkdir build
+cd build
+cmake -DCMAKE_BUILD_TYPE=Release ..
+make install
 ....
 
 === Usage
