@@ -189,7 +189,7 @@ public:
         std::ofstream ofs(fmt::format("{}-P-{}.txt", m_basename, m_frame++));
 
         for (int k = 0; k != m_m; ++k) {
-            val.resize(m_n, (floatingpointT)0);
+            val.resize(m_n, static_cast<floatingpointT>(0));
 
             sparse_matrix<int>::const_row_iterator it, et;
             std::tie(it, et) = m_ap.row(k);
