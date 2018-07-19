@@ -859,7 +859,7 @@ preprocess(const baryonyx::context_ptr& ctx, const baryonyx::problem& pb_)
     auto pb(pb_);
 
     info(ctx,
-         "Preprocessing starts (size: {}:\n",
+         "- Preprocessing starts (size: {})\n",
          to_string(memory_consumed_size(memory_consumed(pb))));
 
     {
@@ -947,7 +947,7 @@ preprocess(const baryonyx::context_ptr& ctx, const baryonyx::problem& pb_)
     }
 
     info(ctx,
-         "Preprocessing finished (size: {}:\n",
+         "- Preprocessing finished (size: {})\n",
          to_string(memory_consumed_size(memory_consumed(pb))));
 
 #ifndef BARYONYX_FULL_OPTIMIZATION
