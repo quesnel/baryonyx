@@ -213,10 +213,7 @@ struct solver_equalities_01coeff
 
     int select_variables_equality(const int r_size, int bk)
     {
-        (void)r_size;
-
-        assert(bk <= r_size && "b[k] can not be reached, this is an "
-                               "error of the preprocessing step.");
+        bk = std::min(bk, r_size);
 
         return bk - 1;
     }

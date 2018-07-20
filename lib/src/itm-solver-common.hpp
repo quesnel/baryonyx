@@ -188,7 +188,9 @@ struct solver_functor
 
                     if (remaining == 0)
                         store_if_better(
-                          slv.results(original_costs, cost_constant), slv.x, i);
+                          slv.results(original_costs, cost_constant),
+                          slv.x,
+                          i);
                 }
 
                 if (pushed > p.pushes_limit) {
@@ -201,10 +203,10 @@ struct solver_functor
             }
 
             if (i > p.w)
-                kappa +=
-                  kappa_step * std::pow(static_cast<floatingpointT>(remaining) /
-                                          static_cast<floatingpointT>(slv.m),
-                                        alpha);
+                kappa += kappa_step *
+                         std::pow(static_cast<floatingpointT>(remaining) /
+                                    static_cast<floatingpointT>(slv.m),
+                                  alpha);
 
             ++i;
             if (p.limit > 0 and i > p.limit) {
@@ -300,7 +302,8 @@ enum_value(Enum e)
 
 template<typename Enum>
 struct enum_size
-{};
+{
+};
 
 template<>
 struct enum_size<solver_parameters::floating_point_type>
@@ -470,104 +473,120 @@ select_solver_parameters(const context_ptr& ctx, const problem& pb)
                              compute_random<long double, random_type>,
                              random_type>(ctx, pb);
 
-    case combine_enums(solver_parameters::floating_point_type::float_type,
-                       baryonyx::objective_function_type::minimize,
-                       solver_parameters::constraint_order::infeasibility_decr):
-        return solve_problem<
-          Solver<float, minimize_tag, random_type>,
-          compute_infeasibility<float, random_type, compute_infeasibility_decr>,
-          random_type>(ctx, pb);
+    case combine_enums(
+      solver_parameters::floating_point_type::float_type,
+      baryonyx::objective_function_type::minimize,
+      solver_parameters::constraint_order::infeasibility_decr):
+        return solve_problem<Solver<float, minimize_tag, random_type>,
+                             compute_infeasibility<float,
+                                                   random_type,
+                                                   compute_infeasibility_decr>,
+                             random_type>(ctx, pb);
 
-    case combine_enums(solver_parameters::floating_point_type::double_type,
-                       baryonyx::objective_function_type::minimize,
-                       solver_parameters::constraint_order::infeasibility_decr):
+    case combine_enums(
+      solver_parameters::floating_point_type::double_type,
+      baryonyx::objective_function_type::minimize,
+      solver_parameters::constraint_order::infeasibility_decr):
         return solve_problem<Solver<double, minimize_tag, random_type>,
                              compute_infeasibility<double,
                                                    random_type,
                                                    compute_infeasibility_decr>,
                              random_type>(ctx, pb);
 
-    case combine_enums(solver_parameters::floating_point_type::longdouble_type,
-                       baryonyx::objective_function_type::minimize,
-                       solver_parameters::constraint_order::infeasibility_decr):
+    case combine_enums(
+      solver_parameters::floating_point_type::longdouble_type,
+      baryonyx::objective_function_type::minimize,
+      solver_parameters::constraint_order::infeasibility_decr):
         return solve_problem<Solver<long double, minimize_tag, random_type>,
                              compute_infeasibility<long double,
                                                    random_type,
                                                    compute_infeasibility_decr>,
                              random_type>(ctx, pb);
 
-    case combine_enums(solver_parameters::floating_point_type::float_type,
-                       baryonyx::objective_function_type::maximize,
-                       solver_parameters::constraint_order::infeasibility_decr):
-        return solve_problem<
-          Solver<float, maximize_tag, random_type>,
-          compute_infeasibility<float, random_type, compute_infeasibility_decr>,
-          random_type>(ctx, pb);
+    case combine_enums(
+      solver_parameters::floating_point_type::float_type,
+      baryonyx::objective_function_type::maximize,
+      solver_parameters::constraint_order::infeasibility_decr):
+        return solve_problem<Solver<float, maximize_tag, random_type>,
+                             compute_infeasibility<float,
+                                                   random_type,
+                                                   compute_infeasibility_decr>,
+                             random_type>(ctx, pb);
 
-    case combine_enums(solver_parameters::floating_point_type::double_type,
-                       baryonyx::objective_function_type::maximize,
-                       solver_parameters::constraint_order::infeasibility_decr):
+    case combine_enums(
+      solver_parameters::floating_point_type::double_type,
+      baryonyx::objective_function_type::maximize,
+      solver_parameters::constraint_order::infeasibility_decr):
         return solve_problem<Solver<double, maximize_tag, random_type>,
                              compute_infeasibility<double,
                                                    random_type,
                                                    compute_infeasibility_decr>,
                              random_type>(ctx, pb);
 
-    case combine_enums(solver_parameters::floating_point_type::longdouble_type,
-                       baryonyx::objective_function_type::maximize,
-                       solver_parameters::constraint_order::infeasibility_decr):
+    case combine_enums(
+      solver_parameters::floating_point_type::longdouble_type,
+      baryonyx::objective_function_type::maximize,
+      solver_parameters::constraint_order::infeasibility_decr):
         return solve_problem<Solver<long double, minimize_tag, random_type>,
                              compute_infeasibility<long double,
                                                    random_type,
                                                    compute_infeasibility_decr>,
                              random_type>(ctx, pb);
 
-    case combine_enums(solver_parameters::floating_point_type::float_type,
-                       baryonyx::objective_function_type::minimize,
-                       solver_parameters::constraint_order::infeasibility_incr):
-        return solve_problem<
-          Solver<float, minimize_tag, random_type>,
-          compute_infeasibility<float, random_type, compute_infeasibility_incr>,
-          random_type>(ctx, pb);
+    case combine_enums(
+      solver_parameters::floating_point_type::float_type,
+      baryonyx::objective_function_type::minimize,
+      solver_parameters::constraint_order::infeasibility_incr):
+        return solve_problem<Solver<float, minimize_tag, random_type>,
+                             compute_infeasibility<float,
+                                                   random_type,
+                                                   compute_infeasibility_incr>,
+                             random_type>(ctx, pb);
 
-    case combine_enums(solver_parameters::floating_point_type::double_type,
-                       baryonyx::objective_function_type::minimize,
-                       solver_parameters::constraint_order::infeasibility_incr):
+    case combine_enums(
+      solver_parameters::floating_point_type::double_type,
+      baryonyx::objective_function_type::minimize,
+      solver_parameters::constraint_order::infeasibility_incr):
         return solve_problem<Solver<double, minimize_tag, random_type>,
                              compute_infeasibility<double,
                                                    random_type,
                                                    compute_infeasibility_incr>,
                              random_type>(ctx, pb);
 
-    case combine_enums(solver_parameters::floating_point_type::longdouble_type,
-                       baryonyx::objective_function_type::minimize,
-                       solver_parameters::constraint_order::infeasibility_incr):
+    case combine_enums(
+      solver_parameters::floating_point_type::longdouble_type,
+      baryonyx::objective_function_type::minimize,
+      solver_parameters::constraint_order::infeasibility_incr):
         return solve_problem<Solver<long double, minimize_tag, random_type>,
                              compute_infeasibility<long double,
                                                    random_type,
                                                    compute_infeasibility_incr>,
                              random_type>(ctx, pb);
 
-    case combine_enums(solver_parameters::floating_point_type::float_type,
-                       baryonyx::objective_function_type::maximize,
-                       solver_parameters::constraint_order::infeasibility_incr):
-        return solve_problem<
-          Solver<float, maximize_tag, random_type>,
-          compute_infeasibility<float, random_type, compute_infeasibility_incr>,
-          random_type>(ctx, pb);
+    case combine_enums(
+      solver_parameters::floating_point_type::float_type,
+      baryonyx::objective_function_type::maximize,
+      solver_parameters::constraint_order::infeasibility_incr):
+        return solve_problem<Solver<float, maximize_tag, random_type>,
+                             compute_infeasibility<float,
+                                                   random_type,
+                                                   compute_infeasibility_incr>,
+                             random_type>(ctx, pb);
 
-    case combine_enums(solver_parameters::floating_point_type::double_type,
-                       baryonyx::objective_function_type::maximize,
-                       solver_parameters::constraint_order::infeasibility_incr):
+    case combine_enums(
+      solver_parameters::floating_point_type::double_type,
+      baryonyx::objective_function_type::maximize,
+      solver_parameters::constraint_order::infeasibility_incr):
         return solve_problem<Solver<double, maximize_tag, random_type>,
                              compute_infeasibility<double,
                                                    random_type,
                                                    compute_infeasibility_incr>,
                              random_type>(ctx, pb);
 
-    case combine_enums(solver_parameters::floating_point_type::longdouble_type,
-                       baryonyx::objective_function_type::maximize,
-                       solver_parameters::constraint_order::infeasibility_incr):
+    case combine_enums(
+      solver_parameters::floating_point_type::longdouble_type,
+      baryonyx::objective_function_type::maximize,
+      solver_parameters::constraint_order::infeasibility_incr):
         return solve_problem<Solver<long double, minimize_tag, random_type>,
                              compute_infeasibility<long double,
                                                    random_type,
@@ -720,17 +739,21 @@ select_optimizer_parameters(const context_ptr& ctx, const problem& pb)
                                 compute_random<long double, random_type>,
                                 random_type>(ctx, pb);
 
-    case combine_enums(solver_parameters::floating_point_type::float_type,
-                       baryonyx::objective_function_type::minimize,
-                       solver_parameters::constraint_order::infeasibility_decr):
+    case combine_enums(
+      solver_parameters::floating_point_type::float_type,
+      baryonyx::objective_function_type::minimize,
+      solver_parameters::constraint_order::infeasibility_decr):
         return optimize_problem<
           Solver<float, minimize_tag, random_type>,
-          compute_infeasibility<float, random_type, compute_infeasibility_decr>,
+          compute_infeasibility<float,
+                                random_type,
+                                compute_infeasibility_decr>,
           random_type>(ctx, pb);
 
-    case combine_enums(solver_parameters::floating_point_type::double_type,
-                       baryonyx::objective_function_type::minimize,
-                       solver_parameters::constraint_order::infeasibility_decr):
+    case combine_enums(
+      solver_parameters::floating_point_type::double_type,
+      baryonyx::objective_function_type::minimize,
+      solver_parameters::constraint_order::infeasibility_decr):
         return optimize_problem<
           Solver<double, minimize_tag, random_type>,
           compute_infeasibility<double,
@@ -738,9 +761,10 @@ select_optimizer_parameters(const context_ptr& ctx, const problem& pb)
                                 compute_infeasibility_decr>,
           random_type>(ctx, pb);
 
-    case combine_enums(solver_parameters::floating_point_type::longdouble_type,
-                       baryonyx::objective_function_type::minimize,
-                       solver_parameters::constraint_order::infeasibility_decr):
+    case combine_enums(
+      solver_parameters::floating_point_type::longdouble_type,
+      baryonyx::objective_function_type::minimize,
+      solver_parameters::constraint_order::infeasibility_decr):
         return optimize_problem<
           Solver<long double, minimize_tag, random_type>,
           compute_infeasibility<long double,
@@ -748,17 +772,21 @@ select_optimizer_parameters(const context_ptr& ctx, const problem& pb)
                                 compute_infeasibility_decr>,
           random_type>(ctx, pb);
 
-    case combine_enums(solver_parameters::floating_point_type::float_type,
-                       baryonyx::objective_function_type::maximize,
-                       solver_parameters::constraint_order::infeasibility_decr):
+    case combine_enums(
+      solver_parameters::floating_point_type::float_type,
+      baryonyx::objective_function_type::maximize,
+      solver_parameters::constraint_order::infeasibility_decr):
         return optimize_problem<
           Solver<float, maximize_tag, random_type>,
-          compute_infeasibility<float, random_type, compute_infeasibility_decr>,
+          compute_infeasibility<float,
+                                random_type,
+                                compute_infeasibility_decr>,
           random_type>(ctx, pb);
 
-    case combine_enums(solver_parameters::floating_point_type::double_type,
-                       baryonyx::objective_function_type::maximize,
-                       solver_parameters::constraint_order::infeasibility_decr):
+    case combine_enums(
+      solver_parameters::floating_point_type::double_type,
+      baryonyx::objective_function_type::maximize,
+      solver_parameters::constraint_order::infeasibility_decr):
         return optimize_problem<
           Solver<double, maximize_tag, random_type>,
           compute_infeasibility<double,
@@ -766,9 +794,10 @@ select_optimizer_parameters(const context_ptr& ctx, const problem& pb)
                                 compute_infeasibility_decr>,
           random_type>(ctx, pb);
 
-    case combine_enums(solver_parameters::floating_point_type::longdouble_type,
-                       baryonyx::objective_function_type::maximize,
-                       solver_parameters::constraint_order::infeasibility_decr):
+    case combine_enums(
+      solver_parameters::floating_point_type::longdouble_type,
+      baryonyx::objective_function_type::maximize,
+      solver_parameters::constraint_order::infeasibility_decr):
         return optimize_problem<
           Solver<long double, minimize_tag, random_type>,
           compute_infeasibility<long double,
@@ -776,17 +805,21 @@ select_optimizer_parameters(const context_ptr& ctx, const problem& pb)
                                 compute_infeasibility_decr>,
           random_type>(ctx, pb);
 
-    case combine_enums(solver_parameters::floating_point_type::float_type,
-                       baryonyx::objective_function_type::minimize,
-                       solver_parameters::constraint_order::infeasibility_incr):
+    case combine_enums(
+      solver_parameters::floating_point_type::float_type,
+      baryonyx::objective_function_type::minimize,
+      solver_parameters::constraint_order::infeasibility_incr):
         return optimize_problem<
           Solver<float, minimize_tag, random_type>,
-          compute_infeasibility<float, random_type, compute_infeasibility_incr>,
+          compute_infeasibility<float,
+                                random_type,
+                                compute_infeasibility_incr>,
           random_type>(ctx, pb);
 
-    case combine_enums(solver_parameters::floating_point_type::double_type,
-                       baryonyx::objective_function_type::minimize,
-                       solver_parameters::constraint_order::infeasibility_incr):
+    case combine_enums(
+      solver_parameters::floating_point_type::double_type,
+      baryonyx::objective_function_type::minimize,
+      solver_parameters::constraint_order::infeasibility_incr):
         return optimize_problem<
           Solver<double, minimize_tag, random_type>,
           compute_infeasibility<double,
@@ -794,9 +827,10 @@ select_optimizer_parameters(const context_ptr& ctx, const problem& pb)
                                 compute_infeasibility_incr>,
           random_type>(ctx, pb);
 
-    case combine_enums(solver_parameters::floating_point_type::longdouble_type,
-                       baryonyx::objective_function_type::minimize,
-                       solver_parameters::constraint_order::infeasibility_incr):
+    case combine_enums(
+      solver_parameters::floating_point_type::longdouble_type,
+      baryonyx::objective_function_type::minimize,
+      solver_parameters::constraint_order::infeasibility_incr):
         return optimize_problem<
           Solver<long double, minimize_tag, random_type>,
           compute_infeasibility<long double,
@@ -804,17 +838,21 @@ select_optimizer_parameters(const context_ptr& ctx, const problem& pb)
                                 compute_infeasibility_incr>,
           random_type>(ctx, pb);
 
-    case combine_enums(solver_parameters::floating_point_type::float_type,
-                       baryonyx::objective_function_type::maximize,
-                       solver_parameters::constraint_order::infeasibility_incr):
+    case combine_enums(
+      solver_parameters::floating_point_type::float_type,
+      baryonyx::objective_function_type::maximize,
+      solver_parameters::constraint_order::infeasibility_incr):
         return optimize_problem<
           Solver<float, maximize_tag, random_type>,
-          compute_infeasibility<float, random_type, compute_infeasibility_incr>,
+          compute_infeasibility<float,
+                                random_type,
+                                compute_infeasibility_incr>,
           random_type>(ctx, pb);
 
-    case combine_enums(solver_parameters::floating_point_type::double_type,
-                       baryonyx::objective_function_type::maximize,
-                       solver_parameters::constraint_order::infeasibility_incr):
+    case combine_enums(
+      solver_parameters::floating_point_type::double_type,
+      baryonyx::objective_function_type::maximize,
+      solver_parameters::constraint_order::infeasibility_incr):
         return optimize_problem<
           Solver<double, maximize_tag, random_type>,
           compute_infeasibility<double,
@@ -822,9 +860,10 @@ select_optimizer_parameters(const context_ptr& ctx, const problem& pb)
                                 compute_infeasibility_incr>,
           random_type>(ctx, pb);
 
-    case combine_enums(solver_parameters::floating_point_type::longdouble_type,
-                       baryonyx::objective_function_type::maximize,
-                       solver_parameters::constraint_order::infeasibility_incr):
+    case combine_enums(
+      solver_parameters::floating_point_type::longdouble_type,
+      baryonyx::objective_function_type::maximize,
+      solver_parameters::constraint_order::infeasibility_incr):
         return optimize_problem<
           Solver<long double, minimize_tag, random_type>,
           compute_infeasibility<long double,
@@ -849,7 +888,8 @@ result
 solve_inequalities_101coeff(const context_ptr& ctx, const problem& pb);
 
 result
-solve_inequalities_101coeff_buffered(const context_ptr& ctx, const problem& pb);
+solve_inequalities_101coeff_buffered(const context_ptr& ctx,
+                                     const problem& pb);
 
 result
 solve_inequalities_Zcoeff(const context_ptr& ctx, const problem& pb);
@@ -996,10 +1036,11 @@ struct optimize_functor
                     init_policy =
                       init_solver(slv, x_type(), init_policy, p.init_random);
                 else
-                    init_policy = init_solver(slv,
-                                              m_best.solutions.back().variables,
-                                              init_policy,
-                                              p.init_random);
+                    init_policy =
+                      init_solver(slv,
+                                  m_best.solutions.back().variables,
+                                  init_policy,
+                                  p.init_random);
 
                 i = 0;
                 kappa = static_cast<floatingpoint_type>(kappa_min);

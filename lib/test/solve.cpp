@@ -47,7 +47,7 @@ is_essentially_equal(const T v1, const T v2, const T epsilon)
            ((fabs(v1) > fabs(v2) ? fabs(v2) : fabs(v1)) * (epsilon));
 }
 
-static void
+void
 test_preprocessor()
 {
     auto ctx = baryonyx::make_context();
@@ -95,7 +95,7 @@ test_preprocessor()
     }
 }
 
-static void
+void
 test_preprocessor_2()
 {
     auto ctx = baryonyx::make_context();
@@ -145,7 +145,7 @@ test_preprocessor_2()
     }
 }
 
-static void
+void
 test_real_cost()
 {
     auto ctx = baryonyx::make_context();
@@ -166,7 +166,7 @@ test_real_cost()
     std::istringstream iss(str_pb);
 
     auto pb = baryonyx::make_problem(ctx, iss);
-    pb = baryonyx::preprocess(ctx, pb);
+    // pb = baryonyx::preprocess(ctx, pb);
     auto result = baryonyx::solve(ctx, pb);
 
     Ensures(result);
@@ -180,7 +180,7 @@ test_real_cost()
                   pb, result.solutions.back().variables) == true);
 }
 
-static void
+void
 test_assignment_problem()
 {
     auto ctx = baryonyx::make_context();
@@ -197,7 +197,7 @@ test_assignment_problem()
     Ensures(result.status == baryonyx::result_status::success);
 }
 
-static void
+void
 test_assignment_problem_random_coast()
 {
     auto ctx = baryonyx::make_context();
@@ -232,7 +232,7 @@ test_assignment_problem_random_coast()
     }
 }
 
-static void
+void
 test_negative_coeff()
 {
     auto ctx = baryonyx::make_context();
@@ -251,7 +251,7 @@ test_negative_coeff()
               pb, result.solutions.back().variables) == true);
 }
 
-static void
+void
 test_negative_coeff2()
 {
     auto ctx = baryonyx::make_context();
@@ -269,7 +269,7 @@ test_negative_coeff2()
     Ensures(result.affected_vars.names.size() == 4);
 }
 
-static void
+void
 test_negative_coeff3()
 {
     auto ctx = baryonyx::make_context();
@@ -284,7 +284,7 @@ test_negative_coeff3()
               pb, result.solutions.back().variables) == true);
 }
 
-static void
+void
 test_negative_coeff4()
 {
     auto ctx = baryonyx::make_context();
@@ -303,7 +303,7 @@ test_negative_coeff4()
               pb, result.solutions.back().variables) == true);
 }
 
-static void
+void
 test_negative_coeff5()
 {
     auto ctx = baryonyx::make_context();
@@ -333,7 +333,7 @@ test_negative_coeff5()
                   pb, result.solutions.back().variables) == true);
 }
 
-static void
+void
 test_8_queens_puzzle_fixed_cost()
 {
     auto ctx = baryonyx::make_context();
@@ -380,7 +380,7 @@ test_8_queens_puzzle_fixed_cost()
               pb, result.solutions.back().variables) == true);
 }
 
-static void
+void
 test_8_queens_puzzle_random_cost()
 {
     auto ctx = baryonyx::make_context();
@@ -420,7 +420,7 @@ test_8_queens_puzzle_random_cost()
     }
 }
 
-static void
+void
 test_qap()
 {
     auto ctx = baryonyx::make_context();
@@ -445,7 +445,7 @@ test_qap()
                   pb, result.solutions.back().variables) == true);
 }
 
-static void
+void
 test_flat30_7()
 {
     auto ctx = baryonyx::make_context();
@@ -469,7 +469,7 @@ test_flat30_7()
               pb, result.solutions.back().variables) == true);
 }
 
-static void
+void
 test_uf50_0448()
 {
     auto ctx = baryonyx::make_context();
@@ -497,7 +497,7 @@ test_uf50_0448()
               pb, result.solutions.back().variables) == true);
 }
 
-static void
+void
 test_aim_50_1_6_yes1_2()
 {
     auto ctx = baryonyx::make_context();
@@ -524,7 +524,7 @@ test_aim_50_1_6_yes1_2()
 }
 
 #if 0
-static void
+void
 test_Z_coefficient_1()
 {
     auto ctx = baryonyx::make_context();
@@ -574,7 +574,7 @@ test_Z_coefficient_1()
     }
 }
 
-static void
+void
 test_bibd1n()
 {
     auto ctx = baryonyx::make_context();

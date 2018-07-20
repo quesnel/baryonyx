@@ -283,18 +283,15 @@ struct solver_inequalities_01coeff
 
     int select_variables_equality(const int r_size, int bk)
     {
-        (void)r_size;
-
-        assert(bk <= r_size && "b[k] can not be reached, this is an "
-                               "error of the preprocessing step.");
+        bk = std::min(bk, r_size);
 
         return bk - 1;
     }
 
     int select_variables_inequality(const int r_size, int bkmin, int bkmax)
     {
-        (void)r_size;
-        assert(r_size >= bkmax);
+        bkmin = std::min(bkmin, r_size);
+        bkmax = std::min(bkmax, r_size);
 
         for (int i = bkmin; i != bkmax; ++i)
             if (stop_iterating(R[i].value, rng, mode_type()))

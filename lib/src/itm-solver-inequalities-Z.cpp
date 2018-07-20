@@ -581,47 +581,21 @@ struct solver_inequalities_Zcoeff
 
     int select_variables_equality(const int r_size, int bk)
     {
-        (void)r_size;
-
-        assert(bk <= r_size && "b[k] can not be reached, this is an "
-                               "error of the preprocessing step.");
+        bk = std::min(bk, r_size);
 
         return bk - 1;
     }
 
     int select_variables_inequality(const int r_size, int bkmin, int bkmax)
     {
-        int i = 0;
-        int selected = -1;
-        int sum = 0;
+        bkmin = std::min(bkmin, r_size);
+        bkmax = std::min(bkmax, r_size);
 
-        for (; i != r_size; ++i) {
-            sum += 1;
+        for (int i = bkmin; i <= bkmax; ++i)
+            if (stop_iterating(R[i].value, rng, mode_type()))
+                return i - 1;
 
-            if (bkmin <= sum)
-                break;
-        }
-
-        assert(bkmin <= sum && "b(0, k) can not be reached, this is an "
-                               "error of the preprocessing step.");
-
-        if (bkmin <= sum and sum <= bkmax) {
-            selected = i;
-            for (; i != r_size; ++i) {
-                sum += 1;
-
-                if (sum <= bkmax) {
-                    if (stop_iterating(R[i].value, rng, mode_type()))
-                        break;
-                    ++selected;
-                } else
-                    break;
-            }
-
-            assert(i != r_size && "unrealisable, preprocessing error");
-        }
-
-        return selected;
+        return bkmax - 1;
     }
 
     template<typename iteratorT>
