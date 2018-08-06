@@ -114,10 +114,11 @@ operator<<(std::ostream& os, const result& result)
 
 struct resume
 {
-    resume(const problem& pb, bool use_lp_format_ = true)
+    template<typename Problem>
+    resume(const Problem& pb, bool use_lp_format_ = true)
       : variables({})
       , constraints({})
-      , minmax(compute_min_max_objective_function(pb))
+      , minmax(compute_min_max_objective_function(pb.objective))
       , use_lp_format(use_lp_format_)
     {
         variables = std::accumulate(pb.vars.values.begin(),
@@ -143,26 +144,32 @@ struct resume
         constraints[1] = static_cast<int>(pb.greater_constraints.size());
         constraints[2] = static_cast<int>(pb.less_constraints.size());
 
+        problem_type = get_problem_type(pb);
+    }
+
+    std::string get_problem_type(const problem& pb) const
+    {
         switch (pb.problem_type) {
         case baryonyx::problem_solver_type::equalities_01:
-            problem_type = "equalities-01";
-            break;
+            return "equalities-01";
         case baryonyx::problem_solver_type::equalities_101:
-            problem_type = "equalities-101";
-            break;
+            return "equalities-101";
         case baryonyx::problem_solver_type::equalities_Z:
-            problem_type = "equalities-Z";
-            break;
+            return "equalities-Z";
         case baryonyx::problem_solver_type::inequalities_01:
-            problem_type = "inequalities-01";
-            break;
+            return "inequalities-01";
         case baryonyx::problem_solver_type::inequalities_101:
-            problem_type = "inequalities-101";
-            break;
+            return "inequalities-101";
         case baryonyx::problem_solver_type::inequalities_Z:
-            problem_type = "inequalities-Z";
-            break;
+            return "inequalities-Z";
+        default:
+            return {};
         }
+    }
+
+    std::string get_problem_type(const raw_problem& pb) const
+    {
+        return {};
     }
 
     std::array<int, 3> variables;

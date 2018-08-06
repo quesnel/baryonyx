@@ -68,6 +68,13 @@ operator==(const objective_function_element& lhs,
 }
 
 inline bool
+operator==(const affected_variables& lhs,
+           const affected_variables& rhs) noexcept
+{
+    return lhs.names == rhs.names and lhs.values == rhs.values;
+}
+
+inline bool
 operator==(const constraint& lhs, const constraint& rhs) noexcept
 {
     return lhs.elements == rhs.elements and lhs.value == rhs.value and
@@ -84,13 +91,22 @@ operator==(const objective_function& lhs,
 inline bool
 operator==(const problem& lhs, const problem& rhs) noexcept
 {
-    return lhs.type == rhs.type and
+    return lhs.objective == rhs.objective and
            lhs.equal_constraints == rhs.equal_constraints and
            lhs.greater_constraints == rhs.greater_constraints and
            lhs.less_constraints == rhs.less_constraints and
-           lhs.vars.names == rhs.vars.names and
-           lhs.vars.values == rhs.vars.values and
-           lhs.objective == rhs.objective;
+           lhs.vars == rhs.vars and lhs.affected_vars == rhs.affected_vars and
+           lhs.type == rhs.type and lhs.problem_type == rhs.problem_type;
+}
+
+inline bool
+operator==(const raw_problem& lhs, const raw_problem& rhs) noexcept
+{
+    return lhs.objective == rhs.objective and
+           lhs.equal_constraints == rhs.equal_constraints and
+           lhs.greater_constraints == rhs.greater_constraints and
+           lhs.less_constraints == rhs.less_constraints and
+           lhs.vars == rhs.vars and lhs.type == rhs.type;
 }
 
 inline bool

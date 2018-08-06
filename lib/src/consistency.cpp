@@ -26,8 +26,9 @@
 
 #include <algorithm>
 
+template<typename Problem>
 static inline void
-are_variables_used(const baryonyx::problem& pb)
+are_variables_used(const Problem& pb)
 {
     std::vector<bool> vars(pb.vars.names.size(), false);
 
@@ -51,8 +52,9 @@ are_variables_used(const baryonyx::problem& pb)
           baryonyx::problem_definition_error_tag::variable_not_used);
 }
 
+template<typename Problem>
 static inline void
-are_bounds_correct(const baryonyx::problem& pb)
+are_bounds_correct(const Problem& pb)
 {
     for (std::size_t i{ 0 }, e{ pb.vars.values.size() }; i != e; ++i)
         if (pb.vars.values[i].min > pb.vars.values[i].max)
@@ -62,12 +64,19 @@ are_bounds_correct(const baryonyx::problem& pb)
 }
 
 namespace baryonyx {
-bool
+
+void
 check_consistency(const baryonyx::problem& pb)
 {
     are_variables_used(pb);
     are_bounds_correct(pb);
+}
 
-    return true;
+void
+check_consistency(const baryonyx::raw_problem& pb)
+{
+    are_variables_used(pb);
+    are_bounds_correct(pb);
 }
-}
+
+} // namespace baryonyx

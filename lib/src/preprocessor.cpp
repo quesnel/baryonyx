@@ -849,14 +849,23 @@ get_coefficient_type(const baryonyx::problem& pb) noexcept
 namespace baryonyx {
 
 baryonyx::problem
-preprocess(const baryonyx::context_ptr& ctx, const baryonyx::problem& pb_)
+preprocess(const baryonyx::context_ptr& ctx, const baryonyx::raw_problem& pb_)
 {
     //
     // TODO To removed API breaks with const problem. Now, write a second
     // preprocess function to quicky preprocess.
     //
 
-    auto pb(pb_);
+    //            p.problem_type = ::get_problem_type(p, stack.coefficient());
+
+    problem pb;
+
+    pb.objective = pb_.objective;
+    pb.equal_constraints = pb_.equal_constraints;
+    pb.greater_constraints = pb_.greater_constraints;
+    pb.less_constraints = pb_.less_constraints;
+    pb.vars = pb_.vars;
+    pb.type = pb_.type;
 
     info(ctx,
          "- Preprocessing starts (size: {})\n",
@@ -948,6 +957,76 @@ preprocess(const baryonyx::context_ptr& ctx, const baryonyx::problem& pb_)
 
     info(ctx,
          "- Preprocessing finished (size: {})\n",
+         to_string(memory_consumed_size(memory_consumed(pb))));
+
+#ifndef BARYONYX_FULL_OPTIMIZATION
+    {
+        info(ctx, "  - write preprocessed.lp: ");
+        std::ofstream ofs("preprocessed.lp");
+        if (ofs.is_open()) {
+            if (write_problem(ofs, pb))
+                info(ctx, "writing done\n");
+            else
+                info(ctx, "writing fail\n");
+        } else {
+            info(ctx, "opening failed\n");
+        }
+    }
+#endif
+
+    return pb;
+}
+
+baryonyx::problem
+unpreprocess(const baryonyx::context_ptr& ctx,
+             const baryonyx::raw_problem& pb_)
+{
+    info(ctx, "- Unpreprocessing starts\n");
+
+    problem pb;
+    pb.objective = pb_.objective;
+    pb.equal_constraints = pb_.equal_constraints;
+    pb.greater_constraints = pb_.greater_constraints;
+    pb.less_constraints = pb_.less_constraints;
+    pb.vars = pb_.vars;
+    pb.type = pb_.type;
+
+    {
+        auto type = ::get_coefficient_type(pb);
+
+        if (pb.greater_constraints.empty() and pb.less_constraints.empty()) {
+            switch (type) {
+            case 0:
+                pb.problem_type = baryonyx::problem_solver_type::equalities_01;
+                break;
+            case 1:
+                pb.problem_type =
+                  baryonyx::problem_solver_type::equalities_101;
+                break;
+            default:
+                pb.problem_type = baryonyx::problem_solver_type::equalities_Z;
+                break;
+            }
+        } else {
+            switch (type) {
+            case 0:
+                pb.problem_type =
+                  baryonyx::problem_solver_type::inequalities_01;
+                break;
+            case 1:
+                pb.problem_type =
+                  baryonyx::problem_solver_type::inequalities_101;
+                break;
+            default:
+                pb.problem_type =
+                  baryonyx::problem_solver_type::inequalities_Z;
+                break;
+            }
+        }
+    }
+
+    info(ctx,
+         "- Unpreprocessing finished (size: {})\n",
          to_string(memory_consumed_size(memory_consumed(pb))));
 
 #ifndef BARYONYX_FULL_OPTIMIZATION

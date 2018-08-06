@@ -72,11 +72,12 @@ memory_consumed(const baryonyx::affected_variables& av) noexcept
 static std::size_t
 memory_consumed(const std::vector<baryonyx::constraint>& csts) noexcept
 {
-    return std::accumulate(
-      csts.cbegin(), csts.cend(), static_cast<std::size_t>(0),
-        [](std::size_t size, const auto& elem) {
-          return size + memory_consumed(elem);
-      });
+    return std::accumulate(csts.cbegin(),
+                           csts.cend(),
+                           static_cast<std::size_t>(0),
+                           [](std::size_t size, const auto& elem) {
+                               return size + memory_consumed(elem);
+                           });
 }
 
 namespace baryonyx {
@@ -94,6 +95,20 @@ to_string(std::tuple<double, show_size_type> mem)
     default:
         return fmt::format("{:.2f} B", std::get<0>(mem));
     }
+}
+
+std::size_t
+memory_consumed(const raw_problem& pb) noexcept
+{
+    auto ret = sizeof(problem);
+
+    ret += ::memory_consumed(pb.objective);
+    ret += ::memory_consumed(pb.equal_constraints);
+    ret += ::memory_consumed(pb.greater_constraints);
+    ret += ::memory_consumed(pb.less_constraints);
+    ret += ::memory_consumed(pb.vars);
+
+    return ret;
 }
 
 std::size_t

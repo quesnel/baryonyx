@@ -55,12 +55,12 @@ test_preprocessor()
     std::stringstream ss;
 
     {
-        auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/prepro.lp");
+        auto rawpb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/prepro.lp");
         baryonyx::solver_parameters params;
         params.cost_norm = baryonyx::solver_parameters::cost_norm_type::loo;
         baryonyx::context_set_solver_parameters(ctx, params);
 
-        pb = baryonyx::preprocess(ctx, pb);
+        auto pb = baryonyx::preprocess(ctx, rawpb);
         auto result = baryonyx::solve(ctx, pb);
 
         Ensures(result.affected_vars.names.size() == 21);
@@ -104,9 +104,9 @@ test_preprocessor_2()
     double r;
 
     {
-        auto pb =
+        auto rawpb =
           baryonyx::make_problem(ctx, EXAMPLES_DIR "/capmo1_direct.lp");
-        pb = baryonyx::preprocess(ctx, pb);
+        auto pb = baryonyx::preprocess(ctx, rawpb);
 
         baryonyx::solver_parameters params;
         params.pre_order = baryonyx::solver_parameters::pre_constraint_order::
@@ -213,9 +213,9 @@ test_assignment_problem_random_coast()
     baryonyx::context_set_solver_parameters(ctx, params);
 
     for (int i{ 0 }, e{ 10 }; i != e; ++i) {
-        auto pb =
+        auto rawpb =
           baryonyx::make_problem(ctx, EXAMPLES_DIR "/assignment_problem_1.lp");
-        pb = baryonyx::preprocess(ctx, pb);
+        auto pb = baryonyx::preprocess(ctx, rawpb);
 
         std::random_device rd;
         std::mt19937 gen(rd());
@@ -237,8 +237,8 @@ test_negative_coeff()
 {
     auto ctx = baryonyx::make_context();
 
-    auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/negative-coeff.lp");
-    pb = baryonyx::preprocess(ctx, pb);
+    auto pb = baryonyx::preprocess(
+      ctx, baryonyx::make_problem(ctx, EXAMPLES_DIR "/negative-coeff.lp"));
 
     baryonyx::solver_parameters params;
     params.limit = 50;
@@ -256,8 +256,8 @@ test_negative_coeff2()
 {
     auto ctx = baryonyx::make_context();
 
-    auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/negative-coeff2.lp");
-    pb = baryonyx::preprocess(ctx, pb);
+    auto pb = baryonyx::preprocess(
+      ctx, baryonyx::make_problem(ctx, EXAMPLES_DIR "/negative-coeff2.lp"));
 
     baryonyx::solver_parameters params;
     params.limit = 2;
@@ -275,7 +275,6 @@ test_negative_coeff3()
     auto ctx = baryonyx::make_context();
 
     auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/negative-coeff3.lp");
-    pb = baryonyx::preprocess(ctx, pb);
 
     auto result = baryonyx::solve(ctx, pb);
 
@@ -290,7 +289,6 @@ test_negative_coeff4()
     auto ctx = baryonyx::make_context();
 
     auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/negative-coeff4.lp");
-    pb = baryonyx::preprocess(ctx, pb);
 
     baryonyx::solver_parameters params;
     params.limit = 50;
@@ -339,7 +337,6 @@ test_8_queens_puzzle_fixed_cost()
     auto ctx = baryonyx::make_context();
 
     auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/8_queens_puzzle.lp");
-    pb = baryonyx::preprocess(ctx, pb);
 
     baryonyx::solver_parameters params;
     params.limit = -1;
@@ -403,7 +400,6 @@ test_8_queens_puzzle_random_cost()
     for (int i{ 0 }, e{ 10 }; i != e; ++i) {
         auto pb =
           baryonyx::make_problem(ctx, EXAMPLES_DIR "/8_queens_puzzle.lp");
-        pb = baryonyx::preprocess(ctx, pb);
 
         std::random_device rd;
         std::mt19937 gen(rd());
@@ -426,7 +422,6 @@ test_qap()
     auto ctx = baryonyx::make_context();
 
     auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/small4.lp");
-    pb = baryonyx::preprocess(ctx, pb);
 
     baryonyx::solver_parameters params;
     params.limit = -1;
@@ -449,9 +444,7 @@ void
 test_flat30_7()
 {
     auto ctx = baryonyx::make_context();
-
     auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/flat30-7.lp");
-    pb = baryonyx::preprocess(ctx, pb);
 
     baryonyx::solver_parameters params;
     params.limit = -1;
@@ -473,9 +466,7 @@ void
 test_uf50_0448()
 {
     auto ctx = baryonyx::make_context();
-
     auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/uf50-0448.lp");
-    pb = baryonyx::preprocess(ctx, pb);
 
     baryonyx::solver_parameters params;
     params.limit = -1;
@@ -504,7 +495,6 @@ test_aim_50_1_6_yes1_2()
 
     auto pb =
       baryonyx::make_problem(ctx, EXAMPLES_DIR "/aim-50-1_6-yes1-2.lp");
-    pb = baryonyx::preprocess(ctx, pb);
 
     baryonyx::solver_parameters params;
     params.limit = -1;

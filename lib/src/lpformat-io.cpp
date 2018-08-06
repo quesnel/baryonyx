@@ -717,7 +717,7 @@ read_objective_function_type(parser_stack& stack)
 }
 
 static inline objective_function
-read_objective_function(parser_stack& stack, problem& p)
+read_objective_function(parser_stack& stack, raw_problem& p)
 {
     objective_function ret;
 
@@ -753,7 +753,7 @@ read_objective_function(parser_stack& stack, problem& p)
 }
 
 static inline std::tuple<constraint, operator_type>
-read_constraint(parser_stack& stack, problem& p)
+read_constraint(parser_stack& stack, raw_problem& p)
 {
     constraint cst;
     std::string label;
@@ -799,7 +799,7 @@ read_constraint(parser_stack& stack, problem& p)
 }
 
 static inline void
-read_constraints(parser_stack& stack, problem& p)
+read_constraints(parser_stack& stack, raw_problem& p)
 {
     auto str = stack.top();
 
@@ -874,7 +874,7 @@ apply_bound(variable_value& variable, operator_type type, int value)
 }
 
 static inline void
-read_bound(parser_stack& stack, problem& p)
+read_bound(parser_stack& stack, raw_problem& p)
 {
     /*
      * If first character is a digit, tries to read the bound:
@@ -914,7 +914,7 @@ read_bound(parser_stack& stack, problem& p)
 }
 
 static inline void
-read_bounds(parser_stack& stack, problem& p)
+read_bounds(parser_stack& stack, raw_problem& p)
 {
     auto str = stack.top();
 
@@ -926,7 +926,7 @@ read_bounds(parser_stack& stack, problem& p)
 }
 
 static inline void
-read_binary(parser_stack& stack, problem& p)
+read_binary(parser_stack& stack, raw_problem& p)
 {
     auto str = stack.top();
 
@@ -947,7 +947,7 @@ read_binary(parser_stack& stack, problem& p)
 }
 
 static inline void
-read_general(parser_stack& stack, problem& p)
+read_general(parser_stack& stack, raw_problem& p)
 {
     auto str = stack.top();
 
@@ -967,13 +967,14 @@ read_general(parser_stack& stack, problem& p)
     }
 }
 
+template<typename Problem>
 struct problem_writer
 {
-    const problem& p;
+    const Problem& p;
     std::ostream& os;
     int error;
 
-    problem_writer(const problem& p_, std::ostream& os_)
+    problem_writer(const Problem& p_, std::ostream& os_)
       : p(p_)
       , os(os_)
       , error(0)
@@ -1116,10 +1117,10 @@ get_problem_type(const baryonyx::problem& p, int coefficient) noexcept
 
 namespace baryonyx {
 
-baryonyx::problem
+baryonyx::raw_problem
 read_problem(std::istream& is)
 {
-    problem p;
+    raw_problem p;
     parser_stack stack(is);
     std::string toek;
 
@@ -1140,7 +1141,6 @@ read_problem(std::istream& is)
 
     if (stack.is_end()) {
         if (stack.empty()) {
-            p.problem_type = ::get_problem_type(p, stack.coefficient());
             return p;
         }
     }
@@ -1154,7 +1154,14 @@ read_problem(std::istream& is)
 bool
 write_problem(std::ostream& os, const baryonyx::problem& pb)
 {
-    problem_writer pw(pb, os);
+    problem_writer<baryonyx::problem> pw(pb, os);
+    return pw;
+}
+
+bool
+write_problem(std::ostream& os, const baryonyx::raw_problem& pb)
+{
+    problem_writer<baryonyx::raw_problem> pw(pb, os);
     return pw;
 }
 }

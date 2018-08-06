@@ -117,7 +117,7 @@ copy_context(const context_ptr& ctx,
     return context_ptr(pointer, &context_deleter);
 }
 
-problem
+raw_problem
 make_problem(const baryonyx::context_ptr& ctx, const std::string& filename)
 {
     info(ctx, "problem reads from file `{}'\n", filename);
@@ -129,7 +129,7 @@ make_problem(const baryonyx::context_ptr& ctx, const std::string& filename)
     return read_problem(ifs);
 }
 
-problem
+raw_problem
 make_problem(const baryonyx::context_ptr& ctx, std::istream& is)
 {
     info(ctx, "problem reads from stream\n");
@@ -170,6 +170,15 @@ operator<<(std::ostream& os, const problem& p)
     return os;
 }
 
+std::ostream&
+operator<<(std::ostream& os, const raw_problem& p)
+{
+    if (not write_problem(os, p))
+        os.setstate(std::ios_base::failbit);
+
+    return os;
+}
+
 result
 solve(const baryonyx::context_ptr& ctx, const problem& pb)
 {
@@ -186,6 +195,22 @@ optimize(const baryonyx::context_ptr& ctx, const problem& pb)
     return optimizer_select(ctx, pb);
 }
 
+result
+solve(const baryonyx::context_ptr& ctx, const raw_problem& rawpb)
+{
+    check_consistency(rawpb);
+
+    return solver_select(ctx, unpreprocess(ctx, rawpb));
+}
+
+result
+optimize(const baryonyx::context_ptr& ctx, const raw_problem& rawpb)
+{
+    check_consistency(rawpb);
+
+    return optimizer_select(ctx, unpreprocess(ctx, rawpb));
+}
+
 template<typename functionT, typename variablesT>
 static int
 compute_function(const functionT& fct, const variablesT& vars) noexcept
@@ -198,8 +223,10 @@ compute_function(const functionT& fct, const variablesT& vars) noexcept
     return v;
 }
 
+template<typename Problem>
 bool
-is_valid_solution(const problem& pb, const std::vector<bool>& variable_value)
+is_valid_solution_impl(const Problem& pb,
+                       const std::vector<bool>& variable_value)
 {
     Expects(not variable_value.empty(), "variables vector empty");
     std::size_t i, e;
@@ -225,8 +252,23 @@ is_valid_solution(const problem& pb, const std::vector<bool>& variable_value)
     return true;
 }
 
+bool
+is_valid_solution(const raw_problem& pb,
+                  const std::vector<bool>& variable_value)
+{
+    return is_valid_solution_impl(pb, variable_value);
+}
+
+bool
+is_valid_solution(const problem& pb, const std::vector<bool>& variable_value)
+{
+    return is_valid_solution_impl(pb, variable_value);
+}
+
+template<typename Problem>
 double
-compute_solution(const problem& pb, const std::vector<bool>& variable_value)
+compute_solution_impl(const Problem& pb,
+                      const std::vector<bool>& variable_value)
 {
     Expects(not variable_value.empty(), "variables vector empty");
 
@@ -238,8 +280,22 @@ compute_solution(const problem& pb, const std::vector<bool>& variable_value)
     return ret;
 }
 
+double
+compute_solution(const raw_problem& pb,
+                 const std::vector<bool>& variable_value)
+{
+    return compute_solution_impl(pb, variable_value);
+}
+
+double
+compute_solution(const problem& pb, const std::vector<bool>& variable_value)
+{
+    return compute_solution_impl(pb, variable_value);
+}
+
+template<typename Problem>
 static std::vector<bool>
-make_variable_value(const problem& pb, const result& r)
+make_variable_value(const Problem& pb, const result& r)
 {
     if (not r or r.solutions.empty())
         return {};
@@ -264,8 +320,9 @@ make_variable_value(const problem& pb, const result& r)
     return ret;
 }
 
+template<typename Problem>
 bool
-is_valid_solution(const problem& pb, const result& r)
+is_valid_solution_impl(const Problem& pb, const result& r)
 {
     if (not r or r.solutions.empty())
         return false;
@@ -273,27 +330,44 @@ is_valid_solution(const problem& pb, const result& r)
     Expects(pb.vars.names.size() == pb.vars.values.size());
     Expects(pb.vars.names.size() == r.variable_name.size());
     Expects(r.solutions.back().variables.size() == r.variable_name.size());
-    Expects(pb.affected_vars.names.empty());
-    Expects(pb.affected_vars.values.empty());
 
-    auto variable_value = make_variable_value(pb, r);
-
-    return is_valid_solution(pb, variable_value);
+    return is_valid_solution(pb, make_variable_value(pb, r));
 }
 
+bool
+is_valid_solution(const problem& pb, const result& r)
+{
+    return is_valid_solution_impl(pb, r);
+}
+
+bool
+is_valid_solution(const raw_problem& pb, const result& r)
+{
+    return is_valid_solution_impl(pb, r);
+}
+
+template<typename Problem>
 double
-compute_solution(const problem& pb, const result& r)
+compute_solution_impl(const Problem& pb, const result& r)
 {
     Expects(r and not r.solutions.empty());
     Expects(pb.vars.names.size() == pb.vars.values.size());
     Expects(pb.vars.names.size() == r.variable_name.size());
     Expects(r.solutions.back().variables.size() == r.variable_name.size());
-    Expects(pb.affected_vars.names.empty());
-    Expects(pb.affected_vars.values.empty());
 
-    auto variable_value = make_variable_value(pb, r);
+    return compute_solution(pb, make_variable_value(pb, r));
+}
 
-    return compute_solution(pb, variable_value);
+double
+compute_solution(const problem& pb, const result& r)
+{
+    return compute_solution_impl(pb, r);
+}
+
+double
+compute_solution(const raw_problem& pb, const result& r)
+{
+    return compute_solution_impl(pb, r);
 }
 
 } // namespace baryonyx

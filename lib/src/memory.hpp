@@ -75,6 +75,15 @@ to_string(std::tuple<double, show_size_type> memory_used);
  *     baryonyx::problem data structures.
  */
 std::size_t
+memory_consumed(const baryonyx::raw_problem& pb) noexcept;
+
+/**
+ * @brief Calculates an estimate of the consumed memory by the data structures.
+ *
+ * @details Return the size in bytes of the memory used by the @c
+ *     baryonyx::problem data structures.
+ */
+std::size_t
 memory_consumed(const baryonyx::problem& pb) noexcept;
 
 } // namespace baryonyx

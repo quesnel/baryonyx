@@ -30,6 +30,8 @@
 
 #include <fmt/format.h>
 
+#include <cstdio>
+
 #ifndef _WIN32
 #include <unistd.h>
 #endif
@@ -612,6 +614,10 @@ void
 print(const context_ptr& ctx);
 
 baryonyx::problem
+unpreprocess(const baryonyx::context_ptr& ctx,
+             const baryonyx::raw_problem& pb_);
+
+baryonyx::raw_problem
 read_problem(std::istream& is);
 
 baryonyx::result
@@ -621,6 +627,12 @@ bool
 write_problem(std::ostream& os, const baryonyx::problem& pb);
 
 bool
+write_problem(std::ostream& os, const baryonyx::raw_problem& pb);
+
+void
+check_consistency(const baryonyx::raw_problem& pb);
+
+void
 check_consistency(const baryonyx::problem& pb);
 
 baryonyx::result

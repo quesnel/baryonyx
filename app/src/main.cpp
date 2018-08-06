@@ -494,6 +494,36 @@ parse(int argc, const char* argv[])
     return ret;
 }
 
+static inline auto
+solve(const baryonyx::context_ptr& ctx,
+      const baryonyx::raw_problem& pb,
+      bool with_preprocess) -> baryonyx::result
+{
+    return with_preprocess
+             ? baryonyx::solve(ctx, baryonyx::preprocess(ctx, pb))
+             : baryonyx::solve(ctx, pb);
+}
+
+static inline auto
+optimize(const baryonyx::context_ptr& ctx,
+         const baryonyx::raw_problem& pb,
+         bool with_preprocess) -> baryonyx::result
+{
+    return with_preprocess
+             ? baryonyx::optimize(ctx, baryonyx::preprocess(ctx, pb))
+             : baryonyx::optimize(ctx, pb);
+}
+
+static inline auto
+solve_or_optimize(const baryonyx::context_ptr& ctx,
+                  const baryonyx::raw_problem& pb,
+                  bool with_optimization,
+                  bool with_preprocess) -> baryonyx::result
+{
+    return with_optimization ? solve(ctx, pb, with_preprocess)
+                             : optimize(ctx, pb, with_preprocess);
+}
+
 int
 main(int argc, const char* argv[])
 {
@@ -529,8 +559,6 @@ main(int argc, const char* argv[])
                 }
             }
 
-            if (params.preprocessing)
-                pb = baryonyx::preprocess(ctx, pb);
             fmt::print("{}", baryonyx::resume(pb, false));
 
             std::ofstream ofs(filename);
@@ -546,8 +574,8 @@ main(int argc, const char* argv[])
                 << std::put_time(std::localtime(&in_time_t), "%Y-%m-%d %X")
                 << "\n";
 
-            auto ret = params.optimize ? baryonyx::optimize(ctx, pb)
-                                       : baryonyx::solve(ctx, pb);
+            auto ret = solve_or_optimize(
+              ctx, pb, params.optimize, params.preprocessing);
 
             if (ret.status == baryonyx::result_status::success) {
                 fmt::print("Best solution found: {} in {}s\n",
@@ -613,14 +641,11 @@ main(int argc, const char* argv[])
             try {
                 auto pb = baryonyx::make_problem(ctx, elem);
 
-                if (params.preprocessing)
-                    pb = baryonyx::preprocess(ctx, pb);
-
                 fmt::print("{}", baryonyx::resume(pb, false));
                 ofs << elem << " ";
 
-                auto ret = params.optimize ? baryonyx::optimize(ctx, pb)
-                                           : baryonyx::solve(ctx, pb);
+                auto ret = solve_or_optimize(
+                  ctx, pb, params.optimize, params.preprocessing);
 
                 if (ret.status == baryonyx::result_status::success) {
                     ofs << ret.solutions.back().value << " " << ret.duration
