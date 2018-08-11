@@ -161,24 +161,6 @@ make_result(const baryonyx::context_ptr& ctx, std::istream& is)
     return read_result(is);
 }
 
-std::ostream&
-operator<<(std::ostream& os, const problem& p)
-{
-    if (not write_problem(os, p))
-        os.setstate(std::ios_base::failbit);
-
-    return os;
-}
-
-std::ostream&
-operator<<(std::ostream& os, const raw_problem& p)
-{
-    if (not write_problem(os, p))
-        os.setstate(std::ios_base::failbit);
-
-    return os;
-}
-
 result
 solve(const baryonyx::context_ptr& ctx, const problem& pb)
 {
@@ -281,8 +263,7 @@ compute_solution_impl(const Problem& pb,
 }
 
 double
-compute_solution(const raw_problem& pb,
-                 const std::vector<bool>& variable_value)
+compute_solution(const raw_problem& pb, const std::vector<bool>& variable_value)
 {
     return compute_solution_impl(pb, variable_value);
 }

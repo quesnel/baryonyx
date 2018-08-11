@@ -765,8 +765,8 @@ read_constraint(parser_stack& stack, raw_problem& p)
             label = tmp;
             stack.substr_front(1);
         } else {
-            cst.elements.emplace_back(
-              1, get_variable(stack.cache(), p.vars, tmp));
+            cst.elements.emplace_back(1,
+                                      get_variable(stack.cache(), p.vars, tmp));
         }
     }
 
@@ -967,126 +967,6 @@ read_general(parser_stack& stack, raw_problem& p)
     }
 }
 
-template<typename Problem>
-struct problem_writer
-{
-    const Problem& p;
-    std::ostream& os;
-    int error;
-
-    problem_writer(const Problem& p_, std::ostream& os_)
-      : p(p_)
-      , os(os_)
-      , error(0)
-    {
-        if (p.vars.names.empty()) {
-            error = 1;
-            return;
-        }
-
-        if (p.type == objective_function_type::maximize)
-            os << "maximize\n";
-        else
-            os << "minimize\n";
-
-        write_function_element(p.objective.elements);
-
-        if (p.objective.value < 0)
-            os << p.objective.value;
-        else if (p.objective.value > 0)
-            os << " + " << p.objective.value;
-
-        os << "\nsubject to\n";
-        write_constraints();
-
-        os << "bounds\n";
-        write_bounds();
-
-        bool have_binary = false;
-        bool have_general = false;
-
-        for (std::size_t i{ 0 }, e{ p.vars.names.size() }; i != e; ++i) {
-            if (p.vars.values[i].type == variable_type::binary) {
-                have_binary = true;
-                if (have_general == true)
-                    break;
-            } else if (p.vars.values[i].type == variable_type::general) {
-                have_general = true;
-                if (have_binary == true)
-                    break;
-            }
-        }
-
-        if (have_binary) {
-            os << "binary\n";
-            for (std::size_t i{ 0 }, e{ p.vars.names.size() }; i != e; ++i)
-                if (p.vars.values[i].type == variable_type::binary)
-                    os << ' ' << p.vars.names[i] << '\n';
-        }
-
-        if (have_general) {
-            os << "general\n";
-            for (std::size_t i{ 0 }, e{ p.vars.names.size() }; i != e; ++i)
-                if (p.vars.values[i].type == variable_type::general)
-                    os << ' ' << p.vars.names[i] << '\n';
-        }
-
-        os << "end\n";
-    }
-
-    operator bool() const
-    {
-        return error == 0;
-    }
-
-private:
-    void write_bounds() const
-    {
-        for (std::size_t i{ 0 }, e{ p.vars.names.size() }; i != e; ++i) {
-            if (p.vars.values[i].min != 0)
-                os << p.vars.names[i] << " >= " << p.vars.values[i].min
-                   << '\n';
-
-            if (p.vars.values[i].max != std::numeric_limits<int>::max())
-                os << p.vars.names[i] << " <= " << p.vars.values[i].max
-                   << '\n';
-        }
-    }
-
-    template<typename C>
-    void write_function_element(const C& f) const
-    {
-        for (auto& elem : f) {
-            os << ((elem.factor < 0) ? "- " : "+ ");
-            if (elem.factor != 1)
-                os << std::abs(elem.factor) << ' ';
-
-            os << p.vars.names[elem.variable_index] << ' ';
-        }
-    }
-
-    void write_constraint(const constraint& cste, const char* separator) const
-    {
-        if (not cste.label.empty())
-            os << cste.label << ": ";
-
-        write_function_element(cste.elements);
-        os << separator << cste.value << '\n';
-    }
-
-    void write_constraints() const
-    {
-        for (std::size_t i = 0, e = p.equal_constraints.size(); i != e; ++i)
-            write_constraint(p.equal_constraints[i], " = ");
-
-        for (std::size_t i = 0, e = p.greater_constraints.size(); i != e; ++i)
-            write_constraint(p.greater_constraints[i], " >= ");
-
-        for (std::size_t i = 0, e = p.less_constraints.size(); i != e; ++i)
-            write_constraint(p.less_constraints[i], " <= ");
-    }
-};
-
 baryonyx::problem_solver_type
 get_problem_type(const baryonyx::problem& p, int coefficient) noexcept
 {
@@ -1149,19 +1029,5 @@ read_problem(std::istream& is)
                               file_format_error_tag::incomplete,
                               static_cast<int>(stack.line()),
                               static_cast<int>(stack.column()));
-}
-
-bool
-write_problem(std::ostream& os, const baryonyx::problem& pb)
-{
-    problem_writer<baryonyx::problem> pw(pb, os);
-    return pw;
-}
-
-bool
-write_problem(std::ostream& os, const baryonyx::raw_problem& pb)
-{
-    problem_writer<baryonyx::raw_problem> pw(pb, os);
-    return pw;
 }
 }

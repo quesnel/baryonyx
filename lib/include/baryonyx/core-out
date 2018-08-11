@@ -34,6 +34,147 @@
 
 namespace baryonyx {
 
+namespace detail {
+
+template<typename Problem, typename Function>
+void
+write_function_element(std::ostream& os, const Problem& p, const Function& f)
+{
+    for (auto& elem : f) {
+        os << ((elem.factor < 0) ? "- " : "+ ");
+        if (elem.factor != 1)
+            os << std::abs(elem.factor) << ' ';
+
+        os << p.vars.names[elem.variable_index] << ' ';
+    }
+}
+
+template<typename Problem, typename Constraint>
+void
+write_constraint(std::ostream& os,
+                 const Problem& p,
+                 const Constraint& cst,
+                 const char* separator)
+{
+    if (not cst.label.empty())
+        os << cst.label << ": ";
+
+    write_function_element(os, p, cst.elements);
+    os << separator << cst.value << '\n';
+}
+
+template<typename Problem>
+void
+write_constraints(std::ostream& os, const Problem& pb)
+{
+    for (std::size_t i = 0, e = pb.equal_constraints.size(); i != e; ++i)
+        write_constraint(os, pb, pb.equal_constraints[i], " = ");
+
+    for (std::size_t i = 0, e = pb.greater_constraints.size(); i != e; ++i)
+        write_constraint(os, pb, pb.greater_constraints[i], " >= ");
+
+    for (std::size_t i = 0, e = pb.less_constraints.size(); i != e; ++i)
+        write_constraint(os, pb, pb.less_constraints[i], " <= ");
+}
+
+template<typename Problem>
+void
+write_bounds(std::ostream& os, const Problem& p)
+{
+    for (std::size_t i{ 0 }, e{ p.vars.names.size() }; i != e; ++i) {
+        if (p.vars.values[i].min != 0)
+            os << p.vars.names[i] << " >= " << p.vars.values[i].min << '\n';
+
+        if (p.vars.values[i].max != std::numeric_limits<int>::max())
+            os << p.vars.names[i] << " <= " << p.vars.values[i].max << '\n';
+    }
+}
+
+template<typename Problem>
+void
+write_problem(std::ostream& os, const Problem& p)
+{
+    if (p.vars.names.empty())
+        return;
+
+    if (p.type == objective_function_type::maximize)
+        os << "maximize\n";
+    else
+        os << "minimize\n";
+
+    detail::write_function_element(os, p, p.objective.elements);
+
+    if (p.objective.value < 0)
+        os << p.objective.value;
+    else if (p.objective.value > 0)
+        os << " + " << p.objective.value;
+
+    os << "\nsubject to\n";
+    detail::write_constraints(os, p);
+
+    os << "bounds\n";
+    detail::write_bounds(os, p);
+
+    bool have_binary = false;
+    bool have_general = false;
+
+    for (std::size_t i{ 0 }, e{ p.vars.names.size() }; i != e; ++i) {
+        if (p.vars.values[i].type == variable_type::binary) {
+            have_binary = true;
+            if (have_general == true)
+                break;
+        } else if (p.vars.values[i].type == variable_type::general) {
+            have_general = true;
+            if (have_binary == true)
+                break;
+        }
+    }
+
+    if (have_binary) {
+        os << "binary\n";
+        for (std::size_t i{ 0 }, e{ p.vars.names.size() }; i != e; ++i)
+            if (p.vars.values[i].type == variable_type::binary)
+                os << ' ' << p.vars.names[i] << '\n';
+    }
+
+    if (have_general) {
+        os << "general\n";
+        for (std::size_t i{ 0 }, e{ p.vars.names.size() }; i != e; ++i)
+            if (p.vars.values[i].type == variable_type::general)
+                os << ' ' << p.vars.names[i] << '\n';
+    }
+
+    os << "end\n";
+}
+
+} // namespace detail
+
+/**
+ * Write @e lp problem into a stream.
+ *
+ */
+inline std::ostream&
+operator<<(std::ostream& os, const problem& p)
+{
+    if (os)
+        detail::write_problem(os, p);
+
+    return os;
+}
+
+/**
+ * Write @e lp problem into a stream.
+ *
+ */
+inline std::ostream&
+operator<<(std::ostream& os, const raw_problem& p)
+{
+    if (os)
+        detail::write_problem(os, p);
+
+    return os;
+}
+
 /**
  * @brief Write baryonyx::result into a `dot sol` format.
  * @details The `dot sol` format use the same comment and variable names as the
@@ -80,8 +221,7 @@ operator<<(std::ostream& os, const result& result)
 
         os << "\\ variables.............: \n";
 
-        for (std::size_t i{ 0 }, e{ result.affected_vars.names.size() };
-             i != e;
+        for (std::size_t i{ 0 }, e{ result.affected_vars.names.size() }; i != e;
              ++i)
             os << result.affected_vars.names[i] << '='
                << (result.affected_vars.values[i] ? 1 : 0) << '\n';
@@ -167,7 +307,7 @@ struct resume
         }
     }
 
-    std::string get_problem_type(const raw_problem& pb) const
+    std::string get_problem_type(const raw_problem&) const
     {
         return {};
     }

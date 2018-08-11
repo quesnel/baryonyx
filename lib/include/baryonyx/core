@@ -674,22 +674,6 @@ result
 make_result(const baryonyx::context_ptr& ctx, std::istream& is);
 
 /**
- * Write @e lp problem into a stream.
- *
- */
-BARYONYX_API
-std::ostream&
-operator<<(std::ostream& os, const problem& p);
-
-/**
- * Write @e lp problem into a stream.
- *
- */
-BARYONYX_API
-std::ostream&
-operator<<(std::ostream& os, const raw_problem& p);
-
-/**
  * @brief Cleanup the @p pb problem.
  * @details Remove already affected variables, duplicated constraints from the
  *     problem @p pb.

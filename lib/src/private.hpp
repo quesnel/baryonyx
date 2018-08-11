@@ -623,12 +623,6 @@ read_problem(std::istream& is);
 baryonyx::result
 read_result(std::istream& is);
 
-bool
-write_problem(std::ostream& os, const baryonyx::problem& pb);
-
-bool
-write_problem(std::ostream& os, const baryonyx::raw_problem& pb);
-
 void
 check_consistency(const baryonyx::raw_problem& pb);
 
@@ -639,8 +633,7 @@ baryonyx::result
 solver_select(const baryonyx::context_ptr& ctx, const baryonyx::problem& pb);
 
 baryonyx::result
-optimizer_select(const baryonyx::context_ptr& ctx,
-                 const baryonyx::problem& pb);
+optimizer_select(const baryonyx::context_ptr& ctx, const baryonyx::problem& pb);
 
 } // namespace baryonyx
 
