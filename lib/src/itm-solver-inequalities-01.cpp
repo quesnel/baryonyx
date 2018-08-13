@@ -137,7 +137,7 @@ struct solver_inequalities_01coeff
             for (; it != et; ++it)
                 v += x[it->column];
 
-            if (not(b[k].min <= v and v <= b[k].max))
+            if (!(b[k].min <= v && v <= b[k].max))
                 return false;
         }
 
@@ -158,7 +158,7 @@ struct solver_inequalities_01coeff
             for (; it != et; ++it)
                 v += x[it->column];
 
-            if (not(b[k].min <= v and v <= b[k].max))
+            if (!(b[k].min <= v && v <= b[k].max))
                 c.emplace_back(k);
         }
 

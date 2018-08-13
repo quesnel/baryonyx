@@ -30,13 +30,13 @@ namespace baryonyx {
 inline bool
 operator==(const variable_value& lhs, const variable_value& rhs) noexcept
 {
-    return lhs.min == rhs.min and lhs.max == rhs.max and lhs.type == rhs.type;
+    return lhs.min == rhs.min && lhs.max == rhs.max && lhs.type == rhs.type;
 }
 
 inline bool
 operator==(const variables& lhs, const variables& rhs) noexcept
 {
-    return lhs.names == rhs.names and lhs.values == rhs.values;
+    return lhs.names == rhs.names && lhs.values == rhs.values;
 }
 
 inline bool
@@ -48,7 +48,7 @@ operator<(const function_element& lhs, const function_element& rhs)
 inline bool
 operator==(const function_element& lhs, const function_element& rhs) noexcept
 {
-    return lhs.factor == rhs.factor and
+    return lhs.factor == rhs.factor &&
            lhs.variable_index == rhs.variable_index;
 }
 
@@ -63,7 +63,7 @@ inline bool
 operator==(const objective_function_element& lhs,
            const objective_function_element& rhs) noexcept
 {
-    return lhs.factor == rhs.factor and
+    return lhs.factor == rhs.factor &&
            lhs.variable_index == rhs.variable_index;
 }
 
@@ -71,13 +71,13 @@ inline bool
 operator==(const affected_variables& lhs,
            const affected_variables& rhs) noexcept
 {
-    return lhs.names == rhs.names and lhs.values == rhs.values;
+    return lhs.names == rhs.names && lhs.values == rhs.values;
 }
 
 inline bool
 operator==(const constraint& lhs, const constraint& rhs) noexcept
 {
-    return lhs.elements == rhs.elements and lhs.value == rhs.value and
+    return lhs.elements == rhs.elements && lhs.value == rhs.value &&
            lhs.label == rhs.label;
 }
 
@@ -85,47 +85,47 @@ inline bool
 operator==(const objective_function& lhs,
            const objective_function& rhs) noexcept
 {
-    return lhs.elements == rhs.elements and lhs.value == rhs.value;
+    return lhs.elements == rhs.elements && lhs.value == rhs.value;
 }
 
 inline bool
 operator==(const raw_problem& lhs, const raw_problem& rhs) noexcept
 {
-    return lhs.objective == rhs.objective and
-           lhs.equal_constraints == rhs.equal_constraints and
-           lhs.greater_constraints == rhs.greater_constraints and
-           lhs.less_constraints == rhs.less_constraints and
-           lhs.vars == rhs.vars and lhs.type == rhs.type;
+    return lhs.objective == rhs.objective &&
+           lhs.equal_constraints == rhs.equal_constraints &&
+           lhs.greater_constraints == rhs.greater_constraints &&
+           lhs.less_constraints == rhs.less_constraints &&
+           lhs.vars == rhs.vars && lhs.type == rhs.type;
 }
 
 inline bool
 operator!=(const variable_value& lhs, const variable_value& rhs) noexcept
 {
-    return not(lhs == rhs);
+    return !(lhs == rhs);
 }
 
 inline bool
 operator!=(const variables& lhs, const variables& rhs) noexcept
 {
-    return not(lhs == rhs);
+    return !(lhs == rhs);
 }
 
 inline bool
 operator!=(const function_element& lhs, const function_element& rhs) noexcept
 {
-    return not(lhs == rhs);
+    return !(lhs == rhs);
 }
 
 inline bool
 operator!=(const constraint& lhs, const constraint& rhs) noexcept
 {
-    return not(lhs == rhs);
+    return !(lhs == rhs);
 }
 
 inline bool
 operator==(const solution& lhs, const solution& rhs) noexcept
 {
-    return lhs.value == rhs.value and lhs.variables == rhs.variables;
+    return lhs.value == rhs.value && lhs.variables == rhs.variables;
 }
 
 inline bool

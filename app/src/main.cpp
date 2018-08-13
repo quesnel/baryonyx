@@ -100,8 +100,8 @@ to_double(std::string s, double bad_value) noexcept
     errno = 0;
     double value = std::strtod(s.c_str(), &c);
 
-    if ((errno == ERANGE and (value == HUGE_VAL or value == -HUGE_VAL)) or
-        (value == 0.0 and c == s.c_str()))
+    if ((errno == ERANGE && (value == HUGE_VAL || value == -HUGE_VAL)) ||
+        (value == 0.0 && c == s.c_str()))
         return bad_value;
 
     return value;
@@ -114,8 +114,8 @@ to_int(std::string s, int bad_value) noexcept
     errno = 0;
     long value = std::strtol(s.c_str(), &c, 10);
 
-    if ((errno == ERANGE and (value == LONG_MIN or value == LONG_MAX)) or
-        (value == 0 and c == s.c_str()))
+    if ((errno == ERANGE && (value == LONG_MIN || value == LONG_MAX)) ||
+        (value == 0 && c == s.c_str()))
         return bad_value;
 
     if (value < INT_MIN)
@@ -133,7 +133,7 @@ split_argument(const char* param)
     std::string name, value;
 
     while (*param) {
-        if (isalpha(*param) or *param == '_' or *param == '-')
+        if (isalpha(*param) || *param == '_' || *param == '-')
             name += *param;
         else
             break;
@@ -141,7 +141,7 @@ split_argument(const char* param)
         param++;
     }
 
-    if (*param and (*param == ':' or *param == '=')) {
+    if (*param && (*param == ':' || *param == '=')) {
         param++;
 
         while (*param)
@@ -166,26 +166,26 @@ struct get_param
         i = arg;
 
         auto longp_length = strlen(longp);
-        if (not strncmp(argv[arg], longp, longp_length) and
-            strlen(argv[arg]) + 1 > longp_length and
-            (argv[arg][longp_length] == '=' or
+        if (!strncmp(argv[arg], longp, longp_length) &&
+            strlen(argv[arg]) + 1 > longp_length &&
+            (argv[arg][longp_length] == '=' ||
              argv[arg][longp_length] == ':')) {
             return argv[arg] + longp_length + 1;
         }
 
         auto shortp_length = strlen(shortp);
-        if (not strncmp(argv[arg], shortp, shortp_length) and
+        if (!strncmp(argv[arg], shortp, shortp_length) &&
             strlen(argv[arg]) > shortp_length) {
             return argv[arg] + shortp_length;
         }
 
         if (arg + 1 < argc) {
-            if (longp and strcmp(argv[arg], longp) == 0) {
+            if (longp && strcmp(argv[arg], longp) == 0) {
                 i = arg + 1;
                 return argv[i];
             }
 
-            if (shortp and strcmp(argv[i], shortp) == 0) {
+            if (shortp && strcmp(argv[i], shortp) == 0) {
                 i = arg + 1;
                 return argv[i];
             }
@@ -268,7 +268,7 @@ is_equal(std::string name, const char* longf, char shortf = '\0')
     if (name.compare(0, std::string::npos, longf) == 0)
         return true;
 
-    if (shortf != '\0' and name.size() == 2 and name[1] == shortf)
+    if (shortf != '\0' && name.size() == 2 && name[1] == shortf)
         return true;
 
     return false;
@@ -279,7 +279,7 @@ assign_0oo(std::string value, double def)
 {
     auto ret = ::to_double(value, def);
 
-    return ret < 0 ? 0 : not std::isnormal(ret) ? 1 : ret;
+    return ret < 0 ? 0 : ! std::isnormal(ret) ? 1 : ret;
 }
 
 static double
@@ -464,22 +464,22 @@ parse(int argc, const char* argv[])
         std::string arg(argv[i]);
         const char* opt;
 
-        if (arg == "--help" or arg == "-h") {
+        if (arg == "--help" || arg == "-h") {
             ::help();
             continue;
         }
 
-        if (arg == "--quiet" or arg == "-q") {
+        if (arg == "--quiet" || arg == "-q") {
             ret.quiet = true;
             continue;
         }
 
-        if (arg == "--optimize" or arg == "-O") {
+        if (arg == "--optimize" || arg == "-O") {
             ret.optimize = true;
             continue;
         }
 
-        if (arg == "--disable-preprocessing" or arg == "-np") {
+        if (arg == "--disable-preprocessing" || arg == "-np") {
             ret.preprocessing = false;
             continue;
         }

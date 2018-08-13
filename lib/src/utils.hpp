@@ -12,7 +12,7 @@
  * in all copies or substantial portions of the Software.
  *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
- * OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ * OR IMPLIED, INCLUDING BUT !LIMITED TO THE WARRANTIES OF
  * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
  * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
  * LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
@@ -36,7 +36,33 @@
 
 namespace baryonyx {
 
-////////////////////////////////////////////////
+inline void
+Expects(bool condition)
+{
+    if (!condition)
+        throw precondition_failure("precondition failure");
+}
+
+inline void
+Ensures(bool condition)
+{
+    if (!condition)
+        throw postcondition_failure("postcondition failure");
+}
+
+inline void
+Expects(bool condition, const char* s)
+{
+    if (!condition)
+        throw precondition_failure(s);
+}
+
+inline void
+Ensures(bool condition, const char* s)
+{
+    if (!condition)
+        throw postcondition_failure(s);
+}
 
 /**
  * @brief Compute the length of the @c container.
@@ -127,34 +153,6 @@ length(const T (&array)[N]) noexcept
     return static_cast<int>(N);
 }
 
-inline void
-Expects(bool condition)
-{
-    if (not condition)
-        throw precondition_failure("precondition failure");
-}
-
-inline void
-Ensures(bool condition)
-{
-    if (not condition)
-        throw postcondition_failure("postcondition failure");
-}
-
-inline void
-Expects(bool condition, const char* s)
-{
-    if (not condition)
-        throw precondition_failure(s);
-}
-
-inline void
-Ensures(bool condition, const char* s)
-{
-    if (not condition)
-        throw postcondition_failure(s);
-}
-
 template<typename T>
 inline bool
 is_essentially_equal(const T v1, const T v2, const T epsilon)
@@ -217,7 +215,7 @@ is_time_limit(double limit,
  * assert(lp::is_numeric_castable<std::int8_t>(v));
  *
  * int v2 = 278;
- * assert(not lp::is_numeric_castable<std::int8_t>(v2));
+ * assert(!lp::is_numeric_castable<std::int8_t>(v2));
  * @endcode
  */
 template<typename Target, typename Source>
@@ -230,14 +228,14 @@ is_numeric_castable(Source arg) noexcept
     using arg_traits = std::numeric_limits<Source>;
     using result_traits = std::numeric_limits<Target>;
 
-    if (result_traits::digits == arg_traits::digits and
+    if (result_traits::digits == arg_traits::digits &&
         result_traits::is_signed == arg_traits::is_signed)
         return true;
 
     if (result_traits::digits > arg_traits::digits)
-        return result_traits::is_signed or arg >= 0;
+        return result_traits::is_signed || arg >= 0;
 
-    if (arg_traits::is_signed and
+    if (arg_traits::is_signed &&
         arg < static_cast<Source>(result_traits::min()))
         return false;
 
@@ -248,7 +246,7 @@ is_numeric_castable(Source arg) noexcept
  * @brief @c numeric_cast cast @c s to @c Target type.
  *
  * @details Converts the integer type @c Source @c s into the integer type
- *     @c Target. If the value @c s is not castable to @c Target, @c
+ *     @c Target. If the value @c s is !castable to @c Target, @c
  *     numeric_cast throws an exception.
  *
  * @param s The integer to cast.
@@ -263,7 +261,7 @@ template<typename Target, typename Source>
 inline Target
 numeric_cast(Source s)
 {
-    if (not is_numeric_castable<Target>(s))
+    if (!is_numeric_castable<Target>(s))
         throw numeric_cast_failure();
 
     return static_cast<Target>(s);

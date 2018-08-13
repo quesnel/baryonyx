@@ -26,14 +26,13 @@
 #include <baryonyx/core-compare>
 #include <baryonyx/core>
 
+#include <fmt/printf.h>
+
 #include <fstream>
 #include <map>
 #include <numeric>
 #include <random>
 #include <sstream>
-
-#include <fmt/printf.h>
-#include <iostream>
 
 template<typename T>
 inline bool
@@ -68,7 +67,7 @@ test_preprocessor()
         Ensures(result.affected_vars.values[1] == 0);
         Ensures(result.affected_vars.values[2] == 1);
         Ensures(result.status == baryonyx::result_status::success);
-        Ensures(not result.solutions.empty());
+        Ensures(!result.solutions.empty());
         Ensures(result.solutions.size() >= 1);
         Ensures(result.variable_name.size() == 2);
 
@@ -78,10 +77,8 @@ test_preprocessor()
           is_essentially_equal(result.solutions.back().value, 1000.45, 0.01));
 
         ss << result;
-        if (not ss.good())
+        if (!ss.good())
             Ensures(ss.good());
-
-        std::cout << result << '\n';
     }
 
     {
@@ -114,7 +111,7 @@ test_preprocessor_2()
           baryonyx::solve(ctx, pb, baryonyx::preprocessor_options::all);
 
         Ensures(result);
-        Ensures(not result.solutions.empty());
+        Ensures(!result.solutions.empty());
 
         fmt::print("result.value {:F} == 6212977\n",
                    result.solutions.back().value);
@@ -124,7 +121,7 @@ test_preprocessor_2()
         Ensures(baryonyx::is_valid_solution(pb, result) == true);
 
         ss << result;
-        if (not ss.good())
+        if (!ss.good())
             Ensures(ss.good());
     }
 
@@ -169,7 +166,7 @@ test_real_cost()
 
     Ensures(result);
     Ensures(result.status == baryonyx::result_status::success);
-    Ensures(not result.solutions.empty());
+    Ensures(!result.solutions.empty());
 
     Ensures(result.solutions.back().value < 0.0);
 
@@ -351,7 +348,7 @@ test_8_queens_puzzle_fixed_cost()
 
     auto result = baryonyx::solve(ctx, pb);
     Ensures(result.status == baryonyx::result_status::success);
-    Ensures(not result.solutions.empty());
+    Ensures(!result.solutions.empty());
 
     for (int i = 0; i != 8; ++i) {
         for (int j = 0; j != 8; ++j)

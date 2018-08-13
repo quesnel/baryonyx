@@ -1,14 +1,14 @@
 /* Copyright (C) 2016-2018 INRA
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
- * copy of this software and associated documentation files (the
+ * copy of this software && associated documentation files (the
  * "Software"), to deal in the Software without restriction, including
  * without limitation the rights to use, copy, modify, merge, publish,
- * distribute, sublicense, and/or sell copies of the Software, and to
+ * distribute, sublicense, and/or sell copies of the Software, && to
  * permit persons to whom the Software is furnished to do so, subject to
  * the following conditions:
  *
- * The above copyright notice and this permission notice shall be included
+ * The above copyright notice && this permission notice shall be included
  * in all copies or substantial portions of the Software.
  *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
@@ -32,7 +32,7 @@ namespace baryonyx {
  * @brief Internal representation of a problem with preprocessed data.
  *
  * @details A equivalent class to @c problem but with preprocessed
- * structures to store affected variables and duplicated constraints from the
+ * structures to store affected variables && duplicated constraints from the
  * originial problem.
  *
  */
@@ -66,9 +66,9 @@ struct problem
 
         for (const auto& cst : csts) {
             for (const auto& elem : cst.elements) {
-                if (elem.factor == -1 and ret == 0)
+                if (elem.factor == -1 && ret == 0)
                     ret = 1;
-                else if (elem.factor <= -2 or elem.factor >= 2)
+                else if (elem.factor <= -2 || elem.factor >= 2)
                     return 2;
             }
         }
@@ -95,7 +95,7 @@ struct problem
     {
         auto coefficient = coefficient_type();
 
-        if (greater_constraints.empty() and less_constraints.empty()) {
+        if (greater_constraints.empty() && less_constraints.empty()) {
             switch (coefficient) {
             case 0:
                 return problem_solver_type::equalities_01;
@@ -134,18 +134,18 @@ struct problem
 inline bool
 operator==(const problem& lhs, const problem& rhs) noexcept
 {
-    return lhs.objective == rhs.objective and
-           lhs.equal_constraints == rhs.equal_constraints and
-           lhs.greater_constraints == rhs.greater_constraints and
-           lhs.less_constraints == rhs.less_constraints and
-           lhs.vars == rhs.vars and lhs.affected_vars == rhs.affected_vars and
-           lhs.type == rhs.type and lhs.problem_type == rhs.problem_type;
+    return lhs.objective == rhs.objective &&
+           lhs.equal_constraints == rhs.equal_constraints &&
+           lhs.greater_constraints == rhs.greater_constraints &&
+           lhs.less_constraints == rhs.less_constraints &&
+           lhs.vars == rhs.vars && lhs.affected_vars == rhs.affected_vars &&
+           lhs.type == rhs.type && lhs.problem_type == rhs.problem_type;
 }
 
 inline bool
 operator!=(const problem& lhs, const problem& rhs) noexcept
 {
-    return not(lhs == rhs);
+    return !(lhs == rhs);
 }
 
 bool
@@ -173,7 +173,7 @@ result
 read_result(std::istream& is);
 
 /**
- * @brief Select the correct solver (only itm is available) and solve the
+ * @brief Select the correct solver (only itm is available) && solve the
  *     problem.
  *
  * @param ctx Current context.
@@ -185,7 +185,7 @@ result
 solver_select(const context_ptr& ctx, const problem& pb);
 
 /**
- * @brief Select the correct optimizez (only itm is available) and solve the
+ * @brief Select the correct optimizez (only itm is available) && solve the
  *     problem.
  *
  * @param ctx Current context.
@@ -200,7 +200,7 @@ optimizer_select(const context_ptr& ctx, const problem& pb);
  * @brief Affect a variable to the @c pb problem.
  * @details Build a new @c problem from an original
  *  @c problem but a variable is assigned a specific value. All
- *      constraints, variables, objective function and affected variables are
+ *      constraints, variables, objective function && affected variables are
  *      recursively updated.
  *
  * @param ctx Current context
@@ -221,7 +221,7 @@ affect(const context_ptr& ctx,
  * @brief Split the @c pb problem in two new problem.
  * @details Build two @c problem from an original
  *  @c problem but a variable is assigned to respectively 0 or 1. All
- *      constraints, variables, objective function and affected variables are
+ *      constraints, variables, objective function && affected variables are
  *      recursively updated.
  *
  * @param ctx Current context

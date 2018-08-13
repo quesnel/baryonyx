@@ -57,10 +57,8 @@ public:
 
     void make_observation()
     {
-        std::transform(m_pi.get(),
-                       m_pi.get() + m_m,
-                       m_pnm.begin(),
-                       colormap(-1.0f, +1.0f));
+        std::transform(
+          m_pi.get(), m_pi.get() + m_m, m_pnm.begin(), colormap(-1.0f, +1.0f));
 
         m_pnm.flush();
     }
@@ -79,7 +77,7 @@ private:
 
 public:
     ap_pnm_observer(std::string basename,
-                    sparse_matrix<int>  ap,
+                    sparse_matrix<int> ap,
                     const std::unique_ptr<floatingpointT[]>& P,
                     int m,
                     int n)
@@ -95,7 +93,7 @@ public:
     {
         colormap cm(-1.0f, 1.0f);
         pnm_array pnm(m_m, m_n);
-        if (not pnm)
+        if (!pnm)
             return;
 
         // floatingpointT min_val = std::numeric_limits<floatingpointT>::max();
@@ -171,7 +169,7 @@ private:
 
 public:
     ap_file_observer(std::string basename,
-                     sparse_matrix<int>  ap,
+                     sparse_matrix<int> ap,
                      const std::unique_ptr<floatingpointT[]>& P,
                      int m,
                      int n)

@@ -268,7 +268,7 @@ remove_duplicated_constraints(const baryonyx::context_ptr& ctx,
         order.emplace_back(t[i].index);
         auto j = i + 1;
 
-        while (j != e and t[i].hash == t[j].hash and
+        while (j != e && t[i].hash == t[j].hash &&
                cst[t[i].index].elements == cst[t[j].index].elements) {
             switch (type) {
             case baryonyx::operator_type::equal:
@@ -365,11 +365,11 @@ try_remove_assigned_variable(const baryonyx::context_ptr& ctx,
             break;
         case baryonyx::operator_type::equal:
             // 1 x = 0 or 1 x = 1
-            if (cst.value == 0 or cst.value == 1) {
+            if (cst.value == 0 || cst.value == 1) {
                 variable_index = cst.elements.front().variable_index;
                 variable_value = cst.value;
             } else {
-                assert(false and "1x = -1: error");
+                assert(false && "1x = -1: error");
             }
             break;
         case baryonyx::operator_type::greater:
@@ -388,7 +388,7 @@ try_remove_assigned_variable(const baryonyx::context_ptr& ctx,
             } else if (cst.value == 1)
                 return true;
             else
-                assert(false and "1x <= -1");
+                assert(false && "1x <= -1");
             break;
         }
     } else {
@@ -403,7 +403,7 @@ try_remove_assigned_variable(const baryonyx::context_ptr& ctx,
                 variable_index = cst.elements.front().variable_index;
                 variable_value = 1;
             } else {
-                assert(false and "-1x = 1");
+                assert(false && "-1x = 1");
             }
             break;
         case baryonyx::operator_type::greater:
@@ -413,7 +413,7 @@ try_remove_assigned_variable(const baryonyx::context_ptr& ctx,
             } else if (cst.value == -1) // -x >= -1 -> x = 1
                 return true;
             else
-                assert(false and "-1x >= 1");
+                assert(false && "-1x >= 1");
             break;
         case baryonyx::operator_type::less:
             // -x <= -1 -> x = 1
@@ -456,7 +456,7 @@ try_remove_assigned_variables_01(const baryonyx::context_ptr& ctx,
     case baryonyx::operator_type::undefined:
         break;
     case baryonyx::operator_type::equal:
-        if (cst.value == 0 or cst.value == nb) {
+        if (cst.value == 0 || cst.value == nb) {
             value = cst.value / nb;
             found = true;
         }
@@ -477,7 +477,7 @@ try_remove_assigned_variables_01(const baryonyx::context_ptr& ctx,
         break;
     }
 
-    if (not found)
+    if (!found)
         return false;
 
     std::vector<int> id;
@@ -486,7 +486,7 @@ try_remove_assigned_variables_01(const baryonyx::context_ptr& ctx,
     for (int i = 0; i != nb; ++i)
         id.push_back(cst.elements[i].variable_index);
 
-    while (not id.empty()) {
+    while (!id.empty()) {
         debug(ctx,
               "      variable {} = {} must be removed (2)\n",
               pb.vars.names[id.back()],
@@ -556,7 +556,7 @@ try_remove_assigned_variables_101(const baryonyx::context_ptr& ctx,
     if (id.empty())
         return false;
 
-    while (not id.empty()) {
+    while (!id.empty()) {
         debug(ctx,
               "      variable {} = {} must be removed (2)\n",
               pb.vars.names[id.back().first],
@@ -592,9 +592,9 @@ try_remove_assigned_variables(const baryonyx::context_ptr& ctx,
         return try_remove_assigned_variable(ctx, pb, cst, type, variable);
 
     auto factor = get_factor_type(cst.elements);
-    if (std::get<0>(factor) == 0 and std::get<1>(factor) == 1)
+    if (std::get<0>(factor) == 0 && std::get<1>(factor) == 1)
         return try_remove_assigned_variables_01(ctx, pb, cst, type, variable);
-    else if (std::get<0>(factor) == -1 and std::get<1>(factor) == 1)
+    else if (std::get<0>(factor) == -1 && std::get<1>(factor) == 1)
         return try_remove_assigned_variables_101(ctx, pb, cst, type, variable);
 
     return false;
@@ -819,7 +819,7 @@ get_coefficient_type(const baryonyx::problem& pb) noexcept
 
     for (const auto& cst : pb.equal_constraints) {
         for (const auto& elem : cst.elements) {
-            if (elem.factor > 1 or elem.factor < -1)
+            if (elem.factor > 1 || elem.factor < -1)
                 return 2;
 
             if (elem.factor == -1)
@@ -829,7 +829,7 @@ get_coefficient_type(const baryonyx::problem& pb) noexcept
 
     for (const auto& cst : pb.less_constraints) {
         for (const auto& elem : cst.elements) {
-            if (elem.factor > 1 or elem.factor < -1)
+            if (elem.factor > 1 || elem.factor < -1)
                 return 2;
 
             if (elem.factor == -1)
@@ -839,7 +839,7 @@ get_coefficient_type(const baryonyx::problem& pb) noexcept
 
     for (const auto& cst : pb.greater_constraints) {
         for (const auto& elem : cst.elements) {
-            if (elem.factor > 1 or elem.factor < -1)
+            if (elem.factor > 1 || elem.factor < -1)
                 return 2;
 
             if (elem.factor == -1)
@@ -928,7 +928,7 @@ preprocess(const baryonyx::context_ptr& ctx, const baryonyx::raw_problem& pb_)
     {
         auto type = ::get_coefficient_type(pb);
 
-        if (pb.greater_constraints.empty() and pb.less_constraints.empty()) {
+        if (pb.greater_constraints.empty() && pb.less_constraints.empty()) {
             switch (type) {
             case 0:
                 pb.problem_type = baryonyx::problem_solver_type::equalities_01;
@@ -993,7 +993,7 @@ unpreprocess(const baryonyx::context_ptr& ctx,
     {
         auto type = ::get_coefficient_type(pb);
 
-        if (pb.greater_constraints.empty() and pb.less_constraints.empty()) {
+        if (pb.greater_constraints.empty() && pb.less_constraints.empty()) {
             switch (type) {
             case 0:
                 pb.problem_type = baryonyx::problem_solver_type::equalities_01;

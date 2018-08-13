@@ -153,7 +153,7 @@ private:
         bool affect_0 = (factor * 0 == result);
         bool affect_1 = (factor * 1 == result);
 
-        if (affect_0 and affect_1)
+        if (affect_0 && affect_1)
             return std::make_tuple(-1, false);
 
         if (affect_0)
@@ -180,7 +180,7 @@ private:
         bool affect_0 = (factor * 0 >= result);
         bool affect_1 = (factor * 1 >= result);
 
-        if (affect_0 and affect_1)
+        if (affect_0 && affect_1)
             return std::make_tuple(-1, false);
 
         if (affect_0)
@@ -207,7 +207,7 @@ private:
         bool affect_0 = (factor * 0 <= result);
         bool affect_1 = (factor * 1 <= result);
 
-        if (affect_0 and affect_1)
+        if (affect_0 && affect_1)
             return std::make_tuple(-1, false);
 
         if (affect_0)
@@ -222,7 +222,7 @@ private:
 
     void affect_variable(int index, bool value)
     {
-        assert(index >= 0 and index < bx::length(cache));
+        assert(index >= 0 && index < bx::length(cache));
 
         vars[index] = value;
         pp_lifo lifo(index, value);
@@ -474,10 +474,8 @@ private:
 
 namespace baryonyx {
 
-std::tuple<baryonyx::problem, baryonyx::problem>
-split(const baryonyx::context_ptr& ctx,
-      const baryonyx::problem& pb,
-      int variable_index_to_affect)
+std::tuple<problem, problem>
+split(const context_ptr& ctx, const problem& pb, int variable_index_to_affect)
 {
     info(ctx,
          "- Preprocessor starts split of variable {} (size: {})\n",
@@ -490,9 +488,9 @@ split(const baryonyx::context_ptr& ctx,
                            pp(variable_index_to_affect, false));
 }
 
-baryonyx::problem
-affect(const baryonyx::context_ptr& ctx,
-       const baryonyx::problem& pb,
+problem
+affect(const context_ptr& ctx,
+       const problem& pb,
        int variable_index,
        bool variable_value)
 {

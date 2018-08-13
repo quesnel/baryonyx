@@ -84,14 +84,14 @@ test_n_queens_problem(const baryonyx::context_ptr& ctx)
         std::ifstream ifs{ EXAMPLES_DIR "/n-queens/solutions.txt" };
 
         Ensures(ifs.is_open());
-        if (not ifs.is_open())
+        if (!ifs.is_open())
             return;
 
         for (auto& elem : cplex_solutions)
             ifs >> elem;
 
         Ensures(ifs.good());
-        if (not ifs.good())
+        if (!ifs.good())
             return;
     }
 

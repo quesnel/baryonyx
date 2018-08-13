@@ -179,7 +179,7 @@ struct solver_inequalities_Zcoeff
             for (; it != et; ++it)
                 v += A[it->value] * x[it->column];
 
-            if (not(b[k].min <= v and v <= b[k].max))
+            if (!(b[k].min <= v && v <= b[k].max))
                 return false;
         }
 
@@ -200,7 +200,7 @@ struct solver_inequalities_Zcoeff
             for (; it != et; ++it)
                 v += A[it->value] * x[it->column];
 
-            if (not(b[k].min <= v and v <= b[k].max))
+            if (!(b[k].min <= v && v <= b[k].max))
                 c.emplace_back(k);
         }
 
@@ -630,13 +630,13 @@ struct solver_inequalities_Zcoeff
                                       int bkmax)
     {
         int sum = A[(it + R[0].id)->value];
-        if (bkmin <= sum and sum <= bkmax)
+        if (bkmin <= sum && sum <= bkmax)
             return 0;
 
         for (int i = 1; i != r_size; ++i) {
             sum += A[(it + R[i].id)->value];
 
-            if (bkmin <= sum and sum <= bkmax)
+            if (bkmin <= sum && sum <= bkmax)
                 return i;
 
             if (sum > bkmax)

@@ -31,7 +31,7 @@ solve(const context_ptr& ctx, const problem& pb)
     if (ctx->method == "buffered") {
         warning(ctx, "buffered method is experimental\n");
         return itm::solve_inequalities_101coeff_buffered(ctx, pb);
-    } else if (not ctx->method.empty()) {
+    } else if (!ctx->method.empty()) {
         warning(ctx, "undefined method {}");
     }
 
@@ -66,7 +66,7 @@ optimize(const context_ptr& ctx, const problem& pb)
     if (ctx->method == "buffered") {
         warning(ctx, "buffered method is experimental\n");
         return itm::optimize_inequalities_101coeff_buffered(ctx, pb);
-    } else if (not ctx->method.empty()) {
+    } else if (!ctx->method.empty()) {
         warning(ctx, "undefined method {}");
     }
 

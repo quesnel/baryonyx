@@ -174,7 +174,7 @@ struct branch_and_bound_solver
         queue.emplace(bound_node(best, bound), floatingpointT(0), 0, -1);
         best.sumr = init(modeT());
 
-        while (not queue.empty()) {
+        while (!queue.empty()) {
             node u = queue.front();
             queue.pop();
 
@@ -239,13 +239,13 @@ struct branch_and_bound_solver
         for (i = 0; i != selected; ++i)
             sum += items[i].factor;
 
-        if (i == 0 and sum > bound)
+        if (i == 0 && sum > bound)
             return -1;
 
         for (; i != e; ++i) {
             sum += items[i].factor;
 
-            if (sum > bound or stop_iterating(items[i].r, modeT()))
+            if (sum > bound || stop_iterating(items[i].r, modeT()))
                 break;
         }
 

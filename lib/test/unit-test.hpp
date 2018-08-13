@@ -277,7 +277,7 @@ report_errors()
 
 #define Ensures(expr)                                                         \
     do {                                                                      \
-        if (not(expr)) {                                                      \
+        if (!(expr)) {                                                        \
             unit_test::detail::ensures_impl(                                  \
               #expr, __FILE__, __LINE__, __func__);                           \
             return;                                                           \
@@ -286,7 +286,7 @@ report_errors()
 
 #define EnsuresEqual(expr1, expr2)                                            \
     do {                                                                      \
-        if (not((expr1) == (expr2))) {                                        \
+        if (!((expr1) == (expr2))) {                                          \
             unit_test::detail::ensures_equal_impl(                            \
               #expr1, #expr2, __FILE__, __LINE__, __func__);                  \
             return;                                                           \
@@ -295,7 +295,7 @@ report_errors()
 
 #define EnsuresNotEqual(expr1, expr2)                                         \
     do {                                                                      \
-        if (not((expr1) != (expr2))) {                                        \
+        if (!((expr1) != (expr2))) {                                          \
             unit_test::detail::ensures_not_equal_impl(                        \
               #expr1, #expr2, __FILE__, __LINE__, __func__);                  \
             return;                                                           \

@@ -139,7 +139,7 @@ public:
         int row = accessors[0].row;
         int nb_row = 0;
         for (int i = 0; i != elem; ++i) {
-            if (row != accessors[i].row or i + 1 == elem) {
+            if (row != accessors[i].row || i + 1 == elem) {
                 rinit[row] = nb_row;
                 nb_row = 0;
                 row = accessors[i].row;
@@ -160,7 +160,7 @@ public:
         int nb_col = 0;
 
         for (int i = 0; i != elem; ++i) {
-            if (col != accessors[i].col or i + 1 == elem) {
+            if (col != accessors[i].col || i + 1 == elem) {
                 cinit[col] = nb_col;
                 nb_col = 0;
                 col = accessors[i].col;

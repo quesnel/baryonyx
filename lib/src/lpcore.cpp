@@ -197,7 +197,7 @@ bool
 is_valid_solution_impl(const raw_problem& pb,
                        const std::vector<bool>& variable_value)
 {
-    Expects(not variable_value.empty(), "variables vector empty");
+    Expects(!variable_value.empty(), "variables vector empty");
     std::size_t i, e;
 
     for (i = 0, e = pb.equal_constraints.size(); i != e; ++i) {
@@ -225,7 +225,7 @@ double
 compute_solution_impl(const raw_problem& pb,
                       const std::vector<bool>& variable_value)
 {
-    Expects(not variable_value.empty(), "variables vector empty");
+    Expects(!variable_value.empty(), "variables vector empty");
 
     double ret = pb.objective.value;
 
@@ -239,7 +239,7 @@ template<typename Problem>
 static std::vector<bool>
 make_variable_value(const Problem& pb, const result& r)
 {
-    if (not r or r.solutions.empty())
+    if (!r || r.solutions.empty())
         return {};
 
     std::unordered_map<std::string, bool> cache;
@@ -278,7 +278,7 @@ make_variable_value(const Problem& pb, const result& r)
 bool
 is_valid_solution(const raw_problem& pb, const result& r)
 {
-    if (not r or r.solutions.empty())
+    if (!r || r.solutions.empty())
         return false;
 
     Expects(pb.vars.names.size() == pb.vars.values.size());
@@ -292,7 +292,7 @@ is_valid_solution(const raw_problem& pb, const result& r)
 double
 compute_solution(const raw_problem& pb, const result& r)
 {
-    Expects(r and not r.solutions.empty());
+    Expects(r && !r.solutions.empty());
     Expects(pb.vars.names.size() == pb.vars.values.size());
     Expects(pb.vars.names.size() == r.variable_name.size());
     Expects(r.solutions.back().variables.size() == r.variable_name.size());

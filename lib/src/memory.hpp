@@ -44,7 +44,7 @@ inline std::tuple<double, show_size_type>
 memory_consumed_size(T size) noexcept
 {
     static_assert(
-      (std::is_integral<T>::value or std::is_floating_point<T>::value),
+      (std::is_integral<T>::value || std::is_floating_point<T>::value),
       "Integer or real required.");
 
     auto kb = static_cast<double>(size) / 1024.;

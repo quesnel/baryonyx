@@ -128,7 +128,7 @@ struct knapsack_dp_solver
             i = items.size();
             j = static_cast<std::size_t>(capacity);
 
-            for (; i > 0 and j > 0; --i) {
+            for (; i > 0 && j > 0; --i) {
                 if (best(i, j) != best(i - 1, j)) {
                     variables.emplace_back(items[i - 1].variable);
                     j -= items[i - 1].factor;
@@ -166,13 +166,13 @@ struct knapsack_dp_solver
             for (i = 0; i != selected; ++i)
                 sum += items[i].factor;
 
-            if (i == 0 and sum > capacity)
+            if (i == 0 && sum > capacity)
                 return -1;
 
             for (; i != r_size; ++i) {
                 sum += items[i].factor;
 
-                if (sum > capacity or stop_iterating(items[i].r, modeT()))
+                if (sum > capacity || stop_iterating(items[i].r, modeT()))
                     break;
             }
 

@@ -58,7 +58,7 @@ write_constraint(std::ostream& os,
                  const Constraint& cst,
                  const char* separator)
 {
-    if (not cst.label.empty())
+    if (!cst.label.empty())
         os << cst.label << ": ";
 
     write_function_element(os, p, cst.elements);

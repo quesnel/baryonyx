@@ -265,7 +265,7 @@ log(const context_ptr& ctx,
     const char* fmt,
     const Args&... args)
 {
-    if (not is_loggable(ctx->log_priority, level))
+    if (!is_loggable(ctx->log_priority, level))
         return;
 
     if (ctx->logger == context::logger_type::c_file) {
@@ -284,7 +284,7 @@ template<typename... Args>
 void
 log(const context_ptr& ctx, context::message_type level, const char* msg)
 {
-    if (not is_loggable(ctx->log_priority, level))
+    if (!is_loggable(ctx->log_priority, level))
         return;
 
     if (ctx->logger == context::logger_type::c_file) {

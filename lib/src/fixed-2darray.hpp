@@ -406,7 +406,8 @@ fixed_2darray<T>::operator()(size_type row, size_type column)
 
 template<typename T>
 void
-fixed_2darray<T>::swap(fixed_2darray& c) noexcept(noexcept(m_buffer.swap(c.m_buffer)))
+fixed_2darray<T>::swap(fixed_2darray& c) noexcept(
+  noexcept(m_buffer.swap(c.m_buffer)))
 {
     std::swap(m_buffer, c.m_buffer);
     std::swap(m_columns, c.m_columns);
@@ -417,7 +418,7 @@ template<typename T>
 bool
 fixed_2darray<T>::m_is_valid(size_type row, size_type column) const noexcept
 {
-    return column < m_columns and row < m_rows;
+    return column < m_columns && row < m_rows;
 }
 }
 

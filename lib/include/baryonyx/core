@@ -699,10 +699,29 @@ optimize(const baryonyx::context_ptr& ctx,
          const raw_problem& pb,
          preprocessor_options pp_opt = preprocessor_options::all);
 
+/**
+ * @details Try to valid the @c baryonyx::result according to the
+ *    @c baryonyx::raw_problem.
+ *
+ * @param pb Problem definition.
+ * @param r A representation of the result of the problem @c pb.
+ *
+ * @return true if @c r is a solution of the problem @c pb, false otherwise.
+ */
 BARYONYX_API
 bool
 is_valid_solution(const raw_problem& pb, const result& r);
 
+/**
+ * @details Computes the value of the solution of the @c baryonyx::result
+ *    according to the @c baryonyx::raw_problem.
+ *
+ * @param pb Problem definition.
+ * @param r A representation of the result of the problem @c pb.
+ *
+ * @return the value of the solution if @c r is a solution of the problem
+ *    @c pb.
+ */
 BARYONYX_API
 double
 compute_solution(const raw_problem& pb, const result& r);

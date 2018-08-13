@@ -52,7 +52,7 @@ iequals(const std::string& lhs, const std::string& rhs) noexcept
 static inline bool
 is_operator(int c) noexcept
 {
-    return c == '<' or c == '>' or c == '=';
+    return c == '<' || c == '>' || c == '=';
 }
 
 static inline bool
@@ -145,21 +145,21 @@ struct parser_stack
         if (stack.empty())
             return false;
 
-        if (iequals(str, "binary") or iequals(str, "binaries") or
-            iequals(str, "bound") or iequals(str, "bounds") or
-            iequals(str, "general") or iequals(str, "end") or
-            iequals(str, "st") or iequals(str, "st:"))
+        if (iequals(str, "binary") || iequals(str, "binaries") ||
+            iequals(str, "bound") || iequals(str, "bounds") ||
+            iequals(str, "general") || iequals(str, "end") ||
+            iequals(str, "st") || iequals(str, "st:"))
             return true;
 
-        if (stack.size() > 2 and
-            (iequals(str, "subject") and iequals(stack[1], "to") and
+        if (stack.size() > 2 &&
+            (iequals(str, "subject") && iequals(stack[1], "to") &&
              iequals(stack[2], ":")))
             return true;
 
-        if (stack.size() > 1 and
-            ((iequals(str, "subject") and iequals(stack[1], "to")) or
-             (iequals(str, "subject") and iequals(stack[1], "to:")) or
-             (iequals(str, "st") and iequals(stack[1], ":"))))
+        if (stack.size() > 1 &&
+            ((iequals(str, "subject") && iequals(stack[1], "to")) ||
+             (iequals(str, "subject") && iequals(stack[1], "to:")) ||
+             (iequals(str, "st") && iequals(stack[1], ":"))))
             return true;
 
         return false;
@@ -176,13 +176,13 @@ struct parser_stack
         if (stack.empty())
             return false;
 
-        if (iequals(stack[0], "st") or iequals(stack[0], "st:")) {
+        if (iequals(stack[0], "st") || iequals(stack[0], "st:")) {
             pop();
             return true;
         }
 
-        if (stack.size() >= 2 and
-            (iequals(stack[0], "subject") and iequals(stack[1], "to") and
+        if (stack.size() >= 2 &&
+            (iequals(stack[0], "subject") && iequals(stack[1], "to") &&
              iequals(stack[2], ":"))) {
             pop();
             pop();
@@ -190,10 +190,10 @@ struct parser_stack
             return true;
         }
 
-        if (stack.size() > 1 and
-            ((iequals(stack[0], "st") and iequals(stack[1], ":")) or
-             (iequals(stack[0], "subject") and iequals(stack[1], "to")) or
-             (iequals(stack[0], "subject") and iequals(stack[1], "to:")))) {
+        if (stack.size() > 1 &&
+            ((iequals(stack[0], "st") && iequals(stack[1], ":")) ||
+             (iequals(stack[0], "subject") && iequals(stack[1], "to")) ||
+             (iequals(stack[0], "subject") && iequals(stack[1], "to:")))) {
             pop();
             pop();
             return true;
@@ -210,7 +210,7 @@ struct parser_stack
         if (stack.size() <= 0)
             return false;
 
-        if (iequals(stack[0], "bounds") or iequals(stack[0], "bound")) {
+        if (iequals(stack[0], "bounds") || iequals(stack[0], "bound")) {
             pop();
             return true;
         }
@@ -226,7 +226,7 @@ struct parser_stack
         if (stack.size() <= 0)
             return false;
 
-        if (iequals(stack[0], "binary") or iequals(stack[0], "binaries")) {
+        if (iequals(stack[0], "binary") || iequals(stack[0], "binaries")) {
             pop();
             return true;
         }
@@ -349,7 +349,7 @@ struct parser_stack
         if (m_coefficient_type == 2)
             return;
 
-        if (factor < -1 or factor > 1) {
+        if (factor < -1 || factor > 1) {
             m_coefficient_type = 2;
             return;
         }
@@ -386,17 +386,17 @@ private:
             m_line++;
             cache--;
 
-            if (line.empty() and m_is.eof())
+            if (line.empty() && m_is.eof())
                 return;
 
             std::string::size_type i{ 0 };
             std::string::size_type e{ line.size() };
 
             for (; i != e; ++i)
-                if (not std::isspace(line[i]))
+                if (!std::isspace(line[i]))
                     break;
 
-            if (i != e and line[i] == '\\')
+            if (i != e && line[i] == '\\')
                 continue;
 
             while (i != e) {
@@ -411,11 +411,11 @@ private:
                 }
 
                 for (; i != e; ++i)
-                    if (not std::isspace(line[i]))
+                    if (!std::isspace(line[i]))
                         break;
             }
 
-            if (cache <= 0 and not stack.empty())
+            if (cache <= 0 && !stack.empty())
                 return;
 
             if (stack.empty())
@@ -463,7 +463,7 @@ read_name(parser_stack& stack)
     std::string::size_type i = { 0 }, e = { str.length() };
     std::string ret;
 
-    if (std::isalpha(str[i]) or str[i] == '_') {
+    if (std::isalpha(str[i]) || str[i] == '_') {
         ret += str[i];
         ++i;
 
@@ -490,7 +490,7 @@ read_operator(parser_stack& stack)
     std::string str = stack.top();
 
     if (str[0] == '<') {
-        if (str.size() > 1 and str[1] == '=') {
+        if (str.size() > 1 && str[1] == '=') {
             stack.substr_front(2);
         } else {
             stack.substr_front(1);
@@ -500,7 +500,7 @@ read_operator(parser_stack& stack)
     }
 
     if (str[0] == '>') {
-        if (str.size() > 1 and str[1] == '=') {
+        if (str.size() > 1 && str[1] == '=') {
             stack.substr_front(2);
         } else {
             stack.substr_front(1);
@@ -510,11 +510,11 @@ read_operator(parser_stack& stack)
     }
 
     if (str[0] == '=') {
-        if (str.size() > 1 and str[1] == '<') {
+        if (str.size() > 1 && str[1] == '<') {
             stack.substr_front(2);
 
             return operator_type::less;
-        } else if (str.size() > 1 and str[1] == '=') {
+        } else if (str.size() > 1 && str[1] == '=') {
             stack.substr_front(2);
 
             return operator_type::greater;
@@ -549,8 +549,8 @@ read_integer(parser_stack& stack)
     errno = 0;
     long value = std::strtol(str.c_str(), &endptr, 10);
 
-    if ((errno == ERANGE and (value == LONG_MIN or value == LONG_MAX)) or
-        (value == 0 and endptr == str.c_str()))
+    if ((errno == ERANGE && (value == LONG_MIN || value == LONG_MAX)) ||
+        (value == 0 && endptr == str.c_str()))
         throw file_format_failure(file_format_error_tag::bad_integer,
                                   static_cast<int>(stack.line()),
                                   static_cast<int>(stack.column()));
@@ -591,8 +591,8 @@ read_double(parser_stack& stack)
     char* endptr;
     errno = 0;
     double value = std::strtod(str.c_str(), &endptr);
-    if ((errno == ERANGE and (value == HUGE_VAL or value == -HUGE_VAL)) or
-        (value == 0.0 and endptr == str.c_str()))
+    if ((errno == ERANGE && (value == HUGE_VAL || value == -HUGE_VAL)) ||
+        (value == 0.0 && endptr == str.c_str()))
         throw file_format_failure(file_format_error_tag::bad_integer,
                                   static_cast<int>(stack.line()),
                                   static_cast<int>(stack.column()));
@@ -611,7 +611,7 @@ read_function_element(parser_stack& stack)
 
     std::string str = stack.pop();
 
-    if (str[0] == '-' or str[0] == '+') {
+    if (str[0] == '-' || str[0] == '+') {
         negative = (str[0] == '-');
 
         if (str.length() != 1)
@@ -639,7 +639,7 @@ read_function_element(parser_stack& stack)
 
     str = stack.top();
 
-    if (std::isalpha(str[0]) or str[0] == '_')
+    if (std::isalpha(str[0]) || str[0] == '_')
         std::get<0>(ret) = read_name(stack);
 
     return ret;
@@ -653,7 +653,7 @@ read_objective_function_element(parser_stack& stack)
 
     std::string str = stack.pop();
 
-    if (str[0] == '-' or str[0] == '+') {
+    if (str[0] == '-' || str[0] == '+') {
         negative = (str[0] == '-');
 
         if (str.length() != 1)
@@ -679,7 +679,7 @@ read_objective_function_element(parser_stack& stack)
 
     str = stack.top();
 
-    if (std::isalpha(str[0]) or str[0] == '_')
+    if (std::isalpha(str[0]) || str[0] == '_')
         std::get<0>(ret) = read_name(stack);
 
     return ret;
@@ -728,7 +728,7 @@ read_objective_function(parser_stack& stack, raw_problem& p)
     // Forget the `obj:' string append by cplex.
     //
 
-    if (std::isalpha(stack.peek()) or stack.peek() == '_') {
+    if (std::isalpha(stack.peek()) || stack.peek() == '_') {
         auto tmp = read_name(stack);
 
         if (stack.peek() == ':') {
@@ -738,7 +738,7 @@ read_objective_function(parser_stack& stack, raw_problem& p)
         }
     }
 
-    while (not stack.is_topic()) {
+    while (!stack.is_topic()) {
         auto elem = read_objective_function_element(stack);
 
         if (std::get<0>(elem).empty()) // we read a constant
@@ -758,7 +758,7 @@ read_constraint(parser_stack& stack, raw_problem& p)
     constraint cst;
     std::string label;
 
-    if (std::isalpha(stack.peek()) or stack.peek() == '_') {
+    if (std::isalpha(stack.peek()) || stack.peek() == '_') {
         auto tmp = read_name(stack);
 
         if (stack.peek() == ':') {
@@ -772,14 +772,14 @@ read_constraint(parser_stack& stack, raw_problem& p)
 
     auto str = stack.top();
 
-    if (not iequals(str, "bound") and not iequals(str, "bounds") and
-        not iequals(str, "binary") and not iequals(str, "binaries") and
-        not iequals(str, "general") and not iequals(str, "end")) {
+    if (!iequals(str, "bound") && !iequals(str, "bounds") &&
+        !iequals(str, "binary") && !iequals(str, "binaries") &&
+        !iequals(str, "general") && !iequals(str, "end")) {
 
-        while (not is_operator(stack.peek()) and not iequals(str, "binary") and
-               not iequals(str, "bound") and not iequals(str, "bounds") and
-               not iequals(str, "binaries") and not iequals(str, "general") and
-               not iequals(str, "end")) {
+        while (!is_operator(stack.peek()) && !iequals(str, "binary") &&
+               !iequals(str, "bound") && !iequals(str, "bounds") &&
+               !iequals(str, "binaries") && !iequals(str, "general") &&
+               !iequals(str, "end")) {
             auto elem = read_function_element(stack);
             cst.elements.emplace_back(
               std::get<1>(elem),
@@ -803,9 +803,9 @@ read_constraints(parser_stack& stack, raw_problem& p)
 {
     auto str = stack.top();
 
-    while (not iequals(str, "binary") and not iequals(str, "binaries") and
-           not iequals(str, "bound") and not iequals(str, "bounds") and
-           not iequals(str, "general") and not iequals(str, "end")) {
+    while (!iequals(str, "binary") && !iequals(str, "binaries") &&
+           !iequals(str, "bound") && !iequals(str, "bounds") &&
+           !iequals(str, "general") && !iequals(str, "end")) {
 
         auto cst = read_constraint(stack, p);
         std::get<0>(cst).id = stack.current_constraint_id();
@@ -918,8 +918,8 @@ read_bounds(parser_stack& stack, raw_problem& p)
 {
     auto str = stack.top();
 
-    while (not iequals(str, "binary") and not iequals(str, "binaries") and
-           not iequals(str, "general") and not iequals(str, "end")) {
+    while (!iequals(str, "binary") && !iequals(str, "binaries") &&
+           !iequals(str, "general") && !iequals(str, "end")) {
         read_bound(stack, p);
         str = stack.top();
     }
@@ -930,11 +930,11 @@ read_binary(parser_stack& stack, raw_problem& p)
 {
     auto str = stack.top();
 
-    while (not iequals(str, "general") and not iequals(str, "end")) {
+    while (!iequals(str, "general") && !iequals(str, "end")) {
         auto name = read_name(stack);
         auto id = get_variable_only(stack.cache(), name);
 
-        if (id < 0 or p.vars.values[id].type != variable_type::real)
+        if (id < 0 || p.vars.values[id].type != variable_type::real)
             throw file_format_failure(name,
                                       file_format_error_tag::unknown,
                                       static_cast<int>(stack.line()),
@@ -951,11 +951,11 @@ read_general(parser_stack& stack, raw_problem& p)
 {
     auto str = stack.top();
 
-    while (not iequals(str, "end")) {
+    while (!iequals(str, "end")) {
         auto name = read_name(stack);
         auto id = get_variable_only(stack.cache(), name);
 
-        if (id < 0 or p.vars.values[id].type != variable_type::real)
+        if (id < 0 || p.vars.values[id].type != variable_type::real)
             throw file_format_failure(name,
                                       file_format_error_tag::unknown,
                                       static_cast<int>(stack.line()),

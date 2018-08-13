@@ -59,7 +59,7 @@ inline double
 best_solution_value(const baryonyx::result& res) noexcept
 {
     assert(res.status == baryonyx::result_status::success);
-    assert(not res.solutions.empty());
+    assert(!res.solutions.empty());
 
     return res.solutions.back().value;
 }
@@ -315,7 +315,7 @@ init_solver(Solver& slv,
     std::fill(
       slv.pi.get(), slv.pi.get() + slv.m, static_cast<floatingpointT>(0));
 
-    if (best_previous.empty() and
+    if (best_previous.empty() &&
         type == solver_parameters::init_policy_type::best)
         type = solver_parameters::init_policy_type::bastert;
 
@@ -324,7 +324,7 @@ init_solver(Solver& slv,
 
     switch (type) {
     case solver_parameters::init_policy_type::bastert:
-        if (init_random == 0.0 or init_random == 1.0) {
+        if (init_random == 0.0 || init_random == 1.0) {
             bool value_if_cost_0 = init_random == 1.0;
 
             for (int i = 0; i != slv.n; ++i)
@@ -384,7 +384,7 @@ print_solver(const Solver& slv,
         for (; it != et; ++it)
             v += slv.factor(it->value) * slv.x[it->column];
 
-        bool valid = slv.bound_min(k) <= v and v <= slv.bound_max(k);
+        bool valid = slv.bound_min(k) <= v && v <= slv.bound_max(k);
 
         debug(ctx,
               "C {}:{} (Lmult: {})\n",
@@ -850,7 +850,7 @@ compute_delta(const context_ptr& ctx,
 
     auto mini{ std::numeric_limits<floatingpointT>::max() };
     for (int i = 0; i != n; ++i)
-        if (c[i] != 0 and std::abs(c[i]) < mini)
+        if (c[i] != 0 && std::abs(c[i]) < mini)
             mini = std::abs(c[i]);
 
     if (mini == std::numeric_limits<floatingpointT>::max()) {
@@ -1009,7 +1009,7 @@ make_objective_function(const objective_function& obj, int n)
     auto ret = std::make_unique<floatingpointT[]>(n);
 
     for (const auto& elem : obj.elements) {
-        assert(0 <= n and elem.variable_index < n);
+        assert(0 <= n && elem.variable_index < n);
         ret[elem.variable_index] += static_cast<floatingpointT>(elem.factor);
     }
 

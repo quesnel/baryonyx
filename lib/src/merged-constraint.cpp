@@ -73,7 +73,7 @@ fill_merged_constraints(const baryonyx::context_ptr& ctx,
                                  baryonyx::numeric_cast<int>(elem.value),
                                  elem.id);
             } else {
-                if (ret[it->second].min <= elem.value and
+                if (ret[it->second].min <= elem.value &&
                     elem.value <= ret[it->second].max) {
                     ret[it->second].min = elem.value;
                     ret[it->second].max = elem.value;
@@ -343,7 +343,7 @@ make_special_merged_constraints(const baryonyx::context_ptr& ctx,
                 else
                     nbpos++;
 
-            if (((nbneg > 1 and nbpos == 1) or (nbpos > 1 and nbneg == 1)) and
+            if (((nbneg > 1 && nbpos == 1) || (nbpos > 1 && nbneg == 1)) &&
                 cst.min == cst.max) {
                 tosort.back().second = 1;
             }

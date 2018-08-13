@@ -35,8 +35,6 @@
 #include <functional>
 #include <numeric>
 
-#include <iostream>
-
 static void
 check_clamp()
 {
@@ -60,13 +58,13 @@ check_numeric_cast()
 
     Ensures(baryonyx::is_numeric_castable<signed char>(small_positive));
     Ensures(baryonyx::is_numeric_castable<signed char>(small_negative));
-    Ensures(not baryonyx::is_numeric_castable<signed char>(large_positive));
-    Ensures(not baryonyx::is_numeric_castable<signed char>(large_negative));
+    Ensures(!baryonyx::is_numeric_castable<signed char>(large_positive));
+    Ensures(!baryonyx::is_numeric_castable<signed char>(large_negative));
 
     Ensures(baryonyx::is_numeric_castable<unsigned char>(small_positive));
-    Ensures(not baryonyx::is_numeric_castable<unsigned char>(small_negative));
-    Ensures(not baryonyx::is_numeric_castable<unsigned char>(large_positive));
-    Ensures(not baryonyx::is_numeric_castable<unsigned char>(large_negative));
+    Ensures(!baryonyx::is_numeric_castable<unsigned char>(small_negative));
+    Ensures(!baryonyx::is_numeric_castable<unsigned char>(large_positive));
+    Ensures(!baryonyx::is_numeric_castable<unsigned char>(large_negative));
 
     Ensures(baryonyx::is_numeric_castable<signed int>(small_positive));
     Ensures(baryonyx::is_numeric_castable<signed int>(small_negative));
@@ -74,9 +72,9 @@ check_numeric_cast()
     Ensures(baryonyx::is_numeric_castable<signed int>(large_negative));
 
     Ensures(baryonyx::is_numeric_castable<unsigned int>(small_positive));
-    Ensures(not baryonyx::is_numeric_castable<unsigned int>(small_negative));
+    Ensures(!baryonyx::is_numeric_castable<unsigned int>(small_negative));
     Ensures(baryonyx::is_numeric_castable<unsigned int>(large_positive));
-    Ensures(not baryonyx::is_numeric_castable<unsigned int>(large_negative));
+    Ensures(!baryonyx::is_numeric_castable<unsigned int>(large_negative));
 
     Ensures(baryonyx::is_numeric_castable<long long>(small_positive));
     Ensures(baryonyx::is_numeric_castable<long long>(large_negative));
@@ -85,13 +83,13 @@ check_numeric_cast()
 
     Ensures(baryonyx::is_numeric_castable<unsigned long long>(small_positive));
     Ensures(
-      not baryonyx::is_numeric_castable<unsigned long long>(small_negative));
+      !baryonyx::is_numeric_castable<unsigned long long>(small_negative));
     Ensures(baryonyx::is_numeric_castable<unsigned long long>(large_positive));
     Ensures(
-      not baryonyx::is_numeric_castable<unsigned long long>(large_negative));
+      !baryonyx::is_numeric_castable<unsigned long long>(large_negative));
 
-    Ensures(not baryonyx::is_numeric_castable<size_t>(small_negative));
-    Ensures(not baryonyx::is_numeric_castable<size_t>(large_negative));
+    Ensures(!baryonyx::is_numeric_castable<size_t>(small_negative));
+    Ensures(!baryonyx::is_numeric_castable<size_t>(large_negative));
 
     std::vector<int> v;
 
@@ -163,7 +161,7 @@ check_fixed_array()
 
     std::swap(d, e);
 
-    Ensures(not d);
+    Ensures(!d);
     Ensures(e[0] == 3.0);
     Ensures(e[7] == 3.0);
     Ensures(e[14] == 3.0);
@@ -185,7 +183,8 @@ check_fixed_array()
 static void
 check_fixed_2darray()
 {
-    baryonyx::fixed_2darray<int> a(2, 10);
+    baryonyx::fixed_2darray<int> a(static_cast<size_t>(2),
+                                   static_cast<size_t>(10));
 
     Ensures(a.size() == 20);
     Ensures(a.rows() == 2);
@@ -245,8 +244,8 @@ check_knapsack_solver()
             factors, R, v.begin(), 4, 7);
 
         Ensures(selected == 2);
-        Ensures(R[0].id == 1 or R[1].id == 1);
-        Ensures(R[0].id == 2 or R[1].id == 2);
+        Ensures(R[0].id == 1 || R[1].id == 1);
+        Ensures(R[0].id == 2 || R[1].id == 2);
 
         Ensures(
           std::accumulate(
@@ -272,8 +271,8 @@ check_branch_and_bound_solver()
             R, factors.begin(), factors.end(), 7);
 
         Ensures(selected == 2);
-        Ensures(R[0].id == 1 or R[1].id == 1);
-        Ensures(R[0].id == 2 or R[1].id == 2);
+        Ensures(R[0].id == 1 || R[1].id == 1);
+        Ensures(R[0].id == 2 || R[1].id == 2);
 
         Ensures(std::accumulate(R.begin(),
                                 R.begin() + selected,
@@ -293,7 +292,7 @@ check_branch_and_bound_solver()
             R, factors.begin(), factors.end(), 3);
 
         Ensures(selected == 1);
-        Ensures(R[0].id == 2 or R[1].id == 2);
+        Ensures(R[0].id == 2 || R[1].id == 2);
         Ensures(std::accumulate(R.begin(),
                                 R.begin() + selected,
                                 0.0,
@@ -333,9 +332,9 @@ check_branch_and_bound_solver()
             R, factors.begin(), factors.end(), 7);
 
         Ensures(selected == 3);
-        Ensures(R[0].id == 0 or R[1].id == 0 or R[2].id == 0);
-        Ensures(R[0].id == 1 or R[1].id == 1 or R[2].id == 1);
-        Ensures(R[0].id == 3 or R[1].id == 3 or R[2].id == 3);
+        Ensures(R[0].id == 0 || R[1].id == 0 || R[2].id == 0);
+        Ensures(R[0].id == 1 || R[1].id == 1 || R[2].id == 1);
+        Ensures(R[0].id == 3 || R[1].id == 3 || R[2].id == 3);
     }
 
     {
@@ -417,25 +416,25 @@ check_show_size()
     baryonyx::show_size_type type;
 
     std::tie(size, type) = baryonyx::memory_consumed_size(0);
-    Ensures(size == 0 and type == baryonyx::show_size_type::B);
+    Ensures(size == 0 && type == baryonyx::show_size_type::B);
 
     std::tie(size, type) = baryonyx::memory_consumed_size(1024);
-    Ensures(size == 1 and type == baryonyx::show_size_type::KB);
+    Ensures(size == 1 && type == baryonyx::show_size_type::KB);
 
     std::tie(size, type) = baryonyx::memory_consumed_size(2048);
-    Ensures(size == 2 and type == baryonyx::show_size_type::KB);
+    Ensures(size == 2 && type == baryonyx::show_size_type::KB);
 
     std::tie(size, type) = baryonyx::memory_consumed_size(2048);
-    Ensures(size == 2 and type == baryonyx::show_size_type::KB);
+    Ensures(size == 2 && type == baryonyx::show_size_type::KB);
 
     std::tie(size, type) = baryonyx::memory_consumed_size(1049088);
-    Ensures(size > 1 and size < 2 and type == baryonyx::show_size_type::MB);
+    Ensures(size > 1 && size < 2 && type == baryonyx::show_size_type::MB);
 
     std::tie(size, type) = baryonyx::memory_consumed_size(1049088);
-    Ensures(size > 1 and size < 2 and type == baryonyx::show_size_type::MB);
+    Ensures(size > 1 && size < 2 && type == baryonyx::show_size_type::MB);
 
     std::tie(size, type) = baryonyx::memory_consumed_size(17179869696);
-    Ensures(size > 16 and size < 17 and type == baryonyx::show_size_type::GB);
+    Ensures(size > 16 && size < 17 && type == baryonyx::show_size_type::GB);
 }
 
 int

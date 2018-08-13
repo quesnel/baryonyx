@@ -174,7 +174,7 @@ struct solver_inequalities_101coeff_buffered
             for (; it != et; ++it)
                 v += A[it->value] * x[it->column];
 
-            if (not(b[k].min <= v and v <= b[k].max))
+            if (!(b[k].min <= v && v <= b[k].max))
                 return false;
         }
 
@@ -195,7 +195,7 @@ struct solver_inequalities_101coeff_buffered
             for (; it != et; ++it)
                 v += A[it->value] * x[it->column];
 
-            if (not(b[k].min <= v and v <= b[k].max))
+            if (!(b[k].min <= v && v <= b[k].max))
                 c.emplace_back(k);
         }
 
@@ -498,7 +498,7 @@ struct solver_inequalities_101coeff_buffered
             std::tie(rit, ret) = ap.row(k);
 
             for (; rit != ret; ++rit) {
-                if (std::get<0>(sum_ap[rit->column]) == 0 and
+                if (std::get<0>(sum_ap[rit->column]) == 0 &&
                     std::get<1>(sum_ap[rit->column]) == 0) {
                     sparse_matrix<int>::const_col_iterator ht, hend;
                     std::tie(ht, hend) = ap.column(rit->column);
@@ -558,7 +558,7 @@ struct solver_inequalities_101coeff_buffered
             std::tie(rit, ret) = ap.row(k);
 
             for (; rit != ret; ++rit) {
-                if (std::get<0>(sum_ap[rit->column]) == 0 and
+                if (std::get<0>(sum_ap[rit->column]) == 0 &&
                     std::get<1>(sum_ap[rit->column]) == 0) {
                     sparse_matrix<int>::const_col_iterator ht, hend;
                     std::tie(ht, hend) = ap.column(rit->column);

@@ -71,7 +71,7 @@ operator<<(std::ostream& os, const n_queens& pb)
     for (int diag = 1; diag != pb.problem_size - 1; ++diag) {
         int i = diag;
         int j = 0;
-        while (i < pb.problem_size and j < pb.problem_size)
+        while (i < pb.problem_size && j < pb.problem_size)
             os << "+ x_" << i++ << '_' << j++ << ' ';
 
         os << " <= 1\n";
@@ -80,7 +80,7 @@ operator<<(std::ostream& os, const n_queens& pb)
     for (int diag = 0; diag != pb.problem_size - 1; ++diag) {
         int i = 0;
         int j = diag;
-        while (i >= 0 and j < pb.problem_size)
+        while (i >= 0 && j < pb.problem_size)
             os << "+ x_" << i++ << '_' << j++ << ' ';
 
         os << " <= 1\n";
@@ -90,7 +90,7 @@ operator<<(std::ostream& os, const n_queens& pb)
     for (int diag = 1; diag != pb.problem_size; ++diag) {
         int i = diag;
         int j = 0;
-        while (i >= 0 and j < pb.problem_size)
+        while (i >= 0 && j < pb.problem_size)
             os << "+ x_" << i-- << '_' << j++ << ' ';
 
         os << " <= 1\n";
@@ -99,7 +99,7 @@ operator<<(std::ostream& os, const n_queens& pb)
     for (int diag = 1; diag != pb.problem_size - 1; ++diag) {
         int i = pb.problem_size - 1;
         int j = diag;
-        while (i >= 0 and j < pb.problem_size)
+        while (i >= 0 && j < pb.problem_size)
             os << "+ x_" << i-- << '_' << j++ << ' ';
 
         os << " <= 1\n";

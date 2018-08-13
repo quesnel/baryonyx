@@ -140,7 +140,7 @@ struct solver_functor
             int remaining = compute.run(slv, kappa, delta, theta);
             obs.make_observation();
 
-            if (best_remaining == -1 or remaining < best_remaining) {
+            if (best_remaining == -1 || remaining < best_remaining) {
                 best_remaining = remaining;
                 m_best.duration = compute_duration(m_begin, m_end);
                 m_best.loop = i;
@@ -208,7 +208,7 @@ struct solver_functor
                                   alpha);
 
             ++i;
-            if (p.limit > 0 and i > p.limit) {
+            if (p.limit > 0 && i > p.limit) {
                 info(m_ctx, "  - Loop limit reached: {}\n", i);
                 if (pushed == -1)
                     m_best.status = result_status::limit_reached;
@@ -265,7 +265,7 @@ struct solver_functor
 private:
     void store_if_better(double current, const x_type& x, int i)
     {
-        if (m_best.solutions.empty() or
+        if (m_best.solutions.empty() ||
             is_better_solution(
               current, m_best.solutions.back().value, modeT())) {
             m_best.solutions.emplace_back(x, current);
@@ -905,7 +905,7 @@ struct best_solution_recorder
             if (current.status != result_status::success)
                 return false;
 
-            if (m_best.status != result_status::success or
+            if (m_best.status != result_status::success ||
                 is_better_solution(current, m_best, modeT())) {
 
                 info(m_ctx,
@@ -1006,7 +1006,7 @@ struct optimize_functor
 
         constraint_order_type compute(m_ctx, slv, m_rng);
 
-        for (; not is_time_limit(p.time_limit, m_begin, m_end);
+        for (; !is_time_limit(p.time_limit, m_begin, m_end);
              m_end = std::chrono::steady_clock::now(), ++i) {
 
             int remaining = compute.run(slv, kappa, delta, theta);
@@ -1022,7 +1022,7 @@ struct optimize_functor
                                     static_cast<floatingpoint_type>(slv.m),
                                   alpha);
 
-            if ((p.limit > 0 and i >= p.limit) or kappa > kappa_max or
+            if ((p.limit > 0 && i >= p.limit) || kappa > kappa_max ||
                 pushed > p.pushes_limit) {
                 if (m_best.solutions.empty())
                     init_policy =
@@ -1080,7 +1080,7 @@ private:
       int i,
       best_solution_recorder<floatingpointT, modeT>& best_recorder)
     {
-        if (m_best.solutions.empty() or
+        if (m_best.solutions.empty() ||
             is_better_solution(
               current, m_best.solutions.back().value, modeT())) {
             m_best.status = baryonyx::result_status::success;
@@ -1116,7 +1116,7 @@ solve_problem(const context_ptr& ctx, const problem& pb)
     auto affected_vars = std::move(pb.affected_vars);
 
     auto constraints{ make_merged_constraints(ctx, pb) };
-    if (not constraints.empty() and not pb.vars.values.empty()) {
+    if (!constraints.empty() && !pb.vars.values.empty()) {
         randomT rng(init_random_generator_seed<randomT>(ctx));
 
         auto variables = numeric_cast<int>(pb.vars.values.size());
@@ -1192,7 +1192,7 @@ optimize_problem(const context_ptr& ctx, const problem& pb)
     auto affected_vars = std::move(pb.affected_vars);
 
     auto constraints{ make_merged_constraints(ctx, pb) };
-    if (not constraints.empty() and not pb.vars.values.empty()) {
+    if (!constraints.empty() && !pb.vars.values.empty()) {
         randomT rng(init_random_generator_seed<randomT>(ctx));
 
         auto variables = numeric_cast<int>(pb.vars.values.size());
@@ -1249,7 +1249,7 @@ optimize_problem(const context_ptr& ctx, const problem& pb)
                 all_solutions.insert(current.solutions.begin(),
                                      current.solutions.end());
 
-                if (ret.solutions.empty() or
+                if (ret.solutions.empty() ||
                     is_better_solution(current.solutions.back().value,
                                        ret.solutions.back().value,
                                        mode_type()))

@@ -126,15 +126,15 @@ context_set_solver_parameters(const context_ptr& ctx,
     else
         ctx->parameters.time_limit = -1;
 
-    if (params.theta >= 0 and params.theta <= 1)
+    if (params.theta >= 0 && params.theta <= 1)
         ctx->parameters.theta = params.theta;
 
-    if (params.delta == -1 or params.delta >= 0)
+    if (params.delta == -1 || params.delta >= 0)
         ctx->parameters.delta = params.delta;
 
-    if (params.kappa_min < params.kappa_max and params.kappa_min >= 0 and
-        params.kappa_min < 1 and params.kappa_max <= 1 and
-        params.kappa_step >= 0 and params.kappa_step < 1) {
+    if (params.kappa_min < params.kappa_max && params.kappa_min >= 0 &&
+        params.kappa_min < 1 && params.kappa_max <= 1 &&
+        params.kappa_step >= 0 && params.kappa_step < 1) {
         ctx->parameters.kappa_min = params.kappa_min;
         ctx->parameters.kappa_step = params.kappa_step;
         ctx->parameters.kappa_max = params.kappa_max;
@@ -150,7 +150,7 @@ context_set_solver_parameters(const context_ptr& ctx,
         ctx->parameters.pushing_objective_amplifier =
           params.pushing_objective_amplifier;
 
-    if (params.init_random >= 0 and params.init_random <= 1)
+    if (params.init_random >= 0 && params.init_random <= 1)
         ctx->parameters.init_random = params.init_random;
 
     ctx->parameters.seed = params.seed;

@@ -41,17 +41,17 @@ read_result(std::istream& is)
     while (is.good()) {
         std::getline(is, buffer);
 
-        if (buffer.empty() and is.eof())
+        if (buffer.empty() && is.eof())
             return ret;
 
         std::string::size_type i{ 0 };
         std::string::size_type e{ buffer.size() };
 
         for (; i != e; ++i)
-            if (not std::isspace(buffer[i]))
+            if (!std::isspace(buffer[i]))
                 break;
 
-        if (i != e and buffer[i] == '\\')
+        if (i != e && buffer[i] == '\\')
             continue;
 
         auto it = buffer.find('=', 0);

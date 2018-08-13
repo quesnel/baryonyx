@@ -36,11 +36,12 @@ struct colormap
 {
     float m_lower, m_upper;
 
-    struct rgb {
+    struct rgb
+    {
         rgb(std::uint8_t red_, std::uint8_t green_, std::uint8_t blue_)
-            : red(red_)
-            , green(green_)
-            , blue(blue_)
+          : red(red_)
+          , green(green_)
+          , blue(blue_)
         {}
 
         std::uint8_t red;
@@ -85,8 +86,8 @@ struct colormap
         }
 
         return rgb(static_cast<std::uint8_t>(r * 255.f),
-            static_cast<std::uint8_t>(g * 255.f),
-            static_cast<std::uint8_t>(b * 255.f));
+                   static_cast<std::uint8_t>(g * 255.f),
+                   static_cast<std::uint8_t>(b * 255.f));
     }
 };
 
@@ -153,7 +154,7 @@ public:
 };
 
 class pnm_iterator
-    : public std::iterator<std::forward_iterator_tag, pnm_iterator_entry>
+  : public std::iterator<std::forward_iterator_tag, pnm_iterator_entry>
 {
 private:
     pnm_iterator_entry m_entry;
@@ -319,7 +320,7 @@ public:
       , m_heigth(loop)
       , m_width(m)
     {
-        if (not m_ofs.is_open())
+        if (!m_ofs.is_open())
             return;
 
         if (m_heigth * m_width > 0) {
@@ -338,7 +339,7 @@ public:
 
     explicit operator bool() const noexcept
     {
-        return m_buffer.get() != nullptr and m_ofs.is_open();
+        return m_buffer.get() != nullptr && m_ofs.is_open();
     }
 
     size_type size() const noexcept
