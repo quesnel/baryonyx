@@ -56,7 +56,7 @@ target_link_libraries(libbaryonyx-static threads
 
 set_target_properties(libbaryonyx-static PROPERTIES
   POSITION_INDEPENDENT_CODE true
-  OUTPUT_NAME "baryonyx-${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}"
+  OUTPUT_NAME "baryonyx-static-${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}"
   CXX_STANDARD 14
   CXX_STANDARD_REQUIRED ON)
 
