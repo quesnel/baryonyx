@@ -31,7 +31,6 @@
 #include <string>
 #include <utility>
 
-#include <fmt/ostream.h>
 #include <fmt/printf.h>
 
 #include <cerrno>
@@ -263,7 +262,8 @@ compute_solution_impl(const Problem& pb,
 }
 
 double
-compute_solution(const raw_problem& pb, const std::vector<bool>& variable_value)
+compute_solution(const raw_problem& pb,
+                 const std::vector<bool>& variable_value)
 {
     return compute_solution_impl(pb, variable_value);
 }

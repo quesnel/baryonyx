@@ -30,7 +30,6 @@
 
 #include <baryonyx/core>
 
-#include <fmt/ostream.h>
 #include <fmt/printf.h>
 
 #include <functional>
@@ -378,10 +377,8 @@ check_observer_pnm()
         Ensures(obs);
 
         if (obs) {
-            std::transform(v.begin(),
-                           v.end(),
-                           obs.begin(),
-                           baryonyx::colormap(-5.f, 5.f));
+            std::transform(
+              v.begin(), v.end(), obs.begin(), baryonyx::colormap(-5.f, 5.f));
 
             for (auto ob : obs)
                 fmt::print("{}/{}/{} ", ob.red(), ob.green(), ob.blue());

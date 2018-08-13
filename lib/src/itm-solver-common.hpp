@@ -278,12 +278,6 @@ private:
                  current,
                  m_best.loop,
                  m_best.duration);
-
-#if 0
-            std::ofstream ofs("temp.sol");
-            ofs << m_best << m_best.affected_vars
-                << best_solution_writer(m_best);
-#endif
         } else {
             m_best.solutions.emplace_back(x, current);
 
@@ -1105,12 +1099,6 @@ private:
             m_best.loop = i;
 
             best_recorder.try_update(m_best);
-
-#if 0
-                std::ofstream ofs(fmt::format("temp-{}.sol", m_thread_id));
-                ofs << m_best << m_affected_vars
-                    << best_solution_writer(m_best);
-#endif
         }
 
         m_all_solutions.emplace(x, current);

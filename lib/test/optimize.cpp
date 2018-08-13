@@ -22,18 +22,18 @@
 
 #include "unit-test.hpp"
 
-#include <fstream>
-#include <map>
-#include <numeric>
-#include <random>
-#include <sstream>
-
 #include <baryonyx/core-compare>
 #include <baryonyx/core-out>
 #include <baryonyx/core-test>
 #include <baryonyx/core>
 
 #include <fmt/printf.h>
+
+#include <fstream>
+#include <map>
+#include <numeric>
+#include <random>
+#include <sstream>
 
 void
 test_qap(const baryonyx::context_ptr& ctx)

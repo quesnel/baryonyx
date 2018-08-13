@@ -32,7 +32,6 @@
 #include <baryonyx/core>
 #include <utility>
 
-#include <fmt/ostream.h>
 #include <fmt/printf.h>
 
 void

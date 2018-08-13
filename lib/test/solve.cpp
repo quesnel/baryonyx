@@ -22,18 +22,18 @@
 
 #include "unit-test.hpp"
 
+#include <baryonyx/core-compare>
+#include <baryonyx/core-out>
+#include <baryonyx/core>
+
 #include <fstream>
-#include <iostream>
 #include <map>
 #include <numeric>
 #include <random>
 #include <sstream>
 
 #include <fmt/printf.h>
-
-#include <baryonyx/core-compare>
-#include <baryonyx/core-out>
-#include <baryonyx/core>
+#include <iostream>
 
 template<typename T>
 inline bool
