@@ -549,21 +549,6 @@ struct raw_problem
     objective_function_type type = { objective_function_type::maximize };
 };
 
-struct problem
-{
-    objective_function objective;
-
-    std::vector<constraint> equal_constraints;
-    std::vector<constraint> greater_constraints;
-    std::vector<constraint> less_constraints;
-
-    variables vars;
-    affected_variables affected_vars;
-
-    objective_function_type type = { objective_function_type::maximize };
-    problem_solver_type problem_type = { problem_solver_type::equalities_01 };
-};
-
 /**
  * @details Compute the number of constraints of the @c baryonyx::problem.
  *
@@ -571,7 +556,7 @@ struct problem
  * @return The number of constraints in the @c baryonyx::problem.
  */
 inline std::size_t
-size(const baryonyx::problem& pb) noexcept
+size(const baryonyx::raw_problem& pb) noexcept
 {
     return pb.equal_constraints.size() + pb.greater_constraints.size() +
            pb.less_constraints.size();
@@ -674,58 +659,14 @@ result
 make_result(const baryonyx::context_ptr& ctx, std::istream& is);
 
 /**
- * @brief Cleanup the @p pb problem.
- * @details Remove already affected variables, duplicated constraints from the
- *     problem @p pb.
+ * @brief Preprocessor options available for @c solve or @c opitimize function.
  *
- * @param pb in out parameter.
- *
- * @exception std::bad_alloc
- * @exception baryonyx::postcondition_failure
- * @exception baryonyx::precondition_failure
  */
-BARYONYX_API
-problem
-preprocess(const baryonyx::context_ptr& ctx, const raw_problem& pb);
-
-/**
- * @brief Affect a variable to the @c pb problem.
- * @details Build a new @c baryonyx::problem from an original
- *  @c baryonyx::problem but a variable is assigned a specific value. All
- *      constraints, variables, objective function and affected variables are
- *      recursively updated.
- *
- * @param ctx Current context
- * @param pb Original problem
- * @param variable_index Which variable to assign.
- * @param variable_value The value of the binary variable.
- * @return A newly @c baryonyx::problem.
- */
-BARYONYX_API
-baryonyx::problem
-affect(const baryonyx::context_ptr& ctx,
-       const baryonyx::problem& pb,
-       int variable_index,
-       bool variable_value);
-
-/**
- * @brief Split the @c pb problem in two new problem.
- * @details Build two @c baryonyx::problem from an original
- *  @c baryonyx::problem but a variable is assigned to respectively 0 or 1. All
- *      constraints, variables, objective function and affected variables are
- *      recursively updated.
- *
- * @param ctx Current context
- * @param pb Original problem
- * @param variable_index_to_affect Which variable to assign respectively to 0
- *     or 1.
- * @return Two newly @c baryonyx::problem.
- */
-BARYONYX_API
-std::tuple<baryonyx::problem, baryonyx::problem>
-split(const baryonyx::context_ptr& ctx,
-      const baryonyx::problem& pb,
-      int variable_index_to_affect);
+enum class preprocessor_options
+{
+    none = 0,
+    all
+};
 
 /**
  * @details Try to solve or find a feasible solution for the @c
@@ -738,20 +679,9 @@ split(const baryonyx::context_ptr& ctx,
  */
 BARYONYX_API
 result
-solve(const baryonyx::context_ptr& ctx, const problem& pb);
-
-/**
- * @details Try to solve or find a feasible solution for the @c
- *     baryonyx::problem.
- *
- * @param pb Problem definition.
- *
- * @exception baryonyx::solver_error
- * @exception baryonyx::problem_definition
- */
-BARYONYX_API
-result
-solve(const baryonyx::context_ptr& ctx, const raw_problem& pb);
+solve(const baryonyx::context_ptr& ctx,
+      const raw_problem& pb,
+      preprocessor_options pp_opt = preprocessor_options::all);
 
 /**
  * @details Try to optimize the @c baryonyx::problem with a set of
@@ -765,46 +695,9 @@ solve(const baryonyx::context_ptr& ctx, const raw_problem& pb);
  */
 BARYONYX_API
 result
-optimize(const baryonyx::context_ptr& ctx, const problem& pb);
-
-/**
- * @details Try to optimize the @c baryonyx::problem with a set of
- *     parameters.
- *
- * @param pb Problem definition.
- *
- * @return A representation of the result.
- *
- * @throw @c baryonyx::solver_error.
- */
-BARYONYX_API
-result
-optimize(const baryonyx::context_ptr& ctx, const raw_problem& pb);
-
-BARYONYX_API
-bool
-is_valid_solution(const problem& pb, const std::vector<bool>& variable_value);
-
-BARYONYX_API
-double
-compute_solution(const problem& pb, const std::vector<bool>& variable_value);
-
-BARYONYX_API
-bool
-is_valid_solution(const problem& pb, const result& r);
-
-BARYONYX_API
-double
-compute_solution(const problem& pb, const result& r);
-BARYONYX_API
-bool
-is_valid_solution(const raw_problem& pb,
-                  const std::vector<bool>& variable_value);
-
-BARYONYX_API
-double
-compute_solution(const raw_problem& pb,
-                 const std::vector<bool>& variable_value);
+optimize(const baryonyx::context_ptr& ctx,
+         const raw_problem& pb,
+         preprocessor_options pp_opt = preprocessor_options::all);
 
 BARYONYX_API
 bool

@@ -24,7 +24,7 @@
 #include <baryonyx/core>
 
 #ifndef BARYONYX_FULL_OPTIMIZATION
-#include <baryonyx/core-out>
+#include "problem-out.hpp"
 #endif
 
 #include "memory.hpp"
@@ -795,9 +795,11 @@ remove_unused_variables(const baryonyx::context_ptr& ctx,
 
         if (it != pb.objective.elements.end()) {
             if (it->factor > 0)
-                value = max ? pb.vars.values[var].max : pb.vars.values[var].min;
+                value =
+                  max ? pb.vars.values[var].max : pb.vars.values[var].min;
             else if (it->factor < 0)
-                value = max ? pb.vars.values[var].min : pb.vars.values[var].max;
+                value =
+                  max ? pb.vars.values[var].min : pb.vars.values[var].max;
         }
 
         remove_variable(pb, var, value);
@@ -932,7 +934,8 @@ preprocess(const baryonyx::context_ptr& ctx, const baryonyx::raw_problem& pb_)
                 pb.problem_type = baryonyx::problem_solver_type::equalities_01;
                 break;
             case 1:
-                pb.problem_type = baryonyx::problem_solver_type::equalities_101;
+                pb.problem_type =
+                  baryonyx::problem_solver_type::equalities_101;
                 break;
             default:
                 pb.problem_type = baryonyx::problem_solver_type::equalities_Z;
@@ -949,7 +952,8 @@ preprocess(const baryonyx::context_ptr& ctx, const baryonyx::raw_problem& pb_)
                   baryonyx::problem_solver_type::inequalities_101;
                 break;
             default:
-                pb.problem_type = baryonyx::problem_solver_type::inequalities_Z;
+                pb.problem_type =
+                  baryonyx::problem_solver_type::inequalities_Z;
                 break;
             }
         }
@@ -973,7 +977,8 @@ preprocess(const baryonyx::context_ptr& ctx, const baryonyx::raw_problem& pb_)
 }
 
 baryonyx::problem
-unpreprocess(const baryonyx::context_ptr& ctx, const baryonyx::raw_problem& pb_)
+unpreprocess(const baryonyx::context_ptr& ctx,
+             const baryonyx::raw_problem& pb_)
 {
     info(ctx, "- Unpreprocessing starts\n");
 
@@ -994,7 +999,8 @@ unpreprocess(const baryonyx::context_ptr& ctx, const baryonyx::raw_problem& pb_)
                 pb.problem_type = baryonyx::problem_solver_type::equalities_01;
                 break;
             case 1:
-                pb.problem_type = baryonyx::problem_solver_type::equalities_101;
+                pb.problem_type =
+                  baryonyx::problem_solver_type::equalities_101;
                 break;
             default:
                 pb.problem_type = baryonyx::problem_solver_type::equalities_Z;
@@ -1011,7 +1017,8 @@ unpreprocess(const baryonyx::context_ptr& ctx, const baryonyx::raw_problem& pb_)
                   baryonyx::problem_solver_type::inequalities_101;
                 break;
             default:
-                pb.problem_type = baryonyx::problem_solver_type::inequalities_Z;
+                pb.problem_type =
+                  baryonyx::problem_solver_type::inequalities_Z;
                 break;
             }
         }

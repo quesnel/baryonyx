@@ -26,6 +26,7 @@
 #include <baryonyx/core>
 
 #include "private.hpp"
+#include "problem.hpp"
 #include "sparse-matrix.hpp"
 #include "utils.hpp"
 
@@ -777,7 +778,9 @@ struct compute_infeasibility
     random_type& rng;
 
     template<typename solverT>
-    compute_infeasibility(const context_ptr& ctx, solverT& s, random_type& rng_)
+    compute_infeasibility(const context_ptr& ctx,
+                          solverT& s,
+                          random_type& rng_)
       : m_ctx(ctx)
       , R(s.m)
       , rng(rng_)

@@ -23,6 +23,7 @@
 #include <array>
 
 #include "private.hpp"
+#include "problem.hpp"
 #include "utils.hpp"
 
 #ifdef BARYONYX_HAVE_NLOPT
@@ -79,8 +80,7 @@ manual_optimize(const baryonyx::context_ptr& ctx, const baryonyx::problem& pb)
         ctx->parameters.kappa_step = array.kappa_step[array.it[3]];
         ctx->parameters.init_random = array.init_random[array.it[4]];
 
-        auto copy_pb = pb;
-        auto ret = baryonyx::optimize(ctx, copy_pb);
+        auto ret = baryonyx::optimizer_select(ctx, pb);
         if (ret) {
             if (best > ret.solutions.back().value) {
                 best = ret.solutions.back().value;
@@ -100,7 +100,7 @@ manual_optimize(const baryonyx::context_ptr& ctx, const baryonyx::problem& pb)
       array.kappa_step[array.it[3]],
       array.init_random[array.it[4]]);
 
-    return baryonyx::optimize(ctx, pb);
+    return baryonyx::optimizer_select(ctx, pb);
 }
 
 #ifdef BARYONYX_HAVE_NLOPT
@@ -141,7 +141,7 @@ nlopt_optimize_fun(const std::vector<double>& x,
           x[static_cast<int>(param_init_random)];
 
         auto copy_pb(data->pb);
-        auto ret = baryonyx::optimize(data->ctx, copy_pb);
+        auto ret = baryonyx::optimizer_select(data->ctx, copy_pb);
         if (not(ret))
             return HUGE_VAL;
 
@@ -222,7 +222,7 @@ nlopt_optimize(const baryonyx::context_ptr& ctx, const baryonyx::problem& pb)
         ctx->parameters.kappa_step = x[param_kappa_step];
         ctx->parameters.init_random = x[param_init_random];
 
-        return baryonyx::optimize(ctx, pb);
+        return baryonyx::optimizer_select(ctx, pb);
     } else {
         baryonyx::notice(ctx,
                          "  - nlopt optimization fail. Toggle to manual "

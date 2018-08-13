@@ -20,8 +20,8 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef ORG_VLEPROJECT_BARYONYX_SOLVER_CORE_OUT
-#define ORG_VLEPROJECT_BARYONYX_SOLVER_CORE_OUT
+#ifndef ORG_VLEPROJECT_BARYONYX_LIB_PROBLEM_OUT_HPP
+#define ORG_VLEPROJECT_BARYONYX_LIB_PROBLEM_OUT_HPP
 
 #include <array>
 #include <chrono>
@@ -31,6 +31,8 @@
 #include <ostream>
 
 #include <baryonyx/core>
+
+#include "problem.hpp"
 
 namespace baryonyx {
 
@@ -221,7 +223,8 @@ operator<<(std::ostream& os, const result& result)
 
         os << "\\ variables.............: \n";
 
-        for (std::size_t i{ 0 }, e{ result.affected_vars.names.size() }; i != e;
+        for (std::size_t i{ 0 }, e{ result.affected_vars.names.size() };
+             i != e;
              ++i)
             os << result.affected_vars.names[i] << '='
                << (result.affected_vars.values[i] ? 1 : 0) << '\n';

@@ -4,7 +4,7 @@ option(WITH_FULL_OPTIMIZATION "Disable all logging facilities and active heavy o
 
 option(WITH_DEBUG "enable debug log message. [default: ON]" ON)
 
-add_library(libbaryonyx SHARED src/automatic-optimizer.cpp src/private.cpp include/baryonyx/core-out include/baryonyx/core-test include/baryonyx/core include/baryonyx/core-compare src/knapsack-dp-solver.hpp src/private.hpp src/merged-constraint.cpp src/select.cpp src/preprocessor.cpp src/preprocessor-2.cpp src/fixed-array.hpp src/consistency.cpp src/lpcore.cpp src/branch-and-bound-solver.hpp src/utils.hpp src/fixed-2darray.hpp src/itm-solver-inequalities-Z.cpp src/itm-solver-common.hpp src/itm-common.hpp src/itm-solver-common.hpp src/itm-solver-common.cpp src/memory.cpp src/memory.hpp src/sol-format.cpp src/itm-solver-equalities-01.cpp src/itm-solver-equalities-101.cpp src/itm-solver-inequalities-01.cpp src/itm-solver-inequalities-101.cpp src/itm-solver-inequalities-101-buffered.cpp src/itm-solver-inequalities-01.cpp src/itm-solver-equalities-101.cpp src/itm-solver-inequalities-101.cpp src/lpformat-io.cpp src/sparse-matrix.hpp src/observer.hpp src/pnm.hpp)
+add_library(libbaryonyx SHARED src/automatic-optimizer.cpp src/private.cpp include/baryonyx/core-test include/baryonyx/core include/baryonyx/core-compare src/knapsack-dp-solver.hpp src/private.hpp src/problem.hpp src/problem-out.hpp src/merged-constraint.cpp src/select.cpp src/preprocessor.cpp src/preprocessor-2.cpp src/fixed-array.hpp src/consistency.cpp src/lpcore.cpp src/branch-and-bound-solver.hpp src/utils.hpp src/fixed-2darray.hpp src/itm-solver-inequalities-Z.cpp src/itm-solver-common.hpp src/itm-common.hpp src/itm-solver-common.hpp src/itm-solver-common.cpp src/memory.cpp src/memory.hpp src/sol-format.cpp src/itm-solver-equalities-01.cpp src/itm-solver-equalities-101.cpp src/itm-solver-inequalities-01.cpp src/itm-solver-inequalities-101.cpp src/itm-solver-inequalities-101-buffered.cpp src/itm-solver-inequalities-01.cpp src/itm-solver-equalities-101.cpp src/itm-solver-inequalities-101.cpp src/lpformat-io.cpp src/sparse-matrix.hpp src/observer.hpp src/pnm.hpp)
 
 target_include_directories(libbaryonyx PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
@@ -44,7 +44,7 @@ install(TARGETS libbaryonyx
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin)
 
-add_library(libbaryonyx-static STATIC src/automatic-optimizer.cpp src/private.cpp include/baryonyx/core-out include/baryonyx/core-test include/baryonyx/core include/baryonyx/core-compare src/knapsack-dp-solver.hpp src/private.hpp src/merged-constraint.cpp src/select.cpp src/preprocessor.cpp src/preprocessor-2.cpp src/fixed-array.hpp src/consistency.cpp src/lpcore.cpp src/branch-and-bound-solver.hpp src/utils.hpp src/fixed-2darray.hpp src/itm-solver-inequalities-Z.cpp src/itm-solver-common.hpp src/itm-common.hpp src/itm-solver-common.hpp src/itm-solver-common.cpp src/memory.cpp src/memory.hpp src/sol-format.cpp src/itm-solver-equalities-01.cpp src/itm-solver-equalities-101.cpp src/itm-solver-inequalities-01.cpp src/itm-solver-inequalities-101.cpp src/itm-solver-inequalities-101-buffered.cpp src/itm-solver-inequalities-01.cpp src/itm-solver-equalities-101.cpp src/itm-solver-inequalities-101.cpp src/lpformat-io.cpp src/sparse-matrix.hpp src/observer.hpp src/pnm.hpp)
+add_library(libbaryonyx-static STATIC src/automatic-optimizer.cpp src/private.cpp include/baryonyx/core-test include/baryonyx/core include/baryonyx/core-compare src/knapsack-dp-solver.hpp src/private.hpp src/problem.hpp src/problem-out.hpp src/merged-constraint.cpp src/select.cpp src/preprocessor.cpp src/preprocessor-2.cpp src/fixed-array.hpp src/consistency.cpp src/lpcore.cpp src/branch-and-bound-solver.hpp src/utils.hpp src/fixed-2darray.hpp src/itm-solver-inequalities-Z.cpp src/itm-solver-common.hpp src/itm-common.hpp src/itm-solver-common.hpp src/itm-solver-common.cpp src/memory.cpp src/memory.hpp src/sol-format.cpp src/itm-solver-equalities-01.cpp src/itm-solver-equalities-101.cpp src/itm-solver-inequalities-01.cpp src/itm-solver-inequalities-101.cpp src/itm-solver-inequalities-101-buffered.cpp src/itm-solver-inequalities-01.cpp src/itm-solver-equalities-101.cpp src/itm-solver-inequalities-101.cpp src/lpformat-io.cpp src/sparse-matrix.hpp src/observer.hpp src/pnm.hpp)
 
 target_include_directories(libbaryonyx-static PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
@@ -112,7 +112,7 @@ target_include_directories(testio PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>
   PRIVATE src)
-target_link_libraries(testio libbaryonyx threads)
+target_link_libraries(testio libbaryonyx-static threads)
 add_test(testio testio)
 
 add_executable(testlib test/lib.cpp)
@@ -128,7 +128,7 @@ target_include_directories(testlib PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>
   PRIVATE src)
-target_link_libraries(testlib libbaryonyx threads)
+target_link_libraries(testlib libbaryonyx-static threads)
 add_test(testlib testlib)
 
 add_executable(testpreprocess test/preprocess.cpp)
@@ -144,7 +144,7 @@ target_include_directories(testpreprocess PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>
   PRIVATE src)
-target_link_libraries(testpreprocess libbaryonyx threads)
+target_link_libraries(testpreprocess libbaryonyx-static threads)
 add_test(testpreprocess testpreprocess)
 
 add_executable(testsolver test/solve.cpp)
@@ -160,7 +160,7 @@ target_include_directories(testsolver PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>
   PRIVATE src)
-target_link_libraries(testsolver libbaryonyx threads)
+target_link_libraries(testsolver libbaryonyx-static threads)
 add_test(testsolver testsolver)
 
 add_executable(testoptimizer test/optimize.cpp)
@@ -176,5 +176,5 @@ target_include_directories(testoptimizer PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>
   PRIVATE src)
-target_link_libraries(testoptimizer libbaryonyx threads)
+target_link_libraries(testoptimizer libbaryonyx-static threads)
 add_test(testoptimizer testoptimizer)

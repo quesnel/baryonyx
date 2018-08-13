@@ -89,17 +89,6 @@ operator==(const objective_function& lhs,
 }
 
 inline bool
-operator==(const problem& lhs, const problem& rhs) noexcept
-{
-    return lhs.objective == rhs.objective and
-           lhs.equal_constraints == rhs.equal_constraints and
-           lhs.greater_constraints == rhs.greater_constraints and
-           lhs.less_constraints == rhs.less_constraints and
-           lhs.vars == rhs.vars and lhs.affected_vars == rhs.affected_vars and
-           lhs.type == rhs.type and lhs.problem_type == rhs.problem_type;
-}
-
-inline bool
 operator==(const raw_problem& lhs, const raw_problem& rhs) noexcept
 {
     return lhs.objective == rhs.objective and
@@ -129,12 +118,6 @@ operator!=(const function_element& lhs, const function_element& rhs) noexcept
 
 inline bool
 operator!=(const constraint& lhs, const constraint& rhs) noexcept
-{
-    return not(lhs == rhs);
-}
-
-inline bool
-operator!=(const problem& lhs, const problem& rhs) noexcept
 {
     return not(lhs == rhs);
 }

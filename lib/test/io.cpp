@@ -20,6 +20,7 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+#include "problem-out.hpp"
 #include "unit-test.hpp"
 
 #include <fstream>
@@ -28,7 +29,6 @@
 #include <sstream>
 
 #include <baryonyx/core-compare>
-#include <baryonyx/core-out>
 #include <baryonyx/core>
 #include <utility>
 
@@ -50,8 +50,6 @@ test_examples_1(const baryonyx::context_ptr& ctx)
     std::istringstream iss(example_1);
 
     auto pb = baryonyx::make_problem(ctx, iss);
-
-    fmt::print("{}\n{}\n", __func__, baryonyx::resume(pb));
 
     Ensures(pb.type == baryonyx::objective_function_type::maximize);
     Ensures(pb.objective.elements.size() == 3);
@@ -124,7 +122,6 @@ test_examples_2(const baryonyx::context_ptr& ctx)
         filepath += ".lp";
 
         auto pb = baryonyx::make_problem(ctx, filepath);
-        fmt::print("{}\n{}\n", __func__, baryonyx::resume(pb));
 
         Ensures(pb.vars.names.size() == 16);
         Ensures(pb.vars.values.size() == 16);

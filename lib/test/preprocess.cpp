@@ -20,6 +20,7 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+#include "problem.hpp"
 #include "unit-test.hpp"
 
 #include <fmt/printf.h>

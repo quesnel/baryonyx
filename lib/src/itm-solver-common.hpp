@@ -24,7 +24,6 @@
 #define ORG_VLEPROJECT_BARYONYX_SOLVER_ITM_SOLVER_COMMON_HPP
 
 #include <baryonyx/core-compare>
-#include <baryonyx/core-out>
 
 #include <fmt/format.h>
 
@@ -296,8 +295,7 @@ enum_value(Enum e)
 
 template<typename Enum>
 struct enum_size
-{
-};
+{};
 
 template<>
 struct enum_size<solver_parameters::floating_point_type>

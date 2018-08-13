@@ -29,6 +29,8 @@
 
 namespace baryonyx {
 
+struct problem;
+
 enum class show_size_type
 {
     GB = 0,

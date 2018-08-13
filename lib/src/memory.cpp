@@ -21,6 +21,7 @@
  */
 
 #include "memory.hpp"
+#include "problem.hpp"
 
 #include <numeric>
 

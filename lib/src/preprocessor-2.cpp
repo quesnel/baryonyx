@@ -30,6 +30,7 @@
 
 #include "memory.hpp"
 #include "private.hpp"
+#include "problem.hpp"
 #include "utils.hpp"
 
 namespace {

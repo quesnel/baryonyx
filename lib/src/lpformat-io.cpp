@@ -765,8 +765,8 @@ read_constraint(parser_stack& stack, raw_problem& p)
             label = tmp;
             stack.substr_front(1);
         } else {
-            cst.elements.emplace_back(1,
-                                      get_variable(stack.cache(), p.vars, tmp));
+            cst.elements.emplace_back(
+              1, get_variable(stack.cache(), p.vars, tmp));
         }
     }
 
@@ -965,34 +965,6 @@ read_general(parser_stack& stack, raw_problem& p)
 
         str = stack.top();
     }
-}
-
-baryonyx::problem_solver_type
-get_problem_type(const baryonyx::problem& p, int coefficient) noexcept
-{
-    assert(coefficient >= 0 and coefficient <= 2);
-
-    if (p.greater_constraints.empty() or p.less_constraints.empty()) {
-        switch (coefficient) {
-        case 0:
-            return baryonyx::problem_solver_type::equalities_01;
-        case 1:
-            return baryonyx::problem_solver_type::equalities_101;
-        default:
-            return baryonyx::problem_solver_type::equalities_Z;
-        }
-    } else {
-        switch (coefficient) {
-        case 0:
-            return baryonyx::problem_solver_type::inequalities_01;
-        case 1:
-            return baryonyx::problem_solver_type::inequalities_101;
-        default:
-            return baryonyx::problem_solver_type::inequalities_Z;
-        }
-    }
-
-    return baryonyx::problem_solver_type::inequalities_Z;
 }
 
 namespace baryonyx {

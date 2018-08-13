@@ -53,6 +53,8 @@ to_string(solver_parameters::pre_constraint_order type) noexcept
     return ret[static_cast<int>(type)];
 }
 
+// Context
+
 struct context
 {
     enum class message_type
@@ -612,28 +614,6 @@ debug(const context_ptr& ctx, const T& msg)
  */
 void
 print(const context_ptr& ctx);
-
-baryonyx::problem
-unpreprocess(const baryonyx::context_ptr& ctx,
-             const baryonyx::raw_problem& pb_);
-
-baryonyx::raw_problem
-read_problem(std::istream& is);
-
-baryonyx::result
-read_result(std::istream& is);
-
-void
-check_consistency(const baryonyx::raw_problem& pb);
-
-void
-check_consistency(const baryonyx::problem& pb);
-
-baryonyx::result
-solver_select(const baryonyx::context_ptr& ctx, const baryonyx::problem& pb);
-
-baryonyx::result
-optimizer_select(const baryonyx::context_ptr& ctx, const baryonyx::problem& pb);
 
 } // namespace baryonyx
 

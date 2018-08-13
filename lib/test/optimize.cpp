@@ -23,7 +23,6 @@
 #include "unit-test.hpp"
 
 #include <baryonyx/core-compare>
-#include <baryonyx/core-out>
 #include <baryonyx/core-test>
 #include <baryonyx/core>
 
@@ -65,10 +64,8 @@ test_qap(const baryonyx::context_ptr& ctx)
     if (result.status == baryonyx::result_status::success) {
         pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/small4.lp");
 
-        Ensures(baryonyx::is_valid_solution(
-                  pb, result.solutions.back().variables) == true);
-        Ensures(baryonyx::compute_solution(
-                  pb, result.solutions.back().variables) == 790.0);
+        Ensures(baryonyx::is_valid_solution(pb, result) == true);
+        Ensures(baryonyx::compute_solution(pb, result) == 790.0);
     }
 }
 

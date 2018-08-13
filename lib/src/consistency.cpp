@@ -23,6 +23,7 @@
 #include <baryonyx/core>
 
 #include "private.hpp"
+#include "problem.hpp"
 
 #include <algorithm>
 
