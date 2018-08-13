@@ -172,12 +172,6 @@ read_problem(std::istream& is);
 result
 read_result(std::istream& is);
 
-void
-check_consistency(const raw_problem& pb);
-
-void
-check_consistency(const problem& pb);
-
 /**
  * @brief Select the correct solver (only itm is available) and solve the
  *     problem.

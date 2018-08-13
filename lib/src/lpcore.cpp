@@ -166,8 +166,6 @@ solve(const baryonyx::context_ptr& ctx,
       const raw_problem& rawpb,
       preprocessor_options pp_opt)
 {
-    check_consistency(rawpb);
-
     return (pp_opt == preprocessor_options::all)
              ? solver_select(ctx, preprocess(ctx, rawpb))
              : solver_select(ctx, unpreprocess(ctx, rawpb));
@@ -178,8 +176,6 @@ optimize(const baryonyx::context_ptr& ctx,
          const raw_problem& rawpb,
          preprocessor_options pp_opt)
 {
-    check_consistency(rawpb);
-
     return (pp_opt == preprocessor_options::all)
              ? optimizer_select(ctx, preprocess(ctx, rawpb))
              : optimizer_select(ctx, unpreprocess(ctx, rawpb));
