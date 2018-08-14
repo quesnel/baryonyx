@@ -28,6 +28,7 @@
 #include <stack>
 #include <tuple>
 
+#include "debug.hpp"
 #include "memory.hpp"
 #include "private.hpp"
 #include "problem.hpp"
@@ -91,7 +92,7 @@ public:
 
     std::tuple<int, bool> pop()
     {
-        bx::Ensures(!empty(), "preprocessor: pop empty stack");
+        bx_ensures(!empty());
 
         auto ret = data.back();
         data.pop_back();
@@ -122,8 +123,7 @@ private:
 
             auto it = vars.find(constraint.elements[i].variable_index);
             if (it == vars.end()) {
-                bx::Ensures(remaining_index == -1,
-                            "preprocessor: multiple variable in reduce");
+                bx_ensures(remaining_index == -1);
                 remaining_index = i;
             } else {
                 constraint_result +=
@@ -131,8 +131,7 @@ private:
             }
         }
 
-        bx::Ensures(remaining_index >= 0,
-                    "preprocessor: missing variable in reduce");
+        bx_ensures(remaining_index >= 0);
 
         return std::make_tuple(
           constraint.elements[remaining_index].factor,
@@ -147,8 +146,7 @@ private:
 
         std::tie(factor, variable, result) = reduce(constraint);
 
-        bx::Ensures(pb.vars.values[variable].type == bx::variable_type::binary,
-                    "preprocessor: only binary variable");
+        bx_ensures(pb.vars.values[variable].type == bx::variable_type::binary);
 
         bool affect_0 = (factor * 0 == result);
         bool affect_1 = (factor * 1 == result);
@@ -162,9 +160,7 @@ private:
         if (affect_1)
             return std::make_tuple(variable, true);
 
-        bx::Expects(false && "preprocessor: can not determine variable value");
-
-        return std::make_tuple(-1, false);
+        bx_reach();
     }
 
     auto reduce_greater_constraint(const bx::constraint& constraint)
@@ -174,8 +170,7 @@ private:
 
         std::tie(factor, variable, result) = reduce(constraint);
 
-        bx::Ensures(pb.vars.values[variable].type == bx::variable_type::binary,
-                    "preprocessor: only binary variable");
+        bx_ensures(pb.vars.values[variable].type == bx::variable_type::binary);
 
         bool affect_0 = (factor * 0 >= result);
         bool affect_1 = (factor * 1 >= result);
@@ -189,9 +184,7 @@ private:
         if (affect_1)
             return std::make_tuple(variable, true);
 
-        bx::Expects(false && "preprocessor: can not determine variable value");
-
-        return std::make_tuple(-1, false);
+        bx_reach();
     }
 
     auto reduce_less_constraint(const bx::constraint& constraint)
@@ -201,8 +194,7 @@ private:
 
         std::tie(factor, variable, result) = reduce(constraint);
 
-        bx::Ensures(pb.vars.values[variable].type == bx::variable_type::binary,
-                    "preprocessor: only binary variable");
+        bx_ensures(pb.vars.values[variable].type == bx::variable_type::binary);
 
         bool affect_0 = (factor * 0 <= result);
         bool affect_1 = (factor * 1 <= result);
@@ -216,13 +208,12 @@ private:
         if (affect_1)
             return std::make_tuple(variable, true);
 
-        bx::Expects(false && "preprocessor: can not determine variable value");
-        return std::make_tuple(-1, false);
+        bx_reach();
     }
 
     void affect_variable(int index, bool value)
     {
-        assert(index >= 0 && index < bx::length(cache));
+        bx_expects(index >= 0 && index < bx::length(cache));
 
         vars[index] = value;
         pp_lifo lifo(index, value);

@@ -80,12 +80,11 @@ struct postcondition_failure : std::logic_error
     {}
 };
 
-struct numeric_cast_failure : public std::exception
+struct numeric_cast_failure : std::logic_error
 {
-    const char* what() const noexcept override
-    {
-        return "numeric cast error: loss of range in numeric_cast";
-    }
+    numeric_cast_failure()
+      : std::logic_error("numeric_cast_failure: loss of range")
+    {}
 };
 
 struct file_access_error

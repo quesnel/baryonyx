@@ -46,8 +46,6 @@
 #include "sparse-matrix.hpp"
 #include "utils.hpp"
 
-#include <cassert>
-
 namespace baryonyx {
 namespace itm {
 

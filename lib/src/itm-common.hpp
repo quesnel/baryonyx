@@ -25,6 +25,7 @@
 
 #include <baryonyx/core>
 
+#include "debug.hpp"
 #include "private.hpp"
 #include "problem.hpp"
 #include "sparse-matrix.hpp"
@@ -36,8 +37,6 @@
 #include <random>
 #include <tuple>
 #include <vector>
-
-#include <cassert>
 
 namespace baryonyx {
 namespace itm {
@@ -58,8 +57,8 @@ struct minimize_tag
 inline double
 best_solution_value(const baryonyx::result& res) noexcept
 {
-    assert(res.status == baryonyx::result_status::success);
-    assert(!res.solutions.empty());
+    bx_expects(res.status == baryonyx::result_status::success);
+    bx_expects(!res.solutions.empty());
 
     return res.solutions.back().value;
 }
@@ -888,7 +887,7 @@ random_epsilon_unique(iteratorT begin,
                       floatingpointT min,
                       floatingpointT max)
 {
-    assert(min != max && "rng_normalize_cost fail to define min and max");
+    bx_expects(min != max);
 
     std::uniform_real_distribution<floatingpointT> distribution(min, max);
 
@@ -1009,7 +1008,7 @@ make_objective_function(const objective_function& obj, int n)
     auto ret = std::make_unique<floatingpointT[]>(n);
 
     for (const auto& elem : obj.elements) {
-        assert(0 <= n && elem.variable_index < n);
+        bx_ensures(0 <= n && elem.variable_index < n);
         ret[elem.variable_index] += static_cast<floatingpointT>(elem.factor);
     }
 

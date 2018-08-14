@@ -22,6 +22,7 @@
 
 #include <array>
 
+#include "debug.hpp"
 #include "private.hpp"
 #include "problem.hpp"
 #include "utils.hpp"
@@ -242,8 +243,8 @@ automatic_optimizer(const baryonyx::context_ptr& ctx,
 {
     baryonyx::notice(ctx, "- Automatic optimization starts\n");
 
-    assert(ctx->parameters.auto_tune !=
-           baryonyx::solver_parameters::auto_tune_parameters::disabled);
+    bx_expects(ctx->parameters.auto_tune !=
+               baryonyx::solver_parameters::auto_tune_parameters::disabled);
 
 #ifdef BARYONYX_HAVE_NLOPT
     if (ctx->parameters.auto_tune ==

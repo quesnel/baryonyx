@@ -68,7 +68,7 @@ struct solver_inequalities_01coeff
     {
         for (int i = 0; i != m; ++i) {
             for (const auto& cst : csts[i].elements)
-                Ensures(cst.factor == 1);
+                bx_expects(cst.factor == 1);
 
             if (csts[i].min == csts[i].max) {
                 b[i].min = csts[i].min;
@@ -168,7 +168,7 @@ struct solver_inequalities_01coeff
     double results(const std::unique_ptr<floatingpointT[]>& original_costs,
                    const double cost_constant) const
     {
-        assert(is_valid_solution());
+        bx_expects(is_valid_solution());
 
         auto value = static_cast<double>(cost_constant);
 

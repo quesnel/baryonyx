@@ -29,8 +29,6 @@
 
 #include <vector>
 
-#include <cassert>
-
 namespace baryonyx {
 namespace itm {
 namespace details {
@@ -217,7 +215,7 @@ knapsack_dp_solver(const A& a,
                    int r_size,
                    int bound)
 {
-    assert(bound >= 0 && "No negative bound");
+    bx_expects(bound >= 0);
 
     details::knapsack_dp_solver<modeT, floatingpointT> slv(r_size, bound);
 

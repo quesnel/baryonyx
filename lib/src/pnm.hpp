@@ -27,7 +27,6 @@
 #include <fstream>
 #include <memory>
 
-#include <cassert>
 #include <cstdint>
 
 namespace baryonyx {
@@ -54,7 +53,7 @@ struct colormap
       : m_lower(static_cast<float>(lower))
       , m_upper(static_cast<float>(upper))
     {
-        assert(lower < upper);
+        bx_expects(lower < upper);
     }
 
     template<typename T>
@@ -192,14 +191,14 @@ public:
 
     const pnm_iterator_entry* operator->() const
     {
-        assert(m_entry.m_colors && "Dereference pointer");
+        bx_expects(m_entry.m_colors);
 
         return &m_entry;
     }
 
     pnm_iterator_entry operator*() const
     {
-        assert(m_entry.m_colors && "Dereference pointer");
+        bx_expects(m_entry.m_colors);
 
         pnm_iterator_entry ret(m_entry);
         return ret;
@@ -284,8 +283,8 @@ public:
 
     pointer_type operator()(size_type row, size_type col) noexcept
     {
-        assert(row < m_heigth);
-        assert(col < m_width);
+        bx_expects(row < m_heigth);
+        bx_expects(col < m_width);
 
         return m_buffer.get() + (row * m_width + col) * 3;
     }

@@ -27,14 +27,13 @@
 #include "problem-out.hpp"
 #endif
 
+#include "debug.hpp"
 #include "memory.hpp"
 #include "private.hpp"
 #include "utils.hpp"
 
 #include <fstream>
 #include <unordered_set>
-
-#include <cassert>
 
 //
 // Remove empty constraint, ie. where the function element is empty and returns
@@ -149,11 +148,11 @@ remove_variable_from_objective(baryonyx::objective_function& obj,
         obj.elements.erase(it);
     }
 
-    assert(std::find_if(obj.elements.begin(),
-                        obj.elements.end(),
-                        [variable_id](const auto& elem) {
-                            return elem.variable_index == variable_id;
-                        }) == obj.elements.end());
+    bx_ensures(std::find_if(obj.elements.begin(),
+                            obj.elements.end(),
+                            [variable_id](const auto& elem) {
+                                return elem.variable_index == variable_id;
+                            }) == obj.elements.end());
 
     for (auto& elem : obj.elements)
         if (elem.variable_index > variable_id)
@@ -178,11 +177,11 @@ remove_variable(baryonyx::constraint& cst, int variable_id, int variable_value)
         cst.elements.erase(it);
     }
 
-    assert(std::find_if(cst.elements.begin(),
-                        cst.elements.end(),
-                        [variable_id](const auto& elem) {
-                            return elem.variable_index == variable_id;
-                        }) == cst.elements.end());
+    bx_ensures(std::find_if(cst.elements.begin(),
+                            cst.elements.end(),
+                            [variable_id](const auto& elem) {
+                                return elem.variable_index == variable_id;
+                            }) == cst.elements.end());
 
     for (auto& elem : cst.elements)
         if (elem.variable_index > variable_id)
@@ -272,8 +271,7 @@ remove_duplicated_constraints(const baryonyx::context_ptr& ctx,
                cst[t[i].index].elements == cst[t[j].index].elements) {
             switch (type) {
             case baryonyx::operator_type::equal:
-                baryonyx::Expects(cst[t[i].index].value ==
-                                  cst[t[j].index].value);
+                bx_assert(cst[t[i].index].value == cst[t[j].index].value);
 
                 debug(ctx,
                       "      = constraints {} = {} must be removed\n",
@@ -354,7 +352,7 @@ try_remove_assigned_variable(const baryonyx::context_ptr& ctx,
                              baryonyx::operator_type type,
                              int& variable_nb)
 {
-    assert(cst.elements.size() == 1);
+    bx_expects(cst.elements.size() == 1);
 
     int factor = cst.elements.front().factor;
     int variable_index{ -1 }, variable_value{ -1 };
@@ -369,7 +367,7 @@ try_remove_assigned_variable(const baryonyx::context_ptr& ctx,
                 variable_index = cst.elements.front().variable_index;
                 variable_value = cst.value;
             } else {
-                assert(false && "1x = -1: error");
+                bx_reach(); // 1x = -1: error
             }
             break;
         case baryonyx::operator_type::greater:
@@ -377,18 +375,20 @@ try_remove_assigned_variable(const baryonyx::context_ptr& ctx,
             if (cst.value == 1) {
                 variable_index = cst.elements.front().variable_index;
                 variable_value = 1;
-            } else
-                return true; // 1x >= 0 or 1x >= -1
+            } else {
+                bx_reach(); // 1x >= 0 or 1x >= -1
+            }
             break;
         case baryonyx::operator_type::less:
             // 1 x <= 0
             if (cst.value == 0) {
                 variable_index = cst.elements.front().variable_index;
                 variable_value = 0;
-            } else if (cst.value == 1)
+            } else if (cst.value == 1) {
                 return true;
-            else
-                assert(false && "1x <= -1");
+            } else {
+                bx_reach(); // "1x <= -1"
+            }
             break;
         }
     } else {
@@ -403,17 +403,18 @@ try_remove_assigned_variable(const baryonyx::context_ptr& ctx,
                 variable_index = cst.elements.front().variable_index;
                 variable_value = 1;
             } else {
-                assert(false && "-1x = 1");
+                bx_reach(); // -1x = 1
             }
             break;
         case baryonyx::operator_type::greater:
             if (cst.value == 0) { // -x >= 0 -> x = 0
                 variable_index = cst.elements.front().variable_index;
                 variable_value = 0;
-            } else if (cst.value == -1) // -x >= -1 -> x = 1
+            } else if (cst.value == -1) { // -x >= -1 -> x = 1
                 return true;
-            else
-                assert(false && "-1x >= 1");
+            } else {
+                bx_reach(); // -1x >= 1
+            }
             break;
         case baryonyx::operator_type::less:
             // -x <= -1 -> x = 1

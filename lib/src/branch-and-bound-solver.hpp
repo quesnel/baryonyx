@@ -32,8 +32,6 @@
 #include <limits>
 #include <queue>
 
-#include <cassert>
-
 namespace baryonyx {
 namespace itm {
 namespace details {

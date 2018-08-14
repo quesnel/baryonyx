@@ -85,7 +85,7 @@ public:
         for (int i = 1, e = m_access_length + 1; i != e; ++i)
             m_access[i] += m_access[i - 1];
 
-        assert(m_values_length > 0 && "Preprocessing error.");
+        bx_assert(m_values_length > 0);
         m_values = std::make_unique<T[]>(m_values_length);
 
         //
@@ -139,12 +139,8 @@ public:
 private:
     void m_check_index(index_type i) const noexcept
     {
-#ifdef NDEBUG
-        (void)i;
-#else
-        assert(i >= 0 && "SparseVector: bad access, i >= 0");
-        assert(i < m_access_length && "SparseVector: bad access, i < length");
-#endif
+        bx_expects(i >= 0);
+        bx_expects(i < m_access_length);
     }
 };
 }

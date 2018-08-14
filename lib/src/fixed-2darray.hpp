@@ -27,7 +27,8 @@
 #include <iterator>
 #include <memory>
 
-#include <cassert>
+#include "debug.hpp"
+
 #include <cstddef>
 
 namespace baryonyx {
@@ -310,7 +311,7 @@ template<typename T>
 T&
 fixed_2darray<T>::front() noexcept
 {
-    assert(not empty());
+    bx_expects(not empty());
 
     return *begin();
 }
@@ -319,7 +320,7 @@ template<typename T>
 const T&
 fixed_2darray<T>::front() const noexcept
 {
-    assert(not empty());
+    bx_expects(not empty());
 
     return *begin();
 }
@@ -328,7 +329,7 @@ template<typename T>
 T&
 fixed_2darray<T>::back() noexcept
 {
-    assert(not empty());
+    bx_expects(not empty());
 
     return *(begin() + size() - 1);
 }
@@ -337,7 +338,7 @@ template<typename T>
 const T&
 fixed_2darray<T>::back() const noexcept
 {
-    assert(not empty());
+    bx_expects(not empty());
 
     return *(begin() + size() - 1);
 }
@@ -360,7 +361,7 @@ template<typename T>
 void
 fixed_2darray<T>::set(size_type row, size_type column, const value_type& x)
 {
-    assert(m_is_valid(row, column));
+    bx_expects(m_is_valid(row, column));
 
     m_buffer[row * m_columns + column] = x;
 }
@@ -369,7 +370,7 @@ template<typename T>
 void
 fixed_2darray<T>::set(size_type row, size_type column, value_type&& x)
 {
-    assert(m_is_valid(row, column));
+    bx_expects(m_is_valid(row, column));
 
     m_buffer.emplace(std::begin(m_buffer) + (row * m_columns + column),
                      std::move(x));
@@ -380,7 +381,7 @@ template<class... Args>
 void
 fixed_2darray<T>::emplace(size_type row, size_type column, Args&&... args)
 {
-    assert(m_is_valid(row, column));
+    bx_expects(m_is_valid(row, column));
 
     m_buffer.emplace(std::begin(m_buffer) + (row * m_columns + column),
                      std::forward<Args>(args)...);
@@ -390,7 +391,7 @@ template<typename T>
 typename fixed_2darray<T>::const_reference
 fixed_2darray<T>::operator()(size_type row, size_type column) const
 {
-    assert(m_is_valid(row, column));
+    bx_expects(m_is_valid(row, column));
 
     return m_buffer[row * m_columns + column];
 }
@@ -399,7 +400,7 @@ template<typename T>
 typename fixed_2darray<T>::reference
 fixed_2darray<T>::operator()(size_type row, size_type column)
 {
-    assert(m_is_valid(row, column));
+    bx_expects(m_is_valid(row, column));
 
     return m_buffer[row * m_columns + column];
 }

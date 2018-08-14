@@ -22,6 +22,7 @@
 
 #include <baryonyx/core>
 
+#include "debug.hpp"
 #include "private.hpp"
 #include "problem.hpp"
 #include "utils.hpp"
@@ -197,7 +198,7 @@ bool
 is_valid_solution_impl(const raw_problem& pb,
                        const std::vector<bool>& variable_value)
 {
-    Expects(!variable_value.empty(), "variables vector empty");
+    bx_expects(!variable_value.empty());
     std::size_t i, e;
 
     for (i = 0, e = pb.equal_constraints.size(); i != e; ++i) {
@@ -225,7 +226,7 @@ double
 compute_solution_impl(const raw_problem& pb,
                       const std::vector<bool>& variable_value)
 {
-    Expects(!variable_value.empty(), "variables vector empty");
+    bx_expects(!variable_value.empty());
 
     double ret = pb.objective.value;
 
@@ -244,7 +245,7 @@ make_variable_value(const Problem& pb, const result& r)
 
     std::unordered_map<std::string, bool> cache;
 
-    Ensures(r.affected_vars.names.size() == r.affected_vars.values.size());
+    bx_ensures(r.affected_vars.names.size() == r.affected_vars.values.size());
 
     std::transform(r.affected_vars.names.cbegin(),
                    r.affected_vars.names.cend(),
@@ -254,7 +255,7 @@ make_variable_value(const Problem& pb, const result& r)
                        return std::make_pair(name, value);
                    });
 
-    Ensures(r.variable_name.size() == r.solutions.back().variables.size());
+    bx_ensures(r.variable_name.size() == r.solutions.back().variables.size());
 
     std::transform(r.variable_name.cbegin(),
                    r.variable_name.cend(),
@@ -268,7 +269,7 @@ make_variable_value(const Problem& pb, const result& r)
 
     for (std::size_t i = 0, e = pb.vars.names.size(); i != e; ++i) {
         auto it = cache.find(pb.vars.names[i]);
-        Expects(it != cache.end());
+        bx_expects(it != cache.end());
         ret[i] = it->second;
     }
 
@@ -281,10 +282,10 @@ is_valid_solution(const raw_problem& pb, const result& r)
     if (!r || r.solutions.empty())
         return false;
 
-    Expects(pb.vars.names.size() == pb.vars.values.size());
-    Expects(pb.vars.names.size() ==
-            r.variable_name.size() + r.affected_vars.names.size());
-    Expects(r.solutions.back().variables.size() == r.variable_name.size());
+    bx_expects(pb.vars.names.size() == pb.vars.values.size());
+    bx_expects(pb.vars.names.size() ==
+               r.variable_name.size() + r.affected_vars.names.size());
+    bx_expects(r.solutions.back().variables.size() == r.variable_name.size());
 
     return is_valid_solution_impl(pb, make_variable_value(pb, r));
 }
@@ -292,10 +293,10 @@ is_valid_solution(const raw_problem& pb, const result& r)
 double
 compute_solution(const raw_problem& pb, const result& r)
 {
-    Expects(r && !r.solutions.empty());
-    Expects(pb.vars.names.size() == pb.vars.values.size());
-    Expects(pb.vars.names.size() == r.variable_name.size());
-    Expects(r.solutions.back().variables.size() == r.variable_name.size());
+    bx_expects(r && !r.solutions.empty());
+    bx_expects(pb.vars.names.size() == pb.vars.values.size());
+    bx_expects(pb.vars.names.size() == r.variable_name.size());
+    bx_expects(r.solutions.back().variables.size() == r.variable_name.size());
 
     return compute_solution_impl(pb, make_variable_value(pb, r));
 }

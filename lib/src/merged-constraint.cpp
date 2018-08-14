@@ -22,14 +22,13 @@
 
 #include <baryonyx/core-compare>
 
+#include "debug.hpp"
 #include "itm-common.hpp"
 #include "memory.hpp"
 #include "utils.hpp"
 
 #include <set>
 #include <unordered_map>
-
-#include <cassert>
 
 namespace baryonyx {
 namespace itm {
@@ -166,7 +165,7 @@ static std::vector<merged_constraint>
 make_ordered_merged_constraints(const baryonyx::context_ptr& ctx,
                                 const baryonyx::problem& pb)
 {
-    assert(static_cast<int>(ctx->parameters.pre_order) >= 5);
+    bx_expects(static_cast<int>(ctx->parameters.pre_order) >= 5);
 
     info(ctx, "  - merge constraints with ordered sort\n");
 
@@ -230,8 +229,8 @@ static std::vector<merged_constraint>
 make_special_merged_constraints(const baryonyx::context_ptr& ctx,
                                 const baryonyx::problem& pb)
 {
-    assert(static_cast<int>(ctx->parameters.pre_order) >= 1);
-    assert(static_cast<int>(ctx->parameters.pre_order) <= 4);
+    bx_expects(static_cast<int>(ctx->parameters.pre_order) >= 1);
+    bx_expects(static_cast<int>(ctx->parameters.pre_order) <= 4);
 
     info(ctx,
          "  - merge constraint according to the `{}` algorithm\n",

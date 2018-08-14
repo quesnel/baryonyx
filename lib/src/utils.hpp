@@ -36,34 +36,6 @@
 
 namespace baryonyx {
 
-inline void
-Expects(bool condition)
-{
-    if (!condition)
-        throw precondition_failure("precondition failure");
-}
-
-inline void
-Ensures(bool condition)
-{
-    if (!condition)
-        throw postcondition_failure("postcondition failure");
-}
-
-inline void
-Expects(bool condition, const char* s)
-{
-    if (!condition)
-        throw precondition_failure(s);
-}
-
-inline void
-Ensures(bool condition, const char* s)
-{
-    if (!condition)
-        throw postcondition_failure(s);
-}
-
 /**
  * @brief Compute the length of the @c container.
  * @details Return the @c size provided by the @c C::size() but cast it into a
@@ -84,12 +56,32 @@ template<class C>
 constexpr int
 length(const C& c) noexcept
 {
-#ifdef NDEBUG
-    Expects(c.size() <= static_cast<std::size_t>(INT_MAX),
-            "length(): container too big");
-#endif
-
     return static_cast<int>(c.size());
+}
+
+/**
+ * @brief Compute the length of the C array.
+ * @details Return the size of the C array but cast it into a @c int. This
+ * is a specific baryonyx function, we know that number of variables and
+ *     constraints are lower than the  @c int max value (INT_MAX).
+ *
+ * @code
+ * int v[150];
+ * for (int i = 0, e = length(v); i != e; ++i)
+ *     ...
+ * @endcode
+ *
+ * @param v The container to return size.
+ * @tparam T The type of the C array.
+ * @tparam N The size of the C array.
+ */
+template<class T, size_t N>
+constexpr int
+length(const T (&array)[N]) noexcept
+{
+    (void)array;
+
+    return static_cast<int>(N);
 }
 
 /**
@@ -116,41 +108,7 @@ template<class T>
 constexpr const T&
 clamp(const T& v, const T& lo, const T& hi)
 {
-#ifdef NDEBUG
-    Expects(lo < hi, "clamp(): low > high");
-#endif
-
     return v < lo ? lo : v > hi ? hi : v;
-}
-
-/**
- * @brief Compute the length of the C array.
- * @details Return the size of the C array but cast it into a @c int. This
- * is a specific baryonyx function, we know that number of variables and
- *     constraints are lower than the  @c int max value (INT_MAX).
- *
- * @code
- * int v[150];
- * for (int i = 0, e = length(v); i != e; ++i)
- *     ...
- * @endcode
- *
- * @param v The container to return size.
- * @tparam T The type of the C array.
- * @tparam N The size of the C array.
- */
-template<class T, size_t N>
-constexpr int
-length(const T (&array)[N]) noexcept
-{
-    (void)array;
-
-#ifdef NDEBUG
-    Expects(N > static_cast<std::size_t>(INT_MAX),
-            "length(): container too big");
-#endif
-
-    return static_cast<int>(N);
 }
 
 template<typename T>

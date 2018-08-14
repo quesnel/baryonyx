@@ -29,6 +29,7 @@
 #include <memory>
 #include <string>
 
+#include "debug.hpp"
 #include "fixed-array.hpp"
 
 namespace baryonyx {
@@ -237,18 +238,11 @@ public:
 private:
     void m_check_index(index_type row, index_type col) const noexcept
     {
-#ifdef NDEBUG
-        (void)row;
-        (void)col;
-#else
-        assert(col >= 0 &&
-               static_cast<size_type>(col) < (m_cols_access.size() - 1) &&
-               "SparseArray: bad column access");
+        bx_expects(col >= 0 &&
+                   static_cast<size_type>(col) < (m_cols_access.size() - 1));
 
-        assert(row >= 0 &&
-               static_cast<size_type>(row) < (m_rows_access.size() - 1) &&
-               "SparseArray: bad row access");
-#endif
+        bx_expects(row >= 0 &&
+                   static_cast<size_type>(row) < (m_rows_access.size() - 1));
     }
 };
 }

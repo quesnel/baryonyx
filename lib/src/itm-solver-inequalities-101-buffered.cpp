@@ -80,7 +80,7 @@ struct solver_inequalities_101coeff_buffered
             int lower = 0, upper = 0;
 
             for (const auto& cst : csts[i].elements) {
-                Ensures(std::abs(cst.factor) == 1);
+                bx_ensures(std::abs(cst.factor) == 1);
                 A[id++] = cst.factor;
 
                 if (cst.factor > 0)
@@ -205,7 +205,7 @@ struct solver_inequalities_101coeff_buffered
     double results(const std::unique_ptr<floatingpointT[]>& original_costs,
                    const double cost_constant) const
     {
-        assert(is_valid_solution());
+        bx_expects(is_valid_solution());
 
         auto value = static_cast<double>(cost_constant);
 
