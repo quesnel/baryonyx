@@ -359,8 +359,6 @@ try_remove_assigned_variable(const baryonyx::context_ptr& ctx,
 
     if (factor == 1) {
         switch (type) {
-        case baryonyx::operator_type::undefined:
-            break;
         case baryonyx::operator_type::equal:
             // 1 x = 0 or 1 x = 1
             if (cst.value == 0 || cst.value == 1) {
@@ -393,8 +391,6 @@ try_remove_assigned_variable(const baryonyx::context_ptr& ctx,
         }
     } else {
         switch (type) {
-        case baryonyx::operator_type::undefined:
-            break;
         case baryonyx::operator_type::equal:
             if (cst.value == 0) { // -x = 0 -> x = 0
                 variable_index = cst.elements.front().variable_index;
@@ -454,8 +450,6 @@ try_remove_assigned_variables_01(const baryonyx::context_ptr& ctx,
     bool found{ false };
 
     switch (type) {
-    case baryonyx::operator_type::undefined:
-        break;
     case baryonyx::operator_type::equal:
         if (cst.value == 0 || cst.value == nb) {
             value = cst.value / nb;
@@ -523,8 +517,6 @@ try_remove_assigned_variables_101(const baryonyx::context_ptr& ctx,
     std::vector<std::pair<int, int>> id;
 
     switch (type) {
-    case baryonyx::operator_type::undefined:
-        break;
     case baryonyx::operator_type::equal:
         if (cst.value == min) {
             for (const auto& elem : cst.elements)

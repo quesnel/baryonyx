@@ -451,14 +451,12 @@ enum class problem_solver_type
 
 enum class objective_function_type
 {
-    undefined,
     maximize,
     minimize
 };
 
 enum class operator_type
 {
-    undefined,
     equal,
     greater,
     less,

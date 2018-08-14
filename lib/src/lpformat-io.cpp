@@ -849,8 +849,6 @@ apply_bound(int value, operator_type type, variable_value& variable)
         variable.min = value;
         variable.max = value;
         break;
-    case operator_type::undefined:
-        break;
     }
 }
 
@@ -867,8 +865,6 @@ apply_bound(variable_value& variable, operator_type type, int value)
     case operator_type::equal:
         variable.min = value;
         variable.max = value;
-        break;
-    case operator_type::undefined:
         break;
     }
 }
