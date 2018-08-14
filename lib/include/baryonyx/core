@@ -546,19 +546,6 @@ struct raw_problem
     objective_function_type type = { objective_function_type::maximize };
 };
 
-/**
- * @details Compute the number of constraints of the @c baryonyx::problem.
- *
- * @param pb An baryonyx::problem.
- * @return The number of constraints in the @c baryonyx::problem.
- */
-inline std::size_t
-size(const baryonyx::raw_problem& pb) noexcept
-{
-    return pb.equal_constraints.size() + pb.greater_constraints.size() +
-           pb.less_constraints.size();
-}
-
 enum class result_status
 {
     success,
