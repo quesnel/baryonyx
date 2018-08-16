@@ -51,12 +51,12 @@ public:
     using const_iterator = const T*;
     using reverse_iterator = std::reverse_iterator<iterator>;
     using const_reverse_iterator = std::reverse_iterator<const_iterator>;
-    using size_type = std::size_t;
+    using size_type = unsigned int;
     using difference_type = std::ptrdiff_t;
 
 private:
-    std::size_t m_length;
     std::unique_ptr<T[]> m_buffer;
+    size_type m_length;
 
 public:
     /**
@@ -72,7 +72,7 @@ public:
      *
      * @exception @c std::bad_alloc.
      */
-    explicit fixed_array(std::size_t n);
+    explicit fixed_array(size_type n);
 
     /**
      * Constructs a container with @c n elements initialized to @c def.
@@ -83,7 +83,7 @@ public:
      *
      * @exception @c std::bad_alloc.
      */
-    fixed_array(std::size_t n, const value_type& def);
+    fixed_array(size_type n, const value_type& def);
 
     fixed_array(fixed_array&&) = default;
     fixed_array& operator=(fixed_array&&) = default;
@@ -94,7 +94,7 @@ public:
 
     explicit operator bool() const noexcept;
 
-    std::size_t size() const noexcept;
+    size_type size() const noexcept;
 
     bool empty() const noexcept;
 
@@ -119,10 +119,10 @@ public:
     T* data() noexcept;
     const T* data() const noexcept;
 
-    T& operator[](std::size_t i) noexcept;
-    const T& operator[](std::size_t i) const noexcept;
-    T& operator()(std::size_t i) noexcept;
-    const T& operator()(std::size_t i) const noexcept;
+    T& operator[](size_type i) noexcept;
+    const T& operator[](size_type i) const noexcept;
+    T& operator()(size_type i) noexcept;
+    const T& operator()(size_type i) const noexcept;
 
     void swap(fixed_array& other) noexcept;
 };
@@ -133,23 +133,23 @@ fixed_array<T>::fixed_array() noexcept
 {}
 
 template<typename T>
-fixed_array<T>::fixed_array(std::size_t n)
-  : m_length{ n }
-  , m_buffer{ std::make_unique<T[]>(n) }
+fixed_array<T>::fixed_array(size_type n)
+  : m_buffer{ std::make_unique<T[]>(n) }
+  , m_length{ n }
 {}
 
 template<typename T>
-fixed_array<T>::fixed_array(std::size_t n, const value_type& def)
-  : m_length{ n }
-  , m_buffer{ std::make_unique<T[]>(m_length) }
+fixed_array<T>::fixed_array(size_type n, const value_type& def)
+  : m_buffer{ std::make_unique<T[]>(n) }
+  , m_length{ n }
 {
     std::fill(begin(), end(), def);
 }
 
 template<typename T>
 fixed_array<T>::fixed_array(const fixed_array& o)
-  : m_length{ o.m_length }
-  , m_buffer{ std::make_unique<T[]>(o.m_length) }
+  : m_buffer{ std::make_unique<T[]>(o.m_length) }
+  , m_length{ o.m_length }
 {
     std::copy(o.begin(), o.end(), begin());
 }
@@ -175,7 +175,7 @@ fixed_array<T>::operator bool() const noexcept
 }
 
 template<typename T>
-std::size_t
+typename fixed_array<T>::size_type
 fixed_array<T>::size() const noexcept
 {
     return m_length;
@@ -315,27 +315,27 @@ fixed_array<T>::data() const noexcept
 }
 
 template<typename T>
-T& fixed_array<T>::operator[](std::size_t i) noexcept
+T& fixed_array<T>::operator[](size_type i) noexcept
 {
     return data()[i];
 }
 
 template<typename T>
-const T& fixed_array<T>::operator[](std::size_t i) const noexcept
+const T& fixed_array<T>::operator[](size_type i) const noexcept
 {
     return data()[i];
 }
 
 template<typename T>
 T&
-fixed_array<T>::operator()(std::size_t i) noexcept
+fixed_array<T>::operator()(size_type i) noexcept
 {
     return data()[i];
 }
 
 template<typename T>
 const T&
-fixed_array<T>::operator()(std::size_t i) const noexcept
+fixed_array<T>::operator()(size_type i) const noexcept
 {
     return data()[i];
 }

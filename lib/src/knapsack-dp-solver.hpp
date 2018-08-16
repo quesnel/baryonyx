@@ -67,7 +67,7 @@ struct knapsack_dp_solver
         });
     }
 
-    knapsack_dp_solver(std::size_t size_, int capacity_)
+    knapsack_dp_solver(int size_, int capacity_)
       : items(size_)
       , best(size_ + 1, capacity_ + 1, 0)
       , capacity(capacity_)
@@ -100,12 +100,12 @@ struct knapsack_dp_solver
     template<typename R>
     int solve(R& reduced_cost, int r_size)
     {
-        const std::size_t n = items.size();
-        const auto W = static_cast<size_t>(capacity);
+        const auto n = static_cast<int>(items.size());
+        const auto W = capacity;
         std::vector<int> variables;
 
         {
-            std::size_t i, j;
+            int i, j;
 
             for (j = 1; j <= W; ++j)
                 best(0, j) = init(modeT());

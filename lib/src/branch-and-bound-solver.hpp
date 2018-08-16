@@ -68,7 +68,7 @@ struct branch_and_bound_solver
     fixed_array<item> items;
     int bound;
 
-    branch_and_bound_solver(std::size_t size_, int bound_)
+    branch_and_bound_solver(int size_, int bound_)
       : items(size_)
       , bound(bound_)
     {}
@@ -258,8 +258,8 @@ struct branch_and_bound_solver
             int elem = items[i].variable;
 
             auto it =
-              std::find_if(reduced_cost.begin(),
-                           reduced_cost.begin() + items.size(),
+              std::find_if(reduced_cost.get(),
+                           reduced_cost.get() + items.size(),
                            [elem](const auto& r) { return r.id == elem; });
 
             std::swap(reduced_cost[i], *it);
@@ -283,43 +283,19 @@ template<typename modeT,
 int
 branch_and_bound_solver(const A& a,
                         R& reduced_cost,
-                        iteratorT begin,
-                        iteratorT end,
+                        iteratorT it,
+                        int r_size,
                         int bound)
 {
-    details::branch_and_bound_solver<modeT, floatingpointT> slv(
-      std::distance(begin, end), bound);
+    details::branch_and_bound_solver<modeT, floatingpointT> slv(r_size, bound);
 
-    for (int i = 0; begin != end; ++begin, ++i) {
+    for (int i = 0; i != r_size; ++i) {
         slv.items[i].r = reduced_cost[i].value;
-        slv.items[i].factor = a[begin->value];
         slv.items[i].variable = reduced_cost[i].id;
-    }
 
-    return slv.solve(reduced_cost);
-}
+        auto var = (it + reduced_cost[i].id);
 
-/*
- * @note For @c iteratorT (iterator to factor), we convert to absolute value
- *     negative factor to avoid the use of @c invert_a in the AP matrix.
- */
-template<typename modeT,
-         typename floatingpointT,
-         typename R,
-         typename iteratorT>
-int
-branch_and_bound_solver(R& reduced_cost,
-                        iteratorT begin,
-                        iteratorT end,
-                        int bound)
-{
-    details::branch_and_bound_solver<modeT, floatingpointT> slv(
-      std::distance(begin, end), bound);
-
-    for (int i = 0; begin != end; ++begin, ++i) {
-        slv.items[i].r = reduced_cost[i].value;
-        slv.items[i].factor = *begin;
-        slv.items[i].variable = reduced_cost[i].id;
+        slv.items[i].factor = std::abs(a[var->value]);
     }
 
     return slv.solve(reduced_cost);

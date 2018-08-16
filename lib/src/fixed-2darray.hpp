@@ -55,13 +55,13 @@ public:
     using const_iterator = const T*;
     using reverse_iterator = std::reverse_iterator<iterator>;
     using const_reverse_iterator = std::reverse_iterator<const_iterator>;
-    using size_type = std::size_t;
+    using size_type = unsigned int;
     using difference_type = std::ptrdiff_t;
 
 protected:
-    std::size_t m_rows;
-    std::size_t m_columns;
     std::unique_ptr<T[]> m_buffer;
+    size_type m_rows;
+    size_type m_columns;
 
 public:
     /**
@@ -135,27 +135,27 @@ fixed_2darray<T>::fixed_2darray() noexcept
 
 template<typename T>
 fixed_2darray<T>::fixed_2darray(size_type rows, size_type columns)
-  : m_rows{ rows }
+  : m_buffer{ std::make_unique<T[]>(columns * rows) }
+  , m_rows{ rows }
   , m_columns{ columns }
-  , m_buffer{ std::make_unique<T[]>(columns * rows) }
 {}
 
 template<typename T>
 fixed_2darray<T>::fixed_2darray(size_type rows,
                                 size_type columns,
                                 const value_type& def)
-  : m_rows{ rows }
+  : m_buffer{ std::make_unique<T[]>(columns * rows) }
+  , m_rows{ rows }
   , m_columns{ columns }
-  , m_buffer{ std::make_unique<T[]>(columns * rows) }
 {
     std::fill(begin(), end(), def);
 }
 
 template<typename T>
 fixed_2darray<T>::fixed_2darray(const fixed_2darray& o)
-  : m_rows{ o.m_rows }
+  : m_buffer{ std::make_unique<T[]>(m_columns * m_rows) }
+  , m_rows{ o.m_rows }
   , m_columns{ o.m_columns }
-  , m_buffer{ std::make_unique<T[]>(m_columns * m_rows) }
 {
     std::copy(o.m_buffer.begin(), o.m_buffer.end(), begin());
 }

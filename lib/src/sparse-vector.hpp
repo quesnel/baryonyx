@@ -42,9 +42,8 @@ public:
     using const_iterator = const value_type*;
     using reverse_iterator = std::reverse_iterator<iterator>;
     using const_reverse_iterator = std::reverse_iterator<const_iterator>;
-    using size_type = std::size_t;
+    using size_type = unsigned int;
     using difference_type = std::ptrdiff_t;
-    using index_type = int;
 
 protected:
     using accessors = std::unique_ptr<int[]>;
@@ -106,14 +105,14 @@ public:
 
     bool empty(int i) const noexcept
     {
-        m_check_index(i);
+        bx_expects(i >= 0 && i < m_access_length);
 
         return m_access[i] == m_access[i + 1];
     }
 
     std::tuple<iterator, iterator> range(int i) noexcept
     {
-        m_check_index(i);
+        bx_expects(i >= 0 && i < m_access_length);
 
         iterator begin = m_values.get() + m_access[i];
         iterator end = m_values.get() + m_access[i + 1];
@@ -123,7 +122,7 @@ public:
 
     std::tuple<const_iterator, const_iterator> range(int i) const noexcept
     {
-        m_check_index(i);
+        bx_expects(i >= 0 && i < m_access_length);
 
         iterator begin = m_values.get() + m_access[i];
         iterator end = m_values.get() + m_access[i + 1];
@@ -131,16 +130,9 @@ public:
         return std::make_tuple(begin, end);
     }
 
-    index_type values_size() const noexcept
+    int values_size() const noexcept
     {
         return m_values_length;
-    }
-
-private:
-    void m_check_index(index_type i) const noexcept
-    {
-        bx_expects(i >= 0);
-        bx_expects(i < m_access_length);
     }
 };
 }
