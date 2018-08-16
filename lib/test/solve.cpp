@@ -20,7 +20,9 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include "problem-out.hpp"
+#include "problem.hpp"
+#include "result.hpp"
+#include "resume.hpp"
 #include "unit-test.hpp"
 
 #include <baryonyx/core-compare>
@@ -86,7 +88,10 @@ test_preprocessor()
         ss.seekg(0, std::ios::beg);
 
         auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/prepro.lp");
-        auto re = baryonyx::make_result(ctx, ss);
+
+        baryonyx::result re;
+
+        ss >> re;
 
         Ensures(is_valid_solution(pb, re));
     }
@@ -132,7 +137,8 @@ test_preprocessor_2()
         auto pb =
           baryonyx::make_problem(ctx, EXAMPLES_DIR "/capmo1_direct.lp");
 
-        baryonyx::result result = baryonyx::make_result(ctx, ss);
+        baryonyx::result result;
+        ss >> result;
 
         result.status = baryonyx::result_status::success;
 
@@ -161,8 +167,9 @@ test_real_cost()
 
     std::istringstream iss(str_pb);
 
-    auto pb = baryonyx::make_problem(ctx, iss);
-    // pb = baryonyx::preprocess(ctx, pb);
+    baryonyx::raw_problem pb;
+    iss >> pb;
+
     auto result = baryonyx::solve(ctx, pb);
 
     Ensures(result);
@@ -308,7 +315,8 @@ test_negative_coeff5()
 
     std::istringstream iss(str_pb);
 
-    auto pb = baryonyx::make_problem(ctx, iss);
+    baryonyx::raw_problem pb;
+    iss >> pb;
     auto result = baryonyx::solve(ctx, pb);
 
     Ensures(result.status == baryonyx::result_status::success);

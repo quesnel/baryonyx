@@ -27,6 +27,8 @@
 
 #include <fmt/format.h>
 
+namespace {
+
 static std::size_t
 memory_consumed(const baryonyx::variables& vv) noexcept
 {
@@ -80,6 +82,8 @@ memory_consumed(const std::vector<baryonyx::constraint>& csts) noexcept
                                return size + memory_consumed(elem);
                            });
 }
+
+} // namespace anonymous
 
 namespace baryonyx {
 

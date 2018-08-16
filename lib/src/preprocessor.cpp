@@ -24,7 +24,7 @@
 #include <baryonyx/core>
 
 #ifndef BARYONYX_FULL_OPTIMIZATION
-#include "problem-out.hpp"
+#include "resume.hpp"
 #endif
 
 #include "debug.hpp"

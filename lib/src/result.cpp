@@ -20,20 +20,35 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <baryonyx/core>
+#include "result.hpp"
+#include "private.hpp"
 
-#include <istream>
+#include <baryonyx/core-utils>
+
+#include <fstream>
 #include <string>
 
 #include <cctype>
 
 namespace baryonyx {
 
-baryonyx::result
-read_result(std::istream& is)
+result
+make_result(const baryonyx::context_ptr& ctx, const std::string& filename)
 {
-    baryonyx::result ret;
-    ret.status = baryonyx::result_status::success;
+    info(ctx, "solution reads from file {}\n", filename);
+
+    std::ifstream ifs(filename);
+
+    result ret;
+    ifs >> ret;
+
+    return ret;
+}
+
+std::istream&
+operator>>(std::istream& is, result& ret)
+{
+    ret.status = result_status::success;
     ret.solutions.emplace_back();
     int line{ 0 };
 
@@ -42,7 +57,7 @@ read_result(std::istream& is)
         std::getline(is, buffer);
 
         if (buffer.empty() && is.eof())
-            return ret;
+            return is;
 
         std::string::size_type i{ 0 };
         std::string::size_type e{ buffer.size() };
@@ -56,8 +71,8 @@ read_result(std::istream& is)
 
         auto it = buffer.find('=', 0);
         if (it == std::string::npos)
-            throw baryonyx::file_format_failure(
-              baryonyx::file_format_error_tag::bad_name, line, 0);
+            throw file_format_failure(
+              file_format_error_tag::bad_name, line, 0);
 
         std::string name = buffer.substr(0, it);
         int value;
@@ -65,8 +80,8 @@ read_result(std::istream& is)
         try {
             value = std::stoi(buffer.substr(it + 1));
         } catch (...) {
-            throw baryonyx::file_format_failure(
-              baryonyx::file_format_error_tag::bad_name, line, 0);
+            throw file_format_failure(
+              file_format_error_tag::bad_name, line, 0);
         }
 
         ret.variable_name.emplace_back(name);
@@ -74,6 +89,18 @@ read_result(std::istream& is)
         ++line;
     }
 
-    return ret;
+    return is;
+}
+
+inline std::ostream&
+operator<<(std::ostream& os, const best_solution_writer& writer)
+{
+    std::size_t i = 0, e = writer.res.variable_name.size();
+
+    for (; i != e; ++i)
+        os << writer.res.variable_name[i] << ": "
+           << (writer.res.solutions.back().variables[i] ? 1 : 0) << '\n';
+
+    return os;
 }
 }

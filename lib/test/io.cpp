@@ -20,7 +20,7 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include "problem-out.hpp"
+#include "resume.hpp"
 #include "unit-test.hpp"
 
 #include <fstream>
@@ -35,7 +35,7 @@
 #include <fmt/printf.h>
 
 void
-test_examples_1(const baryonyx::context_ptr& ctx)
+test_examples_1()
 {
     const char* example_1 = "maximize\n"
                             "obj: x1 + 2x2 + 3x3 - 100\n"
@@ -49,7 +49,8 @@ test_examples_1(const baryonyx::context_ptr& ctx)
 
     std::istringstream iss(example_1);
 
-    auto pb = baryonyx::make_problem(ctx, iss);
+    baryonyx::raw_problem pb;
+    iss >> pb;
 
     Ensures(pb.type == baryonyx::objective_function_type::maximize);
     Ensures(pb.objective.elements.size() == 3);
@@ -129,7 +130,9 @@ test_examples_2(const baryonyx::context_ptr& ctx)
         std::stringstream ss;
         ss << pb;
 
-        auto pb2 = baryonyx::make_problem(ctx, ss);
+        baryonyx::raw_problem pb2;
+        ss >> pb2;
+
         Ensures(pb == pb2);
     }
 }
@@ -226,7 +229,7 @@ main(int /* argc */, char* /* argv */ [])
 {
     auto ctx = baryonyx::make_context();
 
-    test_examples_1(ctx);
+    test_examples_1();
     test_examples_2(ctx);
     test_examples_3(ctx);
     test_examples_4(ctx);

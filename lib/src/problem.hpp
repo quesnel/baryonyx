@@ -148,17 +148,14 @@ operator!=(const problem& lhs, const problem& rhs) noexcept
     return !(lhs == rhs);
 }
 
+void
+clear(raw_problem& pb);
+
 bool
 is_valid_solution(const problem& pb, const std::vector<bool>& variable_value);
 
 double
 compute_solution(const problem& pb, const std::vector<bool>& variable_value);
-
-// bool
-// is_valid_solution(const problem& pb, const result& r);
-
-// double
-// compute_solution(const problem& pb, const result& r);
 
 problem
 unpreprocess(const context_ptr& ctx, const raw_problem& pb_);
@@ -166,11 +163,14 @@ unpreprocess(const context_ptr& ctx, const raw_problem& pb_);
 problem
 preprocess(const context_ptr& ctx, const raw_problem& pb_);
 
-raw_problem
-read_problem(std::istream& is);
+std::istream&
+operator>>(std::istream& is, raw_problem& pb);
 
-result
-read_result(std::istream& is);
+std::ostream&
+operator<<(std::ostream& os, const problem& p);
+
+std::ostream&
+operator<<(std::ostream& os, const raw_problem& p);
 
 /**
  * @brief Select the correct solver (only itm is available) && solve the

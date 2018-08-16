@@ -20,10 +20,7 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <baryonyx/core>
-
-#include <fmt/format.h>
-
+#include "problem.hpp"
 #include "utils.hpp"
 
 #include <deque>
@@ -32,7 +29,9 @@
 #include <ostream>
 #include <unordered_map>
 
-using namespace baryonyx;
+#include <fmt/format.h>
+
+namespace {
 
 static inline bool
 iequals(const std::string& lhs, const std::string& rhs) noexcept
@@ -113,9 +112,10 @@ struct parser_stack
             fill();
 
         if (stack.empty())
-            throw file_format_failure(file_format_error_tag::end_of_file,
-                                      static_cast<int>(m_line),
-                                      static_cast<int>(m_column));
+            throw baryonyx::file_format_failure(
+              baryonyx::file_format_error_tag::end_of_file,
+              static_cast<int>(m_line),
+              static_cast<int>(m_column));
 
         return stack.front();
     }
@@ -126,9 +126,10 @@ struct parser_stack
             fill();
 
         if (stack.empty())
-            throw file_format_failure(file_format_error_tag::end_of_file,
-                                      static_cast<int>(m_line),
-                                      static_cast<int>(m_column));
+            throw baryonyx::file_format_failure(
+              baryonyx::file_format_error_tag::end_of_file,
+              static_cast<int>(m_line),
+              static_cast<int>(m_column));
 
         std::string ret = stack.front();
         std::tie(m_line, m_column) = m_position_stack.front();
@@ -435,7 +436,8 @@ get_variable(std::unordered_map<std::string, int>& cache,
 
     auto id = std::distance(vars.names.cbegin(), vars.names.cend());
     if (id >= INT_MAX)
-        throw file_format_failure(file_format_error_tag::too_many_variables);
+        throw baryonyx::file_format_failure(
+          baryonyx::file_format_error_tag::too_many_variables);
 
     vars.names.emplace_back(name);
     vars.values.emplace_back();
@@ -479,12 +481,13 @@ read_name(parser_stack& stack)
         return ret;
     }
 
-    throw file_format_failure(file_format_error_tag::bad_name,
-                              static_cast<int>(stack.line()),
-                              static_cast<int>(stack.column()));
+    throw baryonyx::file_format_failure(
+      baryonyx::file_format_error_tag::bad_name,
+      static_cast<int>(stack.line()),
+      static_cast<int>(stack.column()));
 }
 
-static inline operator_type
+static inline baryonyx::operator_type
 read_operator(parser_stack& stack)
 {
     std::string str = stack.top();
@@ -496,7 +499,7 @@ read_operator(parser_stack& stack)
             stack.substr_front(1);
         }
 
-        return operator_type::less;
+        return baryonyx::operator_type::less;
     }
 
     if (str[0] == '>') {
@@ -506,27 +509,28 @@ read_operator(parser_stack& stack)
             stack.substr_front(1);
         }
 
-        return operator_type::greater;
+        return baryonyx::operator_type::greater;
     }
 
     if (str[0] == '=') {
         if (str.size() > 1 && str[1] == '<') {
             stack.substr_front(2);
 
-            return operator_type::less;
+            return baryonyx::operator_type::less;
         } else if (str.size() > 1 && str[1] == '=') {
             stack.substr_front(2);
 
-            return operator_type::greater;
+            return baryonyx::operator_type::greater;
         }
 
         stack.substr_front(1);
-        return operator_type::equal;
+        return baryonyx::operator_type::equal;
     }
 
-    throw file_format_failure(file_format_error_tag::bad_operator,
-                              static_cast<int>(stack.line()),
-                              static_cast<int>(stack.column()));
+    throw baryonyx::file_format_failure(
+      baryonyx::file_format_error_tag::bad_operator,
+      static_cast<int>(stack.line()),
+      static_cast<int>(stack.column()));
 }
 
 static inline int
@@ -551,19 +555,22 @@ read_integer(parser_stack& stack)
 
     if ((errno == ERANGE && (value == LONG_MIN || value == LONG_MAX)) ||
         (value == 0 && endptr == str.c_str()))
-        throw file_format_failure(file_format_error_tag::bad_integer,
-                                  static_cast<int>(stack.line()),
-                                  static_cast<int>(stack.column()));
+        throw baryonyx::file_format_failure(
+          baryonyx::file_format_error_tag::bad_integer,
+          static_cast<int>(stack.line()),
+          static_cast<int>(stack.column()));
 
     if (value < INT_MIN)
-        throw file_format_failure(file_format_error_tag::bad_integer,
-                                  static_cast<int>(stack.line()),
-                                  static_cast<int>(stack.column()));
+        throw baryonyx::file_format_failure(
+          baryonyx::file_format_error_tag::bad_integer,
+          static_cast<int>(stack.line()),
+          static_cast<int>(stack.column()));
 
     if (value > INT_MAX)
-        throw file_format_failure(file_format_error_tag::bad_integer,
-                                  static_cast<int>(stack.line()),
-                                  static_cast<int>(stack.column()));
+        throw baryonyx::file_format_failure(
+          baryonyx::file_format_error_tag::bad_integer,
+          static_cast<int>(stack.line()),
+          static_cast<int>(stack.column()));
 
     if (*endptr != '\0')
         stack.push_front(endptr);
@@ -593,9 +600,10 @@ read_double(parser_stack& stack)
     double value = std::strtod(str.c_str(), &endptr);
     if ((errno == ERANGE && (value == HUGE_VAL || value == -HUGE_VAL)) ||
         (value == 0.0 && endptr == str.c_str()))
-        throw file_format_failure(file_format_error_tag::bad_integer,
-                                  static_cast<int>(stack.line()),
-                                  static_cast<int>(stack.column()));
+        throw baryonyx::file_format_failure(
+          baryonyx::file_format_error_tag::bad_integer,
+          static_cast<int>(stack.line()),
+          static_cast<int>(stack.column()));
 
     if (*endptr != '\0')
         stack.push_front(endptr);
@@ -685,7 +693,7 @@ read_objective_function_element(parser_stack& stack)
     return ret;
 }
 
-static inline objective_function_type
+static inline baryonyx::objective_function_type
 read_objective_function_type(parser_stack& stack)
 {
     auto str = stack.top();
@@ -705,21 +713,21 @@ read_objective_function_type(parser_stack& stack)
     }
 
     if (iequals(ret, "maximize"))
-        return objective_function_type::maximize;
+        return baryonyx::objective_function_type::maximize;
 
     if (iequals(ret, "minimize"))
-        return objective_function_type::minimize;
+        return baryonyx::objective_function_type::minimize;
 
-    throw file_format_failure(
-      file_format_error_tag::bad_objective_function_type,
+    throw baryonyx::file_format_failure(
+      baryonyx::file_format_error_tag::bad_objective_function_type,
       static_cast<int>(stack.line()),
       static_cast<int>(stack.column()));
 }
 
-static inline objective_function
-read_objective_function(parser_stack& stack, raw_problem& p)
+static inline baryonyx::objective_function
+read_objective_function(parser_stack& stack, baryonyx::raw_problem& p)
 {
-    objective_function ret;
+    baryonyx::objective_function ret;
 
     if (stack.is_topic())
         return ret;
@@ -752,10 +760,10 @@ read_objective_function(parser_stack& stack, raw_problem& p)
     return ret;
 }
 
-static inline std::tuple<constraint, operator_type>
-read_constraint(parser_stack& stack, raw_problem& p)
+static inline std::tuple<baryonyx::constraint, baryonyx::operator_type>
+read_constraint(parser_stack& stack, baryonyx::raw_problem& p)
 {
-    constraint cst;
+    baryonyx::constraint cst;
     std::string label;
 
     if (std::isalpha(stack.peek()) || stack.peek() == '_') {
@@ -786,20 +794,21 @@ read_constraint(parser_stack& stack, raw_problem& p)
               get_variable(stack.cache(), p.vars, std::get<0>(elem)));
         }
 
-        operator_type type = read_operator(stack);
+        baryonyx::operator_type type = read_operator(stack);
         cst.label = label;
         cst.value = read_integer(stack);
 
         return std::make_tuple(cst, type);
     }
 
-    throw file_format_failure(file_format_error_tag::bad_constraint,
-                              static_cast<int>(stack.line()),
-                              static_cast<int>(stack.column()));
+    throw baryonyx::file_format_failure(
+      baryonyx::file_format_error_tag::bad_constraint,
+      static_cast<int>(stack.line()),
+      static_cast<int>(stack.column()));
 }
 
 static inline void
-read_constraints(parser_stack& stack, raw_problem& p)
+read_constraints(parser_stack& stack, baryonyx::raw_problem& p)
 {
     auto str = stack.top();
 
@@ -811,19 +820,20 @@ read_constraints(parser_stack& stack, raw_problem& p)
         std::get<0>(cst).id = stack.current_constraint_id();
 
         switch (std::get<1>(cst)) {
-        case operator_type::equal:
+        case baryonyx::operator_type::equal:
             p.equal_constraints.emplace_back(std::get<0>(cst));
             break;
-        case operator_type::greater:
+        case baryonyx::operator_type::greater:
             p.greater_constraints.emplace_back(std::get<0>(cst));
             break;
-        case operator_type::less:
+        case baryonyx::operator_type::less:
             p.less_constraints.emplace_back(std::get<0>(cst));
             break;
         default:
-            throw file_format_failure(file_format_error_tag::unknown,
-                                      static_cast<int>(stack.line()),
-                                      static_cast<int>(stack.column()));
+            throw baryonyx::file_format_failure(
+              baryonyx::file_format_error_tag::unknown,
+              static_cast<int>(stack.line()),
+              static_cast<int>(stack.column()));
         }
 
         if (std::get<0>(cst).label.empty())
@@ -836,16 +846,18 @@ read_constraints(parser_stack& stack, raw_problem& p)
 }
 
 static inline void
-apply_bound(int value, operator_type type, variable_value& variable)
+apply_bound(int value,
+            baryonyx::operator_type type,
+            baryonyx::variable_value& variable)
 {
     switch (type) {
-    case operator_type::greater:
+    case baryonyx::operator_type::greater:
         variable.max = value;
         break;
-    case operator_type::less:
+    case baryonyx::operator_type::less:
         variable.min = value;
         break;
-    case operator_type::equal:
+    case baryonyx::operator_type::equal:
         variable.min = value;
         variable.max = value;
         break;
@@ -853,16 +865,18 @@ apply_bound(int value, operator_type type, variable_value& variable)
 }
 
 static inline void
-apply_bound(variable_value& variable, operator_type type, int value)
+apply_bound(baryonyx::variable_value& variable,
+            baryonyx::operator_type type,
+            int value)
 {
     switch (type) {
-    case operator_type::greater:
+    case baryonyx::operator_type::greater:
         variable.min = value;
         break;
-    case operator_type::less:
+    case baryonyx::operator_type::less:
         variable.max = value;
         break;
-    case operator_type::equal:
+    case baryonyx::operator_type::equal:
         variable.min = value;
         variable.max = value;
         break;
@@ -870,7 +884,7 @@ apply_bound(variable_value& variable, operator_type type, int value)
 }
 
 static inline void
-read_bound(parser_stack& stack, raw_problem& p)
+read_bound(parser_stack& stack, baryonyx::raw_problem& p)
 {
     /*
      * If first character is a digit, tries to read the bound:
@@ -910,7 +924,7 @@ read_bound(parser_stack& stack, raw_problem& p)
 }
 
 static inline void
-read_bounds(parser_stack& stack, raw_problem& p)
+read_bounds(parser_stack& stack, baryonyx::raw_problem& p)
 {
     auto str = stack.top();
 
@@ -922,7 +936,7 @@ read_bounds(parser_stack& stack, raw_problem& p)
 }
 
 static inline void
-read_binary(parser_stack& stack, raw_problem& p)
+read_binary(parser_stack& stack, baryonyx::raw_problem& p)
 {
     auto str = stack.top();
 
@@ -930,20 +944,21 @@ read_binary(parser_stack& stack, raw_problem& p)
         auto name = read_name(stack);
         auto id = get_variable_only(stack.cache(), name);
 
-        if (id < 0 || p.vars.values[id].type != variable_type::real)
-            throw file_format_failure(name,
-                                      file_format_error_tag::unknown,
-                                      static_cast<int>(stack.line()),
-                                      static_cast<int>(stack.column()));
+        if (id < 0 || p.vars.values[id].type != baryonyx::variable_type::real)
+            throw baryonyx::file_format_failure(
+              name,
+              baryonyx::file_format_error_tag::unknown,
+              static_cast<int>(stack.line()),
+              static_cast<int>(stack.column()));
 
-        p.vars.values[id] = { 0, 1, variable_type::binary };
+        p.vars.values[id] = { 0, 1, baryonyx::variable_type::binary };
 
         str = stack.top();
     }
 }
 
 static inline void
-read_general(parser_stack& stack, raw_problem& p)
+read_general(parser_stack& stack, baryonyx::raw_problem& p)
 {
     auto str = stack.top();
 
@@ -951,45 +966,205 @@ read_general(parser_stack& stack, raw_problem& p)
         auto name = read_name(stack);
         auto id = get_variable_only(stack.cache(), name);
 
-        if (id < 0 || p.vars.values[id].type != variable_type::real)
-            throw file_format_failure(name,
-                                      file_format_error_tag::unknown,
-                                      static_cast<int>(stack.line()),
-                                      static_cast<int>(stack.column()));
+        if (id < 0 || p.vars.values[id].type != baryonyx::variable_type::real)
+            throw baryonyx::file_format_failure(
+              name,
+              baryonyx::file_format_error_tag::unknown,
+              static_cast<int>(stack.line()),
+              static_cast<int>(stack.column()));
 
-        p.vars.values[id].type = variable_type::general;
+        p.vars.values[id].type = baryonyx::variable_type::general;
 
         str = stack.top();
     }
 }
 
+//
+// Writing part
+//
+
+template<typename Problem, typename Function>
+void
+write_function_element(std::ostream& os, const Problem& p, const Function& f)
+{
+    for (auto& elem : f) {
+        os << ((elem.factor < 0) ? "- " : "+ ");
+        if (elem.factor != 1)
+            os << std::abs(elem.factor) << ' ';
+
+        os << p.vars.names[elem.variable_index] << ' ';
+    }
+}
+
+template<typename Problem, typename Constraint>
+void
+write_constraint(std::ostream& os,
+                 const Problem& p,
+                 const Constraint& cst,
+                 const char* separator)
+{
+    if (!cst.label.empty())
+        os << cst.label << ": ";
+
+    write_function_element(os, p, cst.elements);
+    os << separator << cst.value << '\n';
+}
+
+template<typename Problem>
+void
+write_constraints(std::ostream& os, const Problem& pb)
+{
+    for (std::size_t i = 0, e = pb.equal_constraints.size(); i != e; ++i)
+        write_constraint(os, pb, pb.equal_constraints[i], " = ");
+
+    for (std::size_t i = 0, e = pb.greater_constraints.size(); i != e; ++i)
+        write_constraint(os, pb, pb.greater_constraints[i], " >= ");
+
+    for (std::size_t i = 0, e = pb.less_constraints.size(); i != e; ++i)
+        write_constraint(os, pb, pb.less_constraints[i], " <= ");
+}
+
+template<typename Problem>
+void
+write_bounds(std::ostream& os, const Problem& p)
+{
+    for (std::size_t i{ 0 }, e{ p.vars.names.size() }; i != e; ++i) {
+        if (p.vars.values[i].min != 0)
+            os << p.vars.names[i] << " >= " << p.vars.values[i].min << '\n';
+
+        if (p.vars.values[i].max != std::numeric_limits<int>::max())
+            os << p.vars.names[i] << " <= " << p.vars.values[i].max << '\n';
+    }
+}
+
+template<typename Problem>
+void
+write_problem(std::ostream& os, const Problem& p)
+{
+    if (p.vars.names.empty())
+        return;
+
+    if (p.type == baryonyx::objective_function_type::maximize)
+        os << "maximize\n";
+    else
+        os << "minimize\n";
+
+    ::write_function_element(os, p, p.objective.elements);
+
+    if (p.objective.value < 0)
+        os << p.objective.value;
+    else if (p.objective.value > 0)
+        os << " + " << p.objective.value;
+
+    os << "\nsubject to\n";
+    ::write_constraints(os, p);
+
+    os << "bounds\n";
+    ::write_bounds(os, p);
+
+    bool have_binary = false;
+    bool have_general = false;
+
+    for (std::size_t i{ 0 }, e{ p.vars.names.size() }; i != e; ++i) {
+        if (p.vars.values[i].type == baryonyx::variable_type::binary) {
+            have_binary = true;
+            if (have_general == true)
+                break;
+        } else if (p.vars.values[i].type == baryonyx::variable_type::general) {
+            have_general = true;
+            if (have_binary == true)
+                break;
+        }
+    }
+
+    if (have_binary) {
+        os << "binary\n";
+        for (std::size_t i{ 0 }, e{ p.vars.names.size() }; i != e; ++i)
+            if (p.vars.values[i].type == baryonyx::variable_type::binary)
+                os << ' ' << p.vars.names[i] << '\n';
+    }
+
+    if (have_general) {
+        os << "general\n";
+        for (std::size_t i{ 0 }, e{ p.vars.names.size() }; i != e; ++i)
+            if (p.vars.values[i].type == baryonyx::variable_type::general)
+                os << ' ' << p.vars.names[i] << '\n';
+    }
+
+    os << "end\n";
+}
+
+} // anonymous namespace
+
 namespace baryonyx {
 
-baryonyx::raw_problem
-read_problem(std::istream& is)
+/**
+ * Write @e lp problem into a stream.
+ *
+ */
+std::ostream&
+operator<<(std::ostream& os, const problem& p)
 {
-    raw_problem p;
+    if (os)
+        ::write_problem(os, p);
+
+    return os;
+}
+
+/**
+ * Write @e lp problem into a stream.
+ *
+ */
+std::ostream&
+operator<<(std::ostream& os, const raw_problem& p)
+{
+    if (os)
+        ::write_problem(os, p);
+
+    return os;
+}
+
+void
+clear(raw_problem& pb)
+{
+    std::vector<objective_function_element>().swap(pb.objective.elements);
+
+    std::vector<constraint>().swap(pb.equal_constraints);
+    std::vector<constraint>().swap(pb.greater_constraints);
+    std::vector<constraint>().swap(pb.less_constraints);
+
+    std::vector<std::string>().swap(pb.vars.names);
+    std::vector<variable_value>().swap(pb.vars.values);
+
+    pb.type = objective_function_type::maximize;
+}
+
+std::istream&
+operator>>(std::istream& is, raw_problem& p)
+{
+    clear(p);
+
     parser_stack stack(is);
     std::string toek;
 
-    p.type = read_objective_function_type(stack);
-    p.objective = read_objective_function(stack, p);
+    p.type = ::read_objective_function_type(stack);
+    p.objective = ::read_objective_function(stack, p);
 
     if (stack.is_subject_to())
-        read_constraints(stack, p);
+        ::read_constraints(stack, p);
 
     if (stack.is_bounds())
-        read_bounds(stack, p);
+        ::read_bounds(stack, p);
 
     if (stack.is_binary())
-        read_binary(stack, p);
+        ::read_binary(stack, p);
 
     if (stack.is_general())
-        read_general(stack, p);
+        ::read_general(stack, p);
 
     if (stack.is_end()) {
         if (stack.empty()) {
-            return p;
+            return is;
         }
     }
 
@@ -998,4 +1173,5 @@ read_problem(std::istream& is)
                               static_cast<int>(stack.line()),
                               static_cast<int>(stack.column()));
 }
-}
+
+} // baryonyx namespace

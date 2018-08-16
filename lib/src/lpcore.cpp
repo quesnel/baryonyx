@@ -123,43 +123,14 @@ make_problem(const baryonyx::context_ptr& ctx, const std::string& filename)
 {
     info(ctx, "problem reads from file `{}'\n", filename);
 
-    std::ifstream ifs;
-    ifs.exceptions(std::ifstream::badbit);
-    ifs.open(filename);
-
-    return read_problem(ifs);
-}
-
-raw_problem
-make_problem(const baryonyx::context_ptr& ctx, std::istream& is)
-{
-    info(ctx, "problem reads from stream\n");
-
-    is.exceptions(std::ifstream::badbit);
-
-    return read_problem(is);
-}
-
-result
-make_result(const baryonyx::context_ptr& ctx, const std::string& filename)
-{
-    info(ctx, "solution reads from file {}\n", filename);
+    raw_problem pb;
 
     std::ifstream ifs;
-    ifs.exceptions(std::ifstream::badbit);
     ifs.open(filename);
 
-    return read_result(ifs);
-}
+    ifs >> pb;
 
-result
-make_result(const baryonyx::context_ptr& ctx, std::istream& is)
-{
-    info(ctx, "solution reads from stream\n");
-
-    is.exceptions(std::ifstream::badbit);
-
-    return read_result(is);
+    return pb;
 }
 
 result

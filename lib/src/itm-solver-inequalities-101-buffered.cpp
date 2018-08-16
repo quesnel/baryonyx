@@ -182,11 +182,11 @@ struct solver_inequalities_101coeff_buffered
     }
 
     template<typename Container>
-    int compute_violated_constraints(Container& c) const
+    int compute_violated_constraints(Container& container) const
     {
         typename sparse_matrix<int>::const_row_iterator it, et;
 
-        c.clear();
+        container.clear();
 
         for (int k = 0; k != m; ++k) {
             std::tie(it, et) = ap.row(k);
@@ -196,10 +196,10 @@ struct solver_inequalities_101coeff_buffered
                 v += A[it->value] * x[it->column];
 
             if (!(b[k].min <= v && v <= b[k].max))
-                c.emplace_back(k);
+                container.emplace_back(k);
         }
 
-        return length(c);
+        return length(container);
     }
 
     double results(const std::unique_ptr<floatingpointT[]>& original_costs,

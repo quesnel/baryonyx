@@ -399,7 +399,7 @@ copy_context(const context_ptr& ctx,
  *     solver without change in @c solver_parameters). Normally, this function
  *     is not used.
  *
- * @param ctx Solver's internal state.
+ * @param ctx Baryonyx's internal state.
  * @param name The name of the parameters.
  * @param value A string representation of the parameters.
  */
@@ -414,7 +414,7 @@ context_set_parameters(const context_ptr& ctx,
  * @details For each variables of @c params, value is check and assign to the
  *     solver's internal variables.
  *
- * @param ctx Solver's internal state.
+ * @param ctx Baryonyx's internal state.
  * @param params Parameters to be copied.
  */
 BARYONYX_API void
@@ -424,7 +424,7 @@ context_set_solver_parameters(const context_ptr& ctx,
 /**
  * @brief Get solver's internal state.
  *
- * @param ctx Solver's internal state.
+ * @param ctx Baryonyx's internal state.
  *
  * @return A copy of the internal state.
  */
@@ -603,28 +603,25 @@ struct result
  *
  * @exception baryonyx::file_format_error, baryonyx::file_access_error,
  *     std::system_error.
+ *
+ * @param ctx Baryonyx's internal state.
+ * @param filename The file to read.
  */
 BARYONYX_API
 raw_problem
 make_problem(const baryonyx::context_ptr& ctx, const std::string& filename);
 
 /**
- * Read a @e lp file from the @e is stream.
+ * @brief Read a @c baryonyx::result from a file.
+ * @details A @c baryonyx::result file store all meta data into comments and
+ *     variable value.
  *
- * @exception baryonyx::file_format_error, baryonyx::file_access_error,
- *     std::system_error.
+ * @param ctx Baryonyx's internal state.
+ * @param filename The file to read.
  */
-BARYONYX_API
-raw_problem
-make_problem(const baryonyx::context_ptr& ctx, std::istream& is);
-
 BARYONYX_API
 result
 make_result(const baryonyx::context_ptr& ctx, const std::string& filename);
-
-BARYONYX_API
-result
-make_result(const baryonyx::context_ptr& ctx, std::istream& is);
 
 /**
  * @brief Preprocessor options available for @c solve or @c opitimize function.
@@ -640,6 +637,7 @@ enum class preprocessor_options
  * @details Try to solve or find a feasible solution for the @c
  *     baryonyx::problem.
  *
+ * @param ctx Baryonyx's internal state.
  * @param pb Problem definition.
  *
  * @exception baryonyx::solver_error
@@ -655,6 +653,7 @@ solve(const baryonyx::context_ptr& ctx,
  * @details Try to optimize the @c baryonyx::problem with a set of
  *     parameters.
  *
+ * @param ctx Baryonyx's internal state.
  * @param pb Problem definition.
  *
  * @return A representation of the result.

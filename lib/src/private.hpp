@@ -101,14 +101,15 @@ struct context
 #endif
     }
 
-    context(string_logger_functor logger, int verbose_level = 6)
-      : string_logger(std::move(logger))
+    context(string_logger_functor logger_, int verbose_level_ = 6)
+      : string_logger(std::move(logger_))
       , cfile_logger(nullptr)
       , logger(context::logger_type::string)
     {
-        if (verbose_level != 6)
+        if (verbose_level_ != 6)
             log_priority = static_cast<context::message_type>(
-              verbose_level < 0 ? 0 : verbose_level > 7 ? 7 : verbose_level);
+              verbose_level_ < 0 ? 0
+                                 : verbose_level_ > 7 ? 7 : verbose_level_);
     }
 
     solver_parameters parameters;

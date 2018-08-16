@@ -4,7 +4,49 @@ option(WITH_FULL_OPTIMIZATION "Disable all logging facilities and active heavy o
 
 option(WITH_DEBUG "enable debug log message. [default: ON]" ON)
 
-add_library(libbaryonyx SHARED src/automatic-optimizer.cpp src/private.cpp include/baryonyx/core-test include/baryonyx/core include/baryonyx/core-compare src/knapsack-dp-solver.hpp src/private.hpp src/problem.hpp src/problem-out.hpp src/merged-constraint.cpp src/select.cpp src/preprocessor.cpp src/preprocessor-2.cpp src/fixed-array.hpp src/lpcore.cpp src/branch-and-bound-solver.hpp src/utils.hpp src/fixed-2darray.hpp src/itm-solver-inequalities-Z.cpp src/itm-solver-common.hpp src/itm-common.hpp src/itm-solver-common.hpp src/itm-solver-common.cpp src/memory.cpp src/memory.hpp src/sol-format.cpp src/itm-solver-equalities-01.cpp src/itm-solver-equalities-101.cpp src/itm-solver-inequalities-01.cpp src/itm-solver-inequalities-101.cpp src/itm-solver-inequalities-101-buffered.cpp src/itm-solver-inequalities-01.cpp src/itm-solver-equalities-101.cpp src/itm-solver-inequalities-101.cpp src/lpformat-io.cpp src/sparse-matrix.hpp src/observer.hpp src/pnm.hpp)
+set(public_baryonyx_header
+ include/baryonyx/core-compare
+ include/baryonyx/core-out
+ include/baryonyx/core-test
+ include/baryonyx/core-utils)
+
+set(private_baryonyx_source
+ src/automatic-optimizer.cpp
+ src/branch-and-bound-solver.hpp
+ src/debug.hpp
+ src/fixed-2darray.hpp
+ src/fixed-array.hpp
+ src/itm-common.hpp
+ src/itm-solver-common.cpp
+ src/itm-solver-common.hpp
+ src/itm-solver-equalities-01.cpp
+ src/itm-solver-equalities-101.cpp
+ src/itm-solver-inequalities-01.cpp
+ src/itm-solver-inequalities-101-buffered.cpp
+ src/itm-solver-inequalities-101.cpp
+ src/itm-solver-inequalities-Z.cpp
+ src/knapsack-dp-solver.hpp
+ src/lpcore.cpp
+ src/memory.cpp
+ src/memory.hpp
+ src/merged-constraint.cpp
+ src/observer.hpp
+ src/pnm.hpp
+ src/preprocessor-2.cpp
+ src/preprocessor.cpp
+ src/private.cpp
+ src/private.hpp
+ src/problem.cpp
+ src/problem.hpp
+ src/resume.hpp
+ src/result.cpp
+ src/result.hpp
+ src/select.cpp
+ src/sparse-matrix.hpp
+ src/sparse-vector.hpp
+ src/utils.hpp)
+
+add_library(libbaryonyx SHARED ${public_baryonyx_header} ${private_baryonyx_source})
 
 target_include_directories(libbaryonyx PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
@@ -44,7 +86,7 @@ install(TARGETS libbaryonyx
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin)
 
-add_library(libbaryonyx-static STATIC src/automatic-optimizer.cpp src/private.cpp include/baryonyx/core-test include/baryonyx/core include/baryonyx/core-compare src/knapsack-dp-solver.hpp src/private.hpp src/problem.hpp src/problem-out.hpp src/merged-constraint.cpp src/select.cpp src/preprocessor.cpp src/preprocessor-2.cpp src/fixed-array.hpp src/lpcore.cpp src/branch-and-bound-solver.hpp src/utils.hpp src/fixed-2darray.hpp src/itm-solver-inequalities-Z.cpp src/itm-solver-common.hpp src/itm-common.hpp src/itm-solver-common.hpp src/itm-solver-common.cpp src/memory.cpp src/memory.hpp src/sol-format.cpp src/itm-solver-equalities-01.cpp src/itm-solver-equalities-101.cpp src/itm-solver-inequalities-01.cpp src/itm-solver-inequalities-101.cpp src/itm-solver-inequalities-101-buffered.cpp src/itm-solver-inequalities-01.cpp src/itm-solver-equalities-101.cpp src/itm-solver-inequalities-101.cpp src/lpformat-io.cpp src/sparse-matrix.hpp src/observer.hpp src/pnm.hpp)
+add_library(libbaryonyx-static STATIC ${public_baryonyx_header} ${private_baryonyx_source})
 
 target_include_directories(libbaryonyx-static PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>

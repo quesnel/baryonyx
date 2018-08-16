@@ -23,12 +23,12 @@
 #ifndef ORG_VLEPROJECT_BARYONYX_PRIVATE_MEMORY_HPP
 #define ORG_VLEPROJECT_BARYONYX_PRIVATE_MEMORY_HPP
 
-#include <baryonyx/core>
-
+#include <string>
 #include <tuple>
 
 namespace baryonyx {
 
+struct raw_problem;
 struct problem;
 
 enum class show_size_type
@@ -77,7 +77,7 @@ to_string(std::tuple<double, show_size_type> memory_used);
  *     baryonyx::problem data structures.
  */
 std::size_t
-memory_consumed(const baryonyx::raw_problem& pb) noexcept;
+memory_consumed(const raw_problem& pb) noexcept;
 
 /**
  * @brief Calculates an estimate of the consumed memory by the data structures.
@@ -86,7 +86,7 @@ memory_consumed(const baryonyx::raw_problem& pb) noexcept;
  *     baryonyx::problem data structures.
  */
 std::size_t
-memory_consumed(const baryonyx::problem& pb) noexcept;
+memory_consumed(const problem& pb) noexcept;
 
 } // namespace baryonyx
 
