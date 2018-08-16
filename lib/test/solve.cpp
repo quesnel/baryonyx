@@ -24,6 +24,7 @@
 #include "unit-test.hpp"
 
 #include <baryonyx/core-compare>
+#include <baryonyx/core-out>
 #include <baryonyx/core>
 
 #include <fmt/printf.h>

@@ -598,22 +598,6 @@ struct result
     }
 };
 
-inline std::tuple<double, double>
-compute_min_max_objective_function(const objective_function& obj) noexcept
-{
-    auto ret = std::make_tuple(obj.value, obj.value);
-
-    for (const auto& elem : obj.elements)
-        if (elem.factor < 0)
-            std::get<0>(ret) += elem.factor;
-        else if (elem.factor > 0)
-            std::get<1>(ret) += elem.factor;
-        else
-            std::get<1>(ret) += 1;
-
-    return ret;
-}
-
 /**
  * Read a @e lp file from the @e file.
  *

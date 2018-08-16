@@ -30,6 +30,7 @@
 #include <numeric>
 #include <ostream>
 
+#include <baryonyx/core-utils>
 #include <baryonyx/core>
 
 #include "problem.hpp"
@@ -173,84 +174,6 @@ operator<<(std::ostream& os, const raw_problem& p)
 {
     if (os)
         detail::write_problem(os, p);
-
-    return os;
-}
-
-/**
- * @brief Write baryonyx::result into a `dot sol` format.
- * @details The `dot sol` format use the same comment and variable names as the
- *     `dot lp` format. All meta data, constraint remaining, duration are
- *     stored into comment in `dot sol` format. Only variable affectation are
- *     full useful.
- *
- * @param os [out] class output std::ostream.
- * @param result [in] the baryonyx::result to write.
- */
-inline std::ostream&
-operator<<(std::ostream& os, const result& result)
-{
-    auto store = os.flags();
-
-    os.flags(store | os.boolalpha);
-    os << R"(\ solver................: )" << result.method << '\n'
-       << R"(\ constraints...........: )" << result.constraints << '\n'
-       << R"(\ variables.............: )" << result.variables << '\n'
-       << R"(\ duration..............: )" << result.duration << "s\n"
-       << R"(\ loop..................: )" << result.loop << '\n'
-       << R"(\ status................: )";
-
-    switch (result.status) {
-    case result_status::internal_error:
-        os << "internal error reported\n";
-        break;
-    case result_status::uninitialized:
-        os << "uninitialized\n";
-        break;
-    case result_status::success:
-        os << "solution found\n";
-
-        if (result.solutions.empty()) // Baryonyx ensures solutions are not
-            break;                    // empty.
-
-        os << R"(\ value.................: )" << result.solutions.back().value
-           << '\n'
-           << R"(\ other value...........: )";
-
-        for (const auto& elem : result.solutions)
-            os << elem.value << ' ';
-        os << '\n';
-
-        os << "\\ variables.............: \n";
-
-        for (std::size_t i{ 0 }, e{ result.affected_vars.names.size() };
-             i != e;
-             ++i)
-            os << result.affected_vars.names[i] << '='
-               << (result.affected_vars.values[i] ? 1 : 0) << '\n';
-
-        for (std::size_t i{ 0 }, e{ result.variable_name.size() }; i != e; ++i)
-            os << result.variable_name[i] << '='
-               << (result.solutions.back().variables[i] ? 1 : 0) << '\n';
-        break;
-    case result_status::time_limit_reached:
-        os << "time limit reached\n"
-           << R"(\ remaining constraints.: )" << result.remaining_constraints
-           << '\n';
-        break;
-    case result_status::kappa_max_reached:
-        os << "kappa max reached\n"
-           << R"(\ remaining constraints.: )" << result.remaining_constraints
-           << '\n';
-        break;
-    case result_status::limit_reached:
-        os << "limit reached\n"
-           << R"(\ remaining constraints.: )" << result.remaining_constraints
-           << '\n';
-        break;
-    }
-
-    os.flags(store);
 
     return os;
 }
