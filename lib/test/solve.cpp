@@ -62,8 +62,7 @@ test_preprocessor()
         params.cost_norm = baryonyx::solver_parameters::cost_norm_type::loo;
         baryonyx::context_set_solver_parameters(ctx, params);
 
-        auto result =
-          baryonyx::solve(ctx, pb, baryonyx::preprocessor_options::all);
+        auto result = baryonyx::solve(ctx, pb);
 
         Ensures(result.affected_vars.names.size() == 21);
         Ensures(result.affected_vars.values[0] == 0);
@@ -113,8 +112,7 @@ test_preprocessor_2()
         params.pre_order = baryonyx::solver_parameters::pre_constraint_order::
           equal_less_greater;
 
-        auto result =
-          baryonyx::solve(ctx, pb, baryonyx::preprocessor_options::all);
+        auto result = baryonyx::solve(ctx, pb);
 
         Ensures(result);
         Ensures(!result.solutions.empty());
@@ -271,6 +269,10 @@ test_negative_coeff3()
     auto ctx = baryonyx::make_context();
 
     auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/negative-coeff3.lp");
+
+    baryonyx::solver_parameters params;
+    params.limit = 10000;
+    baryonyx::context_set_solver_parameters(ctx, params);
 
     auto result = baryonyx::solve(ctx, pb);
 

@@ -20,6 +20,7 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+#include <baryonyx/core-utils>
 #include <baryonyx/core>
 
 #include <fmt/core.h>
@@ -279,7 +280,7 @@ assign_0oo(std::string value, double def)
 {
     auto ret = ::to_double(value, def);
 
-    return ret < 0 ? 0 : ! std::isnormal(ret) ? 1 : ret;
+    return ret < 0 ? 0 : !std::isnormal(ret) ? 1 : ret;
 }
 
 static double
@@ -480,7 +481,8 @@ parse(int argc, const char* argv[])
         }
 
         if (arg == "--disable-preprocessing" || arg == "-np") {
-            ret.preprocessing = false;
+            ret.parameters.preprocessor =
+              baryonyx::solver_parameters::preprocessor_options::none;
             continue;
         }
 
@@ -494,11 +496,25 @@ parse(int argc, const char* argv[])
             std::string str(opt);
 
             if (str == "manual")
-                ret.parameters.auto_tune =
-                  baryonyx::solver_parameters::auto_tune_parameters::manual;
+                ret.parameters.mode =
+                  baryonyx::solver_parameters::mode_type::manual;
             else if (str == "nlopt")
-                ret.parameters.auto_tune =
-                  baryonyx::solver_parameters::auto_tune_parameters::nlopt;
+                ret.parameters.mode =
+                  baryonyx::solver_parameters::mode_type::nlopt;
+            else if (str == "branch")
+                ret.parameters.mode =
+                  baryonyx::solver_parameters::mode_type::branch;
+            else if (str == "branch-manual")
+                ret.parameters.mode =
+                  baryonyx::solver_parameters::mode_type::manual |
+                  baryonyx::solver_parameters::mode_type::branch;
+            else if (str == "branch-nlopt")
+                ret.parameters.mode =
+                  baryonyx::solver_parameters::mode_type::nlopt |
+                  baryonyx::solver_parameters::mode_type::branch;
+            else
+                ret.parameters.mode =
+                  baryonyx::solver_parameters::mode_type::none;
 
             i = get.i;
             continue;
@@ -675,34 +691,12 @@ resume(const baryonyx::result& result, FILE* fd) noexcept
 }
 
 static inline auto
-solve(const baryonyx::context_ptr& ctx,
-      const baryonyx::raw_problem& pb,
-      bool with_preprocess) -> baryonyx::result
-{
-    return with_preprocess
-             ? baryonyx::solve(ctx, pb, baryonyx::preprocessor_options::all)
-             : baryonyx::solve(ctx, pb, baryonyx::preprocessor_options::none);
-}
-
-static inline auto
-optimize(const baryonyx::context_ptr& ctx,
-         const baryonyx::raw_problem& pb,
-         bool with_preprocess) -> baryonyx::result
-{
-    return with_preprocess
-             ? baryonyx::optimize(ctx, pb, baryonyx::preprocessor_options::all)
-             : baryonyx::optimize(
-                 ctx, pb, baryonyx::preprocessor_options::none);
-}
-
-static inline auto
 solve_or_optimize(const baryonyx::context_ptr& ctx,
                   const baryonyx::raw_problem& pb,
-                  bool with_optimization,
-                  bool with_preprocess) -> baryonyx::result
+                  bool with_optimization) -> baryonyx::result
 {
-    return with_optimization ? optimize(ctx, pb, with_preprocess)
-                             : solve(ctx, pb, with_preprocess);
+    return with_optimization ? baryonyx::optimize(ctx, pb)
+                             : baryonyx::solve(ctx, pb);
 }
 
 int
@@ -752,8 +746,7 @@ main(int argc, const char* argv[])
               "\\ solver starts: \n",
               std::put_time(std::localtime(&in_time_t), "%Y-%m-%d %X"));
 
-            auto ret = solve_or_optimize(
-              ctx, pb, params.optimize, params.preprocessing);
+            auto ret = solve_or_optimize(ctx, pb, params.optimize);
 
             if (ret.status == baryonyx::result_status::success) {
                 fmt::print("Best solution found: {} in {}s\n",
@@ -822,8 +815,7 @@ main(int argc, const char* argv[])
 
                 fmt::print(ofs.get(), "{} ", elem);
 
-                auto ret = solve_or_optimize(
-                  ctx, pb, params.optimize, params.preprocessing);
+                auto ret = solve_or_optimize(ctx, pb, params.optimize);
 
                 if (ret.status == baryonyx::result_status::success) {
                     fmt::print(ofs.get(),

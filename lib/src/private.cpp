@@ -90,12 +90,37 @@ cost_norm_type_to_string(solver_parameters::cost_norm_type type) noexcept
 }
 
 static const char*
-auto_tune_parameters_to_string(
-  solver_parameters::auto_tune_parameters type) noexcept
+mode_type_to_string(solver_parameters::mode_type type) noexcept
 {
-    static const char* ret[] = { "disabled", "manual", "nlopt" };
+    static const char* ret[] = {
+        "disabled", "manual",           "nlopt",
+        "branch",   "manul-and-branch", "nlopt-and-branch"
+    };
 
-    return ret[static_cast<int>(type)];
+    using underlying_type =
+      typename std::underlying_type<solver_parameters::mode_type>::type;
+
+    if (static_cast<underlying_type>(type) &
+        static_cast<underlying_type>(solver_parameters::mode_type::branch)) {
+        if (static_cast<underlying_type>(type) &
+            static_cast<underlying_type>(solver_parameters::mode_type::manual))
+            return ret[4];
+        else if (static_cast<underlying_type>(type) &
+                 static_cast<underlying_type>(
+                   solver_parameters::mode_type::nlopt))
+            return ret[5];
+        else
+            return ret[3];
+    } else {
+        if (static_cast<underlying_type>(type) &
+            static_cast<underlying_type>(solver_parameters::mode_type::manual))
+            return ret[1];
+        if (static_cast<underlying_type>(type) &
+            static_cast<underlying_type>(solver_parameters::mode_type::nlopt))
+            return ret[2];
+    }
+
+    return ret[0];
 }
 
 static const char*
@@ -181,7 +206,7 @@ context_set_solver_parameters(const context_ptr& ctx,
     ctx->parameters.float_type = params.float_type;
     ctx->parameters.init_policy = params.init_policy;
     ctx->parameters.cost_norm = params.cost_norm;
-    ctx->parameters.auto_tune = params.auto_tune;
+    ctx->parameters.mode = params.mode;
     ctx->parameters.observer = params.observer;
 }
 
@@ -206,7 +231,7 @@ print(const context_ptr& ctx)
          ctx->parameters.time_limit,
          floating_point_type_to_string(ctx->parameters.float_type),
          ctx->parameters.print_level,
-         auto_tune_parameters_to_string(ctx->parameters.auto_tune),
+         mode_type_to_string(ctx->parameters.mode),
          observer_type_to_string(ctx->parameters.observer));
 
     info(ctx,

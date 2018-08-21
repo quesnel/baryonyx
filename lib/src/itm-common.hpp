@@ -42,7 +42,7 @@ namespace baryonyx {
 namespace itm {
 
 /**
- * x_type is a std::vector<bool> instead of a baryonyx::fixed_array<bool> to
+ * x_type is a std::vector<bool> instead of a fixed_array<bool> to
  * use the specialized version of vector, which is used for elements of type
  * bool and optimizes for space.
  */
@@ -55,26 +55,22 @@ struct minimize_tag
 {};
 
 inline double
-best_solution_value(const baryonyx::result& res) noexcept
+best_solution_value(const result& res) noexcept
 {
-    bx_expects(res.status == baryonyx::result_status::success);
+    bx_expects(res.status == result_status::success);
     bx_expects(!res.solutions.empty());
 
     return res.solutions.back().value;
 }
 
 inline bool
-is_better_solution(const baryonyx::result& lhs,
-                   const baryonyx::result& rhs,
-                   maximize_tag) noexcept
+is_better_solution(const result& lhs, const result& rhs, maximize_tag) noexcept
 {
     return best_solution_value(lhs) > best_solution_value(rhs);
 }
 
 inline bool
-is_better_solution(const baryonyx::result& lhs,
-                   const baryonyx::result& rhs,
-                   minimize_tag) noexcept
+is_better_solution(const result& lhs, const result& rhs, minimize_tag) noexcept
 {
     return best_solution_value(lhs) < best_solution_value(rhs);
 }
@@ -292,9 +288,9 @@ is_valid_solution(const Solver& s) noexcept
     return s.is_valid_solution();
 }
 
-template<typename Solver, typename Container>
+template<typename Solver>
 inline int
-compute_missing_constraint(const Solver& s, Container& c)
+compute_missing_constraint(const Solver& s, std::vector<int>& c)
 {
     return s.compute_violated_constraints(c);
 }
@@ -306,7 +302,7 @@ init_solver(Solver& slv,
             solver_parameters::init_policy_type type,
             double init_random)
 {
-    using floatingpointT = typename Solver::floatingpoint_type;
+    using floatingpointT = typename Solver::float_type;
 
     std::fill(slv.P.get(),
               slv.P.get() + slv.ap.length(),
@@ -395,7 +391,7 @@ print_solver(const Solver& slv,
 
 template<typename Solver>
 inline void
-print_missing_constraint(const baryonyx::context_ptr& ctx,
+print_missing_constraint(const context_ptr& ctx,
                          const Solver& slv,
                          const std::vector<std::string>& names) noexcept
 {
@@ -567,7 +563,7 @@ struct bounds_printer
     template<typename SolverT>
     void operator()(const SolverT& slv,
                     const context_ptr& ctx,
-                    const baryonyx::result& best)
+                    const result& best)
     {
         floatingpointT lb = init_bound(slv);
         floatingpointT ub = init_ub(modeT());
@@ -584,46 +580,16 @@ struct bounds_printer
     }
 };
 
-namespace details {
-inline int
-constraint(std::vector<int>::iterator it)
-{
-    return *it;
-}
-
-inline int
-constraint(std::vector<int>::reverse_iterator it)
-{
-    return *it;
-}
-
-inline int
-constraint(std::vector<std::pair<int, int>>::iterator it)
-{
-    return it->first;
-}
-
-} // namespace details
-
-template<typename Iterator>
-int
-constraint(Iterator it)
-{
-    return details::constraint(it);
-}
-
 template<typename floatingpointT, typename randomT>
 struct compute_none
 {
     using random_type = randomT;
 
-    const context_ptr& m_ctx;
     std::vector<int> R;
 
     template<typename solverT>
-    compute_none(const context_ptr& ctx, const solverT& s, randomT&)
-      : m_ctx(ctx)
-      , R(s.m)
+    compute_none(const solverT& s, randomT&)
+      : R(s.m)
     {
         compute_missing_constraint(s, R);
     }
@@ -658,14 +624,12 @@ struct compute_reversing
 {
     using random_type = randomT;
 
-    const context_ptr& m_ctx;
     std::vector<int> R;
     int nb = 0;
 
     template<typename solverT>
-    compute_reversing(const context_ptr& ctx, solverT& s, randomT&)
-      : m_ctx(ctx)
-      , R(s.m)
+    compute_reversing(solverT& s, randomT&)
+      : R(s.m)
     {
         compute_missing_constraint(s, R);
     }
@@ -677,8 +641,10 @@ struct compute_reversing
                      floatingpointT theta,
                      floatingpointT objective_amplifier)
     {
+        std::reverse(R.begin(), R.end());
+
         solver.push_and_compute_update_row(
-          R.rbegin(), R.rend(), kappa, delta, theta, objective_amplifier);
+          R.begin(), R.end(), kappa, delta, theta, objective_amplifier);
 
         return compute_missing_constraint(solver, R);
     }
@@ -689,7 +655,9 @@ struct compute_reversing
             floatingpointT delta,
             floatingpointT theta)
     {
-        solver.compute_update_row(R.rbegin(), R.rend(), kappa, delta, theta);
+        std::reverse(R.begin(), R.end());
+
+        solver.compute_update_row(R.begin(), R.end(), kappa, delta, theta);
 
         return compute_missing_constraint(solver, R);
     }
@@ -700,14 +668,12 @@ struct compute_random
 {
     using random_type = randomT;
 
-    const context_ptr& m_ctx;
     std::vector<int> R;
     random_type& rng;
 
     template<typename solverT>
-    compute_random(const context_ptr& ctx, solverT& s, random_type& rng_)
-      : m_ctx(ctx)
-      , R(s.m)
+    compute_random(solverT& s, random_type& rng_)
+      : R(s.m)
       , rng(rng_)
     {
         compute_missing_constraint(s, R);
@@ -772,15 +738,13 @@ struct compute_infeasibility
     using random_type = randomT;
     using direction_type = directionT;
 
-    const context_ptr& m_ctx;
-    std::vector<std::pair<int, int>> R;
+    std::vector<std::pair<int, int>> m_order;
+    std::vector<int> R;
     random_type& rng;
 
     template<typename solverT>
-    compute_infeasibility(const context_ptr& ctx,
-                          solverT& s,
-                          random_type& rng_)
-      : m_ctx(ctx)
+    compute_infeasibility(solverT& s, random_type& rng_)
+      : m_order(s.m)
       , R(s.m)
       , rng(rng_)
     {
@@ -790,7 +754,7 @@ struct compute_infeasibility
     template<typename solverT>
     int local_compute_missing_constraint(solverT& solver)
     {
-        R.clear();
+        m_order.clear();
 
         for (int k = 0, e = solver.m; k != e; ++k) {
             sparse_matrix<int>::const_row_iterator it, et;
@@ -801,12 +765,12 @@ struct compute_infeasibility
                 v += solver.factor(it->value) * solver.x[it->column];
 
             if (solver.bound_min(k) > v)
-                R.push_back(std::make_pair(k, solver.bound_min(k) - v));
+                m_order.push_back(std::make_pair(k, solver.bound_min(k) - v));
             else if (solver.bound_max(k) < v)
-                R.push_back(std::make_pair(k, v - solver.bound_max(k)));
+                m_order.push_back(std::make_pair(k, v - solver.bound_max(k)));
         }
 
-        return length(R);
+        return length(m_order);
     }
 
     template<typename solverT>
@@ -816,7 +780,11 @@ struct compute_infeasibility
                      floatingpointT theta,
                      floatingpointT objective_amplifier)
     {
-        baryonyx::itm::sort(R.begin(), R.end(), direction_type());
+        itm::sort(m_order.begin(), m_order.end(), direction_type());
+
+        R.resize(m_order.size());
+        for (std::size_t i{ 0 }, e{ m_order.size() }; i != e; ++i)
+            R[i] = m_order[i].first;
 
         solver.push_and_compute_update_row(
           R.begin(), R.end(), kappa, delta, theta, objective_amplifier);
@@ -830,7 +798,11 @@ struct compute_infeasibility
             floatingpointT delta,
             floatingpointT theta)
     {
-        baryonyx::itm::sort(R.begin(), R.end(), direction_type());
+        itm::sort(m_order.begin(), m_order.end(), direction_type());
+
+        R.resize(m_order.size());
+        for (std::size_t i{ 0 }, e{ m_order.size() }; i != e; ++i)
+            R[i] = m_order[i].first;
 
         solver.compute_update_row(R.begin(), R.end(), kappa, delta, theta);
 
@@ -1060,6 +1032,32 @@ generate_seed(randomT& rng, unsigned thread)
 
     return ret;
 }
+
+template<typename Float, typename Random, int o>
+using constraint_sel = typename std::conditional<
+  o == 0,
+  compute_none<Float, Random>,
+  typename std::conditional<
+    o == 1,
+    compute_reversing<Float, Random>,
+    typename std::conditional<
+      o == 2,
+      compute_random<Float, Random>,
+      typename std::conditional<
+        o == 3,
+        compute_infeasibility<Float, Random, compute_infeasibility_decr>,
+        compute_infeasibility<Float, Random, compute_infeasibility_decr>>::
+        type>::type>::type>::type;
+
+template<int f>
+using float_sel = typename std::conditional<
+  f == 0,
+  float,
+  typename std::conditional<f == 1, double, long double>::type>::type;
+
+template<int o>
+using mode_sel =
+  typename std::conditional<o == 0, minimize_tag, maximize_tag>::type;
 
 } // namespace itm
 } // namespace baryonyx

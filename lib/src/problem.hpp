@@ -60,7 +60,7 @@ struct problem
     {}
 
     template<typename Constraints>
-    int coefficient_type(const Constraints& csts) noexcept
+    constexpr int coefficient_type(const Constraints& csts) noexcept
     {
         int ret = 0;
 
@@ -76,7 +76,7 @@ struct problem
         return ret;
     }
 
-    int coefficient_type() noexcept
+    constexpr int coefficient_type() noexcept
     {
         int ret = 0;
 
@@ -171,30 +171,6 @@ operator<<(std::ostream& os, const problem& p);
 
 std::ostream&
 operator<<(std::ostream& os, const raw_problem& p);
-
-/**
- * @brief Select the correct solver (only itm is available) && solve the
- *     problem.
- *
- * @param ctx Current context.
- * @param pb Preprocessed problem.
- *
- * @note Implemented in the private @c select.cpp file.
- */
-result
-solver_select(const context_ptr& ctx, const problem& pb);
-
-/**
- * @brief Select the correct optimizez (only itm is available) && solve the
- *     problem.
- *
- * @param ctx Current context.
- * @param pb Preprocessed problem.
- *
- * @note Implemented in the private @c select.cpp file.
- */
-result
-optimizer_select(const context_ptr& ctx, const problem& pb);
 
 /**
  * @brief Affect a variable to the @c pb problem.

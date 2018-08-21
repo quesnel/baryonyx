@@ -20,9 +20,11 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+#include <baryonyx/core-utils>
 #include <baryonyx/core>
 
 #include "debug.hpp"
+#include "itm.hpp"
 #include "private.hpp"
 #include "problem.hpp"
 #include "utils.hpp"
@@ -134,23 +136,42 @@ make_problem(const baryonyx::context_ptr& ctx, const std::string& filename)
 }
 
 result
-solve(const baryonyx::context_ptr& ctx,
-      const raw_problem& rawpb,
-      preprocessor_options pp_opt)
+solve(const baryonyx::context_ptr& ctx, const raw_problem& rawpb)
 {
-    return (pp_opt == preprocessor_options::all)
-             ? solver_select(ctx, preprocess(ctx, rawpb))
-             : solver_select(ctx, unpreprocess(ctx, rawpb));
+    return (ctx->parameters.preprocessor ==
+            solver_parameters::preprocessor_options::all)
+             ? itm::solve(ctx, preprocess(ctx, rawpb))
+             : itm::solve(ctx, unpreprocess(ctx, rawpb));
 }
 
 result
-optimize(const baryonyx::context_ptr& ctx,
-         const raw_problem& rawpb,
-         preprocessor_options pp_opt)
+optimize(const baryonyx::context_ptr& ctx, const raw_problem& rawpb)
 {
-    return (pp_opt == preprocessor_options::all)
-             ? optimizer_select(ctx, preprocess(ctx, rawpb))
-             : optimizer_select(ctx, unpreprocess(ctx, rawpb));
+    if ((ctx->parameters.mode & solver_parameters::mode_type::branch) ==
+        solver_parameters::mode_type::branch)
+        return (ctx->parameters.preprocessor ==
+                solver_parameters::preprocessor_options::all)
+                 ? itm::branch_optimize(ctx, preprocess(ctx, rawpb))
+                 : itm::branch_optimize(ctx, unpreprocess(ctx, rawpb));
+
+    if ((ctx->parameters.mode & solver_parameters::mode_type::nlopt) ==
+        solver_parameters::mode_type::nlopt)
+        return (ctx->parameters.preprocessor ==
+                solver_parameters::preprocessor_options::all)
+                 ? itm::nlopt_optimize(ctx, preprocess(ctx, rawpb))
+                 : itm::nlopt_optimize(ctx, unpreprocess(ctx, rawpb));
+
+    if ((ctx->parameters.mode & solver_parameters::mode_type::manual) ==
+        solver_parameters::mode_type::manual)
+        return (ctx->parameters.preprocessor ==
+                solver_parameters::preprocessor_options::all)
+                 ? itm::manual_optimize(ctx, preprocess(ctx, rawpb))
+                 : itm::manual_optimize(ctx, unpreprocess(ctx, rawpb));
+
+    return (ctx->parameters.preprocessor ==
+            solver_parameters::preprocessor_options::all)
+             ? itm::optimize(ctx, preprocess(ctx, rawpb))
+             : itm::optimize(ctx, unpreprocess(ctx, rawpb));
 }
 
 template<typename functionT, typename variablesT>
@@ -160,16 +181,20 @@ compute_function(const functionT& fct, const variablesT& vars) noexcept
     int v{ 0 };
 
     for (auto& f : fct)
-        v += f.factor * vars[f.variable_index];
+        if (vars[f.variable_index])
+            v += f.factor;
 
     return v;
 }
 
-bool
+static bool
 is_valid_solution_impl(const raw_problem& pb,
                        const std::vector<bool>& variable_value)
 {
     bx_expects(!variable_value.empty());
+    bx_expects(variable_value.size() == pb.vars.names.size());
+    bx_expects(variable_value.size() == pb.vars.values.size());
+
     std::size_t i, e;
 
     for (i = 0, e = pb.equal_constraints.size(); i != e; ++i) {
@@ -193,7 +218,7 @@ is_valid_solution_impl(const raw_problem& pb,
     return true;
 }
 
-double
+static double
 compute_solution_impl(const raw_problem& pb,
                       const std::vector<bool>& variable_value)
 {
@@ -218,23 +243,13 @@ make_variable_value(const Problem& pb, const result& r)
 
     bx_ensures(r.affected_vars.names.size() == r.affected_vars.values.size());
 
-    std::transform(r.affected_vars.names.cbegin(),
-                   r.affected_vars.names.cend(),
-                   r.affected_vars.values.cbegin(),
-                   std::inserter(cache, cache.begin()),
-                   [](const auto& name, bool value) {
-                       return std::make_pair(name, value);
-                   });
+    for (size_t i = 0, e = r.affected_vars.names.size(); i != e; ++i)
+        cache[r.affected_vars.names[i]] = r.affected_vars.values[i];
 
     bx_ensures(r.variable_name.size() == r.solutions.back().variables.size());
 
-    std::transform(r.variable_name.cbegin(),
-                   r.variable_name.cend(),
-                   r.solutions.back().variables.cbegin(),
-                   std::inserter(cache, cache.begin()),
-                   [](const auto& name, bool value) {
-                       return std::make_pair(name, value);
-                   });
+    for (size_t i = 0, e = r.variable_name.size(); i != e; ++i)
+        cache[r.variable_name[i]] = r.solutions.back().variables[i];
 
     std::vector<bool> ret(pb.vars.names.size(), false);
 

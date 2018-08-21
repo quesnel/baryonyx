@@ -23,7 +23,7 @@
 #ifndef ORG_VLEPROJECT_BARYONYX_SOLVER_DEBUG_HPP
 #define ORG_VLEPROJECT_BARYONYX_SOLVER_DEBUG_HPP
 
-#include <exception>
+#include <stdexcept>
 
 #include <cstdio>
 

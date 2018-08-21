@@ -1,4 +1,4 @@
-/* Copyright (C) 2016-2018 INRA
+/* Copyright (C) 2018 INRA
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the
@@ -20,54 +20,26 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <baryonyx/core-compare>
-#include <baryonyx/core>
-
-#include <fstream>
-#include <iterator>
-#include <thread>
-
-#include "itm-solver-common.hpp"
+#include "debug.hpp"
+#include "itm.hpp"
 #include "private.hpp"
-#include "utils.hpp"
 
-//
-// Get number of thread to use in optimizer from parameters list or
-// from the standard thread API. If an error occurred, this function
-// returns 1.
-//
-static inline int
-get_thread_number(const baryonyx::context_ptr& ctx) noexcept
+static baryonyx::result
+optimize(const baryonyx::context_ptr& ctx, const baryonyx::problem& pb)
 {
-    int thread = ctx->parameters.thread;
-
-    if (thread <= 0)
-        thread = static_cast<int>(std::thread::hardware_concurrency());
-
-    if (thread <= 0)
-        return 1;
-
-    return thread;
+    return baryonyx::itm::optimize(ctx, pb);
 }
 
 namespace baryonyx {
+namespace itm {
 
-baryonyx::result
-solver_select(const baryonyx::context_ptr& ctx, const baryonyx::problem& pb)
+result
+branch_optimize(const baryonyx::context_ptr& ctx, const baryonyx::problem& pb)
 {
-    return baryonyx::itm::solve(ctx, pb);
+    baryonyx::notice(ctx, "- branch-optimization starts\n");
+
+    return ::optimize(ctx, pb);
 }
 
-baryonyx::result
-optimizer_select(const baryonyx::context_ptr& ctx, const baryonyx::problem& pb)
-{
-    ctx->parameters.thread = ::get_thread_number(ctx);
-
-    if (ctx->parameters.auto_tune ==
-        solver_parameters::auto_tune_parameters::disabled)
-        return baryonyx::itm::optimize(ctx, pb);
-    else
-        return baryonyx::itm::automatic_optimizer(ctx, pb);
-}
-
+} // namespace itm
 } // namespace baryonyx

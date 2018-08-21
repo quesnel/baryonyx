@@ -11,20 +11,29 @@ set(public_baryonyx_header
  include/baryonyx/core-utils)
 
 set(private_baryonyx_source
- src/automatic-optimizer.cpp
+ src/nlopt-optimizer.cpp
+ src/manual-optimizer.cpp
+ src/branch-optimizer.cpp
  src/branch-and-bound-solver.hpp
  src/debug.hpp
  src/fixed-2darray.hpp
  src/fixed-array.hpp
  src/itm-common.hpp
- src/itm-solver-common.cpp
+ src/itm-optimizer-common.hpp
  src/itm-solver-common.hpp
  src/itm-solver-equalities-01.cpp
+ src/itm-solver-equalities-01.hpp
  src/itm-solver-equalities-101.cpp
+ src/itm-solver-equalities-101.hpp
  src/itm-solver-inequalities-01.cpp
+ src/itm-solver-inequalities-01.hpp
  src/itm-solver-inequalities-101-buffered.cpp
+ src/itm-solver-inequalities-101-buffered.hpp
  src/itm-solver-inequalities-101.cpp
+ src/itm-solver-inequalities-101.hpp
  src/itm-solver-inequalities-Z.cpp
+ src/itm-solver-inequalities-Z.hpp
+ src/itm.hpp
  src/knapsack-dp-solver.hpp
  src/lpcore.cpp
  src/memory.cpp
@@ -38,10 +47,9 @@ set(private_baryonyx_source
  src/private.hpp
  src/problem.cpp
  src/problem.hpp
- src/resume.hpp
  src/result.cpp
  src/result.hpp
- src/select.cpp
+ src/resume.hpp
  src/sparse-matrix.hpp
  src/sparse-vector.hpp
  src/utils.hpp)
@@ -61,6 +69,7 @@ set_target_properties(libbaryonyx PROPERTIES
   POSITION_INDEPENDENT_CODE ON
   COMPILE_DEFINITIONS "BARYONYX_DLL"
   DEFINE_SYMBOL "libbaryonyx_EXPORTS"
+  INTERPROCEDURAL_OPTIMIZATION ON
   CXX_VISIBILITY_PRESET hidden
   VISIBILITY_INLINES_HIDDEN ON
   CXX_STANDARD 14
@@ -99,6 +108,7 @@ target_link_libraries(libbaryonyx-static threads
 set_target_properties(libbaryonyx-static PROPERTIES
   POSITION_INDEPENDENT_CODE true
   OUTPUT_NAME "baryonyx-static-${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}"
+  INTERPROCEDURAL_OPTIMIZATION ON
   CXX_STANDARD 14
   CXX_STANDARD_REQUIRED ON)
 
@@ -144,6 +154,7 @@ export(TARGETS libbaryonyx FILE LibbaryonyxConfig.cmake)
 add_executable(testio test/io.cpp)
 set_target_properties(testio PROPERTIES
   COMPILE_DEFINITIONS EXAMPLES_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}/test\"
+  INTERPROCEDURAL_OPTIMIZATION ON
   CXX_STANDARD 14
   CXX_STANDARD_REQUIRED ON)
 target_compile_definitions(testio
@@ -159,6 +170,7 @@ add_test(testio testio)
 
 add_executable(testlib test/lib.cpp)
 set_target_properties(testlib PROPERTIES
+  INTERPROCEDURAL_OPTIMIZATION ON
   COMPILE_DEFINITIONS EXAMPLES_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}/test\"
   CXX_STANDARD 14
   CXX_STANDARD_REQUIRED ON)
@@ -175,6 +187,7 @@ add_test(testlib testlib)
 
 add_executable(testpreprocess test/preprocess.cpp)
 set_target_properties(testpreprocess PROPERTIES
+  INTERPROCEDURAL_OPTIMIZATION ON
   COMPILE_DEFINITIONS EXAMPLES_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}/test\"
   CXX_STANDARD 14
   CXX_STANDARD_REQUIRED ON)
@@ -191,6 +204,7 @@ add_test(testpreprocess testpreprocess)
 
 add_executable(testsolver test/solve.cpp)
 set_target_properties(testsolver PROPERTIES
+  INTERPROCEDURAL_OPTIMIZATION ON
   COMPILE_DEFINITIONS EXAMPLES_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}/test\"
   CXX_STANDARD 14
   CXX_STANDARD_REQUIRED ON)
@@ -207,6 +221,7 @@ add_test(testsolver testsolver)
 
 add_executable(testoptimizer test/optimize.cpp)
 set_target_properties(testoptimizer PROPERTIES
+  INTERPROCEDURAL_OPTIMIZATION ON
   COMPILE_DEFINITIONS EXAMPLES_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}/test\"
   CXX_STANDARD 14
   CXX_STANDARD_REQUIRED ON)

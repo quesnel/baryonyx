@@ -27,6 +27,8 @@
 #include <fstream>
 #include <memory>
 
+#include "debug.hpp"
+
 #include <cstdint>
 
 namespace baryonyx {

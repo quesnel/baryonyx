@@ -140,7 +140,7 @@ public:
         int row = accessors[0].row;
         int nb_row = 0;
         for (int i = 0; i != elem; ++i) {
-            if (row != accessors[i].row || i + 1 == elem) {
+            if (row != accessors[i].row) {
                 rinit[row] = nb_row;
                 nb_row = 0;
                 row = accessors[i].row;
@@ -150,6 +150,12 @@ public:
             accessors[i].id = i;
             m_rows_values[i] = { i, accessors[i].col };
         }
+
+        rinit[row] = nb_row; /* Be sure to affect the good number of elements
+                                for this constaints. */
+
+        for (int i = 0; i != rows; ++i)
+            bx_assert(rinit[i] == static_cast<int>(csts[i].elements.size()));
 
         std::stable_sort(
           accessors.begin(),
@@ -161,7 +167,7 @@ public:
         int nb_col = 0;
 
         for (int i = 0; i != elem; ++i) {
-            if (col != accessors[i].col || i + 1 == elem) {
+            if (col != accessors[i].col) {
                 cinit[col] = nb_col;
                 nb_col = 0;
                 col = accessors[i].col;
@@ -171,6 +177,9 @@ public:
             m_cols_values[i] = { m_rows_values[accessors[i].id].value,
                                  accessors[i].row };
         }
+
+        cinit[col] = nb_col; /* Be sure to affect the good number of elements
+                                for this constaints. */
 
         m_rows_access[0] = 0;
         for (int i = 0; i != rows; ++i)

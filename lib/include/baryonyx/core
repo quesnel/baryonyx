@@ -1,3 +1,4 @@
+
 /* Copyright (C) 2016-2018 INRA
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
@@ -305,11 +306,21 @@ struct BARYONYX_API solver_parameters
         loo
     };
 
-    enum class auto_tune_parameters
+    enum class mode_type : unsigned
     {
-        disabled,
-        manual,
-        nlopt
+        none = 0,
+        manual = 1,
+        nlopt = 2,
+        branch = 4
+    };
+
+    /**
+     * Preprocessor options available for @c solve or @c optimize function.
+     */
+    enum class preprocessor_options
+    {
+        none = 0,
+        all
     };
 
     enum class observer_type
@@ -341,7 +352,8 @@ struct BARYONYX_API solver_parameters
     floating_point_type float_type{ floating_point_type::double_type };
     init_policy_type init_policy{ init_policy_type::bastert };
     cost_norm_type cost_norm{ cost_norm_type::loo };
-    auto_tune_parameters auto_tune{ auto_tune_parameters::disabled };
+    mode_type mode{ mode_type::none };
+    preprocessor_options preprocessor{ preprocessor_options::all };
     observer_type observer{ observer_type::none };
 };
 
@@ -624,16 +636,6 @@ result
 make_result(const baryonyx::context_ptr& ctx, const std::string& filename);
 
 /**
- * @brief Preprocessor options available for @c solve or @c opitimize function.
- *
- */
-enum class preprocessor_options
-{
-    none = 0,
-    all
-};
-
-/**
  * @details Try to solve or find a feasible solution for the @c
  *     baryonyx::problem.
  *
@@ -645,9 +647,7 @@ enum class preprocessor_options
  */
 BARYONYX_API
 result
-solve(const baryonyx::context_ptr& ctx,
-      const raw_problem& pb,
-      preprocessor_options pp_opt = preprocessor_options::all);
+solve(const baryonyx::context_ptr& ctx, const raw_problem& pb);
 
 /**
  * @details Try to optimize the @c baryonyx::problem with a set of
@@ -662,9 +662,7 @@ solve(const baryonyx::context_ptr& ctx,
  */
 BARYONYX_API
 result
-optimize(const baryonyx::context_ptr& ctx,
-         const raw_problem& pb,
-         preprocessor_options pp_opt = preprocessor_options::all);
+optimize(const baryonyx::context_ptr& ctx, const raw_problem& pb);
 
 /**
  * @details Try to valid the @c baryonyx::result according to the

@@ -55,6 +55,25 @@ to_string(solver_parameters::pre_constraint_order type) noexcept
 
 // Context
 
+// //
+// // Get number of thread to use in optimizer from parameters list or
+// // from the standard thread API. If an error occurred, this function
+// // returns 1.
+// //
+// static inline int
+// get_thread_number(const baryonyx::context_ptr& ctx) noexcept
+// {
+//     int thread = ctx->parameters.thread;
+
+//     if (thread <= 0)
+//         thread = static_cast<int>(std::thread::hardware_concurrency());
+
+//     if (thread <= 0)
+//         return 1;
+
+//     return thread;
+// }
+
 struct context
 {
     enum class message_type
