@@ -42,11 +42,157 @@ namespace baryonyx {
 namespace itm {
 
 /**
- * x_type is a std::vector<bool> instead of a fixed_array<bool> to
- * use the specialized version of vector, which is used for elements of type
- * bool and optimizes for space.
+ * @brief stores vector solution in solver.
+ * @details x_type uses a single @c std::vector<bool> instead of a
+ *     @c baryonyx::fixed_array<bool> to use the specialized version of vector,
+ *     which is used for elements of type bool and optimizes for space.
+ *
+ * @code
  */
-using x_type = std::vector<bool>;
+struct x_type
+{
+    x_type(int size)
+      : _data(size)
+    {}
+
+    bool operator[](int index) const noexcept
+    {
+        return _data[index];
+    }
+
+    void invert(index index) noexcept
+    {
+        _data[index] = !_data[index];
+    }
+
+    void set(index index, bool value) noexcept
+    {
+        _data[index] = value;
+    }
+
+    bool empty() const noexcept
+    {
+        return _data.empty();
+    }
+
+    int upper() const
+    {
+        return 0;
+    }
+
+    void clear()
+    {}
+
+    std::vector<bool> data() const noexcept
+    {
+        return _data;
+    }
+
+private:
+    std::vector<bool> _data;
+};
+
+/**
+ * @brief stores vector solution in solver and a counter.
+ * @details x_type uses a single @c std::vector<bool> instead of a
+ *     @c baryonyx::fixed_array<bool> to use the specialized version of vector,
+ *     which is used for elements of type bool and optimizes for space. The
+ *     counter vector is used to store number of change in vector solution
+ *     during a @c update_row.
+ */
+struct x_counter_type
+{
+    x_counter_type(int size)
+      : _data(size)
+      , _counter(size, 0)
+    {}
+
+    bool operator[](int index) const noexcept
+    {
+        return _data[index];
+    }
+
+    void invert(index index) noexcept
+    {
+        // NOTE: only the data vector is updated. Normally, _data and _counter
+        // have been already updated in the update_row function.
+
+        _data[index] = !_data[index];
+    }
+
+    void set(index index, bool value) noexcept
+    {
+        // TODO: Maybe use integer class members to store upper and lower index
+        // and make upper() and lower() function O(1).
+
+        if (_data[index] != value) {
+            _data[index] = value;
+            ++_counter[index];
+        }
+    }
+
+    bool empty() const noexcept
+    {
+        return _data.empty();
+    }
+
+    void clear()
+    {
+        std::fill(_counter.begin(), _counter.end(), 0);
+    }
+
+    std::vector<bool> data() const noexcept
+    {
+        return _data;
+    }
+
+    int upper() const
+    {
+        int upper_index = 0;
+        for (int i = 1, e = length(_counter); i != e; ++i)
+            if (_counter[i] > _counter[upper_index])
+                upper_index = i;
+
+        return upper_index;
+    }
+
+    template<typename Real>
+    Real load_factor(int constraint_number) const
+    {
+        return static_cast<Real>(_data[upper()]) /
+               static_cast<Real>(constraint_number);
+    }
+
+    template<typename Real>
+    void print(const context_ptr& ctx, int constraint_number, int number) const
+    {
+        std::vector<std::pair<int, int>> copy(_counter.size());
+
+        for (int i = 0, e = length(_counter); i != e; ++i)
+            copy[i] = std::make_pair(i, _counter[i]);
+
+        std::sort(
+          copy.begin(), copy.end(), [](const auto& lhs, const auto& rhs) {
+              return lhs.second > rhs.second;
+          });
+
+        info(
+          ctx,
+          "  Variable with highest changes [id (changes load_factor)]...: ");
+        number = std::min(number, length(copy));
+        for (int i = 0; i != number; ++i)
+            info(ctx,
+                 "{} [{} {}] ",
+                 copy[i].first,
+                 copy[i].second,
+                 static_cast<Real>(copy[i]) / static_cast<Real>(number));
+        info(ctx, "\n");
+    }
+
+private:
+    std::vector<bool> _data;
+    std::vector<int> _counter;
+};
 
 struct maximize_tag
 {};
@@ -288,17 +434,73 @@ is_valid_solution(const Solver& s) noexcept
     return s.is_valid_solution();
 }
 
-template<typename Solver>
+template<typename Solver, typename Xtype>
 inline int
-compute_missing_constraint(const Solver& s, std::vector<int>& c)
+compute_missing_constraint(const Solver& s,
+                           const Xtype& x,
+                           std::vector<int>& c)
 {
-    return s.compute_violated_constraints(c);
+    return s.compute_violated_constraints(x, c);
 }
 
-template<typename Solver, typename x_type>
+template<typename Solver, typename Xtype>
 inline solver_parameters::init_policy_type
 init_solver(Solver& slv,
-            const x_type& best_previous,
+            Xtype& x,
+            solver_parameters::init_policy_type type,
+            double init_random)
+{
+    using floatingpointT = typename Solver::float_type;
+
+    x.clear();
+
+    std::fill(slv.P.get(),
+              slv.P.get() + slv.ap.length(),
+              static_cast<floatingpointT>(0));
+    std::fill(
+      slv.pi.get(), slv.pi.get() + slv.m, static_cast<floatingpointT>(0));
+
+    init_random = clamp(init_random, 0.0, 1.0);
+    std::bernoulli_distribution d(init_random);
+
+    switch (type) {
+    case solver_parameters::init_policy_type::bastert:
+        if (init_random == 0.0 || init_random == 1.0) {
+            bool value_if_cost_0 = init_random == 1.0;
+
+            for (int i = 0; i != slv.n; ++i)
+                x.set(i,
+                      init_x(slv.c[i],
+                             value_if_cost_0,
+                             typename Solver::mode_type()));
+        } else {
+            for (int i = 0; i != slv.n; ++i)
+                x.set(
+                  i,
+                  init_x(slv.c[i], d(slv.rng), typename Solver::mode_type()));
+        }
+        type = solver_parameters::init_policy_type::random;
+        break;
+    case solver_parameters::init_policy_type::random:
+        for (int i = 0; i != slv.n; ++i)
+            x.set(i, d(slv.rng));
+        type = solver_parameters::init_policy_type::best;
+        break;
+    case solver_parameters::init_policy_type::best:
+        for (int i = 0; i != slv.n; ++i)
+            x.set(i, d(slv.rng));
+        type = solver_parameters::init_policy_type::bastert;
+        break;
+    }
+
+    return type;
+}
+
+template<typename Solver, typename Xtype>
+inline solver_parameters::init_policy_type
+init_solver(Solver& slv,
+            Xtype& x,
+            const std::vector<bool>& best_previous,
             solver_parameters::init_policy_type type,
             double init_random)
 {
@@ -323,25 +525,28 @@ init_solver(Solver& slv,
             bool value_if_cost_0 = init_random == 1.0;
 
             for (int i = 0; i != slv.n; ++i)
-                slv.x[i] = init_x(
-                  slv.c[i], value_if_cost_0, typename Solver::mode_type());
+                x.set(i,
+                      init_x(slv.c[i],
+                             value_if_cost_0,
+                             typename Solver::mode_type()));
         } else {
             for (int i = 0; i != slv.n; ++i)
-                slv.x[i] =
-                  init_x(slv.c[i], d(slv.rng), typename Solver::mode_type());
+                x.set(
+                  i,
+                  init_x(slv.c[i], d(slv.rng), typename Solver::mode_type()));
         }
 
         type = solver_parameters::init_policy_type::random;
         break;
     case solver_parameters::init_policy_type::random:
         for (int i = 0; i != slv.n; ++i)
-            slv.x[i] = d(slv.rng);
+            x.set(i, d(slv.rng));
 
         type = solver_parameters::init_policy_type::best;
         break;
     case solver_parameters::init_policy_type::best:
         for (int i = 0; i != slv.n; ++i)
-            slv.x[i] = (d(slv.rng)) ? (best_previous[i]) : (!best_previous[i]);
+            x.set(i, (d(slv.rng)) ? (best_previous[i]) : (!best_previous[i]));
 
         type = solver_parameters::init_policy_type::bastert;
         break;
@@ -350,9 +555,10 @@ init_solver(Solver& slv,
     return type;
 }
 
-template<typename Solver>
+template<typename Solver, typename Xtype>
 inline void
 print_solver(const Solver& slv,
+             const Xtype& x,
              const context_ptr& ctx,
              const std::vector<std::string>& names,
              int print_level)
@@ -366,7 +572,7 @@ print_solver(const Solver& slv,
               "    - {} {}={}/c_i:{}\n",
               i,
               names[i],
-              (slv.x[i] ? 1 : 0),
+              (x[i] ? 1 : 0),
               slv.c[i]);
     debug(ctx, "\n");
 
@@ -377,7 +583,7 @@ print_solver(const Solver& slv,
         int v = 0;
 
         for (; it != et; ++it)
-            v += slv.factor(it->value) * slv.x[it->column];
+            v += slv.factor(it->value) * x[it->column];
 
         bool valid = slv.bound_min(k) <= v && v <= slv.bound_max(k);
 
@@ -389,15 +595,16 @@ print_solver(const Solver& slv,
     }
 }
 
-template<typename Solver>
+template<typename Solver, typename Xtype>
 inline void
 print_missing_constraint(const context_ptr& ctx,
+                         const Xtype& x,
                          const Solver& slv,
                          const std::vector<std::string>& names) noexcept
 {
     std::vector<int> R;
 
-    compute_missing_constraint(slv, R);
+    compute_missing_constraint(slv, x, R);
     info(ctx, "Constraints remaining: {}\n", length(R));
 
     sparse_matrix<int>::const_row_iterator it, et;
@@ -409,13 +616,13 @@ print_missing_constraint(const context_ptr& ctx,
         info(ctx, "{}: {} <= ", k, slv.bound_min(k));
 
         for (; it != et; ++it) {
-            v += slv.factor(it->value) * slv.x[it->column];
+            v += slv.factor(it->value) * x[it->column];
 
             info(ctx,
                  "{:+d} [{} ({})] ",
                  slv.factor(it->value),
                  names[it->column],
-                 slv.x[it->column]);
+                 x[it->column]);
         }
 
         info(ctx, " <= {} | value: {}\n", slv.bound_max(k));
@@ -587,35 +794,37 @@ struct compute_none
 
     std::vector<int> R;
 
-    template<typename solverT>
-    compute_none(const solverT& s, randomT&)
+    template<typename solverT, typename Xtype>
+    compute_none(const solverT& s, const Xtype& x, randomT&)
       : R(s.m)
     {
-        compute_missing_constraint(s, R);
+        compute_missing_constraint(s, x, R);
     }
 
-    template<typename solverT>
+    template<typename solverT, typename Xtype>
     int push_and_run(solverT& solver,
+                     Xtype& x,
                      floatingpointT kappa,
                      floatingpointT delta,
                      floatingpointT theta,
                      floatingpointT objective_amplifier)
     {
         solver.push_and_compute_update_row(
-          R.begin(), R.end(), kappa, delta, theta, objective_amplifier);
+          x, R.begin(), R.end(), kappa, delta, theta, objective_amplifier);
 
-        return compute_missing_constraint(solver, R);
+        return compute_missing_constraint(solver, x, R);
     }
 
-    template<typename solverT>
+    template<typename solverT, typename Xtype>
     int run(solverT& solver,
+            Xtype& x,
             floatingpointT kappa,
             floatingpointT delta,
             floatingpointT theta)
     {
-        solver.compute_update_row(R.begin(), R.end(), kappa, delta, theta);
+        solver.compute_update_row(x, R.begin(), R.end(), kappa, delta, theta);
 
-        return compute_missing_constraint(solver, R);
+        return compute_missing_constraint(solver, x, R);
     }
 };
 
@@ -627,15 +836,16 @@ struct compute_reversing
     std::vector<int> R;
     int nb = 0;
 
-    template<typename solverT>
-    compute_reversing(solverT& s, randomT&)
+    template<typename solverT, typename Xtype>
+    compute_reversing(solverT& s, const Xtype& x, randomT&)
       : R(s.m)
     {
-        compute_missing_constraint(s, R);
+        compute_missing_constraint(s, x, R);
     }
 
-    template<typename solverT>
+    template<typename solverT, typename Xtype>
     int push_and_run(solverT& solver,
+                     Xtype& x,
                      floatingpointT kappa,
                      floatingpointT delta,
                      floatingpointT theta,
@@ -644,22 +854,23 @@ struct compute_reversing
         std::reverse(R.begin(), R.end());
 
         solver.push_and_compute_update_row(
-          R.begin(), R.end(), kappa, delta, theta, objective_amplifier);
+          x, R.begin(), R.end(), kappa, delta, theta, objective_amplifier);
 
-        return compute_missing_constraint(solver, R);
+        return compute_missing_constraint(solver, x, R);
     }
 
-    template<typename solverT>
+    template<typename solverT, typename Xtype>
     int run(solverT& solver,
+            Xtype& x,
             floatingpointT kappa,
             floatingpointT delta,
             floatingpointT theta)
     {
         std::reverse(R.begin(), R.end());
 
-        solver.compute_update_row(R.begin(), R.end(), kappa, delta, theta);
+        solver.compute_update_row(x, R.begin(), R.end(), kappa, delta, theta);
 
-        return compute_missing_constraint(solver, R);
+        return compute_missing_constraint(solver, x, R);
     }
 };
 
@@ -671,16 +882,17 @@ struct compute_random
     std::vector<int> R;
     random_type& rng;
 
-    template<typename solverT>
-    compute_random(solverT& s, random_type& rng_)
+    template<typename solverT, typename Xtype>
+    compute_random(solverT& s, const Xtype& x, random_type& rng_)
       : R(s.m)
       , rng(rng_)
     {
-        compute_missing_constraint(s, R);
+        compute_missing_constraint(s, x, R);
     }
 
-    template<typename solverT>
+    template<typename solverT, typename Xtype>
     int push_and_run(solverT& solver,
+                     Xtype& x,
                      floatingpointT kappa,
                      floatingpointT delta,
                      floatingpointT theta,
@@ -689,22 +901,23 @@ struct compute_random
         std::shuffle(R.begin(), R.end(), rng);
 
         solver.push_and_compute_update_row(
-          R.begin(), R.end(), kappa, delta, theta, objective_amplifier);
+          x, R.begin(), R.end(), kappa, delta, theta, objective_amplifier);
 
-        return compute_missing_constraint(solver, R);
+        return compute_missing_constraint(solver, x, R);
     }
 
-    template<typename solverT>
+    template<typename solverT, typename Xtype>
     int run(solverT& solver,
+            Xtype& x,
             floatingpointT kappa,
             floatingpointT delta,
             floatingpointT theta)
     {
         std::shuffle(R.begin(), R.end(), rng);
 
-        solver.compute_update_row(R.begin(), R.end(), kappa, delta, theta);
+        solver.compute_update_row(x, R.begin(), R.end(), kappa, delta, theta);
 
-        return compute_missing_constraint(solver, R);
+        return compute_missing_constraint(solver, x, R);
     }
 };
 
@@ -742,17 +955,17 @@ struct compute_infeasibility
     std::vector<int> R;
     random_type& rng;
 
-    template<typename solverT>
-    compute_infeasibility(solverT& s, random_type& rng_)
+    template<typename solverT, typename Xtype>
+    compute_infeasibility(solverT& s, const Xtype& x, random_type& rng_)
       : m_order(s.m)
       , R(s.m)
       , rng(rng_)
     {
-        local_compute_missing_constraint(s);
+        local_compute_missing_constraint(s, x);
     }
 
-    template<typename solverT>
-    int local_compute_missing_constraint(solverT& solver)
+    template<typename solverT, typename Xtype>
+    int local_compute_missing_constraint(solverT& solver, const Xtype& x)
     {
         m_order.clear();
 
@@ -762,7 +975,7 @@ struct compute_infeasibility
             int v = 0;
 
             for (; it != et; ++it)
-                v += solver.factor(it->value) * solver.x[it->column];
+                v += solver.factor(it->value) * x[it->column];
 
             if (solver.bound_min(k) > v)
                 m_order.push_back(std::make_pair(k, solver.bound_min(k) - v));
@@ -773,8 +986,9 @@ struct compute_infeasibility
         return length(m_order);
     }
 
-    template<typename solverT>
+    template<typename solverT, typename Xtype>
     int push_and_run(solverT& solver,
+                     Xtype& x,
                      floatingpointT kappa,
                      floatingpointT delta,
                      floatingpointT theta,
@@ -787,13 +1001,14 @@ struct compute_infeasibility
             R[i] = m_order[i].first;
 
         solver.push_and_compute_update_row(
-          R.begin(), R.end(), kappa, delta, theta, objective_amplifier);
+          x, R.begin(), R.end(), kappa, delta, theta, objective_amplifier);
 
-        return local_compute_missing_constraint(solver);
+        return local_compute_missing_constraint(solver, x);
     }
 
-    template<typename solverT>
+    template<typename solverT, typename Xtype>
     int run(solverT& solver,
+            Xtype& x,
             floatingpointT kappa,
             floatingpointT delta,
             floatingpointT theta)
@@ -804,9 +1019,9 @@ struct compute_infeasibility
         for (std::size_t i{ 0 }, e{ m_order.size() }; i != e; ++i)
             R[i] = m_order[i].first;
 
-        solver.compute_update_row(R.begin(), R.end(), kappa, delta, theta);
+        solver.compute_update_row(x, R.begin(), R.end(), kappa, delta, theta);
 
-        return local_compute_missing_constraint(solver);
+        return local_compute_missing_constraint(solver, x);
     }
 };
 

@@ -73,6 +73,8 @@ struct solver_functor
                       const std::unique_ptr<Float[]>& norm_costs,
                       double cost_constant)
     {
+        x_type x(variables);
+
         m_begin = std::chrono::steady_clock::now();
         m_end = m_begin;
 
@@ -98,15 +100,12 @@ struct solver_functor
 
         auto kappa = kappa_min;
 
-        Solver slv(m_rng,
-                   length(constraints),
-                   variables,
-                   norm_costs,
-                   constraints,
-                   p.init_policy,
-                   p.init_random);
+        Solver slv(
+          m_rng, length(constraints), variables, norm_costs, constraints);
 
-        Order compute(slv, m_rng);
+        init_solver(slv, x, p.init_policy, p.init_random);
+
+        Order compute(slv, x, m_rng);
 
         auto max_cost = max_cost_init(original_costs, variables, Mode());
         bounds_printer<Float, Mode> bound_print(max_cost);
@@ -120,7 +119,7 @@ struct solver_functor
         bool start_pushing = false;
 
         for (;;) {
-            int remaining = compute.run(slv, kappa, delta, theta);
+            int remaining = compute.run(slv, x, kappa, delta, theta);
             obs.make_observation();
 
             if (best_remaining == -1 || remaining < best_remaining) {
@@ -132,7 +131,7 @@ struct solver_functor
                 if (remaining == 0) {
                     m_best.status = baryonyx::result_status::success;
                     store_if_better(
-                      slv.results(original_costs, cost_constant), slv.x, i);
+                      slv.results(x, original_costs, cost_constant), x, i);
                     start_pushing = true;
                 } else {
 
@@ -148,7 +147,7 @@ struct solver_functor
             }
 
 #ifndef BARYONYX_FULL_OPTIMIZATION
-            print_solver(slv, m_ctx, m_best.variable_name, p.print_level);
+            print_solver(slv, x, m_ctx, m_best.variable_name, p.print_level);
 #endif
 
             if (start_pushing) {
@@ -163,6 +162,7 @@ struct solver_functor
 
                     remaining =
                       compute.push_and_run(slv,
+                                           x,
                                            pushing_k_factor * kappa,
                                            delta,
                                            theta,
@@ -170,9 +170,7 @@ struct solver_functor
 
                     if (remaining == 0)
                         store_if_better(
-                          slv.results(original_costs, cost_constant),
-                          slv.x,
-                          i);
+                          slv.results(x, original_costs, cost_constant), x, i);
                 }
 
                 if (pushed > p.pushes_limit) {
@@ -250,10 +248,10 @@ private:
         if (m_best.solutions.empty() ||
             is_better_solution(
               current, m_best.solutions.back().value, Mode())) {
-            m_best.solutions.emplace_back(x, current);
+            m_best.solutions.emplace_back(x.data(), current);
             m_best.duration = compute_duration(m_begin, m_end);
             m_best.loop = i;
-            m_best.solutions.emplace_back(x, current);
+            m_best.solutions.emplace_back(x.data(), current);
 
             info(m_ctx,
                  "  - Best solution found: {} (i={} t={}s)\n",

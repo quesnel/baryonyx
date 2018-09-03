@@ -121,6 +121,31 @@ struct optimize_functor
                       const std::unique_ptr<Float[]>& norm_costs,
                       double cost_constant)
     {
+        return (m_ctx->parameters.mode == solver_parameters::mode_type::branch)
+                 ? run<x_type>(best_recorder,
+                               constraints,
+                               variables,
+                               original_costs,
+                               norm_costs,
+                               cost_constant)
+                 : run<x_counter_type>(best_recorder,
+                                       constraints,
+                                       variables,
+                                       original_costs,
+                                       norm_costs,
+                                       cost_constant);
+    }
+
+    template<typename Xtype>
+    result run(best_solution_recorder<Float, Mode>& best_recorder,
+               const std::vector<merged_constraint>& constraints,
+               int variables,
+               const std::unique_ptr<Float[]>& original_costs,
+               const std::unique_ptr<Float[]>& norm_costs,
+               double cost_constant)
+    {
+        Xtype x(variables);
+
         m_begin = std::chrono::steady_clock::now();
         m_end = m_begin;
 
@@ -146,23 +171,20 @@ struct optimize_functor
 
         auto kappa = kappa_min;
 
-        Solver slv(m_rng,
-                   length(constraints),
-                   variables,
-                   norm_costs,
-                   constraints,
-                   p.init_policy,
-                   p.init_random);
+        Solver slv(
+          m_rng, length(constraints), variables, norm_costs, constraints);
 
-        Order compute(slv, m_rng);
+        init_policy = init_solver(slv, x, init_policy, p.init_random);
+
+        Order compute(slv, x, m_rng);
 
         for (; !is_time_limit(p.time_limit, m_begin, m_end);
              m_end = std::chrono::steady_clock::now(), ++i) {
 
-            int remaining = compute.run(slv, kappa, delta, theta);
+            int remaining = compute.run(slv, x, kappa, delta, theta);
             if (remaining == 0)
-                store_if_better(slv.results(original_costs, cost_constant),
-                                slv.x,
+                store_if_better(slv.results(x, original_costs, cost_constant),
+                                x,
                                 i,
                                 best_recorder);
 
@@ -175,10 +197,11 @@ struct optimize_functor
                 pushed > p.pushes_limit) {
                 if (m_best.solutions.empty())
                     init_policy =
-                      init_solver(slv, x_type(), init_policy, p.init_random);
+                      init_solver(slv, x, init_policy, p.init_random);
                 else
                     init_policy =
                       init_solver(slv,
+                                  x,
                                   m_best.solutions.back().variables,
                                   init_policy,
                                   p.init_random);
@@ -200,6 +223,7 @@ struct optimize_functor
 
                     remaining =
                       compute.push_and_run(slv,
+                                           x,
                                            pushing_k_factor * kappa,
                                            delta,
                                            theta,
@@ -207,8 +231,8 @@ struct optimize_functor
 
                     if (remaining == 0)
                         store_if_better(
-                          slv.results(original_costs, cost_constant),
-                          slv.x,
+                          slv.results(x, original_costs, cost_constant),
+                          x,
                           i,
                           best_recorder);
                 }
@@ -223,8 +247,9 @@ struct optimize_functor
     }
 
 private:
+    template<typename Xtype>
     void store_if_better(double current,
-                         const x_type& x,
+                         const Xtype& x,
                          int i,
                          best_solution_recorder<Float, Mode>& best_recorder)
     {
@@ -237,17 +262,18 @@ private:
             // the @c std::set to avoid duplicated solutions.
 
             if (m_best.solutions.empty())
-                m_best.solutions.emplace_back(x, current);
+                m_best.solutions.emplace_back(x.data(), current);
             else
-                m_best.solutions[0] = { x, current };
+                m_best.solutions[0] = { x.data(), current };
 
             m_best.duration = compute_duration(m_begin, m_end);
             m_best.loop = i;
+            m_best.annoying_variable = x.upper();
 
             best_recorder.try_update(m_best);
         }
 
-        m_all_solutions.emplace(x, current);
+        m_all_solutions.emplace(x.data(), current);
     }
 };
 

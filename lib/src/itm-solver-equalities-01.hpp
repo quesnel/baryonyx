@@ -37,7 +37,6 @@ struct solver_equalities_01coeff
     Random& rng;
 
     sparse_matrix<int> ap;
-    std::vector<bool> x;
     std::unique_ptr<Float[]> P;
     std::unique_ptr<r_data<Float>[]> R;
     std::unique_ptr<int[]> b;
@@ -52,9 +51,7 @@ struct solver_equalities_01coeff
                               int m_,
                               int n_,
                               const std::unique_ptr<Float[]>& c_,
-                              const std::vector<merged_constraint>& csts,
-                              solver_parameters::init_policy_type init_type,
-                              double init_random);
+                              const std::vector<merged_constraint>& csts);
 
     int factor(int /*value*/) const noexcept;
 
@@ -66,11 +63,16 @@ struct solver_equalities_01coeff
 
     Float compute_sum_A_pi(int variable) const;
 
-    bool is_valid_solution() const;
+    template<typename Xtype>
+    bool is_valid_solution(const Xtype& x) const;
 
-    int compute_violated_constraints(std::vector<int>& container) const;
+    template<typename Xtype>
+    int compute_violated_constraints(const Xtype& x,
+                                     std::vector<int>& container) const;
 
-    double results(const std::unique_ptr<Float[]>& original_costs,
+    template<typename Xtype>
+    double results(const Xtype& x,
+                   const std::unique_ptr<Float[]>& original_costs,
                    const double cost_constant) const;
 
     //
@@ -95,21 +97,27 @@ struct solver_equalities_01coeff
     // assigned to -infinity or +infinity. We have to scan the r vector and
     // search a value j such as b(0, k) <= Sum A(k, R[j]) < b(1, k).
     //
-    void affect_variables(sparse_matrix<int>::row_iterator it,
+    template<typename Xtype>
+    void affect_variables(Xtype& x,
+                          sparse_matrix<int>::row_iterator it,
                           int k,
                           int selected,
                           int r_size,
                           const Float kappa,
                           const Float delta) noexcept;
 
-    void push_and_compute_update_row(std::vector<int>::iterator first,
+    template<typename Xtype>
+    void push_and_compute_update_row(Xtype& x,
+                                     std::vector<int>::iterator first,
                                      std::vector<int>::iterator last,
                                      Float kappa,
                                      Float delta,
                                      Float theta,
                                      Float objective_amplifier);
 
-    void compute_update_row(std::vector<int>::iterator first,
+    template<typename Xtype>
+    void compute_update_row(Xtype& x,
+                            std::vector<int>::iterator first,
                             std::vector<int>::iterator last,
                             Float kappa,
                             Float delta,
@@ -122,12 +130,9 @@ solver_equalities_01coeff<Float, Mode, Random>::solver_equalities_01coeff(
   int m_,
   int n_,
   const std::unique_ptr<Float[]>& c_,
-  const std::vector<merged_constraint>& csts,
-  solver_parameters::init_policy_type init_type,
-  double init_random)
+  const std::vector<merged_constraint>& csts)
   : rng(rng_)
   , ap(csts, m_, n_)
-  , x(n_)
   , P(std::make_unique<Float[]>(ap.size()))
   , R(std::make_unique<r_data<Float>[]>(
       compute_reduced_costs_vector_size(csts)))
@@ -149,9 +154,6 @@ solver_equalities_01coeff<Float, Mode, Random>::solver_equalities_01coeff(
 
         b[i] = csts[i].min;
     }
-
-    x_type empty;
-    init_solver(*this, empty, init_type, init_random);
 }
 
 template<typename Float, typename Mode, typename Random>
@@ -203,8 +205,10 @@ solver_equalities_01coeff<Float, Mode, Random>::compute_sum_A_pi(
 }
 
 template<typename Float, typename Mode, typename Random>
+template<typename Xtype>
 bool
-solver_equalities_01coeff<Float, Mode, Random>::is_valid_solution() const
+solver_equalities_01coeff<Float, Mode, Random>::is_valid_solution(
+  const Xtype& x) const
 {
     for (int k = 0; k != m; ++k) {
         sparse_matrix<int>::const_row_iterator it, et;
@@ -223,8 +227,10 @@ solver_equalities_01coeff<Float, Mode, Random>::is_valid_solution() const
 }
 
 template<typename Float, typename Mode, typename Random>
+template<typename Xtype>
 int
 solver_equalities_01coeff<Float, Mode, Random>::compute_violated_constraints(
+  const Xtype& x,
   std::vector<int>& container) const
 {
     typename sparse_matrix<int>::const_row_iterator it, et;
@@ -246,12 +252,14 @@ solver_equalities_01coeff<Float, Mode, Random>::compute_violated_constraints(
 }
 
 template<typename Float, typename Mode, typename Random>
+template<typename Xtype>
 double
 solver_equalities_01coeff<Float, Mode, Random>::results(
+  const Xtype& x,
   const std::unique_ptr<Float[]>& original_costs,
   const double cost_constant) const
 {
-    bx_expects(is_valid_solution());
+    bx_expects(is_valid_solution(x));
 
     auto value = static_cast<double>(cost_constant);
 
@@ -325,8 +333,10 @@ solver_equalities_01coeff<Float, Mode, Random>::select_variables_equality(
 // search a value j such as b(0, k) <= Sum A(k, R[j]) < b(1, k).
 //
 template<typename Float, typename Mode, typename Random>
+template<typename Xtype>
 void
 solver_equalities_01coeff<Float, Mode, Random>::affect_variables(
+  Xtype& x,
   sparse_matrix<int>::row_iterator it,
   int k,
   int selected,
@@ -338,7 +348,7 @@ solver_equalities_01coeff<Float, Mode, Random>::affect_variables(
         for (int i = 0; i != r_size; ++i) {
             auto var = it + R[i].id;
 
-            x[var->column] = false;
+            x.set(var->column, false);
             P[var->value] -= delta;
         }
     } else if (selected + 1 >= r_size) {
@@ -347,7 +357,7 @@ solver_equalities_01coeff<Float, Mode, Random>::affect_variables(
         for (int i = 0; i != r_size; ++i) {
             auto var = it + R[i].id;
 
-            x[var->column] = true;
+            x.set(var->column, true);
             P[var->value] += delta;
         }
     } else {
@@ -361,22 +371,24 @@ solver_equalities_01coeff<Float, Mode, Random>::affect_variables(
         for (; i <= selected; ++i) {
             auto var = it + R[i].id;
 
-            x[var->column] = true;
+            x.set(var->column, true);
             P[var->value] += d;
         }
 
         for (; i != r_size; ++i) {
             auto var = it + R[i].id;
 
-            x[var->column] = false;
+            x.set(var->column, false);
             P[var->value] -= d;
         }
     }
 }
 
 template<typename Float, typename Mode, typename Random>
+template<typename Xtype>
 void
 solver_equalities_01coeff<Float, Mode, Random>::push_and_compute_update_row(
+  Xtype& x,
   std::vector<int>::iterator first,
   std::vector<int>::iterator last,
   Float kappa,
@@ -399,13 +411,15 @@ solver_equalities_01coeff<Float, Mode, Random>::push_and_compute_update_row(
 
         calculator_sort(R.get(), R.get() + r_size, rng, Mode());
         int selected = select_variables_equality(r_size, b[k]);
-        affect_variables(it, k, selected, r_size, kappa, delta);
+        affect_variables(x, it, k, selected, r_size, kappa, delta);
     }
 }
 
 template<typename Float, typename Mode, typename Random>
+template<typename Xtype>
 void
 solver_equalities_01coeff<Float, Mode, Random>::compute_update_row(
+  Xtype& x,
   std::vector<int>::iterator first,
   std::vector<int>::iterator last,
   Float kappa,
@@ -422,7 +436,7 @@ solver_equalities_01coeff<Float, Mode, Random>::compute_update_row(
         const int r_size = compute_reduced_costs(it, et);
         calculator_sort(R.get(), R.get() + r_size, rng, Mode());
         int selected = select_variables_equality(r_size, b[k]);
-        affect_variables(it, k, selected, r_size, kappa, delta);
+        affect_variables(x, it, k, selected, r_size, kappa, delta);
     }
 }
 

@@ -37,7 +37,6 @@ struct solver_inequalities_101coeff_buffered
     Random& rng;
 
     sparse_matrix<int> ap;
-    std::vector<bool> x;
     std::unique_ptr<Float[]> P;
     std::unique_ptr<int[]> A;
     std::unique_ptr<r_data<Float>[]> R;
@@ -56,9 +55,7 @@ struct solver_inequalities_101coeff_buffered
       int m_,
       int n_,
       const std::unique_ptr<Float[]>& c_,
-      const std::vector<merged_constraint>& csts,
-      solver_parameters::init_policy_type init_type,
-      double init_random);
+      const std::vector<merged_constraint>& csts);
 
     int factor(int value) const noexcept;
 
@@ -74,32 +71,46 @@ struct solver_inequalities_101coeff_buffered
 
     Float compute_sum_A_pi(int variable) const;
 
-    bool is_valid_solution() const;
+    template<typename Xtype>
+    bool is_valid_solution(const Xtype& x) const;
 
-    int compute_violated_constraints(std::vector<int>& container) const;
+    template<typename Xtype>
+    int compute_violated_constraints(const Xtype& x,
+                                     std::vector<int>& container) const;
 
-    double results(const std::unique_ptr<Float[]>& original_costs,
+    template<typename Xtype>
+    double results(const Xtype& x,
+                   const std::unique_ptr<Float[]>& original_costs,
                    const double cost_constant) const;
 
-    void compute_update_row_01_eq(int k,
+    template<typename Xtype>
+    void compute_update_row_01_eq(Xtype& x,
+                                  int k,
                                   int bk,
                                   Float kappa,
                                   Float delta,
                                   Float objective_amplifier);
 
-    void compute_update_row_01_ineq(int k,
+    template<typename Xtype>
+    void compute_update_row_01_ineq(Xtype& x,
+                                    int k,
                                     int bkmin,
                                     int bkmax,
                                     Float kappa,
                                     Float delta,
                                     Float objective_amplifier);
 
-    void compute_update_row_101_eq(int k,
+    template<typename Xtype>
+    void compute_update_row_101_eq(Xtype& x,
+                                   int k,
                                    int bk,
                                    Float kappa,
                                    Float delta,
                                    Float objective_amplifier);
-    void compute_update_row_101_ineq(int k,
+
+    template<typename Xtype>
+    void compute_update_row_101_ineq(Xtype& x,
+                                     int k,
                                      int bkmin,
                                      int bkmax,
                                      Float kappa,
@@ -111,6 +122,7 @@ struct solver_inequalities_101coeff_buffered
     //
     int compute_reduced_costs(sparse_matrix<int>::row_iterator begin,
                               sparse_matrix<int>::row_iterator end) noexcept;
+
     int select_variables_equality(const int r_size, int bk);
 
     int select_variables_inequality(const int r_size, int bkmin, int bkmax);
@@ -120,21 +132,27 @@ struct solver_inequalities_101coeff_buffered
     // to -infinity or +infinity. We have to scan the r vector and search a
     // value j such as b(0, k) <= Sum A(k, R[j]) < b(1, k).
     //
-    void affect_variables(sparse_matrix<int>::row_iterator it,
+    template<typename Xtype>
+    void affect_variables(Xtype& x,
+                          sparse_matrix<int>::row_iterator it,
                           int k,
                           int selected,
                           int r_size,
                           const Float kappa,
                           const Float delta) noexcept;
 
-    void push_and_compute_update_row(std::vector<int>::iterator first,
+    template<typename Xtype>
+    void push_and_compute_update_row(Xtype& x,
+                                     std::vector<int>::iterator first,
                                      std::vector<int>::iterator last,
                                      Float kappa,
                                      Float delta,
                                      Float theta,
                                      Float obj_amp);
 
-    void compute_update_row(std::vector<int>::iterator first,
+    template<typename Xtype>
+    void compute_update_row(Xtype& x,
+                            std::vector<int>::iterator first,
                             std::vector<int>::iterator last,
                             Float kappa,
                             Float delta,
@@ -148,12 +166,9 @@ solver_inequalities_101coeff_buffered<Float, Mode, Random>::
     int m_,
     int n_,
     const std::unique_ptr<Float[]>& c_,
-    const std::vector<merged_constraint>& csts,
-    solver_parameters::init_policy_type init_type,
-    double init_random)
+    const std::vector<merged_constraint>& csts)
   : rng(rng_)
   , ap(csts, m_, n_)
-  , x(n_)
   , P(std::make_unique<Float[]>(ap.size()))
   , A(std::make_unique<int[]>(ap.size()))
   , R(std::make_unique<r_data<Float>[]>(
@@ -206,9 +221,6 @@ solver_inequalities_101coeff_buffered<Float, Mode, Random>::
             }
         }
     }
-
-    x_type empty;
-    init_solver(*this, empty, init_type, init_random);
 }
 
 template<typename Float, typename Mode, typename Random>
@@ -278,9 +290,10 @@ solver_inequalities_101coeff_buffered<Float, Mode, Random>::compute_sum_A_pi(
 }
 
 template<typename Float, typename Mode, typename Random>
+template<typename Xtype>
 bool
-solver_inequalities_101coeff_buffered<Float, Mode, Random>::is_valid_solution()
-  const
+solver_inequalities_101coeff_buffered<Float, Mode, Random>::is_valid_solution(
+  const Xtype& x) const
 {
     for (int k = 0; k != m; ++k) {
         typename sparse_matrix<int>::const_row_iterator it, et;
@@ -299,9 +312,11 @@ solver_inequalities_101coeff_buffered<Float, Mode, Random>::is_valid_solution()
 }
 
 template<typename Float, typename Mode, typename Random>
+template<typename Xtype>
 int
 solver_inequalities_101coeff_buffered<Float, Mode, Random>::
-  compute_violated_constraints(std::vector<int>& container) const
+  compute_violated_constraints(const Xtype& x,
+                               std::vector<int>& container) const
 {
     typename sparse_matrix<int>::const_row_iterator it, et;
 
@@ -322,12 +337,14 @@ solver_inequalities_101coeff_buffered<Float, Mode, Random>::
 }
 
 template<typename Float, typename Mode, typename Random>
+template<typename Xtype>
 double
 solver_inequalities_101coeff_buffered<Float, Mode, Random>::results(
+  const Xtype& x,
   const std::unique_ptr<Float[]>& original_costs,
   const double cost_constant) const
 {
-    bx_expects(is_valid_solution());
+    bx_expects(is_valid_solution(x));
 
     auto value = static_cast<double>(cost_constant);
 
@@ -338,9 +355,11 @@ solver_inequalities_101coeff_buffered<Float, Mode, Random>::results(
 }
 
 template<typename Float, typename Mode, typename Random>
+template<typename Xtype>
 void
 solver_inequalities_101coeff_buffered<Float, Mode, Random>::
-  compute_update_row_01_eq(int k,
+  compute_update_row_01_eq(Xtype& x,
+                           int k,
                            int bk,
                            Float kappa,
                            Float delta,
@@ -363,13 +382,15 @@ solver_inequalities_101coeff_buffered<Float, Mode, Random>::
 
     int selected = select_variables_equality(r_size, bk);
 
-    affect_variables(it, k, selected, r_size, kappa, delta);
+    affect_variables(x, it, k, selected, r_size, kappa, delta);
 }
 
 template<typename Float, typename Mode, typename Random>
+template<typename Xtype>
 void
 solver_inequalities_101coeff_buffered<Float, Mode, Random>::
-  compute_update_row_01_ineq(int k,
+  compute_update_row_01_ineq(Xtype& x,
+                             int k,
                              int bkmin,
                              int bkmax,
                              Float kappa,
@@ -393,13 +414,15 @@ solver_inequalities_101coeff_buffered<Float, Mode, Random>::
 
     int selected = select_variables_inequality(r_size, bkmin, bkmax);
 
-    affect_variables(it, k, selected, r_size, kappa, delta);
+    affect_variables(x, it, k, selected, r_size, kappa, delta);
 }
 
 template<typename Float, typename Mode, typename Random>
+template<typename Xtype>
 void
 solver_inequalities_101coeff_buffered<Float, Mode, Random>::
-  compute_update_row_101_eq(int k,
+  compute_update_row_101_eq(Xtype& x,
+                            int k,
                             int bk,
                             Float kappa,
                             Float delta,
@@ -439,7 +462,7 @@ solver_inequalities_101coeff_buffered<Float, Mode, Random>::
 
     int selected = select_variables_equality(r_size, bk);
 
-    affect_variables(it, k, selected, r_size, kappa, delta);
+    affect_variables(x, it, k, selected, r_size, kappa, delta);
 
     //
     // Clean up: correct negated costs and adjust value of negated
@@ -450,14 +473,16 @@ solver_inequalities_101coeff_buffered<Float, Mode, Random>::
         auto var = it + ck[i].id_r;
 
         P[var->value] = -P[var->value];
-        x[var->column] = !x[var->column];
+        x.set(var->column, !x[var->column]);
     }
 }
 
 template<typename Float, typename Mode, typename Random>
+template<typename Xtype>
 void
 solver_inequalities_101coeff_buffered<Float, Mode, Random>::
-  compute_update_row_101_ineq(int k,
+  compute_update_row_101_ineq(Xtype& x,
+                              int k,
                               int bkmin,
                               int bkmax,
                               Float kappa,
@@ -500,7 +525,7 @@ solver_inequalities_101coeff_buffered<Float, Mode, Random>::
 
     int selected = select_variables_inequality(r_size, bkmin, bkmax);
 
-    affect_variables(it, k, selected, r_size, kappa, delta);
+    affect_variables(x, it, k, selected, r_size, kappa, delta);
 
     //
     // Clean up: correct negated costs and adjust value of negated
@@ -511,7 +536,7 @@ solver_inequalities_101coeff_buffered<Float, Mode, Random>::
         auto var = it + ck[i].id_r;
 
         P[var->value] = -P[var->value];
-        x[var->column] = !x[var->column];
+        x.set(var->column, !x[var->column]);
     }
 }
 
@@ -568,8 +593,10 @@ solver_inequalities_101coeff_buffered<Float, Mode, Random>::
 // value j such as b(0, k) <= Sum A(k, R[j]) < b(1, k).
 //
 template<typename Float, typename Mode, typename Random>
+template<typename Xtype>
 void
 solver_inequalities_101coeff_buffered<Float, Mode, Random>::affect_variables(
+  Xtype& x,
   sparse_matrix<int>::row_iterator it,
   int k,
   int selected,
@@ -581,7 +608,7 @@ solver_inequalities_101coeff_buffered<Float, Mode, Random>::affect_variables(
         for (int i = 0; i != r_size; ++i) {
             auto var = it + R[i].id;
 
-            x[var->column] = false;
+            x.set(var->column, false);
             P[var->value] -= delta;
         }
     } else if (selected + 1 >= r_size) {
@@ -590,7 +617,7 @@ solver_inequalities_101coeff_buffered<Float, Mode, Random>::affect_variables(
         for (int i = 0; i != r_size; ++i) {
             auto var = it + R[i].id;
 
-            x[var->column] = true;
+            x.set(var->column, true);
             P[var->value] += delta;
         }
     } else {
@@ -604,23 +631,25 @@ solver_inequalities_101coeff_buffered<Float, Mode, Random>::affect_variables(
         for (; i <= selected; ++i) {
             auto var = it + R[i].id;
 
-            x[var->column] = true;
+            x.set(var->column, true);
             P[var->value] += d;
         }
 
         for (; i != r_size; ++i) {
             auto var = it + R[i].id;
 
-            x[var->column] = false;
+            x.set(var->column, false);
             P[var->value] -= d;
         }
     }
 }
 
 template<typename Float, typename Mode, typename Random>
+template<typename Xtype>
 void
 solver_inequalities_101coeff_buffered<Float, Mode, Random>::
-  push_and_compute_update_row(std::vector<int>::iterator first,
+  push_and_compute_update_row(Xtype& x,
+                              std::vector<int>::iterator first,
                               std::vector<int>::iterator last,
                               Float kappa,
                               Float delta,
@@ -664,23 +693,27 @@ solver_inequalities_101coeff_buffered<Float, Mode, Random>::
 
         if (!C[k]) {
             if (b[k].min == b[k].max)
-                compute_update_row_01_eq(k, b[k].min, kappa, delta, obj_amp);
+                compute_update_row_01_eq(
+                  x, k, b[k].min, kappa, delta, obj_amp);
             else
                 compute_update_row_01_ineq(
-                  k, b[k].min, b[k].max, kappa, delta, obj_amp);
+                  x, k, b[k].min, b[k].max, kappa, delta, obj_amp);
         } else {
             if (b[k].min == b[k].max)
-                compute_update_row_101_eq(k, b[k].min, kappa, delta, obj_amp);
+                compute_update_row_101_eq(
+                  x, k, b[k].min, kappa, delta, obj_amp);
             else
                 compute_update_row_101_ineq(
-                  k, b[k].min, b[k].max, kappa, delta, obj_amp);
+                  x, k, b[k].min, b[k].max, kappa, delta, obj_amp);
         }
     }
 }
 
 template<typename Float, typename Mode, typename Random>
+template<typename Xtype>
 void
 solver_inequalities_101coeff_buffered<Float, Mode, Random>::compute_update_row(
+  Xtype& x,
   std::vector<int>::iterator first,
   std::vector<int>::iterator last,
   Float kappa,
@@ -725,17 +758,27 @@ solver_inequalities_101coeff_buffered<Float, Mode, Random>::compute_update_row(
         if (!C[k]) {
             if (b[k].min == b[k].max)
                 compute_update_row_01_eq(
-                  k, b[k].min, kappa, delta, static_cast<Float>(0));
+                  x, k, b[k].min, kappa, delta, static_cast<Float>(0));
             else
-                compute_update_row_01_ineq(
-                  k, b[k].min, b[k].max, kappa, delta, static_cast<Float>(0));
+                compute_update_row_01_ineq(x,
+                                           k,
+                                           b[k].min,
+                                           b[k].max,
+                                           kappa,
+                                           delta,
+                                           static_cast<Float>(0));
         } else {
             if (b[k].min == b[k].max)
                 compute_update_row_101_eq(
-                  k, b[k].min, kappa, delta, static_cast<Float>(0));
+                  x, k, b[k].min, kappa, delta, static_cast<Float>(0));
             else
-                compute_update_row_101_ineq(
-                  k, b[k].min, b[k].max, kappa, delta, static_cast<Float>(0));
+                compute_update_row_101_ineq(x,
+                                            k,
+                                            b[k].min,
+                                            b[k].max,
+                                            kappa,
+                                            delta,
+                                            static_cast<Float>(0));
         }
     }
 }
