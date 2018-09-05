@@ -115,6 +115,8 @@ private:
     {
         int constraint_result{ constraint.value };
         int remaining_index{ -1 };
+        int factor;
+        int var_id;
 
         for (int i = 0, e = bx::length(constraint.elements); i != e; ++i) {
 
@@ -123,7 +125,7 @@ private:
 
             auto it = vars.find(constraint.elements[i].variable_index);
             if (it == vars.end()) {
-                bx_ensures(remaining_index == -1);
+                bx_assert(remaining_index == -1);
                 remaining_index = i;
             } else {
                 constraint_result +=
@@ -131,12 +133,15 @@ private:
             }
         }
 
-        bx_ensures(remaining_index >= 0);
+        if (remaining_index >= 0) {
+            factor = constraint.elements[remaining_index].factor;
+            var_id = constraint.elements[remaining_index].variable_index;
+        } else {
+            factor = -1;
+            var_id = -1;
+        }
 
-        return std::make_tuple(
-          constraint.elements[remaining_index].factor,
-          constraint.elements[remaining_index].variable_index,
-          constraint_result);
+        return std::make_tuple(factor, var_id, constraint_result);
     }
 
     auto reduce_equal_constraint(const bx::constraint& constraint)
@@ -145,6 +150,9 @@ private:
         int factor, variable, result;
 
         std::tie(factor, variable, result) = reduce(constraint);
+
+        if (variable < 0)
+            return std::make_tuple(-1, false);
 
         bx_ensures(pb.vars.values[variable].type == bx::variable_type::binary);
 
@@ -170,6 +178,9 @@ private:
 
         std::tie(factor, variable, result) = reduce(constraint);
 
+        if (variable < 0)
+            return std::make_tuple(-1, false);
+
         bx_ensures(pb.vars.values[variable].type == bx::variable_type::binary);
 
         bool affect_0 = (factor * 0 >= result);
@@ -193,6 +204,9 @@ private:
         int factor, variable, result;
 
         std::tie(factor, variable, result) = reduce(constraint);
+
+        if (variable < 0)
+            return std::make_tuple(-1, false);
 
         bx_ensures(pb.vars.values[variable].type == bx::variable_type::binary);
 
@@ -220,11 +234,12 @@ private:
 
         while (!lifo.empty()) {
             std::tie(index, value) = lifo.pop();
+            vars.emplace(index, value);
 
-            info(ctx,
-                 "  - variable {} assigned to {}.\n",
-                 pb.vars.names[index],
-                 value);
+            debug(ctx,
+                  "  - variable {} assigned to {}.\n",
+                  pb.vars.names[index],
+                  value);
 
             for (int cst : cache[index].in_equal_constraints) {
                 if (equal_constraints[cst] <= 0)
@@ -233,18 +248,16 @@ private:
                 --equal_constraints[cst];
 
                 if (equal_constraints[cst] == 1) {
-                    info(ctx,
-                         "    - equal constraint {} will be removed.\n",
-                         pb.equal_constraints[cst].label);
+                    debug(ctx,
+                          "    - equal constraint {} will be removed.\n",
+                          pb.equal_constraints[cst].label);
 
                     auto v =
                       reduce_equal_constraint(pb.equal_constraints[cst]);
                     equal_constraints[cst] = 0;
 
-                    if (std::get<0>(v) >= 0) {
-                        vars[std::get<0>(v)] = std::get<1>(v);
+                    if (std::get<0>(v) >= 0)
                         lifo.push(v);
-                    }
                 }
             }
 
@@ -255,18 +268,16 @@ private:
                 --greater_constraints[cst];
 
                 if (greater_constraints[cst] == 1) {
-                    info(ctx,
-                         "    - greater constraint {} will be removed.\n",
-                         pb.greater_constraints[cst].label);
+                    debug(ctx,
+                          "    - greater constraint {} will be removed.\n",
+                          pb.greater_constraints[cst].label);
 
                     auto v =
                       reduce_greater_constraint(pb.greater_constraints[cst]);
                     greater_constraints[cst] = 0;
 
-                    if (std::get<0>(v) >= 0) {
-                        vars[std::get<0>(v)] = std::get<1>(v);
+                    if (std::get<0>(v) >= 0)
                         lifo.push(v);
-                    }
                 }
             }
 
@@ -277,21 +288,17 @@ private:
                 --less_constraints[cst];
 
                 if (less_constraints[cst] == 1) {
-                    info(ctx,
-                         "    - less constraint {} will be removed.\n",
-                         pb.less_constraints[cst].label);
+                    debug(ctx,
+                          "    - less constraint {} will be removed.\n",
+                          pb.less_constraints[cst].label);
 
                     auto v = reduce_less_constraint(pb.less_constraints[cst]);
                     less_constraints[cst] = 0;
 
-                    if (std::get<0>(v) >= 0) {
-                        vars[std::get<0>(v)] = std::get<1>(v);
+                    if (std::get<0>(v) >= 0)
                         lifo.push(v);
-                    }
                 }
             }
-
-            vars.emplace(index, value);
         }
     }
 
@@ -346,48 +353,15 @@ public:
 
         affect_variable(variable_index, variable_value);
 
+        info(ctx,
+             "- Preprocessor finish. Removed variables {} (size: {})\n",
+             vars.size(),
+             to_string(bx::memory_consumed_size(memory_consumed(pb))));
+
         return make_problem();
     }
 
 private:
-    void constraints_exclude_copy(
-      const std::vector<int>& constraints_size,
-      const std::vector<bx::constraint>& constraints,
-      std::vector<bx::constraint>& copy) const
-    {
-        size_t i, e;
-
-        for (i = 0, e = constraints.size(); i != e; ++i) {
-
-            // Remaining constraints with one element are undecidable (can be 0
-            // or 1) but useless in constraints (e.g. x <= 1) list. We remove
-            // it.
-
-            if (constraints_size[i] <= 1)
-                continue;
-
-            if (constraints_size[i] == bx::length(constraints[i].elements)) {
-                copy.push_back(constraints[i]);
-            } else {
-                copy.emplace_back();
-                copy.back().id = constraints[i].id;
-                copy.back().label = constraints[i].label;
-                copy.back().value = constraints[i].value;
-
-                for (const auto& elem : constraints[i].elements) {
-                    auto it = vars.find(elem.variable_index);
-
-                    if (it == vars.end()) {
-                        copy.back().elements.push_back(elem);
-                    } else {
-                        if (it->second == true)
-                            copy.back().value -= elem.factor;
-                    }
-                }
-            }
-        }
-    }
-
     auto make_problem() const -> bx::problem
     {
         bx::problem copy;
@@ -395,34 +369,78 @@ private:
         copy.type = pb.type;
         copy.problem_type = pb.problem_type;
 
-        copy.objective = objective_function_exclude_copy();
+        // Build the mapping structure between origin variable index and newly
+        // variable index in the copy.
+
+        std::vector<std::pair<int, bool>> mapping(pb.vars.values.size(),
+                                                  { -1, false });
+
+        int c = 0;
+        for (int i = 0, e = bx::length(pb.vars.values); i != e; ++i) {
+            auto it = vars.find(i);
+
+            mapping[i] = (it == vars.end()) ? std::make_pair(c++, false)
+                                            : std::make_pair(-1, it->second);
+        }
+
+        bx_assert(c == bx::length(pb.vars.values) - bx::length(vars));
+
+        copy.objective = objective_function_exclude_copy(mapping);
         std::tie(copy.vars, copy.affected_vars) = variables_exclude_copy();
 
-        constraints_exclude_copy(
-          equal_constraints, pb.equal_constraints, copy.equal_constraints);
-        constraints_exclude_copy(greater_constraints,
+        for (int i = 0, e = bx::length(pb.vars.values); i != e; ++i)
+            if (mapping[i].first >= 0)
+                bx_ensures(pb.vars.names[i] ==
+                           copy.vars.names[mapping[i].first]);
+
+        constraints_exclude_copy(mapping,
+                                 equal_constraints,
+                                 pb.equal_constraints,
+                                 copy.equal_constraints);
+        constraints_exclude_copy(mapping,
+                                 greater_constraints,
                                  pb.greater_constraints,
                                  copy.greater_constraints);
-        constraints_exclude_copy(
-          less_constraints, pb.less_constraints, copy.less_constraints);
+        constraints_exclude_copy(mapping,
+                                 less_constraints,
+                                 pb.less_constraints,
+                                 copy.less_constraints);
+
+        // TODO: removed or not?
+
+        for (auto cst : copy.equal_constraints)
+            for (auto elem : cst.elements)
+                bx_expects(elem.variable_index >= 0 &&
+                           elem.variable_index < bx::length(copy.vars.values));
+
+        for (auto cst : copy.greater_constraints)
+            for (auto elem : cst.elements)
+                bx_expects(elem.variable_index >= 0 &&
+                           elem.variable_index < bx::length(copy.vars.values));
+
+        for (auto cst : copy.greater_constraints)
+            for (auto elem : cst.elements)
+                bx_expects(elem.variable_index >= 0 &&
+                           elem.variable_index < bx::length(copy.vars.values));
 
         return copy;
     }
 
-    auto objective_function_exclude_copy() const -> bx::objective_function
+    auto objective_function_exclude_copy(
+      const std::vector<std::pair<int, bool>>& mapping) const
+      -> bx::objective_function
     {
         bx::objective_function ret;
 
-        ret.elements.reserve(pb.objective.elements.size() - vars.size());
         ret.value = pb.objective.value;
 
-        for (const auto& elem : pb.objective.elements) {
-            auto it = vars.find(elem.variable_index);
-
-            if (it == vars.cend()) {
-                ret.elements.emplace_back(elem.factor, elem.variable_index);
+        for (int i = 0, e = bx::length(pb.objective.elements); i != e; ++i) {
+            if (mapping[i].first == -1) {
+                if (mapping[i].second)
+                    ret.value += pb.objective.elements[i].factor;
             } else {
-                ret.value += elem.factor * (it->second ? 1 : 0);
+                ret.elements.emplace_back(pb.objective.elements[i].factor,
+                                          mapping[i].first);
             }
         }
 
@@ -459,6 +477,39 @@ private:
 
         return std::make_tuple(ret_vars, ret_aff_vars);
     }
+
+    void constraints_exclude_copy(
+      const std::vector<std::pair<int, bool>>& mapping,
+      const std::vector<int>& constraints_size,
+      const std::vector<bx::constraint>& constraints,
+      std::vector<bx::constraint>& copy) const
+    {
+        for (int i = 0, e = bx::length(constraints); i != e; ++i) {
+
+            // Remaining constraints with one element are undecidable (can
+            // be 0 or 1) but useless in constraints (e.g. x <= 1) list. We
+            // remove it.
+
+            if (constraints_size[i] <= 1)
+                continue;
+
+            copy.emplace_back();
+            copy.back().id = constraints[i].id;
+            copy.back().label = constraints[i].label;
+            copy.back().value = constraints[i].value;
+
+            for (const auto& elem : constraints[i].elements) {
+                if (mapping[elem.variable_index].first >= 0) {
+                    copy.back().elements.emplace_back(
+                      elem.factor, mapping[elem.variable_index].first);
+                } else {
+                    if (mapping[elem.variable_index].second == true) {
+                        copy.back().value -= elem.factor;
+                    }
+                }
+            }
+        }
+    }
 };
 
 } // namespace anonymous
@@ -468,6 +519,9 @@ namespace baryonyx {
 std::tuple<problem, problem>
 split(const context_ptr& ctx, const problem& pb, int variable_index_to_affect)
 {
+    bx_expects(variable_index_to_affect >= 0 &&
+               variable_index_to_affect < length(pb.vars.values));
+
     info(ctx,
          "- Preprocessor starts split of variable {} (size: {})\n",
          pb.vars.names[variable_index_to_affect],
@@ -485,8 +539,11 @@ affect(const context_ptr& ctx,
        int variable_index,
        bool variable_value)
 {
+    bx_expects(variable_index >= 0 && variable_index < length(pb.vars.values));
+
     info(ctx,
-         "- Preprocessor starts affectation of variable {} to {} (size: {})\n",
+         "- Preprocessor starts affectation of variable {} to {} (size: "
+         "{})\n",
          pb.vars.names[variable_index],
          variable_value,
          to_string(memory_consumed_size(memory_consumed(pb))));
