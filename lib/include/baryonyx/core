@@ -583,8 +583,17 @@ struct solution
 
 struct result
 {
-    std::string method;
+    result() = default;
+    result(const result& other) = default;
+    result(result&& other) = default;
+    result& operator=(const result& other) = default;
+    result& operator=(result&& other) = default;
 
+    result(result_status status_)
+      : status(status_)
+    {}
+
+    std::string method;
     affected_variables affected_vars;
 
     std::vector<std::string> variable_name;
@@ -596,13 +605,11 @@ struct result
     index constraints = 0;
     index remaining_constraints = std::numeric_limits<index>::max();
 
+    // The variable id with the heaviest load factor i.e. the variable which
+    // changes too many times during the @c update_row in-the-middle process.
+    int annoying_variable = 0;
+
     result_status status{ result_status::uninitialized };
-
-    result() = default;
-
-    result(result_status status_)
-      : status(status_)
-    {}
 
     operator bool() const
     {
