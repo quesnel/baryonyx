@@ -179,9 +179,7 @@ context_set_solver_parameters(const context_ptr& ctx,
         ctx->parameters.init_random = params.init_random;
 
     ctx->parameters.seed = params.seed;
-
-    if (params.thread > 1)
-        ctx->parameters.thread = params.thread;
+    ctx->parameters.thread = params.thread;
 
     if (params.limit >= -1)
         ctx->parameters.limit = params.limit;

@@ -1220,18 +1220,18 @@ init_random_generator_seed(const context_ptr& ctx)
  */
 template<typename randomT>
 inline std::unique_ptr<typename randomT::result_type[]>
-generate_seed(randomT& rng, unsigned thread)
+generate_seed(randomT& rng, unsigned thread_id)
 {
     using type = typename randomT::result_type;
 
-    auto ret = std::make_unique<type[]>(thread);
+    auto ret = std::make_unique<type[]>(thread_id);
 
     std::uniform_int_distribution<type> dst(std::numeric_limits<type>::min(),
                                             std::numeric_limits<type>::max());
 
     ret[0] = numeric_cast<type>(dst(rng));
 
-    for (unsigned i = 1; i != thread; ++i) {
+    for (unsigned i = 1; i != thread_id; ++i) {
         ret[i] = numeric_cast<type>(dst(rng));
 
         unsigned j = i - 1;

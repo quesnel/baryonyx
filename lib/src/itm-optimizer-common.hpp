@@ -277,6 +277,26 @@ private:
     }
 };
 
+//
+// Get number of thread to use in optimizer from parameters list or from the
+// standard thread API. If an error occurred, this function returns 1.
+//
+inline unsigned
+get_thread_number(const baryonyx::context_ptr& ctx) noexcept
+{
+    unsigned ret;
+
+    if (ctx->parameters.thread <= 0)
+        ret = std::thread::hardware_concurrency();
+    else
+        ret = static_cast<unsigned>(ctx->parameters.thread);
+
+    if (ret == 0)
+        return 1;
+
+    return ret;
+}
+
 template<typename Solver,
          typename Float,
          typename Mode,
@@ -301,22 +321,23 @@ optimize_problem(const context_ptr& ctx, const problem& pb)
         auto cost_constant = pb.objective.value;
         auto names = std::move(pb.vars.names);
 
-        const auto thread = static_cast<unsigned>(ctx->parameters.thread);
-        std::vector<std::thread> pool(ctx->parameters.thread);
+        const auto thread = get_thread_number(ctx);
+
+        std::vector<std::thread> pool(thread);
         pool.clear();
         std::vector<std::future<result>> results(thread);
         results.clear();
 
         best_solution_recorder<Float, Mode> result(ctx);
 
-        if (thread == 1u)
+        if (thread == 1)
             info(ctx, "optimizer starts with one thread\n");
         else
             info(ctx, "Optimizer starts with {} threads\n", thread);
 
         auto seeds = generate_seed(rng, thread);
 
-        for (unsigned i = 0; i != thread; ++i) {
+        for (unsigned i{ 0 }; i != thread; ++i) {
             std::packaged_task<baryonyx::result()> task(
               std::bind(optimize_functor<Solver, Float, Mode, Order, Random>(
                           ctx, i, seeds[i], names, affected_vars),
@@ -337,7 +358,7 @@ optimize_problem(const context_ptr& ctx, const problem& pb)
 
         std::set<solution> all_solutions;
 
-        for (unsigned i = 0; i != thread; ++i) {
+        for (unsigned i{ 0 }; i != thread; ++i) {
             auto current = results[i].get();
             if (current.status == result_status::success) {
                 all_solutions.insert(current.solutions.begin(),
