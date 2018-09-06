@@ -53,6 +53,8 @@ struct branch_result_list
         if (pb.vars.values.size() <= 1)
             return;
 
+        baryonyx::notice(ctx, "- branch-optimization splits\n");
+
         auto ret = baryonyx::split(ctx, pb, var);
 
         data.emplace_back(std::move(std::get<0>(ret)));
@@ -63,6 +65,8 @@ struct branch_result_list
     {
         if (data.front().problem.vars.values.size() <= 1)
             return;
+
+        baryonyx::notice(ctx, "- branch-optimization splits\n");
 
         auto ret = baryonyx::split(
           ctx, data.front().problem, data.front().result.annoying_variable);

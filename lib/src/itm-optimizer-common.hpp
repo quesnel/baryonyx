@@ -305,7 +305,7 @@ template<typename Solver,
 inline result
 optimize_problem(const context_ptr& ctx, const problem& pb)
 {
-    info(ctx, "Optimizer initializing\n");
+    info(ctx, "- Optimizer initializing\n");
 
     result ret;
     auto affected_vars = std::move(pb.affected_vars);
@@ -331,9 +331,9 @@ optimize_problem(const context_ptr& ctx, const problem& pb)
         best_solution_recorder<Float, Mode> result(ctx);
 
         if (thread == 1)
-            info(ctx, "optimizer starts with one thread\n");
+            info(ctx, "  - optimizer uses one thread\n");
         else
-            info(ctx, "Optimizer starts with {} threads\n", thread);
+            info(ctx, "  - optimizer uses {} threads\n", thread);
 
         auto seeds = generate_seed(rng, thread);
 

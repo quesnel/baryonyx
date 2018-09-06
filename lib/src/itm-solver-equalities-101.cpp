@@ -140,14 +140,14 @@ select_float(const context_ptr& ctx, const problem& pb, bool is_optimization)
 result
 solve_equalities_101(const context_ptr& ctx, const problem& pb)
 {
-    notice(ctx, "* solve_equalities_101\n");
+    info(ctx, "  - solve_equalities_101\n");
     return select_float(ctx, pb, false);
 }
 
 result
 optimize_equalities_101(const context_ptr& ctx, const problem& pb)
 {
-    notice(ctx, "* solve_equalities_101\n");
+    info(ctx, "  - solve_equalities_101\n");
     return select_float(ctx, pb, true);
 }
 

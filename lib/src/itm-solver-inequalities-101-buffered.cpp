@@ -148,14 +148,14 @@ select_float(const context_ptr& ctx, const problem& pb, bool is_optimization)
 result
 solve_inequalities_101_buffered(const context_ptr& ctx, const problem& pb)
 {
-    notice(ctx, "* solve_inequalities_101_buffered\n");
+    info(ctx, "  - solve_inequalities_101_buffered\n");
     return select_float(ctx, pb, false);
 }
 
 result
 optimize_inequalities_101_buffered(const context_ptr& ctx, const problem& pb)
 {
-    notice(ctx, "* optimize_inequalities_101_buffered\n");
+    info(ctx, "  - optimize_inequalities_101_buffered\n");
     return select_float(ctx, pb, true);
 }
 

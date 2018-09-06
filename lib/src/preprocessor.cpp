@@ -958,11 +958,10 @@ preprocess(const baryonyx::context_ptr& ctx, const baryonyx::raw_problem& pb_)
 
 #ifndef BARYONYX_FULL_OPTIMIZATION
     {
-        info(ctx, "  - write preprocessed.lp: ");
+        info(ctx, "  - write preprocessed.lp\n");
         std::ofstream ofs("preprocessed.lp");
-        if (ofs.is_open()) {
+        if (ofs.is_open())
             ofs << pb;
-        }
     }
 #endif
 
@@ -1023,13 +1022,10 @@ unpreprocess(const baryonyx::context_ptr& ctx,
 
 #ifndef BARYONYX_FULL_OPTIMIZATION
     {
-        info(ctx, "  - write preprocessed.lp: ");
+        info(ctx, "  - write preprocessed.lp\n");
         std::ofstream ofs("preprocessed.lp");
-        if (ofs.is_open()) {
+        if (ofs.is_open())
             ofs << pb;
-        } else {
-            info(ctx, "opening failed\n");
-        }
     }
 #endif
 

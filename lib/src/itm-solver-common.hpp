@@ -270,7 +270,7 @@ template<typename Solver,
 inline result
 solve_problem(const context_ptr& ctx, const problem& pb)
 {
-    info(ctx, "Solver initializing\n");
+    info(ctx, "- Solver initializing\n");
 
     result ret;
     auto affected_vars = std::move(pb.affected_vars);

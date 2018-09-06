@@ -237,7 +237,7 @@ private:
             vars.emplace(index, value);
 
             debug(ctx,
-                  "  - variable {} assigned to {}.\n",
+                  "    - variable {} assigned to {}.\n",
                   pb.vars.names[index],
                   value);
 
@@ -249,7 +249,7 @@ private:
 
                 if (equal_constraints[cst] == 1) {
                     debug(ctx,
-                          "    - equal constraint {} will be removed.\n",
+                          "      - equal constraint {} will be removed.\n",
                           pb.equal_constraints[cst].label);
 
                     auto v =
@@ -269,7 +269,7 @@ private:
 
                 if (greater_constraints[cst] == 1) {
                     debug(ctx,
-                          "    - greater constraint {} will be removed.\n",
+                          "      - greater constraint {} will be removed.\n",
                           pb.greater_constraints[cst].label);
 
                     auto v =
@@ -289,7 +289,7 @@ private:
 
                 if (less_constraints[cst] == 1) {
                     debug(ctx,
-                          "    - less constraint {} will be removed.\n",
+                          "      - less constraint {} will be removed.\n",
                           pb.less_constraints[cst].label);
 
                     auto v = reduce_less_constraint(pb.less_constraints[cst]);
@@ -354,7 +354,7 @@ public:
         affect_variable(variable_index, variable_value);
 
         info(ctx,
-             "- Preprocessor finish. Removed variables {} (size: {})\n",
+             "  - Preprocessor finish. Removed variables {} (size: {})\n",
              vars.size(),
              to_string(bx::memory_consumed_size(memory_consumed(pb))));
 
@@ -523,7 +523,7 @@ split(const context_ptr& ctx, const problem& pb, int variable_index_to_affect)
                variable_index_to_affect < length(pb.vars.values));
 
     info(ctx,
-         "- Preprocessor starts split of variable {} (size: {})\n",
+         "  - Preprocessor starts split of variable {} (size: {})\n",
          pb.vars.names[variable_index_to_affect],
          to_string(memory_consumed_size(memory_consumed(pb))));
 
@@ -541,12 +541,12 @@ affect(const context_ptr& ctx,
 {
     bx_expects(variable_index >= 0 && variable_index < length(pb.vars.values));
 
-    info(ctx,
-         "- Preprocessor starts affectation of variable {} to {} (size: "
-         "{})\n",
-         pb.vars.names[variable_index],
-         variable_value,
-         to_string(memory_consumed_size(memory_consumed(pb))));
+    info(
+      ctx,
+      "  - Preprocessor starts affectation of variable {} to {} (size: {})\n",
+      pb.vars.names[variable_index],
+      variable_value,
+      to_string(memory_consumed_size(memory_consumed(pb))));
 
     ::preprocessor pp(ctx, pb);
 
