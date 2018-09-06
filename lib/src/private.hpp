@@ -169,7 +169,6 @@ static const char setters_str[][10] = { "\033[0m",
 #ifdef __unix__
 #define error_symbol "\u26d4 "
 #define warning_symbol "\u26a0 "
-#define notice_symbol "\u2757 "
 #endif
 
 constexpr const char*
@@ -227,9 +226,6 @@ struct log_color
             break;
         case context::message_type::notice:
             fmt::print(f, color_to_str(colors::Yellow));
-#ifdef __unix__
-            fmt::print(f, notice_symbol);
-#endif
             break;
         case context::message_type::info:
             fmt::print(f, color_to_str(colors::Default));
