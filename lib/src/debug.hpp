@@ -106,13 +106,13 @@ fail_fast(const char* type,
 #define bx_expects(cond)
 #define bx_ensures(cond)
 #define bx_assert(cond)
-#define bx_reach()
 #else
 #define bx_expects(cond) BX_CONTRACT_CHECK("Precondition", cond)
 #define bx_ensures(cond) BX_CONTRACT_CHECK("Postcondition", cond)
 #define bx_assert(cond) BX_CONTRACT_CHECK("Assertion", cond)
-#define bx_reach() BX_CONTRACT_FAIL("Reached")
 #endif
+
+#define bx_reach() BX_CONTRACT_FAIL("Reached")
 
 #define bx_return_val_if_fail(cond, val)                                      \
     BX_CONTRACT_CHECK_RETURN_VAL("Precondition", cond, val)
