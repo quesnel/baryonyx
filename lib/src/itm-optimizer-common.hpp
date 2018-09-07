@@ -24,6 +24,7 @@
 #define ORG_VLEPROJECT_BARYONYX_SOLVER_ITM_OPTIMIZER_COMMON_HPP
 
 #include <baryonyx/core-compare>
+#include <baryonyx/core-utils>
 
 #include <algorithm>
 #include <chrono>
@@ -121,19 +122,21 @@ struct optimize_functor
                       const std::unique_ptr<Float[]>& norm_costs,
                       double cost_constant)
     {
-        return (m_ctx->parameters.mode == solver_parameters::mode_type::branch)
-                 ? run<x_type>(best_recorder,
-                               constraints,
-                               variables,
-                               original_costs,
-                               norm_costs,
-                               cost_constant)
-                 : run<x_counter_type>(best_recorder,
+        return ((m_ctx->parameters.mode &
+                 solver_parameters::mode_type::branch) ==
+                solver_parameters::mode_type::branch)
+                 ? run<x_counter_type>(best_recorder,
                                        constraints,
                                        variables,
                                        original_costs,
                                        norm_costs,
-                                       cost_constant);
+                                       cost_constant)
+                 : run<x_type>(best_recorder,
+                               constraints,
+                               variables,
+                               original_costs,
+                               norm_costs,
+                               cost_constant);
     }
 
     template<typename Xtype>
@@ -242,6 +245,8 @@ struct optimize_functor
         std::copy(m_all_solutions.begin(),
                   m_all_solutions.end(),
                   std::back_inserter(m_best.solutions));
+
+        x_type_print().print(m_ctx, x);
 
         return m_best;
     }

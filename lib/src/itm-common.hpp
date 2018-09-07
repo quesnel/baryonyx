@@ -156,42 +156,34 @@ struct x_counter_type
         return upper_index;
     }
 
-    template<typename Real>
-    Real load_factor(int constraint_number) const
-    {
-        return static_cast<Real>(_data[upper()]) /
-               static_cast<Real>(constraint_number);
-    }
+    std::vector<bool> _data;
+    std::vector<int> _counter;
+};
 
-    template<typename Real>
-    void print(const context_ptr& ctx, int constraint_number, int number) const
-    {
-        std::vector<std::pair<int, int>> copy(_counter.size());
+struct x_type_print
+{
+    // #define bx_always_inline __attribute__((always_inline))
+    // bx_always_inline
+    void print(const context_ptr&, const x_type&) const
+    {}
 
-        for (int i = 0, e = length(_counter); i != e; ++i)
-            copy[i] = std::make_pair(i, _counter[i]);
+    void print(const context_ptr& ctx, const x_counter_type& x) const
+    {
+        std::vector<std::pair<int, int>> copy(x._counter.size());
+
+        for (int i = 0, e = length(x._counter); i != e; ++i)
+            copy[i] = std::make_pair(i, x._counter[i]);
 
         std::sort(
           copy.begin(), copy.end(), [](const auto& lhs, const auto& rhs) {
               return lhs.second > rhs.second;
           });
 
-        info(
-          ctx,
-          "  Variable with highest changes [id (changes load_factor)]...: ");
-        number = std::min(number, length(copy));
-        for (int i = 0; i != number; ++i)
-            info(ctx,
-                 "{} [{} {}] ",
-                 copy[i].first,
-                 copy[i].second,
-                 static_cast<Real>(copy[i]) / static_cast<Real>(number));
-        info(ctx, "\n");
+        debug(ctx, "    5 variables with highest changes [id (changes)]...: ");
+        for (int i = 0; i != 5; ++i)
+            debug(ctx, "{} [{}] ", copy[i].first, copy[i].second);
+        debug(ctx, "\n");
     }
-
-private:
-    std::vector<bool> _data;
-    std::vector<int> _counter;
 };
 
 struct maximize_tag
