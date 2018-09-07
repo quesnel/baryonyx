@@ -36,6 +36,19 @@
 #include <unistd.h>
 #endif
 
+#define bx_stringify_detail(x) #x
+#define bx_stringify(x) bx_stringify_detail(x)
+
+#if defined(__clang__) || defined(__GNUC__)
+#define bx_always_inline __attribute__((always_inline))
+#define bx_likely(x) __builtin_expect(!!(x), 1)
+#define bx_unlikely(x) __builtin_expect(!!(x), 0)
+#else
+#define bx_always_inline
+#define likely(x) (!!(x))
+#define unlikely(x) (!!(x))
+#endif
+
 namespace baryonyx {
 
 using string_logger_functor = std::function<void(int, std::string)>;

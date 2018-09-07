@@ -23,20 +23,11 @@
 #ifndef ORG_VLEPROJECT_BARYONYX_SOLVER_DEBUG_HPP
 #define ORG_VLEPROJECT_BARYONYX_SOLVER_DEBUG_HPP
 
+#include "private.hpp"
+
 #include <stdexcept>
 
 #include <cstdio>
-
-#define bx_stringify_detail(x) #x
-#define bx_stringify(x) bx_stringify_detail(x)
-
-#if defined(__clang__) || defined(__GNUC__)
-#define likely(x) __builtin_expect(!!(x), 1)
-#define unlikely(x) __builtin_expect(!!(x), 0)
-#else
-#define likely(x) (!!(x))
-#define unlikely(x) (!!(x))
-#endif
 
 //
 // In internal API, we prefer abort application when precondition,
@@ -79,14 +70,14 @@ fail_fast(const char* type,
       type, bx_stringify(cond), __FILE__, bx_stringify(__LINE__))
 
 #define BX_CONTRACT_CHECK(type, cond)                                         \
-    (likely(cond)                                                             \
+    (bx_likely(cond)                                                          \
        ? static_cast<void>(0)                                                 \
        : baryonyx::details::fail_fast(                                        \
            type, bx_stringify(cond), __FILE__, bx_stringify(__LINE__)))
 
 #define BX_CONTRACT_CHECK_RETURN_VAL(type, cond, val)                         \
     do {                                                                      \
-        if (unlikely(!(cond))) {                                              \
+        if (bx_unlikely(!(cond))) {                                           \
             baryonyx::details::print(                                         \
               type, bx_stringify(cond), __FILE__, bx_stringify(__LINE__));    \
             return val;                                                       \
@@ -95,7 +86,7 @@ fail_fast(const char* type,
 
 #define BX_CONTRACT_CHECK_RETURN(type, cond)                                  \
     do {                                                                      \
-        if (unlikely(!(cond))) {                                              \
+        if (bx_unlikely(!(cond))) {                                           \
             baryonyx::details::print(                                         \
               type, bx_stringify(cond), __FILE__, bx_stringify(__LINE__));    \
             return;                                                           \
