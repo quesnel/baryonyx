@@ -1,6 +1,6 @@
 = Baryonyx
 Gauthier Quesnel <gauthier.quesnel@inra.fr>
-v0.3, 201?-??-??
+v0.3, 2018-??-??
 :toc:
 :homepage: https://github.com/quesnel/baryonyx/
 
@@ -22,20 +22,25 @@ The software is released under the MIT license. See the LICENSE file.
 === Requirements
 
 * `cmake` (≥ 3)
-* c++ compiler with c++14 support (`gcc` ≥ 5, `clang` ≥ 3.5)
+* c++ compiler with c++14 support (`gcc` ≥ 5, `clang` ≥ 3.5, visual
+  studio 2017)
 
-For recent Debian GNU/Linux and Ubuntu derivatives (remove clang to only use
-gcc):
+For recent Debian GNU/Linux and Ubuntu derivatives (remove clang to
+only use gcc):
 
 [source,bash]
 ....
 apt-get install build-essential cmake clang
 ....
 
+For Windows, install the https://www.cmake.org[CMake program] and
+Visual Studio 2017 (MSVC). You may also install the vcpkg program to
+install nlopt and other dependencies.
+
 === Recommended
 
-* `nlopt` library - optimization library to automatic parametrization of
-  Baryonyx solver.
+* `nlopt` library - optimization library to automatic parametrization
+ of the Baryonyx solver parameters.
 
 === First installation
 
@@ -47,9 +52,10 @@ cd baryonyx
 git submodule update --init --recursive
 ....
 
-Default, baryonyx provides a shared library `libbaryonyx-0.2.so`, a static
-library `libbaryonyx-0.2.a` and an executable `baryonyx-0.2`. To compile and
-install in default cmake's install directory:
+Default, Baryonyx provides a shared library `libbaryonyx-0.3.so` (with
+hidden symbol), a static library `libbaryonyx-0.3.a` (all symbols are
+public) and an executable `baryonyx-0.3`. To compile and install in
+the default CMake install directory:
 
 ....
 cd baryonyx
@@ -59,10 +65,11 @@ cmake -DCMAKE_BUILD_TYPE=Release ..
 make install
 ....
 
-Previous command line install baryonyx program and library into the
-`/usr/local` prefix. If you install into another directory, you need to define
-three environment variables (into your `.bashrc` or equivalent). If you install
-into `$HOME/usr` for example, you need to define in your `.bashrc`:
+Previous command line install Baryonyx program and library into the
+`/usr/local` prefix. If you install into another directory, you need
+to define three environment variables (into your `.bashrc` or
+equivalent). If you install into `$HOME/usr` for example, you need to
+define in your `.bashrc`:
 
 ....
 export PATH=$PATH:$HOME/usr
@@ -84,15 +91,36 @@ To override the default build flags, remove the `CMAKE_BUILD_TYPE`
 parameter and override the `CXXFLAGS` as follow:
 
 ....
-export CC=gcc-7
-export CXX=g++-7
+export CXX=g++-8
 export CXXFLAGS='-Wall -Wextra -Werror -ftree-vectorize -mmmx -msse -msse2 -msse3 -O3'
 cmake -DCMAKE_INSTALL_PREFIX=$HOME/usr ..
 ....
 
+The CMake script provide parameters to control debug, log facility and
+optimization.
+
+.Table CMake Command line parameters (cmake -DWITH_LOG=OFF ...)
+[cols="1,1,5a", options="header"]
+|===
+|name| default| summary
+
+| WITH_LOG
+| ON
+| Enable log message on standard output.
+
+| WITH_DEBUG
+| ON
+| Enable maximum debug function and add more log message. Be careful, this mode slow down computation.
+
+| WITH_FULL_OPTIMIZATION
+| OFF
+| Enable optimal computation but remove some control on float and control.
+|===
+
 === Update installation
 
-First, we need to update the Git repository with the following commands:
+First, we need to update the Git repository with the following
+commands:
 
 ....
 cd baryonyx
@@ -100,7 +128,8 @@ git pull -r
 git submodule update --recursive
 ....
 
-Then go to the build directory and restart compilation and installation :
+Then go to the build directory and restart compilation and
+installation :
 
 ....
 cd baryonyx
@@ -112,10 +141,10 @@ make install
 
 === Usage
 
-To run baryonyx in solver mode (ie. trying to valid all constraints):
+To run Baryonyx in solver mode (i.e. trying to valid all constraints):
 
 ....
-baryonyx-0.2 file.lp
+baryonyx-0.3 file.lp
 ....
 
 To run baryonyx into the heuristic model (ie. trying to valid all
@@ -123,10 +152,19 @@ constraints and optimize the solution), add a `-o` or `--optimize`
 option to the command line:
 
 ....
-baryonyx-0.2 file.lp
+baryonyx-0.3 -o file.lp
 ....
 
-The baryonyx solver have many parameters. Some parameters are global, some specific for the optimization algorithms.
+To run baryonyx into the heuristic model (ie. trying to valid all
+constraints and optimize the solution), add a `-o` or `--optimize`
+option to the command line:
+
+....
+baryonyx-0.3 -o file.lp
+....
+
+The Baryonyx solver have many parameters. Some parameters are global,
+some specific for the optimization algorithms.
 
 .Table Command line global parameters
 [cols="1,1,5a", options="header"]
@@ -282,7 +320,7 @@ baryonyx -p limit:-1 -p kappa-min:0.2 lib/test/prevl1.lp
 
 === Upgrade
 
-To upgrade to the latest version of baryonyx, under bash (or
+To upgrade to the latest version of Baryonyx, under bash (or
 equivalent):
 
 ....
