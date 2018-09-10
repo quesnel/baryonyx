@@ -447,22 +447,6 @@ constraint(Iterator it)
     return detail::constraint(it);
 }
 
-template<typename Solver>
-inline bool
-is_valid_solution(const Solver& s) noexcept
-{
-    return s.is_valid_solution();
-}
-
-template<typename Solver, typename Xtype>
-inline int
-compute_missing_constraint(const Solver& s,
-                           const Xtype& x,
-                           std::vector<int>& c)
-{
-    return s.compute_violated_constraints(x, c);
-}
-
 template<typename Solver, typename Xtype>
 inline solver_parameters::init_policy_type
 init_solver(Solver& slv,
@@ -624,7 +608,7 @@ print_missing_constraint(const context_ptr& ctx,
 {
     std::vector<int> R;
 
-    compute_missing_constraint(slv, x, R);
+    slv.compute_violated_constraints(x, R);
     info(ctx, "Constraints remaining: {}\n", length(R));
 
     sparse_matrix<int>::const_row_iterator it, et;
@@ -818,7 +802,7 @@ struct compute_none
     compute_none(const solverT& s, const Xtype& x, randomT&)
       : R(s.m)
     {
-        compute_missing_constraint(s, x, R);
+        s.compute_violated_constraints(x, R);
     }
 
     template<typename solverT, typename Xtype>
@@ -832,7 +816,7 @@ struct compute_none
         solver.push_and_compute_update_row(
           x, R.cbegin(), R.cend(), kappa, delta, theta, objective_amplifier);
 
-        return compute_missing_constraint(solver, x, R);
+        return solver.compute_violated_constraints(x, R);
     }
 
     template<typename solverT, typename Xtype>
@@ -844,7 +828,7 @@ struct compute_none
     {
         solver.compute_update_row(x, R.begin(), R.end(), kappa, delta, theta);
 
-        return compute_missing_constraint(solver, x, R);
+        return solver.compute_violated_constraints(x, R);
     }
 };
 
@@ -859,7 +843,7 @@ struct compute_reversing
     compute_reversing(solverT& s, const Xtype& x, randomT&)
       : R(s.m)
     {
-        compute_missing_constraint(s, x, R);
+        s.compute_violated_constraints(x, R);
     }
 
     template<typename solverT, typename Xtype>
@@ -873,7 +857,7 @@ struct compute_reversing
         solver.push_and_compute_update_row(
           x, R.crbegin(), R.crend(), kappa, delta, theta, objective_amplifier);
 
-        return compute_missing_constraint(solver, x, R);
+        return solver.compute_violated_constraints(x, R);
     }
 
     template<typename solverT, typename Xtype>
@@ -886,7 +870,7 @@ struct compute_reversing
         solver.compute_update_row(
           x, R.crbegin(), R.crend(), kappa, delta, theta);
 
-        return compute_missing_constraint(solver, x, R);
+        return solver.compute_violated_constraints(x, R);
     }
 };
 
@@ -903,7 +887,7 @@ struct compute_random
       : R(s.m)
       , rng(rng_)
     {
-        compute_missing_constraint(s, x, R);
+        s.compute_violated_constraints(x, R);
     }
 
     template<typename solverT, typename Xtype>
@@ -919,7 +903,7 @@ struct compute_random
         solver.push_and_compute_update_row(
           x, R.begin(), R.end(), kappa, delta, theta, objective_amplifier);
 
-        return compute_missing_constraint(solver, x, R);
+        return solver.compute_violated_constraints(x, R);
     }
 
     template<typename solverT, typename Xtype>
@@ -933,7 +917,7 @@ struct compute_random
 
         solver.compute_update_row(x, R.begin(), R.end(), kappa, delta, theta);
 
-        return compute_missing_constraint(solver, x, R);
+        return solver.compute_violated_constraints(x, R);
     }
 };
 
@@ -975,11 +959,11 @@ struct compute_infeasibility
       : m_order(s.m)
       , rng(rng_)
     {
-        local_compute_missing_constraint(s, x);
+        local_compute_violated_constraints(s, x);
     }
 
     template<typename solverT, typename Xtype>
-    int local_compute_missing_constraint(solverT& solver, const Xtype& x)
+    int local_compute_violated_constraints(solverT& solver, const Xtype& x)
     {
         m_order.clear();
 
@@ -1018,7 +1002,7 @@ struct compute_infeasibility
                                            theta,
                                            objective_amplifier);
 
-        return local_compute_missing_constraint(solver, x);
+        return local_compute_violated_constraints(solver, x);
     }
 
     template<typename solverT, typename Xtype>
@@ -1033,7 +1017,7 @@ struct compute_infeasibility
         solver.compute_update_row(
           x, m_order.cbegin(), m_order.cend(), kappa, delta, theta);
 
-        return local_compute_missing_constraint(solver, x);
+        return local_compute_violated_constraints(solver, x);
     }
 };
 
