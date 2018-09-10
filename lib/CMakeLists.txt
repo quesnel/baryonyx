@@ -23,17 +23,11 @@ set(private_baryonyx_source
  src/itm-optimizer-common.hpp
  src/itm-solver-common.hpp
  src/itm-solver-equalities-01.cpp
- src/itm-solver-equalities-01.hpp
  src/itm-solver-equalities-101.cpp
- src/itm-solver-equalities-101.hpp
  src/itm-solver-inequalities-01.cpp
- src/itm-solver-inequalities-01.hpp
  src/itm-solver-inequalities-101-buffered.cpp
- src/itm-solver-inequalities-101-buffered.hpp
  src/itm-solver-inequalities-101.cpp
- src/itm-solver-inequalities-101.hpp
  src/itm-solver-inequalities-Z.cpp
- src/itm-solver-inequalities-Z.hpp
  src/itm.hpp
  src/knapsack-dp-solver.hpp
  src/lpcore.cpp
