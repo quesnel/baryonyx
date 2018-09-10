@@ -830,7 +830,7 @@ struct compute_none
                      floatingpointT objective_amplifier)
     {
         solver.push_and_compute_update_row(
-          x, R.begin(), R.end(), kappa, delta, theta, objective_amplifier);
+          x, R.cbegin(), R.cend(), kappa, delta, theta, objective_amplifier);
 
         return compute_missing_constraint(solver, x, R);
     }
@@ -854,7 +854,6 @@ struct compute_reversing
     using random_type = randomT;
 
     std::vector<int> R;
-    int nb = 0;
 
     template<typename solverT, typename Xtype>
     compute_reversing(solverT& s, const Xtype& x, randomT&)
@@ -871,10 +870,8 @@ struct compute_reversing
                      floatingpointT theta,
                      floatingpointT objective_amplifier)
     {
-        std::reverse(R.begin(), R.end());
-
         solver.push_and_compute_update_row(
-          x, R.begin(), R.end(), kappa, delta, theta, objective_amplifier);
+          x, R.crbegin(), R.crend(), kappa, delta, theta, objective_amplifier);
 
         return compute_missing_constraint(solver, x, R);
     }
@@ -886,9 +883,8 @@ struct compute_reversing
             floatingpointT delta,
             floatingpointT theta)
     {
-        std::reverse(R.begin(), R.end());
-
-        solver.compute_update_row(x, R.begin(), R.end(), kappa, delta, theta);
+        solver.compute_update_row(
+          x, R.crbegin(), R.crend(), kappa, delta, theta);
 
         return compute_missing_constraint(solver, x, R);
     }
@@ -972,13 +968,11 @@ struct compute_infeasibility
     using direction_type = directionT;
 
     std::vector<std::pair<int, int>> m_order;
-    std::vector<int> R;
     random_type& rng;
 
     template<typename solverT, typename Xtype>
     compute_infeasibility(solverT& s, const Xtype& x, random_type& rng_)
       : m_order(s.m)
-      , R(s.m)
       , rng(rng_)
     {
         local_compute_missing_constraint(s, x);
@@ -1016,12 +1010,13 @@ struct compute_infeasibility
     {
         itm::sort(m_order.begin(), m_order.end(), direction_type());
 
-        R.resize(m_order.size());
-        for (std::size_t i{ 0 }, e{ m_order.size() }; i != e; ++i)
-            R[i] = m_order[i].first;
-
-        solver.push_and_compute_update_row(
-          x, R.begin(), R.end(), kappa, delta, theta, objective_amplifier);
+        solver.push_and_compute_update_row(x,
+                                           m_order.cbegin(),
+                                           m_order.cend(),
+                                           kappa,
+                                           delta,
+                                           theta,
+                                           objective_amplifier);
 
         return local_compute_missing_constraint(solver, x);
     }
@@ -1035,11 +1030,8 @@ struct compute_infeasibility
     {
         itm::sort(m_order.begin(), m_order.end(), direction_type());
 
-        R.resize(m_order.size());
-        for (std::size_t i{ 0 }, e{ m_order.size() }; i != e; ++i)
-            R[i] = m_order[i].first;
-
-        solver.compute_update_row(x, R.begin(), R.end(), kappa, delta, theta);
+        solver.compute_update_row(
+          x, m_order.cbegin(), m_order.cend(), kappa, delta, theta);
 
         return local_compute_missing_constraint(solver, x);
     }

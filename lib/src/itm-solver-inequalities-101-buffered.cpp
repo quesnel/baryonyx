@@ -495,7 +495,7 @@ struct solver_inequalities_101coeff_buffered
                        std::bind1st(std::multiplies<Float>(), theta));
 
         for (auto it = first; it != last; ++it) {
-            auto k = *it;
+            auto k = constraint(it);
 
             sparse_matrix<int>::row_iterator rit, ret;
             std::tie(rit, ret) = ap.row(k);
@@ -518,7 +518,7 @@ struct solver_inequalities_101coeff_buffered
         }
 
         for (auto it = first; it != last; ++it) {
-            auto k = *it;
+            auto k = constraint(it);
 
             if (!C[k]) {
                 if (b[k].min == b[k].max)
@@ -556,7 +556,7 @@ struct solver_inequalities_101coeff_buffered
                        std::bind1st(std::multiplies<Float>(), theta));
 
         for (auto it = first; it != last; ++it) {
-            auto k = *it;
+            auto k = constraint(it);
 
             sparse_matrix<int>::row_iterator rit, ret;
             std::tie(rit, ret) = ap.row(k);
@@ -579,7 +579,7 @@ struct solver_inequalities_101coeff_buffered
         }
 
         for (auto it = first; it != last; ++it) {
-            auto k = *it;
+            auto k = constraint(it);
 
             if (!C[k]) {
                 if (b[k].min == b[k].max)

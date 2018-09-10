@@ -723,7 +723,7 @@ struct solver_inequalities_Zcoeff
                                      Float obj_amp)
     {
         for (; first != last; ++first) {
-            auto k = *first;
+            auto k = constraint(first);
 
             if (Z[k]) {
                 if (b[k].min == b[k].max)
@@ -759,7 +759,7 @@ struct solver_inequalities_Zcoeff
                             Float theta)
     {
         for (; first != last; ++first) {
-            auto k = *first;
+            auto k = constraint(first);
             if (Z[k]) {
                 if (b[k].min == b[k].max)
                     compute_update_row_Z_eq(x,
