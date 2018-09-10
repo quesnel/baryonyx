@@ -1264,7 +1264,7 @@ using float_sel = typename std::conditional<
 
 template<int o>
 using mode_sel =
-  typename std::conditional<o == 0, minimize_tag, maximize_tag>::type;
+  typename std::conditional<o == 0, maximize_tag, minimize_tag>::type;
 
 } // namespace itm
 } // namespace baryonyx
