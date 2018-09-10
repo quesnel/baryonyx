@@ -362,8 +362,11 @@ struct BARYONYX_API solver_parameters
  *
  * @details @c baryonyx::context manages the logging system and stores a set of
  *     parameters for solvers. Default, the logging system is active and use
- *     @c stdout C file structure. Define @c BARYONYX_DISABLE_LOGGING as
- *     preprocessor value to hide debug logging message.
+ *     @c stdout C file structure as output stream. To disable logging system,
+ *         use the CMake WITH_LOG=OFF or undefined the @c BARYONYX_ENABLE_LOG
+ *         preprocessor value to hide all messages. To disable debug message
+ *         only, use the CMake WITH_DEBUG=OFF or undefined the @c
+ *         BARYONYX_ENABLE_DEBUG preprocessor value.
  *
  *     The implementation of this class is hidden into private include to
  *     ensure a stable ABI of the Baryonyx library.

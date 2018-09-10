@@ -2,7 +2,8 @@ project(libbaryonyx VERSION 0.2.99.0 LANGUAGES CXX)
 
 option(WITH_FULL_OPTIMIZATION "Disable all logging facilities and active heavy optimization code. [default: off]" OFF)
 
-option(WITH_DEBUG "enable debug log message. [default: ON]" ON)
+option(WITH_DEBUG "enable maximium debug code. [default: ON]" ON)
+option(WITH_LOG "enable log message. [default: ON]" ON)
 
 set(public_baryonyx_header
  include/baryonyx/core-compare
@@ -78,7 +79,8 @@ set_target_properties(libbaryonyx PROPERTIES
 target_compile_definitions(libbaryonyx
   PRIVATE
   $<$<BOOL:${WITH_FULL_OPTIMIZATION}>:BARYONYX_FULL_OPTIMIZATION>
-  $<$<BOOL:${WITH_DEBUG}>:BARYONYX_DISABLE_DEBUG>
+  $<$<BOOL:${WITH_DEBUG}>:BARYONYX_ENABLE_DEBUG>
+  $<$<BOOL:${WITH_LOG}>:BARYONYX_ENABLE_LOG>
   $<$<BOOL:${NLOPT_FOUND}>:BARYONYX_HAVE_NLOPT>
   $<$<CXX_COMPILER_ID:MSVC>:_CRT_SECURE_NO_WARNINGS>
   $<$<CXX_COMPILER_ID:MSVC>:_SCL_SECURE_NO_WARNINGS>
@@ -115,7 +117,8 @@ set_target_properties(libbaryonyx-static PROPERTIES
 target_compile_definitions(libbaryonyx-static
   PRIVATE
   $<$<BOOL:${WITH_FULL_OPTIMIZATION}>:BARYONYX_FULL_OPTIMIZATION>
-  $<$<BOOL:${WITH_DEBUG}>:BARYONYX_DISABLE_DEBUG>
+  $<$<BOOL:${WITH_DEBUG}>:BARYONYX_ENABLE_DEBUG>
+  $<$<BOOL:${WITH_LOG}>:BARYONYX_ENABLE_LOG>
   $<$<BOOL:${NLOPT_FOUND}>:BARYONYX_HAVE_NLOPT>
   $<$<CXX_COMPILER_ID:MSVC>:_CRT_SECURE_NO_WARNINGS>
   $<$<CXX_COMPILER_ID:MSVC>:_SCL_SECURE_NO_WARNINGS>
@@ -159,6 +162,9 @@ set_target_properties(testio PROPERTIES
   CXX_STANDARD_REQUIRED ON)
 target_compile_definitions(testio
   PRIVATE
+  $<$<BOOL:${WITH_DEBUG}>:BARYONYX_ENABLE_DEBUG>
+  $<$<BOOL:${WITH_LOG}>:BARYONYX_ENABLE_LOG>
+  $<$<BOOL:${NLOPT_FOUND}>:BARYONYX_HAVE_NLOPT>
   $<$<CXX_COMPILER_ID:MSVC>:_CRT_SECURE_NO_WARNINGS>
   $<$<CXX_COMPILER_ID:MSVC>:_SCL_SECURE_NO_WARNINGS>)
 target_include_directories(testio PUBLIC
@@ -176,6 +182,9 @@ set_target_properties(testlib PROPERTIES
   CXX_STANDARD_REQUIRED ON)
 target_compile_definitions(testlib
   PRIVATE
+  $<$<BOOL:${WITH_DEBUG}>:BARYONYX_ENABLE_DEBUG>
+  $<$<BOOL:${WITH_LOG}>:BARYONYX_ENABLE_LOG>
+  $<$<BOOL:${NLOPT_FOUND}>:BARYONYX_HAVE_NLOPT>
   $<$<CXX_COMPILER_ID:MSVC>:_CRT_SECURE_NO_WARNINGS>
   $<$<CXX_COMPILER_ID:MSVC>:_SCL_SECURE_NO_WARNINGS>)
 target_include_directories(testlib PUBLIC
@@ -193,6 +202,9 @@ set_target_properties(testpreprocess PROPERTIES
   CXX_STANDARD_REQUIRED ON)
 target_compile_definitions(testpreprocess
   PRIVATE
+  $<$<BOOL:${WITH_DEBUG}>:BARYONYX_ENABLE_DEBUG>
+  $<$<BOOL:${WITH_LOG}>:BARYONYX_ENABLE_LOG>
+  $<$<BOOL:${NLOPT_FOUND}>:BARYONYX_HAVE_NLOPT>
   $<$<CXX_COMPILER_ID:MSVC>:_CRT_SECURE_NO_WARNINGS>
   $<$<CXX_COMPILER_ID:MSVC>:_SCL_SECURE_NO_WARNINGS>)
 target_include_directories(testpreprocess PUBLIC
@@ -210,6 +222,9 @@ set_target_properties(testsolver PROPERTIES
   CXX_STANDARD_REQUIRED ON)
 target_compile_definitions(testsolver
   PRIVATE
+  $<$<BOOL:${WITH_DEBUG}>:BARYONYX_ENABLE_DEBUG>
+  $<$<BOOL:${WITH_LOG}>:BARYONYX_ENABLE_LOG>
+  $<$<BOOL:${NLOPT_FOUND}>:BARYONYX_HAVE_NLOPT>
   $<$<CXX_COMPILER_ID:MSVC>:_CRT_SECURE_NO_WARNINGS>
   $<$<CXX_COMPILER_ID:MSVC>:_SCL_SECURE_NO_WARNINGS>)
 target_include_directories(testsolver PUBLIC
@@ -227,6 +242,9 @@ set_target_properties(testoptimizer PROPERTIES
   CXX_STANDARD_REQUIRED ON)
 target_compile_definitions(testoptimizer
   PRIVATE
+  $<$<BOOL:${WITH_DEBUG}>:BARYONYX_ENABLE_DEBUG>
+  $<$<BOOL:${WITH_LOG}>:BARYONYX_ENABLE_LOG>
+  $<$<BOOL:${NLOPT_FOUND}>:BARYONYX_HAVE_NLOPT>
   $<$<CXX_COMPILER_ID:MSVC>:_CRT_SECURE_NO_WARNINGS>
   $<$<CXX_COMPILER_ID:MSVC>:_SCL_SECURE_NO_WARNINGS>)
 target_include_directories(testoptimizer PUBLIC

@@ -350,71 +350,103 @@ log(baryonyx::context* ctx, context::message_type level, const char* msg)
     }
 }
 
+namespace detail {
+
+struct sink
+{
+    template<typename... Args>
+    sink(const Args&...)
+    {}
+};
+}
+
 template<typename... Args>
 void
 emerg(const context_ptr& ctx, const char* fmt, const Args&... args)
 {
+#ifdef BARYONYX_ENABLE_LOG
     log(ctx, context::message_type::emerg, fmt, args...);
+#else
+    detail::sink(ctx, fmt, args...);
+#endif
 }
 
 template<typename... Args>
 void
 alert(const context_ptr& ctx, const char* fmt, const Args&... args)
 {
+#ifdef BARYONYX_ENABLE_LOG
     log(ctx, context::message_type::alert, fmt, args...);
+#else
+    detail::sink(ctx, fmt, args...);
+#endif
 }
 
 template<typename... Args>
 void
 crit(const context_ptr& ctx, const char* fmt, const Args&... args)
 {
+#ifdef BARYONYX_ENABLE_LOG
     log(ctx, context::message_type::crit, fmt, args...);
+#else
+    detail::sink(ctx, fmt, args...);
+#endif
 }
 
 template<typename... Args>
 void
 error(const context_ptr& ctx, const char* fmt, const Args&... args)
 {
+#ifdef BARYONYX_ENABLE_LOG
     log(ctx, context::message_type::err, fmt, args...);
+#else
+    detail::sink(ctx, fmt, args...);
+#endif
 }
 
 template<typename... Args>
 void
 warning(const context_ptr& ctx, const char* fmt, const Args&... args)
 {
+#ifdef BARYONYX_ENABLE_LOG
     log(ctx, context::message_type::warning, fmt, args...);
+#else
+    detail::sink(ctx, fmt, args...);
+#endif
 }
 
 template<typename... Args>
 void
 notice(const context_ptr& ctx, const char* fmt, const Args&... args)
 {
+#ifdef BARYONYX_ENABLE_LOG
     log(ctx, context::message_type::notice, fmt, args...);
+#else
+    detail::sink(ctx, fmt, args...);
+#endif
 }
 
 template<typename... Args>
 void
 info(const context_ptr& ctx, const char* fmt, const Args&... args)
 {
+#ifdef BARYONYX_ENABLE_LOG
     log(ctx, context::message_type::info, fmt, args...);
+#else
+    detail::sink(ctx, fmt, args...);
+#endif
 }
 
 template<typename... Args>
 void
 debug(const context_ptr& ctx, const char* fmt, const Args&... args)
 {
-#ifndef BARYONYX_DISABLE_LOGGING
-    //
-    // Default, the logging system is active and the call to the @c log
-    // function are send to the logger functor. Define
-    // BARYONYX_DISABLE_LOGGING as preprocessor value to hide all logging
-    // message..
-    //
+#ifdef BARYONYX_ENABLE_LOG
+#ifdef BARYONYX_ENABLE_DEBUG
     log(ctx, context::message_type::debug, fmt, args...);
 #else
-    (void)ctx;
-    (void)fmt;
-    (void)arg1;
+    detail::sink(ctx, fmt, args...);
+#endif
 #endif
 }
 
@@ -425,7 +457,11 @@ emerg(const context_ptr& ctx,
       const Arg1& arg1,
       const Args&... args)
 {
+#ifdef BARYONYX_ENABLE_LOG
     log(ctx, context::message_type::emerg, fmt, arg1, args...);
+#else
+    detail::sink(ctx, fmt, arg1, args...);
+#endif
 }
 
 template<typename Arg1, typename... Args>
@@ -435,7 +471,11 @@ alert(const context_ptr& ctx,
       const Arg1& arg1,
       const Args&... args)
 {
+#ifdef BARYONYX_ENABLE_LOG
     log(ctx, context::message_type::alert, fmt, arg1, args...);
+#else
+    detail::sink(ctx, fmt, arg1, args...);
+#endif
 }
 
 template<typename Arg1, typename... Args>
@@ -445,7 +485,11 @@ crit(const context_ptr& ctx,
      const Arg1& arg1,
      const Args&... args)
 {
+#ifdef BARYONYX_ENABLE_LOG
     log(ctx, context::message_type::crit, fmt, arg1, args...);
+#else
+    detail::sink(ctx, fmt, arg1, args...);
+#endif
 }
 
 template<typename Arg1, typename... Args>
@@ -455,7 +499,11 @@ error(const context_ptr& ctx,
       const Arg1& arg1,
       const Args&... args)
 {
+#ifdef BARYONYX_ENABLE_LOG
     log(ctx, context::message_type::err, fmt, arg1, args...);
+#else
+    detail::sink(ctx, fmt, arg1, args...);
+#endif
 }
 
 template<typename Arg1, typename... Args>
@@ -465,7 +513,11 @@ warning(const context_ptr& ctx,
         const Arg1& arg1,
         const Args&... args)
 {
+#ifdef BARYONYX_ENABLE_LOG
     log(ctx, context::message_type::warning, fmt, arg1, args...);
+#else
+    detail::sink(ctx, fmt, arg1, args...);
+#endif
 }
 
 template<typename Arg1, typename... Args>
@@ -475,7 +527,11 @@ notice(const context_ptr& ctx,
        const Arg1& arg1,
        const Args&... args)
 {
+#ifdef BARYONYX_ENABLE_LOG
     log(ctx, context::message_type::notice, fmt, arg1, args...);
+#else
+    detail::sink(ctx, fmt, arg1, args...);
+#endif
 }
 
 template<typename Arg1, typename... Args>
@@ -485,7 +541,11 @@ info(const context_ptr& ctx,
      const Arg1& arg1,
      const Args&... args)
 {
+#ifdef BARYONYX_ENABLE_LOG
     log(ctx, context::message_type::info, fmt, arg1, args...);
+#else
+    detail::sink(ctx, fmt, arg1, args...);
+#endif
 }
 
 template<typename Arg1, typename... Args>
@@ -495,19 +555,12 @@ debug(const context_ptr& ctx,
       const Arg1& arg1,
       const Args&... args)
 {
-#ifndef BARYONYX_DISABLE_LOGGING
-    //
-    // Default, the logging system is active and the call to the @c log
-    // function are send to the logger functor. Define
-    // BARYONYX_DISABLE_LOGGING as preprocessor value to hide all logging
-    // message..
-    //
+#ifdef BARYONYX_ENABLE_LOG
+#ifdef BARYONYX_ENABLE_DEBUG
     log(ctx, context::message_type::debug, fmt, arg1, args...);
 #else
-    (void)ctx;
-    (void)fmt;
-    (void)arg1;
-    (void)args;
+    detail::sink(ctx, fmt, arg1, args...);
+#endif
 #endif
 }
 
@@ -555,66 +608,89 @@ template<typename T>
 void
 emerg(const context_ptr& ctx, const T& msg)
 {
+#ifdef BARYONYX_ENABLE_LOG
     log(ctx, context::message_type::emerg, msg);
+#else
+    detail::sink(ctx, msg);
+#endif
 }
 
 template<typename T>
 void
 alert(const context_ptr& ctx, const T& msg)
 {
+#ifdef BARYONYX_ENABLE_LOG
     log(ctx, context::message_type::alert, msg);
+#else
+    detail::sink(ctx, msg);
+#endif
 }
 
 template<typename T>
 void
 crit(const context_ptr& ctx, const T& msg)
 {
+#ifdef BARYONYX_ENABLE_LOG
     log(ctx, context::message_type::crit, msg);
+#else
+    detail::sink(ctx, msg);
+#endif
 }
 
 template<typename T>
 void
 error(const context_ptr& ctx, const T& msg)
 {
+#ifdef BARYONYX_ENABLE_LOG
     log(ctx, context::message_type::err, msg);
+#else
+    detail::sink(ctx, msg);
+#endif
 }
 
 template<typename T>
 void
 warning(const context_ptr& ctx, const T& msg)
 {
+#ifdef BARYONYX_ENABLE_LOG
     log(ctx, context::message_type::warning, msg);
+#else
+    detail::sink(ctx, msg);
+#endif
 }
 
 template<typename T>
 void
 notice(const context_ptr& ctx, const T& msg)
 {
+#ifdef BARYONYX_ENABLE_LOG
     log(ctx, context::message_type::notice, msg);
+#else
+    detail::sink(ctx, msg);
+#endif
 }
 
 template<typename T>
 void
 info(const context_ptr& ctx, const T& msg)
 {
+#ifdef BARYONYX_ENABLE_LOG
     log(ctx, context::message_type::info, msg);
+#else
+    detail::sink(ctx, msg);
+#endif
 }
 
 template<typename T>
 void
 debug(const context_ptr& ctx, const T& msg)
 {
-#ifndef BARYONYX_DISABLE_LOGGING
-    //
-    // Default, the logging system is active and the call to the @c log
-    // function are send to the logger functor. Define
-    // BARYONYX_DISABLE_LOGGING as preprocessor value to hide all logging
-    // message..
-    //
+#ifdef BARYONYX_ENABLE_LOG
+#ifndef BARYONYX_ENABLE_DEBUG
     log(ctx, context::message_type::debug, msg);
 #else
-    (void)ctx;
-    (void)msg;
+    detail::sink(ctx, msg);
+#endif
 #endif
 }
 
