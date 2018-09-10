@@ -452,7 +452,6 @@ struct main_parameters
     bool check = false;
     bool optimize = false;
     bool quiet = false;
-    bool preprocessing = true;
 };
 
 main_parameters
