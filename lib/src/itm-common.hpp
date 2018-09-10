@@ -419,6 +419,34 @@ compute_reduced_costs_vector_size(
     return rsizemax;
 }
 
+namespace detail {
+
+inline int
+constraint(std::vector<int>::const_iterator it)
+{
+    return *it;
+}
+
+inline int
+constraint(std::vector<int>::const_reverse_iterator it)
+{
+    return *it;
+}
+
+inline int
+constraint(std::vector<std::pair<int, int>>::const_iterator it)
+{
+    return it->first;
+}
+}
+
+template<typename Iterator>
+int
+constraint(Iterator it)
+{
+    return detail::constraint(it);
+}
+
 template<typename Solver>
 inline bool
 is_valid_solution(const Solver& s) noexcept

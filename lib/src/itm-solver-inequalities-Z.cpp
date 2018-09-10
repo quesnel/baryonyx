@@ -713,10 +713,10 @@ struct solver_inequalities_Zcoeff
         }
     }
 
-    template<typename Xtype>
+    template<typename Xtype, typename Iterator>
     void push_and_compute_update_row(Xtype& x,
-                                     std::vector<int>::iterator first,
-                                     std::vector<int>::iterator last,
+                                     Iterator first,
+                                     Iterator last,
                                      Float kappa,
                                      Float delta,
                                      Float theta,
@@ -750,10 +750,10 @@ struct solver_inequalities_Zcoeff
         }
     }
 
-    template<typename Xtype>
+    template<typename Xtype, typename Iterator>
     void compute_update_row(Xtype& x,
-                            std::vector<int>::iterator first,
-                            std::vector<int>::iterator last,
+                            Iterator first,
+                            Iterator last,
                             Float kappa,
                             Float delta,
                             Float theta)

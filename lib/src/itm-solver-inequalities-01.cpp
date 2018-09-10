@@ -353,18 +353,17 @@ struct solver_inequalities_01coeff
         }
     }
 
-    template<typename Xtype>
+    template<typename Xtype, typename Iterator>
     void push_and_compute_update_row(Xtype& x,
-                                     std::vector<int>::iterator first,
-                                     std::vector<int>::iterator last,
+                                     Iterator first,
+                                     Iterator last,
                                      Float kappa,
                                      Float delta,
                                      Float theta,
                                      Float obj_amp)
     {
         for (; first != last; ++first) {
-            auto k = *first;
-
+            auto k = constraint(first);
             if (b[k].min == b[k].max)
                 compute_update_row_01_eq(
                   x, k, b[k].min, kappa, delta, theta, obj_amp);
@@ -374,17 +373,16 @@ struct solver_inequalities_01coeff
         }
     }
 
-    template<typename Xtype>
+    template<typename Xtype, typename Iterator>
     void compute_update_row(Xtype& x,
-                            std::vector<int>::iterator first,
-                            std::vector<int>::iterator last,
+                            Iterator first,
+                            Iterator last,
                             Float kappa,
                             Float delta,
                             Float theta)
     {
         for (; first != last; ++first) {
-            auto k = *first;
-
+            auto k = constraint(first);
             if (b[k].min == b[k].max)
                 compute_update_row_01_eq(
                   x, k, b[k].min, kappa, delta, theta, static_cast<Float>(0));

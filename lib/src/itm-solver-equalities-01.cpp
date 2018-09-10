@@ -263,17 +263,17 @@ struct solver_equalities_01coeff
         }
     }
 
-    template<typename Xtype>
+    template<typename Xtype, typename Iterator>
     void push_and_compute_update_row(Xtype& x,
-                                     std::vector<int>::iterator first,
-                                     std::vector<int>::iterator last,
+                                     Iterator first,
+                                     Iterator last,
                                      Float kappa,
                                      Float delta,
                                      Float theta,
                                      Float objective_amplifier)
     {
         for (; first != last; ++first) {
-            auto k = *first;
+            auto k = constraint(first);
 
             sparse_matrix<int>::row_iterator it, et;
             std::tie(it, et) = ap.row(k);
@@ -291,16 +291,16 @@ struct solver_equalities_01coeff
         }
     }
 
-    template<typename Xtype>
+    template<typename Xtype, typename Iterator>
     void compute_update_row(Xtype& x,
-                            std::vector<int>::iterator first,
-                            std::vector<int>::iterator last,
+                            Iterator first,
+                            Iterator last,
                             Float kappa,
                             Float delta,
                             Float theta)
     {
         for (; first != last; ++first) {
-            auto k = *first;
+            auto k = constraint(first);
 
             sparse_matrix<int>::row_iterator it, et;
             std::tie(it, et) = ap.row(k);
