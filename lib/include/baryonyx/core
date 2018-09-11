@@ -1,4 +1,3 @@
-
 /* Copyright (C) 2016-2018 INRA
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
