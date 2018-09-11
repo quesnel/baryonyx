@@ -194,6 +194,18 @@ some specific for the optimization algorithms.
 | --disable-preprocessing -np
 |
 | disable the use of preprocessing
+
+| --auto[:= ]value
+| string
+| Select the type of optimizer meta-heuristic. Values are:
+
+* `none` without specific algorithm.
+* `manual` tries to update parameters to found best solution.
+* `nlopt` tries to update parameters to found best solution using nlopt library and the Nelder Mead algorithm.
+* `branch` split recursively original problem to found best solution.
+* `branch-manual` mix branch and manual algorithm.
+* `branch-nlopt` mix branch and nlopt algorithm.
+
 |===
 
 To assign parameters to solver or optimizer algorithms, use the `-p
@@ -207,14 +219,6 @@ To assign parameters to solver or optimizer algorithms, use the `-p
 | time-limit
 | real
 | time in second to stop algorithm or stop the optimize mode
-
-| observation
-| string
-| Select the type of observation mechanism
-
-* `none` no observation (default).
-* `pnm` produce picture files for the P matrix (one per loop) and Pi vector (Lagrangian multipliers) each loop
-* `file` produce CSV files for the P matrix (one per loop) and Pi vector (Lagrangian multipliers) each loop
 
 | limit
 | integer
@@ -293,6 +297,22 @@ To assign parameters to solver or optimizer algorithms, use the `-p
 * `variables-number` (experimental): use number variable links.
 * `variables-weight` (experimental): sort variables weights (sum variable appearance in all constraints).
 * `constraints-weight` (experimental): use number constraint links.
+
+| observation
+| string
+| Select the type of observation mechanism
+
+* `none` no observation (default).
+* `pnm` produce picture files for the P matrix (one per loop) and Pi vector (Lagrangian multipliers) each loop
+* `file` produce CSV files for the P matrix (one per loop) and Pi vector (Lagrangian multipliers) each loop
+
+| floating-point_type
+| string
+| Select the type of real use internally in the solvers. Values are:
+
+* `float` float (32 bits)
+* `double` double (64 bits)
+* `longdouble` long double (84 or 128 bits)
 
 | print-level
 | integer
