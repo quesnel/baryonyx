@@ -60,7 +60,7 @@ struct problem
     {}
 
     template<typename Constraints>
-    constexpr int coefficient_type(const Constraints& csts) noexcept
+    constexpr static int coefficient_type(const Constraints& csts) noexcept
     {
         int ret = 0;
 
@@ -76,7 +76,7 @@ struct problem
         return ret;
     }
 
-    constexpr int coefficient_type() noexcept
+    int coefficient_type() noexcept
     {
         int ret = 0;
 
