@@ -1,4 +1,4 @@
-project(libbaryonyx VERSION 0.2.99.0 LANGUAGES CXX)
+project(libbaryonyx VERSION 0.3.0.0 LANGUAGES CXX)
 
 option(WITH_FULL_OPTIMIZATION "Disable all logging facilities and active heavy optimization code. [default: off]" OFF)
 
