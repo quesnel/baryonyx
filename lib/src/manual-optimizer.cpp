@@ -30,27 +30,78 @@
 
 struct manual_course
 {
-    std::array<double, 5> theta = { { 0.0, 0.3, 0.5, 0.7, 1.0 } };
-    std::array<double, 5> delta = { { -1, 1e-2, 0.05, 0.001, 0.0003 } };
-    std::array<double, 5> kappa_min = { { 0, 1e-2, 0.05, 0.1, 0.3 } };
-    std::array<double, 5> kappa_step = { { 1e-7, 1e-5, 1e-3, 1e-2, 1e-1 } };
-    std::array<double, 5> init_random = { { 0.0, 0.3, 0.5, 0.7, 1.0 } };
-    std::array<int, 5> it = { { 0, 0, 0, 0, 0 } };
+    std::unique_ptr<double[]> theta;
+    std::unique_ptr<double[]> delta;
+    std::unique_ptr<double[]> kappa_min;
+    std::unique_ptr<double[]> kappa_step;
+    std::unique_ptr<double[]> init_random;
+    std::unique_ptr<int[]> iterators;
+
+    const int length;
+
+    manual_course(double theta_,
+                  double delta_,
+                  double kappa_min_,
+                  double kappa_step_,
+                  double init_random_,
+                  int length_)
+      : theta(std::make_unique<double[]>(length_))
+      , delta(std::make_unique<double[]>(length_))
+      , kappa_min(std::make_unique<double[]>(length_))
+      , kappa_step(std::make_unique<double[]>(length_))
+      , init_random(std::make_unique<double[]>(length_))
+      , iterators(std::make_unique<int[]>(length_))
+      , length(length_)
+    {
+        bx_ensures(length > 2);
+
+        theta[0] = { 0.5 };
+        theta[1] = 1.0 / static_cast<double>(length);
+
+        delta[0] = { -1 };
+        delta[1] = 0.1 / static_cast<double>(length);
+
+        kappa_min[0] = { 0 };
+        kappa_min[1] = 1e-2 / static_cast<double>(length);
+
+        kappa_step[0] = { 1e-3 };
+        kappa_step[1] = 1e-7 / static_cast<double>(length);
+
+        init_random[0] = { 0.5 };
+        init_random[1] = 0.9 / static_cast<double>(length);
+
+        for (int i = 2; i != length; ++i)
+            theta[i] = theta[i - 1] + 1.0 / static_cast<double>(length);
+
+        for (int i = 2; i != length; ++i)
+            delta[i] =
+              theta[i - 1] + 0.1 / (5.0 * static_cast<double>(length));
+
+        for (int i = 2; i != length; ++i)
+            kappa_min[i] = theta[i - 1] + 1e-2 / static_cast<double>(length);
+
+        for (int i = 2; i != length; ++i)
+            kappa_step[i] =
+              theta[i - 1] + 1e-7 / (5.0 * static_cast<double>(length));
+
+        for (int i = 2; i != length; ++i)
+            init_random[i] = theta[i - 1] + 0.9 / static_cast<double>(length);
+
+        reset();
+    }
 
     void reset()
     {
-        std::fill(it.begin(), it.end(), 0);
+        std::fill(iterators.get(), iterators.get() + length, 0);
     }
 
     bool next()
     {
-        auto size = static_cast<int>(it.size() - 1);
-
-        for (int i = size; i >= 0; --i) {
-            if (it[i] + 1 > 4) {
-                it[i] = 0;
+        for (int i = length - 1; i >= 0; --i) {
+            if (iterators[i] + 1 >= length) {
+                iterators[i] = 0;
             } else {
-                ++it[i];
+                ++iterators[i];
                 return true;
             }
         }
@@ -62,27 +113,47 @@ struct manual_course
 static baryonyx::result
 optimize(const baryonyx::context_ptr& ctx, const baryonyx::problem& pb)
 {
-    manual_course array;
+    manual_course array(ctx->parameters.theta,
+                        ctx->parameters.delta,
+                        ctx->parameters.kappa_min,
+                        ctx->parameters.kappa_step,
+                        ctx->parameters.init_random,
+                        5);
 
     auto old_log_priority = ctx->log_priority;
     ctx->log_priority = baryonyx::context::message_type::notice;
 
-    std::array<int, 5> best_params;
+    auto best_params = std::make_unique<int[]>(array.length);
     double best = +HUGE_VAL;
 
     do {
-        ctx->parameters.theta = array.theta[array.it[0]];
-        ctx->parameters.delta = array.delta[array.it[1]];
-        ctx->parameters.kappa_min = array.kappa_min[array.it[2]];
-        ctx->parameters.kappa_step = array.kappa_step[array.it[3]];
-        ctx->parameters.init_random = array.init_random[array.it[4]];
+        ctx->parameters.theta = array.theta[array.iterators[0]];
+        ctx->parameters.delta = array.delta[array.iterators[1]];
+        ctx->parameters.kappa_min = array.kappa_min[array.iterators[2]];
+        ctx->parameters.kappa_step = array.kappa_step[array.iterators[3]];
+        ctx->parameters.init_random = array.init_random[array.iterators[4]];
+
+        baryonyx::notice(ctx,
+                         "  - optimization with theta:{} delta:{} "
+                         "kappa-min:{} kappa-step:{} init-random:{} ",
+                         ctx->parameters.theta,
+                         ctx->parameters.delta,
+                         ctx->parameters.kappa_min,
+                         ctx->parameters.kappa_step,
+                         ctx->parameters.init_random);
 
         auto ret = baryonyx::itm::optimize(ctx, pb);
         if (ret) {
+            baryonyx::notice(ctx, "{:f}\n", ret.solutions.back().value);
             if (best > ret.solutions.back().value) {
                 best = ret.solutions.back().value;
-                best_params = array.it;
+
+                std::copy(array.iterators.get(),
+                          array.iterators.get() + array.length,
+                          best_params.get());
             }
+        } else {
+            baryonyx::notice(ctx, "no solution\n");
         }
     } while (array.next());
 
@@ -91,11 +162,11 @@ optimize(const baryonyx::context_ptr& ctx, const baryonyx::problem& pb)
       "  - manual optimization found solution {:f}: with theta:{} "
       "delta:{} kappa-min:{} kappa-step:{} init-random:{}\n",
       best,
-      array.theta[array.it[0]],
-      array.delta[array.it[1]],
-      array.kappa_min[array.it[2]],
-      array.kappa_step[array.it[3]],
-      array.init_random[array.it[4]]);
+      array.theta[array.iterators[0]],
+      array.delta[array.iterators[1]],
+      array.kappa_min[array.iterators[2]],
+      array.kappa_step[array.iterators[3]],
+      array.init_random[array.iterators[4]]);
 
     ctx->log_priority = old_log_priority;
 
