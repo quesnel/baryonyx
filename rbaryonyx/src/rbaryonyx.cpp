@@ -175,9 +175,7 @@ assign_parameters(const baryonyx::context_ptr& ctx,
 }
 
 static List
-convert_result(const baryonyx::result& res,
-               bool minimize,
-               const std::vector<double>& objective)
+convert_result(const baryonyx::result& res, bool minimize)
 {
     bool solution;
     bool error;
@@ -222,7 +220,6 @@ convert_result(const baryonyx::result& res,
                         _["constraints"] = constraints,
                         _["remaining_constraints"] = remaining,
                         _["minimize"] = minimize,
-                        _["objective_function"] = objective,
                         _["solutions"] = solutions);
 }
 
@@ -271,7 +268,6 @@ convert_result(const baryonyx::result& res,
 //'      solution_found is FALSE.}
 //'   \item{minimize}{Boolean, TRUE is problem is a minimization, FALSE if
 //'     the problem is a maximization.}
-//'   \item{objective_function}{Vector, bound of the objective function.}
 //'   \item{solutions}{Vector, all solution found (may be empty).}
 //'
 //' @useDynLib rbaryonyx
@@ -305,15 +301,11 @@ solve_01lp_problem(std::string file_path,
 
 {
     baryonyx::result ret;
-    std::vector<double> objective(2);
     bool minimize = true;
 
     try {
         auto ctx = baryonyx::make_context(&r_write, verbose ? 6 : 4);
         auto pb = baryonyx::make_problem(ctx, file_path);
-
-        std::tie(objective[0], objective[1]) =
-          baryonyx::compute_min_max_objective_function(pb);
 
         minimize = (pb.type == baryonyx::objective_function_type::minimize);
 
@@ -351,7 +343,7 @@ solve_01lp_problem(std::string file_path,
         ret.status = baryonyx::result_status::internal_error;
     }
 
-    return convert_result(ret, minimize, objective);
+    return convert_result(ret, minimize);
 }
 
 //' Tries to optimize the 01 linear programming problem.
@@ -399,7 +391,6 @@ solve_01lp_problem(std::string file_path,
 //'      solution_found is FALSE.}
 //'   \item{minimize}{Boolean, TRUE is problem is a minimization, FALSE if
 //'     the problem is a maximization.}
-//'   \item{objective_function}{Vector, bound of the objective function.}
 //'   \item{solutions}{Vector, all solution found (may be empty).}
 //'
 //' @useDynLib rbaryonyx
@@ -432,15 +423,11 @@ optimize_01lp_problem(std::string file_path,
                       bool verbose = true) noexcept
 {
     baryonyx::result ret;
-    std::vector<double> objective(2);
     bool minimize = true;
 
     try {
         auto ctx = baryonyx::make_context(&r_write, verbose ? 6 : 4);
         auto pb = baryonyx::make_problem(ctx, file_path);
-
-        std::tie(objective[0], objective[1]) =
-          baryonyx::compute_min_max_objective_function(pb);
 
         minimize = (pb.type == baryonyx::objective_function_type::minimize);
 
@@ -478,5 +465,5 @@ optimize_01lp_problem(std::string file_path,
         ret.status = baryonyx::result_status::internal_error;
     }
 
-    return convert_result(ret, minimize, objective);
+    return convert_result(ret, minimize);
 }
