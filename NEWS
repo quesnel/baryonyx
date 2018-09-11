@@ -1,9 +1,36 @@
 = baryonyx
 Gauthier Quesnel <gauthier.quesnel@inra.fr>
 
-== baryonyx v0.3.0.0 - 2017-??-??
+== baryonyx v0.3.0 - 2018-09-11
+
+general::
+
+* enable x86 and x86-64 for both Release and Debug with Visual Studio 2017
 
 solver::
+
+* Add small optimizer meta-heuristic algorithm, option `--auto:`:
+** `none` without specific algorithm.
+** `manual` tries to update parameters to found best solution.
+** `nlopt` tries to update parameters to found best solution using nlopt library and the Nelder Mead algorithm.
+** `branch` split recursively original problem to found best solution.
+** `branch-manual` mix branch and manual algorithm.
+** `branch-nlopt` mix branch and nlopt algorithm.
+
++ Add observation mechanism, option `-p observer:`:
+** `none` no observation (default).
+** `pnm` produce picture files for the P matrix (one per loop) and Pi vector (Lagrangian multipliers) each loop
+** `file` produce CSV files for the P matrix (one per loop) and Pi vector (Lagrangian multipliers) each loop
+
+* Add solvers:
+** equalities 01
+** equalities 101
+** inequalities 01
+** inequalities 101
+** inequalities 101 buffered (experimental)
+** inequalities Z (experimental)
+
+
 
 * Update solver and main to enable the use of float (4 bytes), double (8 bytes)
   or long double (16 bytes for x86_64) for reduce costs, kappa, delta and
@@ -32,3 +59,11 @@ core::
 
 * Replace `serialize` with `print-level` in option to show information (e.g.
   with `print-level=1` with the solve mode, violated constraints are displayed.
+
+cmake::
+
+* CMake use two options WITH_DEBUG (ON default), WITH_LOG (ON default).
+** WITH_LOG enables logging system (using the BARYONYX_ENABLE_DEBUG preprocessor definition).
+** WITH_DEBUG enable debug messages in logging system and some debug information (using the BARYONYX_ENABLE_DEBUG preprocessor definition).
+
+* Add the nlopt dependency (optional) to perform automatic parameters optimization.
