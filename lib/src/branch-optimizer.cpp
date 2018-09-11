@@ -131,11 +131,14 @@ optimize(const baryonyx::context_ptr& ctx, const baryonyx::problem& pb)
 {
     // NOTE 1 - add a solver parameter to limit the size of the list.
 
+    auto old_log_priority = ctx->log_priority;
+    ctx->log_priority = baryonyx::context::message_type::notice;
+
     auto ret = baryonyx::itm::optimize(ctx, pb);
 
     if (ret)
         baryonyx::notice(ctx,
-                         "  - branch optimization found solution {}\n",
+                         "  - branch optimization found solution {:f}\n",
                          ret.solutions.front().value);
 
     bx_ensures(ret.annoying_variable >= 0 &&
@@ -159,7 +162,7 @@ optimize(const baryonyx::context_ptr& ctx, const baryonyx::problem& pb)
                 if (is_best(jobs.front(), best)) {
                     baryonyx::notice(
                       ctx,
-                      "  - branch optimization found solution {}\n",
+                      "  - branch optimization found solution {:f}\n",
                       jobs.front().result.solutions.front().value);
 
                     best = jobs.front();
@@ -171,6 +174,8 @@ optimize(const baryonyx::context_ptr& ctx, const baryonyx::problem& pb)
 
         jobs.pop_front();
     }
+
+    ctx->log_priority = old_log_priority;
 
     return best.result;
 }

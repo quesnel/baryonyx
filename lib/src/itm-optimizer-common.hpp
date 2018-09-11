@@ -67,7 +67,7 @@ struct best_solution_recorder
                 is_better_solution(current, m_best, Mode())) {
 
                 info(m_ctx,
-                     "  - Solution found: {} (i={} t={}s)\n",
+                     "  - Solution found: {:+.6f} (i={} t={}s)\n",
                      best_solution_value(current),
                      current.loop,
                      current.duration);

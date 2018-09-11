@@ -254,7 +254,7 @@ private:
             m_best.solutions.emplace_back(x.data(), current);
 
             info(m_ctx,
-                 "  - Best solution found: {} (i={} t={}s)\n",
+                 "  - Best solution found: {:+.6f} (i={} t={}s)\n",
                  current,
                  m_best.loop,
                  m_best.duration);

@@ -64,6 +64,9 @@ optimize(const baryonyx::context_ptr& ctx, const baryonyx::problem& pb)
 {
     manual_course array;
 
+    auto old_log_priority = ctx->log_priority;
+    ctx->log_priority = baryonyx::context::message_type::notice;
+
     std::array<int, 5> best_params;
     double best = +HUGE_VAL;
 
@@ -85,7 +88,7 @@ optimize(const baryonyx::context_ptr& ctx, const baryonyx::problem& pb)
 
     baryonyx::notice(
       ctx,
-      "  - manual optimization found solution {}: with theta:{} "
+      "  - manual optimization found solution {:f}: with theta:{} "
       "delta:{} kappa-min:{} kappa-step:{} init-random:{}\n",
       best,
       array.theta[array.it[0]],
@@ -93,6 +96,8 @@ optimize(const baryonyx::context_ptr& ctx, const baryonyx::problem& pb)
       array.kappa_min[array.it[2]],
       array.kappa_step[array.it[3]],
       array.init_random[array.it[4]]);
+
+    ctx->log_priority = old_log_priority;
 
     return baryonyx::itm::optimize(ctx, pb);
 }

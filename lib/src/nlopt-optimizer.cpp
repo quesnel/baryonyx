@@ -74,7 +74,7 @@ nlopt_optimize_fun(const std::vector<double>& x,
 
         baryonyx::notice(data->ctx,
                          "theta: {} delta: {} kappa_min: {} kappa_step: {} "
-                         "init_random: {}: {}\n",
+                         "init_random: {}: {:f}\n",
                          data->ctx->parameters.theta,
                          data->ctx->parameters.delta,
                          data->ctx->parameters.kappa_min,
@@ -97,9 +97,9 @@ optimize(const baryonyx::context_ptr& ctx, const baryonyx::problem& pb)
 
     nlopt_data data(ctx, pb);
 
-    const std::vector<double> low{ 0, 1e-2, 0.0, 1e-7, 0 };
-    const std::vector<double> up{ 1, 0.0003, 0.5, 0.01, 1 };
-    std::vector<double> x{ 0.5, 0.001, 0, 0.001, 0.5 };
+    const std::vector<double> low{ 0, 0.0001, 0.0, 1e-7, 0 };
+    const std::vector<double> up{ 1, 0.1, 0.5, 0.01, 1 };
+    std::vector<double> x{ 0.5, 0.001, 0.1, 0.001, 0.5 };
 
     nlopt::opt opt(nlopt::LN_NELDERMEAD, 5);
     opt.set_maxtime(3600);
@@ -123,7 +123,7 @@ optimize(const baryonyx::context_ptr& ctx, const baryonyx::problem& pb)
     if (result >= 1 || result == -4) {
         baryonyx::notice(
           ctx,
-          "  - nlopt optimization found solution {}: with theta:xxx "
+          "  - nlopt optimization found solution {:f}: with theta:xxx "
           "delta:{} kappa-min:{} kappa-step:{} init-random:{}\n",
           value,
           x[param_theta],
