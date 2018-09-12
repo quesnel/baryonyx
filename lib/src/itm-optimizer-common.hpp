@@ -311,6 +311,7 @@ inline result
 optimize_problem(const context_ptr& ctx, const problem& pb)
 {
     info(ctx, "- Optimizer initializing\n");
+    print(ctx);
 
     result ret;
     auto affected_vars = std::move(pb.affected_vars);
