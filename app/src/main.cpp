@@ -371,13 +371,13 @@ assign_parameter(baryonyx::solver_parameters& params,
         else if (value == "reversing")
             params.order =
               baryonyx::solver_parameters::constraint_order::reversing;
-        else if (value == "random_sorting")
+        else if (value == "random-sorting")
             params.order =
               baryonyx::solver_parameters::constraint_order::random_sorting;
-        else if (value == "infeasibility_decr")
+        else if (value == "infeasibility-decr")
             params.order = baryonyx::solver_parameters::constraint_order::
               infeasibility_decr;
-        else if (value == "infeasibility_incr")
+        else if (value == "infeasibility-incr")
             params.order = baryonyx::solver_parameters::constraint_order::
               infeasibility_incr;
     } else if (is_equal(name, "theta")) {
