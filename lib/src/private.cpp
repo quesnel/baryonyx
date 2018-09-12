@@ -205,6 +205,7 @@ context_set_solver_parameters(const context_ptr& ctx,
     ctx->parameters.init_policy = params.init_policy;
     ctx->parameters.cost_norm = params.cost_norm;
     ctx->parameters.mode = params.mode;
+    ctx->parameters.preprocessor = params.preprocessor;
     ctx->parameters.observer = params.observer;
 }
 
