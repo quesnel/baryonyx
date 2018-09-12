@@ -45,8 +45,8 @@
 #define bx_unlikely(x) __builtin_expect(!!(x), 0)
 #else
 #define bx_always_inline
-#define likely(x) (!!(x))
-#define unlikely(x) (!!(x))
+#define bx_likely(x) (!!(x))
+#define bx_unlikely(x) (!!(x))
 #endif
 
 namespace baryonyx {
@@ -55,7 +55,6 @@ using string_logger_functor = std::function<void(int, std::string)>;
 
 inline const char*
 to_string(solver_parameters::pre_constraint_order type) noexcept
-
 {
     static const char* ret[] = { "none",
                                  "reversing",
