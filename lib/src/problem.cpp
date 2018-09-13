@@ -749,12 +749,32 @@ read_objective_function(parser_stack& stack, baryonyx::raw_problem& p)
     while (!stack.is_topic()) {
         auto elem = read_objective_function_element(stack);
 
-        if (std::get<0>(elem).empty()) // we read a constant
+        // If we read a constant, we append the value to the current
+        // objective function constant.
+        if (std::get<0>(elem).empty()) {
             ret.value += std::get<1>(elem);
-        else
-            ret.elements.emplace_back(
-              std::get<1>(elem),
-              get_variable(stack.cache(), p.vars, std::get<0>(elem)));
+        } else {
+            // We appends the new objective function element only and only if
+            // the factor is non-zero and does not already exist in the
+            // objective function.
+
+            if (std::get<1>(elem)) {
+                auto index =
+                  get_variable(stack.cache(), p.vars, std::get<0>(elem));
+
+                auto it = std::find_if(ret.elements.begin(),
+                                       ret.elements.end(),
+                                       [index](const auto& elem) {
+                                           return elem.variable_index == index;
+                                       });
+
+                if (it == ret.elements.end()) {
+                    ret.elements.emplace_back(std::get<1>(elem), index);
+                } else {
+                    it->factor += std::get<1>(elem);
+                }
+            }
+        }
     }
 
     return ret;
@@ -789,9 +809,25 @@ read_constraint(parser_stack& stack, baryonyx::raw_problem& p)
                !iequals(str, "binaries") && !iequals(str, "general") &&
                !iequals(str, "end")) {
             auto elem = read_function_element(stack);
-            cst.elements.emplace_back(
-              std::get<1>(elem),
-              get_variable(stack.cache(), p.vars, std::get<0>(elem)));
+
+            // Stores a new elements if and only if the factor is non-zero and
+            // does not already exists in the function element.
+
+            if (std::get<1>(elem)) {
+                int index =
+                  get_variable(stack.cache(), p.vars, std::get<0>(elem));
+
+                auto it = std::find_if(cst.elements.begin(),
+                                       cst.elements.end(),
+                                       [index](const auto& elem) {
+                                           return elem.variable_index == index;
+                                       });
+
+                if (it != cst.elements.end())
+                    it->factor += std::get<1>(elem);
+                else
+                    cst.elements.emplace_back(std::get<1>(elem), index);
+            }
         }
 
         baryonyx::operator_type type = read_operator(stack);
@@ -819,28 +855,34 @@ read_constraints(parser_stack& stack, baryonyx::raw_problem& p)
         auto cst = read_constraint(stack, p);
         std::get<0>(cst).id = stack.current_constraint_id();
 
-        switch (std::get<1>(cst)) {
-        case baryonyx::operator_type::equal:
-            p.equal_constraints.emplace_back(std::get<0>(cst));
-            break;
-        case baryonyx::operator_type::greater:
-            p.greater_constraints.emplace_back(std::get<0>(cst));
-            break;
-        case baryonyx::operator_type::less:
-            p.less_constraints.emplace_back(std::get<0>(cst));
-            break;
-        default:
-            throw baryonyx::file_format_failure(
-              baryonyx::file_format_error_tag::unknown,
-              static_cast<int>(stack.line()),
-              static_cast<int>(stack.column()));
+        // Stores a new constraints if and only if the function element is not
+        // empty.
+
+        if (!std::get<0>(cst).elements.empty()) {
+            switch (std::get<1>(cst)) {
+            case baryonyx::operator_type::equal:
+                p.equal_constraints.emplace_back(std::get<0>(cst));
+                break;
+            case baryonyx::operator_type::greater:
+                p.greater_constraints.emplace_back(std::get<0>(cst));
+                break;
+            case baryonyx::operator_type::less:
+                p.less_constraints.emplace_back(std::get<0>(cst));
+                break;
+            default:
+                throw baryonyx::file_format_failure(
+                  baryonyx::file_format_error_tag::unknown,
+                  static_cast<int>(stack.line()),
+                  static_cast<int>(stack.column()));
+            }
+
+            if (std::get<0>(cst).label.empty())
+                std::get<0>(cst).label =
+                  fmt::format("ct{}", stack.current_constraint_id());
+
+            stack.increase_current_constaint_id();
         }
 
-        if (std::get<0>(cst).label.empty())
-            std::get<0>(cst).label =
-              fmt::format("ct{}", stack.current_constraint_id());
-
-        stack.increase_current_constaint_id();
         str = stack.top();
     }
 }
