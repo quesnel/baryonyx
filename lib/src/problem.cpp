@@ -859,6 +859,10 @@ read_constraints(parser_stack& stack, baryonyx::raw_problem& p)
         // empty.
 
         if (!std::get<0>(cst).elements.empty()) {
+            if (std::get<0>(cst).label.empty())
+                std::get<0>(cst).label =
+                  fmt::format("ct{}", stack.current_constraint_id());
+
             switch (std::get<1>(cst)) {
             case baryonyx::operator_type::equal:
                 p.equal_constraints.emplace_back(std::get<0>(cst));
@@ -875,10 +879,6 @@ read_constraints(parser_stack& stack, baryonyx::raw_problem& p)
                   static_cast<int>(stack.line()),
                   static_cast<int>(stack.column()));
             }
-
-            if (std::get<0>(cst).label.empty())
-                std::get<0>(cst).label =
-                  fmt::format("ct{}", stack.current_constraint_id());
 
             stack.increase_current_constaint_id();
         }
