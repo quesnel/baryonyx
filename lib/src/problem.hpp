@@ -85,17 +85,11 @@ struct problem
 
     int coefficient_type() noexcept
     {
-        int ret = 0;
+        int eq = coefficient_type(equal_constraints);
+        int le = coefficient_type(less_constraints);
+        int ge = coefficient_type(greater_constraints);
 
-        ret = coefficient_type(equal_constraints);
-        if (ret != 2) {
-            ret = coefficient_type(less_constraints);
-            if (ret != 2) {
-                ret = coefficient_type(less_constraints);
-            }
-        }
-
-        return ret;
+        return std::max(eq, std::max(le, ge));
     }
 
     problem_solver_type which_problem_type() noexcept
