@@ -62,11 +62,11 @@ test_affect_variable()
 
     {
         // + d + e <= 1
-        // d = 0 implies e = {0, 1}
+        // d = 0 implies e = {0, 1} but minimize so => 0.
 
         auto pb_af = baryonyx::affect(ctx, pb_pp, 0, false);
-        Ensures(pb_af.vars.names.size() == static_cast<size_t>(1));
-        Ensures(pb_af.affected_vars.names.size() == static_cast<size_t>(22));
+        Ensures(pb_af.vars.names.size() == static_cast<size_t>(0));
+        Ensures(pb_af.affected_vars.names.size() == static_cast<size_t>(23));
     }
 
     {
@@ -80,11 +80,11 @@ test_affect_variable()
 
     {
         // + d + e <= 1
-        // e = 0 implies d = {0, 1}
+        // e = 0 implies d = {0, 1} but minimize so => 0.
 
         auto pb_af = baryonyx::affect(ctx, pb_pp, 1, false);
-        Ensures(pb_af.vars.names.size() == static_cast<size_t>(1));
-        Ensures(pb_af.affected_vars.names.size() == static_cast<size_t>(22));
+        Ensures(pb_af.vars.names.size() == static_cast<size_t>(0));
+        Ensures(pb_af.affected_vars.names.size() == static_cast<size_t>(23));
     }
 }
 
@@ -113,8 +113,8 @@ test_split()
         // + d + e <= 1
         // d = 0 implies e = {0, 1}
 
-        Ensures(p1.vars.names.size() == static_cast<size_t>(1));
-        Ensures(p1.affected_vars.names.size() == static_cast<size_t>(22));
+        Ensures(p1.vars.names.size() == static_cast<size_t>(0));
+        Ensures(p1.affected_vars.names.size() == static_cast<size_t>(23));
     }
 }
 
