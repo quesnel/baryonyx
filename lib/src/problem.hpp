@@ -130,6 +130,18 @@ struct problem
 
     objective_function_type type = { objective_function_type::maximize };
     problem_solver_type problem_type = { problem_solver_type::equalities_01 };
+
+    void swap(problem& other)
+    {
+        std::swap(other.objective, objective);
+        std::swap(other.equal_constraints, equal_constraints);
+        std::swap(other.greater_constraints, greater_constraints);
+        std::swap(other.less_constraints, less_constraints);
+        std::swap(other.vars, vars);
+        std::swap(other.affected_vars, affected_vars);
+        std::swap(other.type, type);
+        std::swap(other.problem_type, problem_type);
+    }
 };
 
 inline bool
