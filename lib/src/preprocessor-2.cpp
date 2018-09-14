@@ -23,6 +23,7 @@
 #include <baryonyx/core-compare>
 #include <baryonyx/core>
 
+#include <fstream>
 #include <numeric>
 #include <set>
 #include <stack>
@@ -38,12 +39,30 @@ namespace {
 
 namespace bx = baryonyx;
 
+static inline bool
+is_all_factor_ge_than_zero(const bx::constraint& cst)
+{
+    return std::find_if(cst.elements.cbegin(),
+                        cst.elements.cend(),
+                        [](const auto& elem) { return elem.factor <= 0; }) ==
+           cst.elements.cend();
+}
+
+static inline int
+sum_factor(const bx::constraint& cst)
+{
+    return std::accumulate(
+      cst.elements.cbegin(),
+      cst.elements.cend(),
+      0,
+      [](int init, const auto& elem) { return init + elem.factor; });
+}
+
 struct pp_variable_access
 {
     std::vector<int> in_equal_constraints;
     std::vector<int> in_greater_constraints;
     std::vector<int> in_less_constraints;
-    int id;
 };
 
 class pp_lifo
@@ -52,10 +71,6 @@ private:
     std::vector<std::tuple<int, bool>> data;
 
 public:
-    pp_lifo(int variable, bool value)
-      : data({ std::make_tuple(variable, value) })
-    {}
-
     bool emplace(int variable, bool value)
     {
         auto it = std::find_if(
@@ -98,18 +113,25 @@ public:
         data.pop_back();
         return ret;
     }
+
+    void clear()
+    {
+        data.clear();
+    }
 };
 
+template<typename Problem>
 class preprocessor
 {
 private:
-    const baryonyx::context_ptr& ctx;
-    const bx::problem& pb;
+    const bx::context_ptr& ctx;
+    const Problem& pb;
     std::unordered_map<int, bool> vars;
     std::vector<int> equal_constraints;
     std::vector<int> greater_constraints;
     std::vector<int> less_constraints;
     std::vector<pp_variable_access> cache;
+    pp_lifo lifo;
 
     auto reduce(const bx::constraint& constraint) -> std::tuple<int, int, int>
     {
@@ -121,7 +143,7 @@ private:
         for (int i = 0, e = bx::length(constraint.elements); i != e; ++i) {
 
             // Searches if the variable is already affected and then use the
-            // value to update the value of the constaint.
+            // value to update the value of the constraint.
 
             auto it = vars.find(constraint.elements[i].variable_index);
             if (it == vars.end()) {
@@ -154,8 +176,6 @@ private:
         if (variable < 0)
             return std::make_tuple(-1, false);
 
-        bx_ensures(pb.vars.values[variable].type == bx::variable_type::binary);
-
         bool affect_0 = (factor * 0 == result);
         bool affect_1 = (factor * 1 == result);
 
@@ -180,8 +200,6 @@ private:
 
         if (variable < 0)
             return std::make_tuple(-1, false);
-
-        bx_ensures(pb.vars.values[variable].type == bx::variable_type::binary);
 
         bool affect_0 = (factor * 0 >= result);
         bool affect_1 = (factor * 1 >= result);
@@ -208,8 +226,6 @@ private:
         if (variable < 0)
             return std::make_tuple(-1, false);
 
-        bx_ensures(pb.vars.values[variable].type == bx::variable_type::binary);
-
         bool affect_0 = (factor * 0 <= result);
         bool affect_1 = (factor * 1 <= result);
 
@@ -225,12 +241,54 @@ private:
         bx_reach();
     }
 
-    void affect_variable(int index, bool value)
+    // Detects if the variable is not used in any equal, greater or less
+    // constraints.
+    bool is_unused_variable(int variable)
     {
-        bx_expects(index >= 0 && index < bx::length(cache));
+        for (int cst : cache[variable].in_equal_constraints)
+            if (equal_constraints[cst] > 0)
+                return false;
+        for (int cst : cache[variable].in_greater_constraints)
+            if (greater_constraints[cst] > 0)
+                return false;
+        for (int cst : cache[variable].in_less_constraints)
+            if (less_constraints[cst] > 0)
+                return false;
 
-        vars[index] = value;
-        pp_lifo lifo(index, value);
+        return true;
+    }
+
+    // For each variable not used in any equal, greater or less constraints,
+    // and not already in affected list, this function tries to assign a value
+    // (true or false according to the maximize or minimize mode) to the
+    // objective function if the element exists.
+    void try_remove_unused_variable()
+    {
+        for (int i = 0, e = bx::length(cache); i != e; ++i) {
+            if (vars.find(i) == vars.end() && is_unused_variable(i)) {
+                bool value = true;
+
+                auto it = std::find_if(
+                  pb.objective.elements.cbegin(),
+                  pb.objective.elements.cend(),
+                  [i](const auto& e) { return i == e.variable_index; });
+
+                if (it != pb.objective.elements.cend()) {
+                    if (pb.type == bx::objective_function_type::maximize) {
+                        value = it->factor > 0;
+                    } else {
+                        value = it->factor < 0;
+                    }
+                }
+
+                vars[i] = value;
+            }
+        }
+    }
+
+    void affects()
+    {
+        int index, value;
 
         while (!lifo.empty()) {
             std::tie(index, value) = lifo.pop();
@@ -302,8 +360,141 @@ private:
         }
     }
 
+    void affect_variable(int index, bool value)
+    {
+        bx_expects(index >= 0 && index < bx::length(cache));
+
+        lifo.emplace(index, value);
+    }
+
+    void try_affect_variable()
+    {
+        for (int i = 0, e = bx::length(equal_constraints); i != e; ++i) {
+            if (equal_constraints[i] == 1) {
+                debug(ctx,
+                      "      - equal constraint {} will be removed.\n",
+                      pb.equal_constraints[i].label);
+
+                auto v = reduce_equal_constraint(pb.equal_constraints[i]);
+                equal_constraints[i] = 0;
+
+                if (std::get<0>(v) >= 0)
+                    lifo.push(v);
+            } else {
+                if (is_all_factor_ge_than_zero(pb.equal_constraints[i])) {
+                    if (sum_factor(pb.equal_constraints[i]) ==
+                          pb.equal_constraints[i].value ||
+                        pb.equal_constraints[i].value == 0) {
+
+                        debug(ctx,
+                              "      - equal constraint {} will be removed. "
+                              "Variables assigned to {}\n",
+                              pb.equal_constraints[i].label,
+                              pb.equal_constraints[i].value != 0);
+
+                        equal_constraints[i] = 0;
+
+                        for (const auto& elem :
+                             pb.equal_constraints[i].elements)
+                            lifo.emplace(elem.variable_index,
+                                         pb.equal_constraints[i].value != 0);
+                    }
+                }
+            }
+        }
+
+        for (int i = 0, e = bx::length(greater_constraints); i != e; ++i) {
+            if (greater_constraints[i] == 1) {
+                debug(ctx,
+                      "      - greater constraint {} will be removed.\n",
+                      pb.greater_constraints[i].label);
+
+                auto v = reduce_greater_constraint(pb.greater_constraints[i]);
+                greater_constraints[i] = 0;
+
+                if (std::get<0>(v) >= 0)
+                    lifo.push(v);
+            } else {
+                if (is_all_factor_ge_than_zero(pb.greater_constraints[i])) {
+                    if (sum_factor(pb.greater_constraints[i]) ==
+                        pb.greater_constraints[i].value) {
+
+                        debug(ctx,
+                              "      - greater constraint {} will be removed. "
+                              "Variables assigned to {}\n",
+                              pb.greater_constraints[i].label,
+                              true);
+
+                        greater_constraints[i] = 0;
+
+                        for (const auto& elem :
+                             pb.greater_constraints[i].elements)
+                            lifo.emplace(elem.variable_index, true);
+
+                    } else if (pb.greater_constraints[i].value == 0) {
+                        greater_constraints[i] = 0;
+                    }
+                }
+            }
+        }
+
+        for (int i = 0, e = bx::length(less_constraints); i != e; ++i) {
+            if (less_constraints[i] == 1) {
+                debug(ctx,
+                      "      - less constraint {} will be removed.\n",
+                      pb.less_constraints[i].label);
+
+                auto v = reduce_less_constraint(pb.less_constraints[i]);
+                less_constraints[i] = 0;
+
+                if (std::get<0>(v) >= 0)
+                    lifo.push(v);
+            } else {
+                if (is_all_factor_ge_than_zero(pb.less_constraints[i])) {
+                    if (pb.less_constraints[i].value <= 0) {
+                        debug(ctx,
+                              "      - less constraint {} will be removed. "
+                              "Variables assigned to {}\n",
+                              pb.less_constraints[i].label,
+                              false);
+
+                        less_constraints[i] = 0;
+
+                        for (const auto& elem :
+                             pb.less_constraints[i].elements)
+                            lifo.emplace(elem.variable_index, false);
+                    } else if (sum_factor(pb.less_constraints[i]) ==
+                               pb.less_constraints[i].value) {
+                        less_constraints[i] = 0;
+                    }
+                }
+            }
+        }
+    }
+
+    void init_constraints_length_container()
+    {
+        std::transform(
+          pb.equal_constraints.cbegin(),
+          pb.equal_constraints.cend(),
+          equal_constraints.begin(),
+          [](const auto& elem) { return bx::length(elem.elements); });
+
+        std::transform(
+          pb.greater_constraints.cbegin(),
+          pb.greater_constraints.cend(),
+          greater_constraints.begin(),
+          [](const auto& elem) { return bx::length(elem.elements); });
+
+        std::transform(
+          pb.less_constraints.cbegin(),
+          pb.less_constraints.cend(),
+          less_constraints.begin(),
+          [](const auto& elem) { return bx::length(elem.elements); });
+    }
+
 public:
-    preprocessor(const baryonyx::context_ptr& ctx_, const bx::problem& pb_)
+    explicit preprocessor(const bx::context_ptr& ctx_, const Problem& pb_)
       : ctx(ctx_)
       , pb(pb_)
       , equal_constraints(pb.equal_constraints.size())
@@ -332,26 +523,32 @@ public:
     bx::problem operator()(int variable_index, bool variable_value)
     {
         vars.clear();
-
-        std::transform(
-          pb.equal_constraints.cbegin(),
-          pb.equal_constraints.cend(),
-          equal_constraints.begin(),
-          [](const auto& elem) { return bx::length(elem.elements); });
-
-        std::transform(
-          pb.greater_constraints.cbegin(),
-          pb.greater_constraints.cend(),
-          greater_constraints.begin(),
-          [](const auto& elem) { return bx::length(elem.elements); });
-
-        std::transform(
-          pb.less_constraints.cbegin(),
-          pb.less_constraints.cend(),
-          less_constraints.begin(),
-          [](const auto& elem) { return bx::length(elem.elements); });
+        lifo.clear();
+        init_constraints_length_container();
 
         affect_variable(variable_index, variable_value);
+        affects();
+        try_remove_unused_variable();
+        affects();
+
+        info(ctx,
+             "  - Preprocessor finish. Removed variables {} (size: {})\n",
+             vars.size(),
+             to_string(bx::memory_consumed_size(memory_consumed(pb))));
+
+        return make_problem();
+    }
+
+    bx::problem operator()()
+    {
+        vars.clear();
+        lifo.clear();
+        init_constraints_length_container();
+
+        try_affect_variable();
+        affects();
+        try_remove_unused_variable();
+        affects();
 
         info(ctx,
              "  - Preprocessor finish. Removed variables {} (size: {})\n",
@@ -367,7 +564,6 @@ private:
         bx::problem copy;
 
         copy.type = pb.type;
-        copy.problem_type = pb.problem_type;
 
         // Build the mapping structure between origin variable index and newly
         // variable index in the copy.
@@ -406,8 +602,6 @@ private:
                                  pb.less_constraints,
                                  copy.less_constraints);
 
-        // TODO: removed or not?
-
         for (auto cst : copy.equal_constraints)
             for (auto elem : cst.elements)
                 bx_expects(elem.variable_index >= 0 &&
@@ -422,6 +616,17 @@ private:
             for (auto elem : cst.elements)
                 bx_expects(elem.variable_index >= 0 &&
                            elem.variable_index < bx::length(copy.vars.values));
+
+        copy.problem_type = copy.which_problem_type();
+
+        info(ctx,
+             "- Preprocessing finishes (size: {})\n",
+             to_string(bx::memory_consumed_size(memory_consumed(copy))));
+
+#ifdef BARYONYX_ENABLE_DEBUG
+        std::ofstream ofs("preprocessed.lp");
+        ofs << copy;
+#endif
 
         return copy;
     }
@@ -447,21 +652,43 @@ private:
         return ret;
     }
 
+    static auto affected_variable_copy(const bx::raw_problem& pb, size_t size)
+      -> bx::affected_variables
+    {
+        bx::affected_variables ret;
+        ret.names.reserve(size);
+        ret.values.reserve(size);
+
+        return ret;
+    }
+
+    static auto affected_variable_copy(const bx::problem& pb, size_t size)
+      -> bx::affected_variables
+    {
+        bx::affected_variables ret;
+        ret.names.reserve(pb.affected_vars.names.size() + size);
+        ret.values.reserve(pb.affected_vars.values.size() + size);
+
+        std::copy(pb.affected_vars.names.cbegin(),
+                  pb.affected_vars.names.end(),
+                  std::back_inserter(ret.names));
+
+        std::copy(pb.affected_vars.values.cbegin(),
+                  pb.affected_vars.values.end(),
+                  std::back_inserter(ret.values));
+
+        return ret;
+    }
+
     auto variables_exclude_copy() const
       -> std::tuple<bx::variables, bx::affected_variables>
     {
+        auto ret_aff_vars = affected_variable_copy(pb, vars.size());
+
         bx::variables ret_vars;
-        bx::affected_variables ret_aff_vars;
 
         ret_vars.names.reserve(pb.vars.names.size() - vars.size());
         ret_vars.values.reserve(pb.vars.names.size() - vars.size());
-        ret_aff_vars.names.reserve(vars.size() +
-                                   pb.affected_vars.names.size());
-        ret_aff_vars.values.reserve(vars.size() +
-                                    pb.affected_vars.names.size());
-
-        ret_aff_vars.names = pb.affected_vars.names;
-        ret_aff_vars.values = pb.affected_vars.values;
 
         for (std::size_t i = 0, e = pb.vars.values.size(); i != e; ++i) {
             auto it = vars.find(static_cast<int>(i));
@@ -486,9 +713,9 @@ private:
     {
         for (int i = 0, e = bx::length(constraints); i != e; ++i) {
 
-            // Remaining constraints with one element are undecidable (can
-            // be 0 or 1) but useless in constraints (e.g. x <= 1) list. We
-            // remove it.
+            // Remaining constraints with one element are undecidable (can be 0
+            // or 1) but useless in constraints (e.g. x <= 1) list. We remove
+            // it.
 
             if (constraints_size[i] <= 1)
                 continue;
@@ -527,7 +754,7 @@ split(const context_ptr& ctx, const problem& pb, int variable_index_to_affect)
          pb.vars.names[variable_index_to_affect],
          to_string(memory_consumed_size(memory_consumed(pb))));
 
-    ::preprocessor pp(ctx, pb);
+    ::preprocessor<problem> pp(ctx, pb);
 
     return std::make_tuple(pp(variable_index_to_affect, true),
                            pp(variable_index_to_affect, false));
@@ -548,9 +775,31 @@ affect(const context_ptr& ctx,
       variable_value,
       to_string(memory_consumed_size(memory_consumed(pb))));
 
-    ::preprocessor pp(ctx, pb);
+    ::preprocessor<problem> pp(ctx, pb);
 
     return pp(variable_index, variable_value);
+}
+
+problem
+preprocess(const context_ptr& ctx, const raw_problem& raw_pb)
+{
+    info(ctx,
+         "- Preprocessing starts (size: {})\n",
+         to_string(memory_consumed_size(memory_consumed(raw_pb))));
+
+    ::preprocessor<raw_problem> pp(ctx, raw_pb);
+
+    return pp();
+}
+
+problem
+unpreprocess(const context_ptr& ctx, const raw_problem& raw_pb)
+{
+    info(ctx,
+         "- Unpreprocessing starts (size: {})\n",
+         to_string(memory_consumed_size(memory_consumed(raw_pb))));
+
+    return problem(raw_pb);
 }
 
 } // namespace baryonyx

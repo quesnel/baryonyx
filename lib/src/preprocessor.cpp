@@ -846,6 +846,7 @@ get_coefficient_type(const baryonyx::problem& pb) noexcept
 
 namespace baryonyx {
 
+#if 0
 baryonyx::problem
 preprocess(const baryonyx::context_ptr& ctx, const baryonyx::raw_problem& pb_)
 {
@@ -1032,4 +1033,6 @@ unpreprocess(const baryonyx::context_ptr& ctx,
 
     return pb;
 }
+
+#endif
 }
