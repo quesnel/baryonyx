@@ -39,6 +39,10 @@ namespace baryonyx {
 struct problem
 {
     problem() = default;
+    problem(const problem& other) = default;
+    problem(problem&& other) = default;
+    problem& operator=(const problem& other) = default;
+    problem& operator=(problem&& other) = default;
 
     problem(const raw_problem& pb)
       : objective(pb.objective)
@@ -47,7 +51,9 @@ struct problem
       , less_constraints(pb.less_constraints)
       , vars(pb.vars)
       , type(pb.type)
-    {}
+    {
+        problem_type = which_problem_type();
+    }
 
     problem(raw_problem&& pb)
       : objective(pb.objective)
@@ -56,8 +62,9 @@ struct problem
       , less_constraints(pb.less_constraints)
       , vars(pb.vars)
       , type(pb.type)
-      , problem_type(which_problem_type())
-    {}
+    {
+        problem_type = which_problem_type();
+    }
 
     template<typename Constraints>
     constexpr static int coefficient_type(const Constraints& csts) noexcept
