@@ -281,7 +281,8 @@ compute_solution(const raw_problem& pb, const result& r)
 {
     bx_expects(r && !r.solutions.empty());
     bx_expects(pb.vars.names.size() == pb.vars.values.size());
-    bx_expects(pb.vars.names.size() == r.variable_name.size());
+    bx_expects(pb.vars.names.size() ==
+               r.affected_vars.names.size() + r.variable_name.size());
     bx_expects(r.solutions.back().variables.size() == r.variable_name.size());
 
     return compute_solution_impl(pb, make_variable_value(pb, r));
