@@ -789,7 +789,7 @@ main(int argc, const char* argv[])
         } catch (const baryonyx::file_format_failure& e) {
             fmt::print(stderr,
                        "file format error at line {} column {} "
-                       "%s\n",
+                       "{}\n",
                        e.line(),
                        e.column(),
                        file_format_error_format(e.failure()));
@@ -846,7 +846,7 @@ main(int argc, const char* argv[])
             } catch (const baryonyx::file_format_failure& e) {
                 fmt::print(stderr,
                            "file format error at line {} column {} "
-                           "%s\n",
+                           "{}\n",
                            e.line(),
                            e.column(),
                            file_format_error_format(e.failure()));
