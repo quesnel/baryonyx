@@ -29,6 +29,8 @@
 #include <baryonyx/core-out>
 #include <baryonyx/core>
 
+#include <iostream>
+
 #include <fmt/printf.h>
 
 #include <fstream>
@@ -49,10 +51,28 @@ is_essentially_equal(const T v1, const T v2, const T epsilon)
            ((fabs(v1) > fabs(v2) ? fabs(v2) : fabs(v1)) * (epsilon));
 }
 
+int
+get_variable(const baryonyx::result& r, std::string variable_name)
+{
+    for (int i = 0, e = static_cast<int>(r.affected_vars.values.size());
+         i != e;
+         ++i)
+        if (r.affected_vars.names[i] == variable_name)
+            return i;
+
+    return -1;
+}
+
+bool
+get_value(const baryonyx::result& r, int variable)
+{
+    return r.affected_vars.values[variable];
+}
+
 void
 test_preprocessor()
 {
-    auto ctx = baryonyx::make_context();
+    auto ctx = baryonyx::make_context(stdout, 7);
 
     std::stringstream ss;
 
@@ -62,12 +82,86 @@ test_preprocessor()
         params.cost_norm = baryonyx::solver_parameters::cost_norm_type::loo;
         baryonyx::context_set_solver_parameters(ctx, params);
 
+        std::cout << pb << '\n';
+
         auto result = baryonyx::solve(ctx, pb);
 
+        std::cout << result << '\n';
+        std::cout << "affected vars: " << result.affected_vars.names.size()
+                  << '\n';
+
         Ensures(result.affected_vars.names.size() == 21);
-        Ensures(result.affected_vars.values[0] == 0);
-        Ensures(result.affected_vars.values[1] == 0);
-        Ensures(result.affected_vars.values[2] == 1);
+
+        int var;
+
+        var = get_variable(result, "w");
+        Ensures(var >= 0);
+        Ensures(get_value(result, var) == false);
+
+        var = get_variable(result, "a");
+        Ensures(var >= 0);
+        Ensures(get_value(result, var) == false);
+
+        var = get_variable(result, "t");
+        Ensures(var >= 0);
+        Ensures(get_value(result, var) == false);
+
+        var = get_variable(result, "ZZ");
+        Ensures(var >= 0);
+        Ensures(get_value(result, var) == true);
+
+        var = get_variable(result, "c1");
+        Ensures(var >= 0);
+        Ensures(get_value(result, var) == false);
+
+        var = get_variable(result, "c2");
+        Ensures(var >= 0);
+        Ensures(get_value(result, var) == false);
+
+        var = get_variable(result, "c3");
+        Ensures(var >= 0);
+        Ensures(get_value(result, var) == false);
+
+        var = get_variable(result, "c4");
+        Ensures(var >= 0);
+        Ensures(get_value(result, var) == false);
+
+        var = get_variable(result, "c5");
+        Ensures(var >= 0);
+        Ensures(get_value(result, var) == false);
+
+        var = get_variable(result, "c6");
+        Ensures(var >= 0);
+        Ensures(get_value(result, var) == false);
+
+        var = get_variable(result, "d1");
+        Ensures(var >= 0);
+        Ensures(get_value(result, var) == true);
+
+        var = get_variable(result, "d2");
+        Ensures(var >= 0);
+        Ensures(get_value(result, var) == true);
+
+        var = get_variable(result, "d3");
+        Ensures(var >= 0);
+        Ensures(get_value(result, var) == true);
+
+        var = get_variable(result, "d4");
+        Ensures(var >= 0);
+        Ensures(get_value(result, var) == false);
+
+        var = get_variable(result, "d5");
+        Ensures(var >= 0);
+        Ensures(get_value(result, var) == false);
+
+        var = get_variable(result, "d6");
+        Ensures(var >= 0);
+        Ensures(get_value(result, var) == false);
+
+        var = get_variable(result, "b");
+        Ensures(var >= 0);
+        Ensures(get_value(result, var) == true);
+
         Ensures(result.status == baryonyx::result_status::success);
         Ensures(!result.solutions.empty());
         Ensures(result.solutions.size() >= 1);
@@ -76,7 +170,7 @@ test_preprocessor()
         Ensures(baryonyx::is_valid_solution(pb, result) == true);
 
         Ensures(
-          is_essentially_equal(result.solutions.back().value, 1000.45, 0.01));
+          is_essentially_equal(result.solutions.back().value, 6.5, 0.01));
 
         ss << result;
         if (!ss.good())
@@ -99,7 +193,7 @@ test_preprocessor()
 void
 test_preprocessor_2()
 {
-    auto ctx = baryonyx::make_context();
+    auto ctx = baryonyx::make_context(stdout, 7);
 
     std::stringstream ss;
     double r;
@@ -108,21 +202,19 @@ test_preprocessor_2()
         auto pb =
           baryonyx::make_problem(ctx, EXAMPLES_DIR "/capmo1_direct.lp");
 
-        baryonyx::solver_parameters params;
-        params.pre_order = baryonyx::solver_parameters::pre_constraint_order::
-          equal_less_greater;
-
         auto result = baryonyx::solve(ctx, pb);
 
         Ensures(result);
-        Ensures(!result.solutions.empty());
+        Ensures(baryonyx::is_valid_solution(pb, result) == true);
+        Ensures(baryonyx::compute_solution(pb, result) ==
+                result.solutions.back().value);
 
+        Ensures(!result.solutions.empty());
         fmt::print("result.value {:F} == 6212977\n",
                    result.solutions.back().value);
 
         r = result.solutions.back().value;
-        Ensures(result.solutions.back().value > 6000000);
-        Ensures(baryonyx::is_valid_solution(pb, result) == true);
+        Ensures(result.solutions.back().value >= 1.1569080000e+06);
 
         ss << result;
         if (!ss.good())
@@ -148,7 +240,7 @@ test_preprocessor_2()
 void
 test_real_cost()
 {
-    auto ctx = baryonyx::make_context();
+    auto ctx = baryonyx::make_context(stdout, 7);
 
     const char* str_pb = "minimize\n"
                          "- 0.1 a - 0.5 b - 0.9 c - 1e-7 d\n"
@@ -183,7 +275,7 @@ test_real_cost()
 void
 test_assignment_problem()
 {
-    auto ctx = baryonyx::make_context();
+    auto ctx = baryonyx::make_context(stdout, 7);
 
     auto pb =
       baryonyx::make_problem(ctx, EXAMPLES_DIR "/assignment_problem_1.lp");
@@ -200,7 +292,7 @@ test_assignment_problem()
 void
 test_assignment_problem_random_coast()
 {
-    auto ctx = baryonyx::make_context();
+    auto ctx = baryonyx::make_context(stdout, 7);
 
     baryonyx::solver_parameters params;
     params.limit = 1000000;
@@ -233,7 +325,7 @@ test_assignment_problem_random_coast()
 void
 test_negative_coeff()
 {
-    auto ctx = baryonyx::make_context();
+    auto ctx = baryonyx::make_context(stdout, 7);
     auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/negative-coeff.lp");
 
     baryonyx::solver_parameters params;
@@ -249,7 +341,7 @@ test_negative_coeff()
 void
 test_negative_coeff2()
 {
-    auto ctx = baryonyx::make_context();
+    auto ctx = baryonyx::make_context(stdout, 7);
 
     auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/negative-coeff2.lp");
 
@@ -260,13 +352,14 @@ test_negative_coeff2()
     auto result = baryonyx::solve(ctx, pb);
 
     Ensures(result.status == baryonyx::result_status::success);
-    Ensures(result.affected_vars.names.size() == 4);
+    Ensures(result.affected_vars.names.size() + result.variable_name.size() ==
+            4);
 }
 
 void
 test_negative_coeff3()
 {
-    auto ctx = baryonyx::make_context();
+    auto ctx = baryonyx::make_context(stdout, 7);
 
     auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/negative-coeff3.lp");
 
@@ -283,7 +376,7 @@ test_negative_coeff3()
 void
 test_negative_coeff4()
 {
-    auto ctx = baryonyx::make_context();
+    auto ctx = baryonyx::make_context(stdout, 7);
 
     auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/negative-coeff4.lp");
 
@@ -300,7 +393,7 @@ test_negative_coeff4()
 void
 test_negative_coeff5()
 {
-    auto ctx = baryonyx::make_context();
+    auto ctx = baryonyx::make_context(stdout, 7);
 
     const char* str_pb = "minimize\n"
                          "a b c d\n"
@@ -330,7 +423,7 @@ test_negative_coeff5()
 void
 test_8_queens_puzzle_fixed_cost()
 {
-    auto ctx = baryonyx::make_context();
+    auto ctx = baryonyx::make_context(stdout, 7);
 
     auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/8_queens_puzzle.lp");
 
@@ -375,7 +468,7 @@ test_8_queens_puzzle_fixed_cost()
 void
 test_8_queens_puzzle_random_cost()
 {
-    auto ctx = baryonyx::make_context();
+    auto ctx = baryonyx::make_context(stdout, 7);
 
     baryonyx::solver_parameters params;
     params.limit = -1;
@@ -413,7 +506,7 @@ test_8_queens_puzzle_random_cost()
 void
 test_qap()
 {
-    auto ctx = baryonyx::make_context();
+    auto ctx = baryonyx::make_context(stdout, 7);
 
     auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/small4.lp");
 
@@ -436,7 +529,7 @@ test_qap()
 void
 test_flat30_7()
 {
-    auto ctx = baryonyx::make_context();
+    auto ctx = baryonyx::make_context(stdout, 7);
     auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/flat30-7.lp");
 
     baryonyx::solver_parameters params;
@@ -457,7 +550,7 @@ test_flat30_7()
 void
 test_uf50_0448()
 {
-    auto ctx = baryonyx::make_context();
+    auto ctx = baryonyx::make_context(stdout, 7);
     auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/uf50-0448.lp");
 
     baryonyx::solver_parameters params;
@@ -482,7 +575,7 @@ test_uf50_0448()
 void
 test_aim_50_1_6_yes1_2()
 {
-    auto ctx = baryonyx::make_context();
+    auto ctx = baryonyx::make_context(stdout, 7);
 
     auto pb =
       baryonyx::make_problem(ctx, EXAMPLES_DIR "/aim-50-1_6-yes1-2.lp");
@@ -507,7 +600,7 @@ test_aim_50_1_6_yes1_2()
 void
 test_Z_coefficient_1()
 {
-    auto ctx = baryonyx::make_context();
+    auto ctx = baryonyx::make_context(stdout, 7);
 
     {
         const char* str_pb = "minimize\n"
@@ -557,7 +650,7 @@ test_Z_coefficient_1()
 void
 test_bibd1n()
 {
-    auto ctx = baryonyx::make_context();
+    auto ctx = baryonyx::make_context(stdout, 7);
 
 
     auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/bibd1n.lp");
