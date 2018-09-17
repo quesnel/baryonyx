@@ -65,17 +65,30 @@ struct pp_variable_access
     std::vector<int> in_less_constraints;
 };
 
+struct pp_variable_value
+{
+    pp_variable_value() = default;
+
+    pp_variable_value(int index_, bool value_)
+      : index(index_)
+      , value(value_)
+    {}
+
+    int index;
+    bool value;
+};
+
 class pp_lifo
 {
 private:
-    std::vector<std::tuple<int, bool>> data;
+    std::vector<pp_variable_value> data;
 
 public:
     bool emplace(int variable, bool value)
     {
         auto it = std::find_if(
           data.cbegin(), data.cend(), [&variable](const auto& elem) {
-              return std::get<0>(elem) == variable;
+              return elem.index == variable;
           });
 
         if (it != data.cend())
@@ -86,26 +99,12 @@ public:
         return true;
     }
 
-    bool push(std::tuple<int, bool> element)
-    {
-        auto it = std::find_if(
-          data.cbegin(), data.cend(), [&element](const auto& elem) {
-              return std::get<0>(elem) == std::get<0>(element);
-          });
-
-        if (it != data.cend())
-            return false;
-
-        data.push_back(element);
-        return true;
-    }
-
     bool empty() const
     {
         return data.empty();
     }
 
-    std::tuple<int, bool> pop()
+    pp_variable_value pop()
     {
         bx_ensures(!empty());
 
@@ -288,18 +287,16 @@ private:
 
     void affects()
     {
-        int index, value;
-
         while (!lifo.empty()) {
-            std::tie(index, value) = lifo.pop();
-            vars.emplace(index, value);
+            auto top = lifo.pop();
+            vars.emplace(top.index, top.value);
 
             debug(ctx,
                   "    - variable {} assigned to {}.\n",
-                  pb.vars.names[index],
-                  value);
+                  pb.vars.names[top.index],
+                  top.value);
 
-            for (int cst : cache[index].in_equal_constraints) {
+            for (int cst : cache[top.index].in_equal_constraints) {
                 if (equal_constraints[cst] <= 0)
                     continue;
 
@@ -310,16 +307,15 @@ private:
                           "      - equal constraint {} will be removed.\n",
                           pb.equal_constraints[cst].label);
 
-                    auto v =
-                      reduce_equal_constraint(pb.equal_constraints[cst]);
+                    auto v = reduce_equal_constraint(pb.equal_constraints[cst]);
                     equal_constraints[cst] = 0;
 
                     if (std::get<0>(v) >= 0)
-                        lifo.push(v);
+                        lifo.emplace(std::get<0>(v), std::get<1>(v));
                 }
             }
 
-            for (int cst : cache[index].in_greater_constraints) {
+            for (int cst : cache[top.index].in_greater_constraints) {
                 if (greater_constraints[cst] <= 0)
                     continue;
 
@@ -335,11 +331,11 @@ private:
                     greater_constraints[cst] = 0;
 
                     if (std::get<0>(v) >= 0)
-                        lifo.push(v);
+                        lifo.emplace(std::get<0>(v), std::get<1>(v));
                 }
             }
 
-            for (int cst : cache[index].in_less_constraints) {
+            for (int cst : cache[top.index].in_less_constraints) {
                 if (less_constraints[cst] <= 0)
                     continue;
 
@@ -354,7 +350,7 @@ private:
                     less_constraints[cst] = 0;
 
                     if (std::get<0>(v) >= 0)
-                        lifo.push(v);
+                        lifo.emplace(std::get<0>(v), std::get<1>(v));
                 }
             }
         }
@@ -379,7 +375,7 @@ private:
                 equal_constraints[i] = 0;
 
                 if (std::get<0>(v) >= 0)
-                    lifo.push(v);
+                    lifo.emplace(std::get<0>(v), std::get<1>(v));
             } else {
                 if (is_all_factor_ge_than_zero(pb.equal_constraints[i])) {
                     if (sum_factor(pb.equal_constraints[i]) ==
@@ -413,7 +409,7 @@ private:
                 greater_constraints[i] = 0;
 
                 if (std::get<0>(v) >= 0)
-                    lifo.push(v);
+                    lifo.emplace(std::get<0>(v), std::get<1>(v));
             } else {
                 if (is_all_factor_ge_than_zero(pb.greater_constraints[i])) {
                     if (sum_factor(pb.greater_constraints[i]) ==
@@ -448,7 +444,7 @@ private:
                 less_constraints[i] = 0;
 
                 if (std::get<0>(v) >= 0)
-                    lifo.push(v);
+                    lifo.emplace(std::get<0>(v), std::get<1>(v));
             } else {
                 if (is_all_factor_ge_than_zero(pb.less_constraints[i])) {
                     if (pb.less_constraints[i].value <= 0) {
@@ -460,8 +456,7 @@ private:
 
                         less_constraints[i] = 0;
 
-                        for (const auto& elem :
-                             pb.less_constraints[i].elements)
+                        for (const auto& elem : pb.less_constraints[i].elements)
                             lifo.emplace(elem.variable_index, false);
                     } else if (sum_factor(pb.less_constraints[i]) ==
                                pb.less_constraints[i].value) {
@@ -507,8 +502,7 @@ public:
 
         for (int i = 0, e = bx::length(pb.equal_constraints); i != e; ++i)
             for (const auto& elem : pb.equal_constraints[i].elements)
-                cache[elem.variable_index].in_equal_constraints.emplace_back(
-                  i);
+                cache[elem.variable_index].in_equal_constraints.emplace_back(i);
 
         for (int i = 0, e = bx::length(pb.greater_constraints); i != e; ++i)
             for (const auto& elem : pb.greater_constraints[i].elements)
@@ -652,8 +646,8 @@ private:
         return ret;
     }
 
-    static auto affected_variable_copy(const bx::raw_problem& pb, size_t size)
-      -> bx::affected_variables
+    static auto affected_variable_copy(const bx::raw_problem& /*pb*/,
+                                       size_t size) -> bx::affected_variables
     {
         bx::affected_variables ret;
         ret.names.reserve(size);
@@ -796,7 +790,7 @@ problem
 unpreprocess(const context_ptr& ctx, const raw_problem& raw_pb)
 {
     info(ctx,
-         "- Unpreprocessing starts (size: {})\n",
+         "- Unprepossessing starts (size: {})\n",
          to_string(memory_consumed_size(memory_consumed(raw_pb))));
 
     return problem(raw_pb);
