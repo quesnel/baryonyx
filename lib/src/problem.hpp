@@ -33,9 +33,9 @@ namespace baryonyx {
 /**
  * @brief Internal representation of a problem with preprocessed data.
  *
- * @details A equivalent class to @c problem but with preprocessed
- * structures to store affected variables && duplicated constraints from the
- * originial problem.
+ * @details A equivalent class to @c raw_problem but with preprocessed
+ *     structures to store affected variables and duplicated constraints from
+ *     the original problem.
  *
  */
 struct problem
