@@ -55,27 +55,26 @@ struct manual_course
     {
         bx_ensures(length > 2);
 
-        theta[0] = { 0.5 };
+        theta[0] = theta_;
         theta[1] = 1.0 / static_cast<double>(length);
 
-        delta[0] = { -1 };
+        delta[0] = delta_;
         delta[1] = 0.1 / static_cast<double>(length);
 
-        kappa_min[0] = { 0 };
+        kappa_min[0] = kappa_min_;
         kappa_min[1] = 1e-2 / static_cast<double>(length);
 
-        kappa_step[0] = { 1e-3 };
+        kappa_step[0] = kappa_step_;
         kappa_step[1] = 1e-7 / static_cast<double>(length);
 
-        init_random[0] = { 0.5 };
+        init_random[0] = init_random_;
         init_random[1] = 0.9 / static_cast<double>(length);
 
         for (int i = 2; i != length; ++i)
             theta[i] = theta[i - 1] + 1.0 / static_cast<double>(length);
 
         for (int i = 2; i != length; ++i)
-            delta[i] =
-              theta[i - 1] + 0.1 / (5.0 * static_cast<double>(length));
+            delta[i] = theta[i - 1] + 0.1 / (5.0 * static_cast<double>(length));
 
         for (int i = 2; i != length; ++i)
             kappa_min[i] = theta[i - 1] + 1e-2 / static_cast<double>(length);
