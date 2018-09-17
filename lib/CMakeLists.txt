@@ -36,7 +36,6 @@ set(private_baryonyx_source
  src/merged-constraint.cpp
  src/observer.hpp
  src/pnm.hpp
- src/preprocessor-2.cpp
  src/preprocessor.cpp
  src/private.cpp
  src/private.hpp
