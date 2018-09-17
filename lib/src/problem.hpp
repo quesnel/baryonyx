@@ -26,6 +26,8 @@
 #include <baryonyx/core-compare>
 #include <baryonyx/core>
 
+#include <algorithm>
+
 namespace baryonyx {
 
 /**
