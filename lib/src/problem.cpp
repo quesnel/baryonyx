@@ -732,9 +732,7 @@ read_objective_function(parser_stack& stack, baryonyx::raw_problem& p)
     if (stack.is_topic())
         return ret;
 
-    //
     // Forget the `obj:' string append by cplex.
-    //
 
     if (std::isalpha(stack.peek()) || stack.peek() == '_') {
         auto tmp = read_name(stack);
@@ -751,6 +749,7 @@ read_objective_function(parser_stack& stack, baryonyx::raw_problem& p)
 
         // If we read a constant, we append the value to the current
         // objective function constant.
+
         if (std::get<0>(elem).empty()) {
             ret.value += std::get<1>(elem);
         } else {
@@ -928,11 +927,10 @@ apply_bound(baryonyx::variable_value& variable,
 static inline void
 read_bound(parser_stack& stack, baryonyx::raw_problem& p)
 {
-    /*
-     * If first character is a digit, tries to read the bound:
-     * value [<|<=|=|>|>=] variable_name [<|<=|=|>|>=] value or
-     * value [<|<=|=|>|>=] variable_name
-     */
+    // If first character is a digit, tries to read the bound: value
+    // [<|<=|=|>|>=] variable_name [<|<=|=|>|>=] value or value [<|<=|=|>|>=]
+    // variable_name
+
     if (std::isdigit(stack.peek())) {
         auto value_first = read_integer(stack);
         auto operator_type_first = read_operator(stack);
@@ -941,12 +939,9 @@ read_bound(parser_stack& stack, baryonyx::raw_problem& p)
 
         apply_bound(value_first, operator_type_first, p.vars.values[id]);
 
-        /*
-         * If next character is a <, > or =, then tries to read second part
-         * of
-         * the bound of: value [<|<=|=|>|>=] variable_name [<|<=|=|>|>=]
-         * value
-         */
+        // If next character is a <, > or =, then tries to read second part of
+        // the bound of: value [<|<=|=|>|>=] variable_name [<|<=|=|>|>=] value
+
         if (is_operator(stack.peek())) {
             auto operator_type_second = read_operator(stack);
             auto value_second = read_integer(stack);
@@ -954,9 +949,8 @@ read_bound(parser_stack& stack, baryonyx::raw_problem& p)
             apply_bound(p.vars.values[id], operator_type_second, value_second);
         }
     } else {
-        /*
-         * Tries to read the bound: variable_name [>|>=|=|<|<=] value
-         */
+        // Tries to read the bound: variable_name [>|>=|=|<|<=] value.
+
         auto variable = read_name(stack);
         auto operator_type = read_operator(stack);
         auto value = read_integer(stack);
