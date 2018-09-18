@@ -307,7 +307,8 @@ private:
                           "      - equal constraint {} will be removed.\n",
                           pb.equal_constraints[cst].label);
 
-                    auto v = reduce_equal_constraint(pb.equal_constraints[cst]);
+                    auto v =
+                      reduce_equal_constraint(pb.equal_constraints[cst]);
                     equal_constraints[cst] = 0;
 
                     if (std::get<0>(v) >= 0)
@@ -361,6 +362,20 @@ private:
         bx_expects(index >= 0 && index < bx::length(cache));
 
         lifo.emplace(index, value);
+    }
+
+    void try_affect_bounded_variable()
+    {
+        for (int i = 0, e = bx::length(pb.vars.values); i != e; ++i) {
+            if (pb.vars.values[i].min == pb.vars.values[i].max) {
+                debug(ctx,
+                      "      - variable {} is affected in bound.\n",
+                      pb.vars.names[i],
+                      (pb.vars.values[i].min != 0));
+
+                lifo.emplace(i, pb.vars.values[i].max != 0);
+            }
+        }
     }
 
     void try_affect_variable()
@@ -456,7 +471,8 @@ private:
 
                         less_constraints[i] = 0;
 
-                        for (const auto& elem : pb.less_constraints[i].elements)
+                        for (const auto& elem :
+                             pb.less_constraints[i].elements)
                             lifo.emplace(elem.variable_index, false);
                     } else if (sum_factor(pb.less_constraints[i]) ==
                                pb.less_constraints[i].value) {
@@ -502,7 +518,8 @@ public:
 
         for (int i = 0, e = bx::length(pb.equal_constraints); i != e; ++i)
             for (const auto& elem : pb.equal_constraints[i].elements)
-                cache[elem.variable_index].in_equal_constraints.emplace_back(i);
+                cache[elem.variable_index].in_equal_constraints.emplace_back(
+                  i);
 
         for (int i = 0, e = bx::length(pb.greater_constraints); i != e; ++i)
             for (const auto& elem : pb.greater_constraints[i].elements)
@@ -539,6 +556,7 @@ public:
         lifo.clear();
         init_constraints_length_container();
 
+        try_affect_bounded_variable();
         try_affect_variable();
         affects();
         try_remove_unused_variable();

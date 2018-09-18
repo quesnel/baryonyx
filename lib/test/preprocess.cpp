@@ -22,10 +22,60 @@
 
 #include "problem.hpp"
 #include "unit-test.hpp"
-
-#include <fmt/printf.h>
+#include "utils.hpp"
 
 #include <baryonyx/core>
+
+int
+get_variable(const std::vector<std::string>& variable_names, std::string name)
+{
+    for (int i = 0, e = baryonyx::length(variable_names); i != e; ++i)
+        if (variable_names[i] == name)
+            return i;
+
+    return -1;
+}
+
+void
+test_bound_affectation()
+{
+    auto ctx = baryonyx::make_context(stdout, 7);
+
+    auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/bound.lp");
+    Ensures(pb.vars.names.size() == static_cast<size_t>(6));
+
+    // The preprocessing can not remove any constraint or variable from the
+    // raw_problem.
+
+    auto pb_pp = baryonyx::preprocess(ctx, pb);
+    Ensures(pb_pp.vars.names.size() == static_cast<size_t>(6));
+    Ensures(pb_pp.affected_vars.names.size() == static_cast<size_t>(0));
+    Ensures(pb_pp.equal_constraints.size() == static_cast<size_t>(0));
+    Ensures(pb_pp.less_constraints.size() == static_cast<size_t>(2));
+    Ensures(pb_pp.greater_constraints.size() == static_cast<size_t>(0));
+
+    // We add an "affectation bound" for the variable 'f' i.e. in bound section
+    // of the lp file format:
+    //
+    // bounds:
+    // f = 0
+
+    auto id = get_variable(pb.vars.names, "f");
+    Ensures(id >= 0);
+    Ensures(id < baryonyx::length(pb.vars.names));
+
+    Ensures(pb.vars.names.size() == pb.vars.values.size());
+
+    pb.vars.values[id].min = 0;
+    pb.vars.values[id].max = 0;
+
+    auto pb_pp2 = baryonyx::preprocess(ctx, pb);
+    Ensures(pb_pp2.vars.names.size() == static_cast<size_t>(5));
+    Ensures(pb_pp2.affected_vars.names.size() == static_cast<size_t>(1));
+    Ensures(pb_pp2.equal_constraints.size() == static_cast<size_t>(0));
+    Ensures(pb_pp2.less_constraints.size() == static_cast<size_t>(2));
+    Ensures(pb_pp2.greater_constraints.size() == static_cast<size_t>(0));
+}
 
 void
 test_cleaning_affected_variables()
@@ -121,6 +171,7 @@ test_split()
 int
 main(int /*argc*/, char* /* argv */ [])
 {
+    test_bound_affectation();
     test_cleaning_affected_variables();
     test_affect_variable();
     test_split();
