@@ -1,6 +1,6 @@
 = Baryonyx
 Gauthier Quesnel <gauthier.quesnel@inra.fr>
-v0.3, 2018-09-11
+v0.3, 2018-09-18
 :toc:
 :homepage: https://github.com/quesnel/baryonyx/
 
@@ -147,7 +147,7 @@ To run Baryonyx in solver mode (i.e. trying to valid all constraints):
 baryonyx-0.3 file.lp
 ....
 
-To run baryonyx into the heuristic model (ie. trying to valid all
+To run baryonyx into the heuristic model (i.e. trying to valid all
 constraints and optimize the solution), add a `-o` or `--optimize`
 option to the command line:
 
@@ -155,7 +155,7 @@ option to the command line:
 baryonyx-0.3 -o file.lp
 ....
 
-To run baryonyx into the heuristic model (ie. trying to valid all
+To run baryonyx into the heuristic model (i.e. trying to valid all
 constraints and optimize the solution), add a `-o` or `--optimize`
 option to the command line:
 

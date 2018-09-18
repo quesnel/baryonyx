@@ -1,5 +1,34 @@
-= baryonyx
+= Baryonyx
 Gauthier Quesnel <gauthier.quesnel@inra.fr>
+
+== baryonyx v0.3.1 - 2018-09-18
+
+main::
+
+* fix typo in constraint-order parameter.
+* fix exception output message.
+
+preprocessor::
+
+* replace the old preprocessor algorithm. The new one is better to remove
+  constraints and variables and fix some issues.
+
+solver::
+
+* print solver parameters before solve/optimize
+
+parser::
+
+* fix the reading of the constraint label.
+* add a default label to constraints.
+* remove function elements where factors equals 0.
+* merge function elements in constraints or in the objective function where
+  variable index appears several times.
+* remove constraints with empty function element vector.
+
+problem::
+
+* fix the coefficient_type function
 
 == baryonyx v0.3.0 - 2018-09-11
 
@@ -29,8 +58,6 @@ solver::
 ** inequalities 101
 ** inequalities 101 buffered (experimental)
 ** inequalities Z (experimental)
-
-
 
 * Update solver and main to enable the use of float (4 bytes), double (8 bytes)
   or long double (16 bytes for x86_64) for reduce costs, kappa, delta and
