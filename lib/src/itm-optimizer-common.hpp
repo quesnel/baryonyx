@@ -151,10 +151,7 @@ struct optimize_functor
         m_begin = std::chrono::steady_clock::now();
         m_end = m_begin;
 
-        int i = 0;
-        int pushed = -1;
-        int pushing_iteration = 0;
-        const auto& p = m_ctx->parameters;
+        auto& p = m_ctx->parameters;
 
         auto init_policy = p.init_policy;
         const auto kappa_min = static_cast<Float>(p.kappa_min);
@@ -180,15 +177,29 @@ struct optimize_functor
 
         Order compute(slv, x, m_rng);
 
-        for (; !is_time_limit(p.time_limit, m_begin, m_end);
-             m_end = std::chrono::steady_clock::now(), ++i) {
+        if (p.limit <= 0)
+            p.limit = std::numeric_limits<int>::max();
 
-            int remaining = compute.run(slv, x, kappa, delta, theta);
+        if (p.time_limit <= 0)
+            p.time_limit = std::numeric_limits<double>::max();
+
+        int remaining = 0;
+        int i = 0;
+        int pushed = -1;
+        int pushing_iteration = 0;
+
+        while (!is_time_limit(p.time_limit, m_begin, m_end)) {
+            remaining = compute.run(slv, x, kappa, delta, theta);
             if (remaining == 0)
-                store_if_better(slv.results(x, original_costs, cost_constant),
+                store_if_better(result_status::success,
+                                remaining,
+                                slv.results(x, original_costs, cost_constant),
                                 x,
                                 i,
                                 best_recorder);
+
+            m_end = std::chrono::steady_clock::now();
+            ++i;
 
             if (i > p.w)
                 kappa += kappa_step * std::pow(static_cast<Float>(remaining) /
@@ -197,6 +208,17 @@ struct optimize_functor
 
             if ((p.limit > 0 && i >= p.limit) || kappa > kappa_max ||
                 pushed > p.pushes_limit) {
+                store_if_better((p.limit > 0 && i >= p.limit)
+                                  ? result_status::limit_reached
+                                  : kappa > kappa_max
+                                      ? result_status::kappa_max_reached
+                                      : result_status::limit_reached,
+                                remaining,
+                                0,
+                                x,
+                                i,
+                                best_recorder);
+
                 if (m_best.solutions.empty())
                     init_policy =
                       init_solver(slv, x, init_policy, p.init_random);
@@ -233,6 +255,8 @@ struct optimize_functor
 
                     if (remaining == 0)
                         store_if_better(
+                          result_status::success,
+                          0,
                           slv.results(x, original_costs, cost_constant),
                           x,
                           i,
@@ -240,6 +264,14 @@ struct optimize_functor
                 }
             }
         }
+
+        if (m_best.status == result_status::uninitialized)
+            store_if_better(result_status::time_limit_reached,
+                            remaining,
+                            0,
+                            x,
+                            i,
+                            best_recorder);
 
         std::copy(m_all_solutions.begin(),
                   m_all_solutions.end(),
@@ -250,38 +282,53 @@ struct optimize_functor
 
 private:
     template<typename Xtype>
-    void store_if_better(double current,
+    void store_if_better(result_status status,
+                         int remaining,
+                         double current,
                          const Xtype& x,
                          int i,
                          best_solution_recorder<Float, Mode>& best_recorder)
     {
-        if (m_best.solutions.empty() ||
-            is_better_solution(
-              current, m_best.solutions.back().value, Mode())) {
-            m_best.status = baryonyx::result_status::success;
+        if (status != result_status::success) {
+            if (!m_best && m_best.remaining_constraints > remaining) {
+                m_best.status = status;
+                m_best.loop = i;
+                m_best.remaining_constraints = remaining;
+                m_best.annoying_variable = x.upper();
+                m_best.duration = compute_duration(m_begin, m_end);
 
-            // Store only the best solution, other solutions are stored into
-            // the @c std::set to avoid duplicated solutions.
+                best_recorder.try_update(m_best);
+            }
+        } else {
+            if (m_best.solutions.empty() ||
+                is_better_solution(
+                  current, m_best.solutions.back().value, Mode())) {
+                m_best.status = baryonyx::result_status::success;
 
-            if (m_best.solutions.empty())
-                m_best.solutions.emplace_back(x.data(), current);
-            else
-                m_best.solutions[0] = { x.data(), current };
+                // Store only the best solution, other solutions are stored
+                // into the @c std::set to avoid duplicated solutions.
 
-            m_best.duration = compute_duration(m_begin, m_end);
-            m_best.loop = i;
-            m_best.annoying_variable = x.upper();
+                if (m_best.solutions.empty())
+                    m_best.solutions.emplace_back(x.data(), current);
+                else
+                    m_best.solutions[0] = { x.data(), current };
 
-            best_recorder.try_update(m_best);
+                m_best.duration = compute_duration(m_begin, m_end);
+                m_best.loop = i;
+                m_best.remaining_constraints = 0;
+                m_best.annoying_variable = x.upper();
+
+                best_recorder.try_update(m_best);
+            }
+
+            m_all_solutions.emplace(x.data(), current);
         }
-
-        m_all_solutions.emplace(x.data(), current);
     }
 };
 
 //
-// Get number of thread to use in optimizer from parameters list or from the
-// standard thread API. If an error occurred, this function returns 1.
+// Get number of thread to use in optimizer from parameters list or from
+// the standard thread API. If an error occurred, this function returns 1.
 //
 inline unsigned
 get_thread_number(const baryonyx::context_ptr& ctx) noexcept
@@ -359,20 +406,15 @@ optimize_problem(const context_ptr& ctx, const problem& pb)
         for (auto& t : pool)
             t.join();
 
+        ret = std::move(result.m_best);
         std::set<solution> all_solutions;
 
         for (unsigned i{ 0 }; i != thread; ++i) {
             auto current = results[i].get();
-            if (current.status == result_status::success) {
+
+            if (current.status == result_status::success)
                 all_solutions.insert(current.solutions.begin(),
                                      current.solutions.end());
-
-                if (ret.solutions.empty() ||
-                    is_better_solution(current.solutions.back().value,
-                                       ret.solutions.back().value,
-                                       Mode()))
-                    ret = current;
-            }
         }
 
         ret.solutions.clear();

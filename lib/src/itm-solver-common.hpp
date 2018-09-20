@@ -177,7 +177,7 @@ struct solver_functor
                     info(
                       m_ctx,
                       "    - Push system limit reached. Solution found: {}\n",
-                      best_solution_value(m_best));
+                      m_best.solutions.back().value);
                     return m_best;
                 }
             }
