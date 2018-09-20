@@ -160,57 +160,30 @@ struct x_counter_type
     std::vector<int> _counter;
 };
 
-struct x_type_print
-{
-    // #define bx_always_inline __attribute__((always_inline))
-    // bx_always_inline
-    void print(const context_ptr&, const x_type&) const
-    {}
-
-    void print(const context_ptr& ctx, const x_counter_type& x) const
-    {
-        std::vector<std::pair<int, int>> copy(x._counter.size());
-
-        for (int i = 0, e = length(x._counter); i != e; ++i)
-            copy[i] = std::make_pair(i, x._counter[i]);
-
-        std::sort(
-          copy.begin(), copy.end(), [](const auto& lhs, const auto& rhs) {
-              return lhs.second > rhs.second;
-          });
-
-        debug(ctx, "    5 variables with highest changes [id (changes)]...: ");
-        for (int i = 0; i != 5; ++i)
-            debug(ctx, "{} [{}] ", copy[i].first, copy[i].second);
-        debug(ctx, "\n");
-    }
-};
-
 struct maximize_tag
 {};
 
 struct minimize_tag
 {};
 
-inline double
-best_solution_value(const result& res) noexcept
+inline bool
+is_better_result(const result& lhs, const result& rhs, maximize_tag) noexcept
 {
-    bx_expects(res.status == result_status::success);
-    bx_expects(!res.solutions.empty());
+    if (lhs)
+        return rhs ? lhs.solutions.back().value > rhs.solutions.back().value
+                   : true;
 
-    return res.solutions.back().value;
+    return rhs ? false : lhs.remaining_constraints < rhs.remaining_constraints;
 }
 
 inline bool
-is_better_solution(const result& lhs, const result& rhs, maximize_tag) noexcept
+is_better_result(const result& lhs, const result& rhs, minimize_tag) noexcept
 {
-    return best_solution_value(lhs) > best_solution_value(rhs);
-}
+    if (lhs)
+        return rhs ? lhs.solutions.back().value < rhs.solutions.back().value
+                   : true;
 
-inline bool
-is_better_solution(const result& lhs, const result& rhs, minimize_tag) noexcept
-{
-    return best_solution_value(lhs) < best_solution_value(rhs);
+    return rhs ? false : lhs.remaining_constraints < rhs.remaining_constraints;
 }
 
 struct merged_constraint

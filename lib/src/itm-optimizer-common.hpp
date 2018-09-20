@@ -55,32 +55,31 @@ struct best_solution_recorder
       : m_ctx(ctx)
     {}
 
-    bool try_update(const result& current) noexcept
+    void try_update(const result& current) noexcept
     {
         try {
             std::lock_guard<std::mutex> lock(m_mutex);
 
-            if (current.status != result_status::success)
-                return false;
+            if (is_better_result(current, m_best, Mode())) {
+                if (!current) {
+                    info(m_ctx,
+                         "  - Constraints remaining: {} (i={} t={}s)\n",
+                         current.remaining_constraints,
+                         current.loop,
+                         current.duration);
 
-            if (m_best.status != result_status::success ||
-                is_better_solution(current, m_best, Mode())) {
-
-                info(m_ctx,
-                     "  - Solution found: {:+.6f} (i={} t={}s)\n",
-                     best_solution_value(current),
-                     current.loop,
-                     current.duration);
-
+                } else {
+                    info(m_ctx,
+                         "  - Solution found: {:G} (i={} t={}s)\n",
+                         current.solutions.back().value,
+                         current.loop,
+                         current.duration);
+                }
                 m_best = current;
-
-                return true;
             }
         } catch (const std::exception& e) {
             error(m_ctx, "sync optimization error: {}", e.what());
         }
-
-        return false;
     }
 };
 
@@ -245,8 +244,6 @@ struct optimize_functor
         std::copy(m_all_solutions.begin(),
                   m_all_solutions.end(),
                   std::back_inserter(m_best.solutions));
-
-        x_type_print().print(m_ctx, x);
 
         return m_best;
     }
