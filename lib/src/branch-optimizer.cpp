@@ -27,7 +27,7 @@
 #include "utils.hpp"
 
 #include <fstream>
-#include <list>
+#include <set>
 
 /**
  * @brief Return true if lhs is better to rhs.
@@ -58,19 +58,82 @@ is_best(const baryonyx::result& lhs,
     }
 }
 
-template<typename Iterator>
-auto
-find_best_it(Iterator first,
-             Iterator last,
-             const baryonyx::result& current,
-             baryonyx::objective_function_type type) -> Iterator
+static bool
+is_best(const baryonyx::context_ptr& ctx,
+        const baryonyx::result& current,
+        const baryonyx::result& best,
+        baryonyx::objective_function_type type)
 {
-    for (; first != last; ++first)
-        if (is_best(current, first->second, type))
-            return first;
+    if (is_best(current, best, type)) {
+        if (current)
+            baryonyx::notice(ctx,
+                             "  - branch optimization found solution {:G}\n",
+                             current.solutions.front().value);
+        else
+            baryonyx::notice(
+              ctx,
+              "  - branch optimization remaining_constraint {}\n",
+              current.remaining_constraints);
 
-    return last;
+        return true;
+    }
+
+    return false;
+}
+
+struct node
+{
+    node() = default;
+
+    node(baryonyx::problem problem_,
+         double solution_,
+         int remaining_constraints_,
+         int annoying_variable_)
+      : problem(std::move(problem_))
+      , solution(solution_)
+      , remaining_constraints(remaining_constraints_)
+      , annoying_variable(annoying_variable_)
+    {}
+
+    baryonyx::problem problem;
+    double solution;
+    int remaining_constraints;
+    int annoying_variable;
 };
+
+struct node_affected_compare
+{
+    bool operator()(const node& lhs, const node& rhs) const
+    {
+        return lhs.problem.affected_vars.values.size() >
+               rhs.problem.affected_vars.values.size();
+    }
+};
+
+struct node_result_compare
+{
+    bool operator()(const node& lhs, const node& rhs) const
+    {
+        if (lhs.remaining_constraints == 0) {
+            if (rhs.remaining_constraints == 0) {
+                return lhs.problem.type ==
+                           baryonyx::objective_function_type::maximize
+                         ? lhs.solution > rhs.solution
+                         : lhs.solution < rhs.solution;
+            }
+
+            return true;
+        } else {
+            if (rhs.remaining_constraints == 0) {
+                return false;
+            } else {
+                return lhs.remaining_constraints < rhs.remaining_constraints;
+            }
+        }
+    }
+};
+
+using problem_set = std::set<node, node_result_compare>;
 
 static baryonyx::result
 optimize(const baryonyx::context_ptr& ctx, const baryonyx::problem& pb)
@@ -78,7 +141,9 @@ optimize(const baryonyx::context_ptr& ctx, const baryonyx::problem& pb)
     // NOTE 1 - add a solver parameter to limit the size of the list.
 
     auto old_log_priority = ctx->log_priority;
+#ifndef BARYONYX_ENABLE_DEBUG
     ctx->log_priority = baryonyx::context::message_type::notice;
+#endif
 
     auto best = baryonyx::itm::optimize(ctx, pb);
 
@@ -87,48 +152,67 @@ optimize(const baryonyx::context_ptr& ctx, const baryonyx::problem& pb)
                          "  - branch optimization found solution {:f}\n",
                          best.solutions.front().value);
 
-    bx_ensures(best.annoying_variable >= 0 &&
-               best.annoying_variable < baryonyx::length(pb.vars.values));
+    problem_set jobs;
+    jobs.emplace(pb,
+                 best ? best.solutions.back().value : 0,
+                 best.remaining_constraints,
+                 best.annoying_variable);
 
-    baryonyx::notice(ctx,
-                     "- branch-optimization splits on {}\n",
-                     pb.vars.names[best.annoying_variable]);
+    int annoying_variable = best.annoying_variable;
 
-    auto sp = baryonyx::split(ctx, pb, best.annoying_variable);
-
-    std::list<std::pair<baryonyx::problem, baryonyx::result>> jobs;
-    jobs.emplace_front(std::move(std::get<0>(sp)), best);
-    jobs.emplace_back(std::move(std::get<1>(sp)), best);
-
-    while (!jobs.empty()) {
-        auto top = jobs.front().first;
-        auto current = baryonyx::itm::optimize(ctx, top);
+    do {
+        auto it = jobs.begin();
 
         baryonyx::notice(ctx,
-                         "- branch-optimization splits on {}\n",
-                         top.vars.names[current.annoying_variable]);
+                         "  - branch-optimization splits on {} (id: {})\n",
+                         it->problem.vars.names[it->annoying_variable],
+                         it->annoying_variable);
 
-        auto sp = baryonyx::split(ctx, top, current.annoying_variable);
+        auto sp = baryonyx::split(ctx, it->problem, annoying_variable);
 
-        jobs.pop_front();
+        auto ret0 = baryonyx::itm::optimize(ctx, std::get<0>(sp));
+        if (is_best(ctx, ret0, best, it->problem.type))
+            best = ret0;
 
-        if ((!best && current) ||
-            (best && current && is_best(current, best, top.type))) {
-            baryonyx::notice(ctx,
-                             "  - branch optimization found solution {:f}\n",
-                             current.solutions.front().value);
+        jobs.emplace(std::get<0>(sp),
+                     ret0 ? ret0.solutions.back().value : 0,
+                     ret0.remaining_constraints,
+                     ret0.annoying_variable);
 
-            best = current;
-            jobs.emplace_front(std::move(std::get<0>(sp)), current);
-            jobs.emplace_front(std::move(std::get<1>(sp)), current);
-        } else {
-            auto it =
-              find_best_it(jobs.begin(), jobs.end(), current, top.type);
+        auto ret1 = baryonyx::itm::optimize(ctx, std::get<1>(sp));
+        if (is_best(ctx, ret1, best, it->problem.type))
+            best = ret1;
 
-            it = jobs.emplace(it, std::move(std::get<0>(sp)), current);
-            jobs.emplace(it, std::move(std::get<1>(sp)), current);
+        jobs.emplace(std::get<1>(sp),
+                     ret1 ? ret1.solutions.back().value : 0,
+                     ret1.remaining_constraints,
+                     ret1.annoying_variable);
+
+        jobs.erase(it);
+
+        baryonyx::notice(ctx, "    Jobs lists:\n");
+        for (const auto& elem : jobs) {
+            if (elem.remaining_constraints == 0)
+                baryonyx::notice(
+                  ctx,
+                  "    * solution: {} annoying: {} vars: {}/{}\n",
+                  elem.solution,
+                  elem.annoying_variable,
+                  elem.problem.affected_vars.values.size(),
+                  elem.problem.affected_vars.values.size() +
+                    elem.problem.vars.values.size());
+            else
+                baryonyx::notice(
+                  ctx,
+                  "    * remaining: {} annoying: {} vars: {}/{}\n",
+                  elem.remaining_constraints,
+                  elem.annoying_variable,
+                  elem.problem.affected_vars.values.size(),
+                  elem.problem.affected_vars.values.size() +
+                    elem.problem.vars.values.size());
         }
-    }
+
+    } while (!jobs.empty());
 
     ctx->log_priority = old_log_priority;
 
