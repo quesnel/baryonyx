@@ -35,6 +35,22 @@
 #include <sstream>
 
 void
+test_bibd1n(const baryonyx::context_ptr& ctx)
+{
+    auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/bibd1n.lp");
+
+    baryonyx::solver_parameters params;
+    params.delta = 1e-2;
+    params.time_limit = 5.0;
+    params.mode = baryonyx::solver_parameters::mode_type::branch;
+    baryonyx::context_set_solver_parameters(ctx, params);
+
+    auto result = baryonyx::optimize(ctx, pb);
+
+    Ensures(result);
+}
+
+void
 test_qap(const baryonyx::context_ptr& ctx)
 {
     auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/small4.lp");
@@ -159,8 +175,9 @@ test_n_queens_problem(const baryonyx::context_ptr& ctx)
 int
 main(int /* argc */, char* /* argv */ [])
 {
-    auto ctx = baryonyx::make_context();
+    auto ctx = baryonyx::make_context(stdout, 6);
 
+    test_bibd1n(ctx);
     test_qap(ctx);
     test_n_queens_problem(ctx);
 
