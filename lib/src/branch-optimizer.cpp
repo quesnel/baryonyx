@@ -133,7 +133,7 @@ struct node_result_compare
     }
 };
 
-using problem_set = std::set<node, node_result_compare>;
+using problem_set = std::multiset<node, node_result_compare>;
 
 static baryonyx::result
 optimize(const baryonyx::context_ptr& ctx, const baryonyx::problem& pb)
