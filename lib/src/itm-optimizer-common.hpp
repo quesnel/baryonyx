@@ -94,8 +94,6 @@ struct optimize_functor
     std::chrono::time_point<std::chrono::steady_clock> m_begin;
     std::chrono::time_point<std::chrono::steady_clock> m_end;
 
-    std::set<solution> m_all_solutions;
-
     const context_ptr& m_ctx;
     Random m_rng;
     int m_thread_id;
@@ -334,8 +332,6 @@ private:
 
                 best_recorder.try_update(m_best);
             }
-
-            m_all_solutions.emplace(x.data(), current);
         }
     }
 };
