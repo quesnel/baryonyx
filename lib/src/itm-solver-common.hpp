@@ -81,7 +81,7 @@ struct solver_functor
         int i = 0;
         int pushed = -1;
         int best_remaining = -1;
-        int pushing_iteration = m_ctx->parameters.pushing_iteration_limit;
+        int pushing_iteration = 0;
         const auto& p = m_ctx->parameters;
 
         const auto kappa_min = static_cast<Float>(p.kappa_min);
