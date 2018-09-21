@@ -131,6 +131,14 @@ observer_type_to_string(solver_parameters::observer_type type) noexcept
     return ret[static_cast<int>(type)];
 }
 
+static const char*
+storage_type_to_string(solver_parameters::storage_type type) noexcept
+{
+    static const char* ret[] = { "one", "bound", "five" };
+
+    return ret[static_cast<int>(type)];
+}
+
 void
 context_set_parameters(const context_ptr& ctx,
                        std::string name,
@@ -207,6 +215,7 @@ context_set_solver_parameters(const context_ptr& ctx,
     ctx->parameters.mode = params.mode;
     ctx->parameters.preprocessor = params.preprocessor;
     ctx->parameters.observer = params.observer;
+    ctx->parameters.storage = params.storage;
 }
 
 solver_parameters

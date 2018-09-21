@@ -329,6 +329,16 @@ struct BARYONYX_API solver_parameters
         file
     };
 
+    /**
+     * @brief Solution storage policy for the optimizer mode.
+     */
+    enum class storage_type
+    {
+        one,   ///< stores only the best solution found.
+        bound, ///< stores the best and the bad solution found.
+        five   ///< stores the best five solution found.
+    };
+
     double time_limit{ -1 }; ///< value <= 0 means infinity time.
     double theta{ 0.5 };
     double delta{ -1 }; ///< value == -1 means automatic.
@@ -354,6 +364,7 @@ struct BARYONYX_API solver_parameters
     mode_type mode{ mode_type::none };
     preprocessor_options preprocessor{ preprocessor_options::all };
     observer_type observer{ observer_type::none };
+    storage_type storage{ storage_type::one };
 };
 
 /**
