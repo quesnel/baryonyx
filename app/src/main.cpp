@@ -239,6 +239,7 @@ help() noexcept
       "  - limit: integer ]-oo, +oo[ in loop number\n"
       "  - time-limit: real [0, +oo[ in seconds\n"
       "  - floating-point-type: float double longdouble\n"
+      "  - storage-type: one bound five\n"
       "  - print-level: [0, 2]\n"
       " * In The Middle parameters\n"
       "  - preprocessing: none variables-number variables-weight "
@@ -380,6 +381,13 @@ assign_parameter(baryonyx::solver_parameters& params,
         else if (value == "infeasibility-incr")
             params.order = baryonyx::solver_parameters::constraint_order::
               infeasibility_incr;
+    } else if (is_equal(name, "storage-type")) {
+        if (value == "five")
+            params.storage = baryonyx::solver_parameters::storage_type::five;
+        else if (value == "bound")
+            params.storage = baryonyx::solver_parameters::storage_type::bound;
+        else
+            params.storage = baryonyx::solver_parameters::storage_type::one;
     } else if (is_equal(name, "theta")) {
         params.theta = assign_01(value, params.theta);
     } else if (is_equal(name, "delta")) {

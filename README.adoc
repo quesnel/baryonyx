@@ -329,6 +329,15 @@ To assign parameters to solver or optimizer algorithms, use the `-p
 | init-random
 | real
 | [0-1] p parameter of the bernoulli's law.
+
+| storage-type
+| string
+| Change the solution storage policy for the optimizer mode.
+
+* `one` (default): stores only the best solution found.
+* `bound`: stores the best and the bad solution found.
+* `five`: stores the best five solution found.
+
 |===
 
 For example:
