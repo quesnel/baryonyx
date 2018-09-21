@@ -75,6 +75,7 @@ struct best_solution_recorder
                          current.loop,
                          current.duration);
                 }
+
                 m_best = current;
             }
         } catch (const std::exception& e) {

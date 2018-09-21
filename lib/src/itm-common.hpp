@@ -483,6 +483,8 @@ init_solver(Solver& slv,
 {
     using floatingpointT = typename Solver::float_type;
 
+    x.clear();
+
     std::fill(slv.P.get(),
               slv.P.get() + slv.ap.length(),
               static_cast<floatingpointT>(0));
