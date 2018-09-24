@@ -121,6 +121,21 @@ get_floating_point_type(int type)
     }
 }
 
+static baryonyx::solver_parameters::storage_type
+get_storage_type(int type)
+{
+    namespace bx = baryonyx;
+
+    switch (type) {
+    case 1:
+        return bx::solver_parameters::storage_type::bound;
+    case 2:
+        return bx::solver_parameters::storage_type::five;
+    default:
+        return bx::solver_parameters::storage_type::one;
+    }
+}
+
 static void
 assign_parameters(const baryonyx::context_ptr& ctx,
                   int limit,
@@ -142,7 +157,8 @@ assign_parameters(const baryonyx::context_ptr& ctx,
                   int pushing_iteration_limit,
                   int init_policy,
                   double init_random,
-                  int float_type)
+                  int float_type,
+                  int storage_type)
 {
     baryonyx::solver_parameters params;
 
@@ -169,6 +185,7 @@ assign_parameters(const baryonyx::context_ptr& ctx,
     params.cost_norm = get_cost_norm(norm);
     params.init_policy = get_init_policy(init_policy);
     params.float_type = get_floating_point_type(float_type);
+    params.storage = get_storage_type(storage_type);
 
     baryonyx::context_set_solver_parameters(ctx, params);
 }
@@ -252,6 +269,12 @@ convert_result(const baryonyx::result& res, bool minimize)
 //'    - 1: double
 //'    - 2: longdouble
 //'
+//' @param storage_type the type of solution storage. Default is to store
+//'     the best solution.
+//'    - 0: stores only the best solution found.
+//'    - 1: stores the best and the bad solution found.
+//'    - 2: stores the five best solutions found.
+//'
 //' @return a named list:
 //'   \item{solution_found}{Boolean, TRUE is a solution is found.}
 //'   \item{error_found}{Boolean, TRUE if an error occurred in Baryonyx,
@@ -296,6 +319,7 @@ solve_01lp_problem(std::string file_path,
                    int policy_type = 0,
                    double policy_random = 0.5,
                    int float_type = 1,
+                   int storage_type = 1,
                    bool verbose = true) noexcept
 
 {
@@ -328,7 +352,8 @@ solve_01lp_problem(std::string file_path,
                           pushing_iteration_limit,
                           policy_type,
                           policy_random,
-                          float_type);
+                          float_type,
+                          storage_type);
 
         ret = baryonyx::solve(ctx, pb);
     } catch (const std::bad_alloc& e) {
@@ -375,6 +400,12 @@ solve_01lp_problem(std::string file_path,
 //'    - 1: double
 //'    - 2: longdouble
 //'
+//' @param storage_type the type of solution storage. Default is to store
+//'     the best solution.
+//'    - 0: stores only the best solution found.
+//'    - 1: stores the best and the bad solution found.
+//'    - 2: stores the five best solutions found.
+//'
 //' @return a named list:
 //'   \item{solution_found}{Boolean, TRUE is a solution is found.}
 //'   \item{error_found}{Boolean, TRUE if an error occurred in Baryonyx,
@@ -419,6 +450,7 @@ optimize_01lp_problem(std::string file_path,
                       int policy_type = 0,
                       double policy_random = 0.5,
                       int float_type = 1,
+                      int storage_type = 1,
                       bool verbose = true) noexcept
 {
     baryonyx::result ret;
@@ -450,7 +482,8 @@ optimize_01lp_problem(std::string file_path,
                           pushing_iteration_limit,
                           policy_type,
                           policy_random,
-                          float_type);
+                          float_type,
+                          storage_type);
 
         ret = baryonyx::optimize(ctx, pb);
     } catch (const std::bad_alloc& e) {
