@@ -1,6 +1,33 @@
 = Baryonyx
 Gauthier Quesnel <gauthier.quesnel@inra.fr>
 
+== baryonyx v0.3.2 - 2018-09-24
+
+solver/optimizer::
+
+* Be sure to always return the correct solution value (if any), the
+  status (success, time-limit, kappa-limit, loop-limit) and the
+  remaining constraints.
+* Fix optimizer algorithm to store best constraints remaining
+  solution.
+* Fix push system in solver
+
+general::
+
+* add storage policy option to select the result solution vector
+  policy (one best solution, best and worst solution and the five best
+  solution).
+* bump fmt library to v5.2.0
+
+preprocessor::
+
+* detect and affect variable affected in bound.
+
+main::
+
+* Add the `storage-type` option with a string parameter (one, bound
+  and five).
+
 == baryonyx v0.3.1 - 2018-09-18
 
 main::
@@ -34,22 +61,26 @@ problem::
 
 general::
 
-* enable x86 and x86-64 for both Release and Debug with Visual Studio 2017
+* enable x86 and x86-64 for both Release and Debug with Visual Studio
+  2017
 
 solver::
 
 * Add small optimizer meta-heuristic algorithm, option `--auto:`:
 ** `none` without specific algorithm.
 ** `manual` tries to update parameters to found best solution.
-** `nlopt` tries to update parameters to found best solution using nlopt library and the Nelder Mead algorithm.
+** `nlopt` tries to update parameters to found best solution using
+   nlopt library and the Nelder Mead algorithm.
 ** `branch` split recursively original problem to found best solution.
 ** `branch-manual` mix branch and manual algorithm.
 ** `branch-nlopt` mix branch and nlopt algorithm.
 
 + Add observation mechanism, option `-p observer:`:
 ** `none` no observation (default).
-** `pnm` produce picture files for the P matrix (one per loop) and Pi vector (Lagrangian multipliers) each loop
-** `file` produce CSV files for the P matrix (one per loop) and Pi vector (Lagrangian multipliers) each loop
+** `pnm` produce picture files for the P matrix (one per loop) and Pi
+   vector (Lagrangian multipliers) each loop
+** `file` produce CSV files for the P matrix (one per loop) and Pi
+   vector (Lagrangian multipliers) each loop
 
 * Add solvers:
 ** equalities 01
@@ -59,21 +90,22 @@ solver::
 ** inequalities 101 buffered (experimental)
 ** inequalities Z (experimental)
 
-* Update solver and main to enable the use of float (4 bytes), double (8 bytes)
-  or long double (16 bytes for x86_64) for reduce costs, kappa, delta and
-  preference matrix etc. Default is the use of double. To change the solver
-  internal representation use the following command:
+* Update solver and main to enable the use of float (4 bytes), double
+  (8 bytes) or long double (16 bytes for x86_64) for reduce costs,
+  kappa, delta and preference matrix etc. Default is the use of
+  double. To change the solver internal representation use the
+  following command:
 
    $ baryonyx [...] --param floating-point-type=float|double|longdouble
 
 * For constraints matrix A, add new static order for constraints (`-p
   preprocessing=option`) where option is defined as:
 ** `none` (default): use the lp format constraint order.
-** `less,greater,equal` or `greater,less,equal` or any other form: use the type
-   of operator
+** `less,greater,equal` or `greater,less,equal` or any other form: use
+   the type of operator
 ** `variables-number` (experimental): use number variable links.
-** `variables-weight` (experimental): sort variables weights (sum variable
-   appearance in all constraints).
+** `variables-weight` (experimental): sort variables weights (sum
+   variable appearance in all constraints).
 ** `constraints-weight` (experimental): use number constraint links.
 
 * Add push system for solving process
@@ -84,13 +116,18 @@ core::
 
 * Objective function now use double instead of integer.
 
-* Replace `serialize` with `print-level` in option to show information (e.g.
-  with `print-level=1` with the solve mode, violated constraints are displayed.
+* Replace `serialize` with `print-level` in option to show information
+  (e.g.  with `print-level=1` with the solve mode, violated
+  constraints are displayed.
 
 cmake::
 
-* CMake use two options WITH_DEBUG (ON default), WITH_LOG (ON default).
-** WITH_LOG enables logging system (using the BARYONYX_ENABLE_DEBUG preprocessor definition).
-** WITH_DEBUG enable debug messages in logging system and some debug information (using the BARYONYX_ENABLE_DEBUG preprocessor definition).
-
-* Add the nlopt dependency (optional) to perform automatic parameters optimization.
+* CMake use two options WITH_DEBUG (ON default), WITH_LOG (ON
+  default).
+** WITH_LOG enables logging system (using the BARYONYX_ENABLE_DEBUG
+   preprocessor definition).
+** WITH_DEBUG enable debug messages in logging system and some debug
+   information (using the BARYONYX_ENABLE_DEBUG preprocessor
+   definition).
+* Add the nlopt dependency (optional) to perform automatic parameters
+  optimization.

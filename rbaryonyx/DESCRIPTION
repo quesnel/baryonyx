@@ -1,8 +1,8 @@
 Package: rbaryonyx
 Type: Package
 Title: Integer or Binary Linear Programming Solver
-Version: 0.3.1
-Date: 2018-09-18
+Version: 0.3.2
+Date: 2018-09-24
 Author: Gauthier Quesnel <gauthier.quesnel@inra.fr>
 Maintainer: Gauthier Quesnel <gauthier.quesnel@inra.fr>
 Description: This package provides function to solve and to optimize
