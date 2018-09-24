@@ -38,6 +38,7 @@
 
 #include "observer.hpp"
 #include "private.hpp"
+#include "result.hpp"
 #include "sparse-matrix.hpp"
 #include "utils.hpp"
 
@@ -48,35 +49,52 @@ template<typename Float, typename Mode>
 struct best_solution_recorder
 {
     const context_ptr& m_ctx;
+    std::chrono::time_point<std::chrono::steady_clock> m_start;
     std::mutex m_mutex;
     result m_best;
 
     best_solution_recorder(const context_ptr& ctx)
       : m_ctx(ctx)
+      , m_start(std::chrono::steady_clock::now())
     {}
 
-    void try_update(const result& current) noexcept
+    void try_update(int remaining_constraints, int loop)
     {
         try {
             std::lock_guard<std::mutex> lock(m_mutex);
 
-            if (is_better_result(current, m_best, Mode())) {
-                if (!current) {
-                    info(m_ctx,
-                         "  - Constraints remaining: {} (i={} t={}s)\n",
-                         current.remaining_constraints,
-                         current.loop,
-                         current.duration);
+            if (store_advance(m_best, remaining_constraints)) {
+                m_best.remaining_constraints = remaining_constraints;
+                m_best.loop = loop;
+                m_best.duration =
+                  compute_duration(m_start, std::chrono::steady_clock::now());
 
-                } else {
-                    info(m_ctx,
-                         "  - Solution found: {:G} (i={} t={}s)\n",
-                         current.solutions.back().value,
-                         current.loop,
-                         current.duration);
-                }
+                info(m_ctx,
+                     "  - Constraints remaining: {} (i={} t={}s)\n",
+                     remaining_constraints,
+                     loop,
+                     m_best.duration);
+            }
+        } catch (const std::exception& e) {
+            error(m_ctx, "sync optimization error: {}", e.what());
+        }
+    }
 
-                m_best = current;
+    void try_update(const std::vector<bool>& solution, double value, int loop)
+    {
+        try {
+            std::lock_guard<std::mutex> lock(m_mutex);
+
+            if (store_solution<Mode>(m_ctx, m_best, solution, value)) {
+                m_best.loop = loop;
+                m_best.duration =
+                  compute_duration(m_start, std::chrono::steady_clock::now());
+
+                info(m_ctx,
+                     "  - Solution found: {:G} (i={} t={}s)\n",
+                     value,
+                     loop,
+                     m_best.duration);
             }
         } catch (const std::exception& e) {
             error(m_ctx, "sync optimization error: {}", e.what());
@@ -91,12 +109,11 @@ template<typename Solver,
          typename Random>
 struct optimize_functor
 {
-    std::chrono::time_point<std::chrono::steady_clock> m_begin;
-    std::chrono::time_point<std::chrono::steady_clock> m_end;
-
     const context_ptr& m_ctx;
     Random m_rng;
     int m_thread_id;
+    std::chrono::time_point<std::chrono::steady_clock> m_begin;
+    std::chrono::time_point<std::chrono::steady_clock> m_end;
 
     result m_best;
 
@@ -147,9 +164,6 @@ struct optimize_functor
     {
         Xtype x(variables);
 
-        m_begin = std::chrono::steady_clock::now();
-        m_end = m_begin;
-
         int remaining = 0;
         int best_remaining = INT_MAX;
         int i = 0;
@@ -190,23 +204,18 @@ struct optimize_functor
         m_best.variables = slv.m;
         m_best.constraints = slv.n;
 
+        m_begin = std::chrono::steady_clock::now();
+
         for (;;) {
             remaining = compute.run(slv, x, kappa, delta, theta);
             if (remaining == 0) {
-                store_if_better(result_status::success,
-                                remaining,
+                store_if_better(x,
                                 slv.results(x, original_costs, cost_constant),
-                                x,
                                 i,
                                 best_recorder);
                 pushed = 0;
             } else if (remaining < best_remaining) {
-                store_if_better(result_status::limit_reached,
-                                remaining,
-                                0,
-                                x,
-                                i,
-                                best_recorder);
+                store_if_better(x, remaining, i, best_recorder);
                 best_remaining = remaining;
             }
 
@@ -227,10 +236,8 @@ struct optimize_functor
 
                     if (remaining == 0)
                         store_if_better(
-                          result_status::success,
-                          0,
-                          slv.results(x, original_costs, cost_constant),
                           x,
+                          slv.results(x, original_costs, cost_constant),
                           i,
                           best_recorder);
                 }
@@ -246,16 +253,7 @@ struct optimize_functor
                 pushed > p.pushes_limit) {
 
                 if (remaining < best_remaining)
-                    store_if_better((p.limit > 0 && i >= p.limit)
-                                      ? result_status::limit_reached
-                                      : kappa > kappa_max
-                                          ? result_status::kappa_max_reached
-                                          : result_status::limit_reached,
-                                    remaining,
-                                    0,
-                                    x,
-                                    i,
-                                    best_recorder);
+                    store_if_better(x, remaining, i, best_recorder);
 
                 if (m_best.solutions.empty())
                     init_policy =
@@ -278,12 +276,8 @@ struct optimize_functor
             m_end = std::chrono::steady_clock::now();
             if (is_time_limit(p.time_limit, m_begin, m_end)) {
                 if (m_best.status == result_status::uninitialized) {
-                    store_if_better(result_status::time_limit_reached,
-                                    remaining,
-                                    0,
-                                    x,
-                                    i,
-                                    best_recorder);
+                    m_best.status = result_status::time_limit_reached;
+                    store_if_better(x, remaining, i, best_recorder);
                 }
                 break;
             }
@@ -294,51 +288,41 @@ struct optimize_functor
 
 private:
     template<typename Xtype>
-    void store_if_better(result_status status,
+    void store_if_better(const Xtype& x,
                          int remaining,
-                         double current,
-                         const Xtype& x,
                          int i,
                          best_solution_recorder<Float, Mode>& best_recorder)
     {
-        if (status != result_status::success) {
-            if (!m_best && m_best.remaining_constraints > remaining) {
-                m_best.status = status;
-                m_best.loop = i;
-                m_best.remaining_constraints = remaining;
-                m_best.annoying_variable = x.upper();
-                m_best.duration = compute_duration(m_begin, m_end);
+        if (store_advance(m_best, remaining)) {
+            m_best.loop = i;
+            m_best.remaining_constraints = remaining;
+            m_best.annoying_variable = x.upper();
 
-                best_recorder.try_update(m_best);
-            }
-        } else {
-            if (m_best.solutions.empty() ||
-                is_better_solution(
-                  current, m_best.solutions.back().value, Mode())) {
-                m_best.status = baryonyx::result_status::success;
+            best_recorder.try_update(remaining, i);
+        }
+    }
 
-                // Store only the best solution, other solutions are stored
-                // into the @c std::set to avoid duplicated solutions.
+    template<typename Xtype>
+    void store_if_better(const Xtype& x,
+                         double current,
+                         int i,
+                         best_solution_recorder<Float, Mode>& best_recorder)
+    {
+        if (store_solution<Mode>(m_ctx, m_best, x.data(), current)) {
+            m_best.status = result_status::success;
+            m_best.loop = i;
+            m_best.remaining_constraints = 0;
+            m_best.annoying_variable = x.upper();
 
-                if (m_best.solutions.empty())
-                    m_best.solutions.emplace_back(x.data(), current);
-                else
-                    m_best.solutions[0] = { x.data(), current };
-
-                m_best.duration = compute_duration(m_begin, m_end);
-                m_best.loop = i;
-                m_best.remaining_constraints = 0;
-                m_best.annoying_variable = x.upper();
-
-                best_recorder.try_update(m_best);
-            }
+            best_recorder.try_update(x.data(), current, i);
         }
     }
 };
 
 //
-// Get number of thread to use in optimizer from parameters list or from
-// the standard thread API. If an error occurred, this function returns 1.
+// Get number of thread to use in optimizer from parameters list or
+// from the standard thread API. If an error occurred, this function
+// returns 1.
 //
 inline unsigned
 get_thread_number(const baryonyx::context_ptr& ctx) noexcept
@@ -429,9 +413,26 @@ optimize_problem(const context_ptr& ctx, const problem& pb)
 
         ret.solutions.clear();
 
-        std::copy(all_solutions.begin(),
-                  all_solutions.end(),
-                  std::back_inserter(ret.solutions));
+        switch (ctx->parameters.storage) {
+        case solver_parameters::storage_type::one:
+            ret.solutions.push_back(*(all_solutions.rbegin()));
+            break;
+        case solver_parameters::storage_type::bound:
+            ret.solutions.push_back(*(all_solutions.begin()));
+            ret.solutions.push_back(*(all_solutions.rbegin()));
+            break;
+        case solver_parameters::storage_type::five: {
+            int i = 0;
+            for (auto& elem : all_solutions) {
+                ret.solutions.push_back(*(all_solutions.rbegin()));
+                ++i;
+
+                if (i >= 5)
+                    break;
+            }
+            break;
+        }
+        }
     }
 
     return ret;

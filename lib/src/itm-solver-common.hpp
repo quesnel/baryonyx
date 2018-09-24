@@ -151,12 +151,14 @@ struct solver_functor
 #endif
 
             if (start_pushing) {
-                ++pushing_iteration;
-
                 if (pushed == -1)
-                    info(m_ctx, "  - start push system:\n");
+                    info(m_ctx,
+                         "  - start push system (push: {} iteration: {}\n",
+                         p.pushes_limit,
+                         p.pushing_iteration_limit);
 
-                if (pushing_iteration >= p.pushing_iteration_limit) {
+                if (pushing_iteration == 0 ||
+                    pushing_iteration >= p.pushing_iteration_limit) {
                     pushed++;
                     pushing_iteration = 0;
 
@@ -171,6 +173,8 @@ struct solver_functor
                     if (remaining == 0)
                         store_if_better(
                           slv.results(x, original_costs, cost_constant), x, i);
+                } else {
+                    ++pushing_iteration;
                 }
 
                 if (pushed > p.pushes_limit) {
@@ -245,13 +249,10 @@ struct solver_functor
 private:
     void store_if_better(double current, const x_type& x, int i)
     {
-        if (m_best.solutions.empty() ||
-            is_better_solution(
-              current, m_best.solutions.back().value, Mode())) {
+        if (store_solution<Mode>(m_ctx, m_best, x.data(), current)) {
             m_best.solutions.emplace_back(x.data(), current);
             m_best.duration = compute_duration(m_begin, m_end);
             m_best.loop = i;
-            m_best.solutions.emplace_back(x.data(), current);
 
             info(m_ctx,
                  "  - Best solution found: {:+.6f} (i={} t={}s)\n",
