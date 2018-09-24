@@ -129,12 +129,6 @@ public:
             for (const auto& fct_elem : csts[i].elements)
                 accessors.emplace_back(i, fct_elem.variable_index, fct_elem);
 
-        // std::stable_sort(
-        //   accessors.begin(),
-        //   accessors.end(),
-        //   [](const auto& lhs, const auto& rhs) { return lhs.row < rhs.row;
-        //   });
-
         fixed_array<int> rinit(rows, 0);
         int row = accessors[0].row;
         int nb_row = 0;
@@ -155,6 +149,8 @@ public:
 
         for (int i = 0; i != rows; ++i)
             bx_assert(rinit[i] == static_cast<int>(csts[i].elements.size()));
+
+        // We sort the accessors to improve memory friendly access.
 
         std::stable_sort(
           accessors.begin(),
