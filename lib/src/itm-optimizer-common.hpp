@@ -413,25 +413,27 @@ optimize_problem(const context_ptr& ctx, const problem& pb)
 
         ret.solutions.clear();
 
-        switch (ctx->parameters.storage) {
-        case solver_parameters::storage_type::one:
-            ret.solutions.push_back(*(all_solutions.rbegin()));
-            break;
-        case solver_parameters::storage_type::bound:
-            ret.solutions.push_back(*(all_solutions.begin()));
-            ret.solutions.push_back(*(all_solutions.rbegin()));
-            break;
-        case solver_parameters::storage_type::five: {
-            int i = 0;
-            for (auto& elem : all_solutions) {
+        if (!all_solutions.empty()) {
+            switch (ctx->parameters.storage) {
+            case solver_parameters::storage_type::one:
                 ret.solutions.push_back(*(all_solutions.rbegin()));
-                ++i;
+                break;
+            case solver_parameters::storage_type::bound:
+                ret.solutions.push_back(*(all_solutions.begin()));
+                ret.solutions.push_back(*(all_solutions.rbegin()));
+                break;
+            case solver_parameters::storage_type::five: {
+                int i = 0;
+                for (auto& elem : all_solutions) {
+                    ret.solutions.push_back(*(all_solutions.rbegin()));
+                    ++i;
 
-                if (i >= 5)
-                    break;
+                    if (i >= 5)
+                        break;
+                }
+                break;
             }
-            break;
-        }
+            }
         }
     }
 

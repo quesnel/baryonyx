@@ -123,18 +123,17 @@ public:
             function_element fct;
         };
 
-        // using access = std::tuple<int, int, int, function_element>;
-
         std::vector<access> accessors;
         accessors.reserve(elem);
         for (int i = 0; i != rows; ++i)
             for (const auto& fct_elem : csts[i].elements)
                 accessors.emplace_back(i, fct_elem.variable_index, fct_elem);
 
-        std::stable_sort(
-          accessors.begin(),
-          accessors.end(),
-          [](const auto& lhs, const auto& rhs) { return lhs.row < rhs.row; });
+        // std::stable_sort(
+        //   accessors.begin(),
+        //   accessors.end(),
+        //   [](const auto& lhs, const auto& rhs) { return lhs.row < rhs.row;
+        //   });
 
         fixed_array<int> rinit(rows, 0);
         int row = accessors[0].row;
