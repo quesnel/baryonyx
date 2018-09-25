@@ -29,19 +29,18 @@ static const char*
 pre_constraint_order_to_string(
   solver_parameters::pre_constraint_order type) noexcept
 {
-    static const char* ret[] = {
-        "none",
-        "variables-number",
-        "variables-weight",
-        "constraints-weight",
-        "implied",
-        "less-greater-equal",
-        "less-equal-greater",
-        "greater-less-equal",
-        "greater-equal-less",
-        "equal-less-greater",
-        "equal-greater-less",
-    };
+    static const char* ret[] = { "none",
+                                 "memory",
+                                 "less-greater-equal",
+                                 "less-equal-greater",
+                                 "greater-less-equal",
+                                 "greater-equal-less",
+                                 "equal-less-greater",
+                                 "equal-greater-less",
+                                 "p1",
+                                 "p2",
+                                 "p3",
+                                 "p4" };
 
     return ret[static_cast<int>(type)];
 }

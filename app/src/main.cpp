@@ -242,8 +242,8 @@ help() noexcept
       "  - storage-type: one bound five\n"
       "  - print-level: [0, 2]\n"
       " * In The Middle parameters\n"
-      "  - preprocessing: none variables-number variables-weight "
-      "constraints-weight implied\n"
+      "  - preprocessing: none memory less,greater,equal (or any "
+      "combination), p1, p2, p3, p4\n"
       "  - constraint-order: none reversing random-sorting "
       "infeasibility-decr infeasibility-incr\n"
       "  - theta: real [0, 1]\n"
@@ -336,18 +336,21 @@ assign_parameter(baryonyx::solver_parameters& params,
         if (value == "none")
             params.pre_order =
               baryonyx::solver_parameters::pre_constraint_order::none;
-        else if (value == "variables-number")
-            params.pre_order = baryonyx::solver_parameters::
-              pre_constraint_order::variables_number;
-        else if (value == "variables-weight")
-            params.pre_order = baryonyx::solver_parameters::
-              pre_constraint_order::variables_weight;
-        else if (value == "constraints-weight")
-            params.pre_order = baryonyx::solver_parameters::
-              pre_constraint_order::constraints_weight;
-        else if (value == "implied")
+        else if (value == "memory")
             params.pre_order =
-              baryonyx::solver_parameters::pre_constraint_order::implied;
+              baryonyx::solver_parameters::pre_constraint_order::memory;
+        else if (value == "p1")
+            params.pre_order =
+              baryonyx::solver_parameters::pre_constraint_order::p1;
+        else if (value == "p2")
+            params.pre_order =
+              baryonyx::solver_parameters::pre_constraint_order::p2;
+        else if (value == "p3")
+            params.pre_order =
+              baryonyx::solver_parameters::pre_constraint_order::p3;
+        else if (value == "p4")
+            params.pre_order =
+              baryonyx::solver_parameters::pre_constraint_order::p4;
         else if (value == "less-greater-equal")
             params.pre_order = baryonyx::solver_parameters::
               pre_constraint_order::less_greater_equal;

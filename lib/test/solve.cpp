@@ -480,8 +480,6 @@ test_8_queens_puzzle_random_cost()
     params.w = 40;
     params.order =
       baryonyx::solver_parameters::constraint_order::infeasibility_decr;
-    params.pre_order =
-      baryonyx::solver_parameters::pre_constraint_order::variables_weight;
 
     baryonyx::context_set_solver_parameters(ctx, params);
 
