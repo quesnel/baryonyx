@@ -700,6 +700,119 @@ debug(const context_ptr& ctx, const T& msg)
 void
 print(const context_ptr& ctx);
 
+inline const char*
+pre_constraint_order_to_string(
+  solver_parameters::pre_constraint_order type) noexcept
+{
+    static const char* ret[] = { "none",
+                                 "memory",
+                                 "less-greater-equal",
+                                 "less-equal-greater",
+                                 "greater-less-equal",
+                                 "greater-equal-less",
+                                 "equal-less-greater",
+                                 "equal-greater-less",
+                                 "p1",
+                                 "p2",
+                                 "p3",
+                                 "p4" };
+
+    return ret[static_cast<int>(type)];
+}
+
+inline const char*
+constraint_order_to_string(solver_parameters::constraint_order type) noexcept
+{
+    static const char* ret[] = {
+        "none",
+        "reversing",
+        "random-sorting",
+        "infeasibility-decr",
+        "infeasibility-incr",
+    };
+
+    return ret[static_cast<int>(type)];
+}
+
+inline const char*
+floating_point_type_to_string(
+  solver_parameters::floating_point_type type) noexcept
+{
+    static const char* ret[] = {
+        "float",
+        "double",
+        "longdouble",
+    };
+
+    return ret[static_cast<int>(type)];
+}
+
+inline const char*
+init_policy_type_to_string(solver_parameters::init_policy_type type) noexcept
+{
+    static const char* ret[] = { "bastert", "random", "best" };
+
+    return ret[static_cast<int>(type)];
+}
+
+inline const char*
+cost_norm_type_to_string(solver_parameters::cost_norm_type type) noexcept
+{
+    static const char* ret[] = { "none", "random", "l1", "l2", "loo" };
+
+    return ret[static_cast<int>(type)];
+}
+
+inline const char*
+mode_type_to_string(solver_parameters::mode_type type) noexcept
+{
+    static const char* ret[] = {
+        "disabled", "manual",           "nlopt",
+        "branch",   "manul-and-branch", "nlopt-and-branch"
+    };
+
+    using underlying_type =
+      typename std::underlying_type<solver_parameters::mode_type>::type;
+
+    if (static_cast<underlying_type>(type) &
+        static_cast<underlying_type>(solver_parameters::mode_type::branch)) {
+        if (static_cast<underlying_type>(type) &
+            static_cast<underlying_type>(solver_parameters::mode_type::manual))
+            return ret[4];
+        else if (static_cast<underlying_type>(type) &
+                 static_cast<underlying_type>(
+                   solver_parameters::mode_type::nlopt))
+            return ret[5];
+        else
+            return ret[3];
+    } else {
+        if (static_cast<underlying_type>(type) &
+            static_cast<underlying_type>(solver_parameters::mode_type::manual))
+            return ret[1];
+        if (static_cast<underlying_type>(type) &
+            static_cast<underlying_type>(solver_parameters::mode_type::nlopt))
+            return ret[2];
+    }
+
+    return ret[0];
+}
+
+inline const char*
+observer_type_to_string(solver_parameters::observer_type type) noexcept
+{
+    static const char* ret[] = { "none", "pnm", "file" };
+
+    return ret[static_cast<int>(type)];
+}
+
+inline const char*
+storage_type_to_string(solver_parameters::storage_type type) noexcept
+{
+    static const char* ret[] = { "one", "bound", "five" };
+
+    return ret[static_cast<int>(type)];
+}
+
 } // namespace baryonyx
 
 #endif
