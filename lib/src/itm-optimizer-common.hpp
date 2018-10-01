@@ -90,11 +90,18 @@ struct best_solution_recorder
                 m_best.duration =
                   compute_duration(m_start, std::chrono::steady_clock::now());
 
-                info(m_ctx,
-                     "  - Solution found: {:G} (i={} t={}s)\n",
-                     value,
-                     loop,
-                     m_best.duration);
+                if (loop >= 0)
+                    info(m_ctx,
+                         "  - Solution found: {:F} (i={} t={}s)\n",
+                         value,
+                         loop,
+                         m_best.duration);
+                else
+                    info(m_ctx,
+                         "  - Solution found via push: {:F} (i={} t={}s)\n",
+                         value,
+                         loop,
+                         m_best.duration);
             }
         } catch (const std::exception& e) {
             error(m_ctx, "sync optimization error: {}", e.what());
@@ -164,15 +171,10 @@ struct optimize_functor
     {
         Xtype x(variables);
 
-        int remaining = 0;
         int best_remaining = INT_MAX;
-        int i = 0;
-        int pushed = -1;
-        auto pushing_iteration = 0;
 
         auto& p = m_ctx->parameters;
-        auto init_policy = p.init_policy;
-        const auto kappa_min = static_cast<Float>(p.kappa_min);
+
         const auto kappa_step = static_cast<Float>(p.kappa_step);
         const auto kappa_max = static_cast<Float>(p.kappa_max);
         const auto alpha = static_cast<Float>(p.alpha);
@@ -186,100 +188,134 @@ struct optimize_functor
         const auto pushing_objective_amplifier =
           static_cast<Float>(p.pushing_objective_amplifier);
 
-        auto kappa = kappa_min;
-
-        Solver slv(
-          m_rng, length(constraints), variables, norm_costs, constraints);
-
-        init_policy = init_solver(slv, x, init_policy, p.init_random);
-
-        Order compute(slv, x, m_rng);
-
         if (p.limit <= 0)
             p.limit = std::numeric_limits<int>::max();
 
         if (p.time_limit <= 0)
-            p.time_limit = std::numeric_limits<double>::max();
+            p.time_limit = std::numeric_limits<double>::infinity();
+
+        if (p.pushes_limit <= 0)
+            p.pushes_limit = 0;
+
+        if (p.pushing_iteration_limit <= 0)
+            p.pushes_limit = 0;
+
+        Solver slv(
+          m_rng, length(constraints), variables, norm_costs, constraints);
+
+        auto init_policy = init_solver(slv, x, p.init_policy, p.init_random);
+
+        Order compute(slv, x, m_rng);
 
         m_best.variables = slv.m;
         m_best.constraints = slv.n;
 
         m_begin = std::chrono::steady_clock::now();
+        m_end = std::chrono::steady_clock::now();
 
-        for (;;) {
-            remaining = compute.run(slv, x, kappa, delta, theta);
-            if (remaining == 0) {
-                store_if_better(x,
-                                slv.results(x, original_costs, cost_constant),
-                                i,
-                                best_recorder);
-                pushed = 0;
-            } else if (remaining < best_remaining) {
-                store_if_better(x, remaining, i, best_recorder);
-                best_remaining = remaining;
+        bool finish = false;
+        while (!finish) {
+            auto kappa = static_cast<Float>(p.kappa_min);
+            init_policy =
+              m_best.solutions.empty()
+                ? init_solver(
+                    slv, x, init_policy, m_ctx->parameters.init_random)
+                : init_solver(slv,
+                              x,
+                              m_best.solutions.back().variables,
+                              init_policy,
+                              m_ctx->parameters.init_random);
+
+            for (int i = 0; i != p.limit; ++i) {
+                auto remaining = compute.run(slv, x, kappa, delta, theta);
+
+                if (remaining == 0) {
+                    store_if_better(
+                      x,
+                      slv.results(x, original_costs, cost_constant),
+                      i,
+                      best_recorder);
+                    best_remaining = remaining;
+                    break;
+                }
+
+                if (remaining < best_remaining) {
+                    store_if_better(x, remaining, i, best_recorder);
+                    best_remaining = remaining;
+                }
+
+                if (i > p.w)
+                    kappa +=
+                      kappa_step * std::pow(static_cast<Float>(remaining) /
+                                              static_cast<Float>(slv.m),
+                                            alpha);
+
+                if (kappa > kappa_max)
+                    break;
+
+                if (is_timelimit_reached()) {
+                    if (m_best.status == result_status::uninitialized) {
+                        m_best.status = result_status::time_limit_reached;
+                        store_if_better(x, remaining, i, best_recorder);
+                    }
+                    finish = true;
+                    break;
+                }
             }
 
-            if (pushed >= 0) {
-                ++pushing_iteration;
+            if (best_remaining > 0)
+                continue;
 
-                if (pushing_iteration >= p.pushing_iteration_limit) {
-                    pushed++;
-                    pushing_iteration = 0;
+            for (int push = 0; !finish && push < p.pushes_limit; ++push) {
+                auto remaining =
+                  compute.push_and_run(slv,
+                                       x,
+                                       pushing_k_factor * kappa,
+                                       delta,
+                                       theta,
+                                       pushing_objective_amplifier);
 
-                    remaining =
-                      compute.push_and_run(slv,
-                                           x,
-                                           pushing_k_factor * kappa,
-                                           delta,
-                                           theta,
-                                           pushing_objective_amplifier);
+                if (remaining == 0)
+                    store_if_better(
+                      x,
+                      slv.results(x, original_costs, cost_constant),
+                      -push * p.pushing_iteration_limit - 1,
+                      best_recorder);
 
-                    if (remaining == 0)
+                for (int iter = 0; iter < p.pushing_iteration_limit; ++iter) {
+                    remaining = compute.run(slv, x, kappa, delta, theta);
+
+                    if (remaining == 0) {
                         store_if_better(
                           x,
                           slv.results(x, original_costs, cost_constant),
-                          i,
+                          -push * p.pushing_iteration_limit - iter - 1,
                           best_recorder);
+                        break;
+                    }
+
+                    if (iter > p.w)
+                        kappa +=
+                          kappa_step * std::pow(static_cast<Float>(remaining) /
+                                                  static_cast<Float>(slv.m),
+                                                alpha);
+
+                    if (kappa > kappa_max)
+                        break;
+
+                    if (is_timelimit_reached()) {
+                        if (m_best.status == result_status::uninitialized) {
+                            m_best.status = result_status::time_limit_reached;
+                            store_if_better(x,
+                                            remaining,
+                                            -push * p.pushing_iteration_limit -
+                                              iter - 1,
+                                            best_recorder);
+                        }
+                        finish = true;
+                        break;
+                    }
                 }
-            }
-
-            if (i > p.w)
-                kappa += kappa_step * std::pow(static_cast<Float>(remaining) /
-                                                 static_cast<Float>(slv.m),
-                                               alpha);
-
-            ++i;
-            if ((p.limit > 0 && i >= p.limit) || kappa > kappa_max ||
-                pushed > p.pushes_limit) {
-
-                if (remaining < best_remaining)
-                    store_if_better(x, remaining, i, best_recorder);
-
-                if (m_best.solutions.empty())
-                    init_policy =
-                      init_solver(slv, x, init_policy, p.init_random);
-                else
-                    init_policy =
-                      init_solver(slv,
-                                  x,
-                                  m_best.solutions.back().variables,
-                                  init_policy,
-                                  p.init_random);
-
-                i = 0;
-                kappa = static_cast<Float>(kappa_min);
-                pushed = -1;
-                pushing_iteration = 0;
-                continue;
-            }
-
-            m_end = std::chrono::steady_clock::now();
-            if (is_time_limit(p.time_limit, m_begin, m_end)) {
-                if (m_best.status == result_status::uninitialized) {
-                    m_best.status = result_status::time_limit_reached;
-                    store_if_better(x, remaining, i, best_recorder);
-                }
-                break;
             }
         }
 
@@ -287,6 +323,13 @@ struct optimize_functor
     }
 
 private:
+    bool is_timelimit_reached()
+    {
+        m_end = std::chrono::steady_clock::now();
+
+        return is_time_limit(m_ctx->parameters.time_limit, m_begin, m_end);
+    }
+
     template<typename Xtype>
     void store_if_better(const Xtype& x,
                          int remaining,
