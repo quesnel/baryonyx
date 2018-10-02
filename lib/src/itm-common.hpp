@@ -234,6 +234,7 @@ struct r_data
     int id;               ///< Index in ap.row() vector.
 };
 
+template<typename floatingpointT>
 struct c_data
 {
     c_data() = default;
@@ -242,7 +243,8 @@ struct c_data
       : id_r(id_r_)
     {}
 
-    int id_r; ///< Index in ap.row() vector.
+    floatingpointT value; ///< The pki value.
+    int id_r;             ///< Index in ap.row() vector.
 };
 
 template<typename iteratorT, typename randomT>

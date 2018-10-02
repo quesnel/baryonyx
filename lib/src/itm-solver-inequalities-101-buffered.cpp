@@ -39,7 +39,7 @@ struct solver_inequalities_101coeff_buffered
     std::unique_ptr<Float[]> P;
     std::unique_ptr<int[]> A;
     std::unique_ptr<r_data<Float>[]> R;
-    fixed_array<fixed_array<c_data>> C;
+    fixed_array<fixed_array<c_data<Float>>> C;
     std::unique_ptr<bound[]> b;
     std::unique_ptr<Float[]> pi;
 
@@ -92,7 +92,7 @@ struct solver_inequalities_101coeff_buffered
             }
 
             if (lower > 0) {
-                C[i] = fixed_array<c_data>(lower);
+                C[i] = fixed_array<c_data<Float>>(lower);
 
                 int id_in_r = 0;
                 int id_in_c = 0;

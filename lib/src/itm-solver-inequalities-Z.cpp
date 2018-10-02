@@ -40,7 +40,7 @@ struct solver_inequalities_Zcoeff
     std::unique_ptr<Float[]> P;
     std::unique_ptr<int[]> A;
     std::unique_ptr<r_data<Float>[]> R;
-    fixed_array<fixed_array<c_data>> C;
+    fixed_array<fixed_array<c_data<Float>>> C;
     std::vector<bool> Z;
 
     std::unique_ptr<bound[]> b;
@@ -99,7 +99,7 @@ struct solver_inequalities_Zcoeff
             }
 
             if (lower_size > 0) {
-                C[i] = fixed_array<c_data>(lower_size);
+                C[i] = fixed_array<c_data<Float>>(lower_size);
 
                 int id_in_r = 0;
                 int id_in_c = 0;
@@ -571,8 +571,7 @@ struct solver_inequalities_Zcoeff
             std::tie(ht, hend) = ap.column(begin->column);
 
             for (; ht != hend; ++ht) {
-                auto f = A[ht->value];
-                auto a = static_cast<Float>(f);
+                auto a = std::abs(static_cast<Float>(A[ht->value]));
 
                 sum_a_pi += a * pi[ht->row];
                 sum_a_p += a * P[ht->value];

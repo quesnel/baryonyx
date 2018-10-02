@@ -41,7 +41,7 @@ struct solver_equalities_101coeff
     std::unique_ptr<int[]> A;
     std::unique_ptr<r_data<Float>[]> R;
 
-    sparse_vector<c_data> C;
+    sparse_vector<c_data<Float>> C;
 
     std::unique_ptr<int[]> b;
     std::unique_ptr<Float[]> pi;
@@ -240,12 +240,12 @@ struct solver_equalities_101coeff
         // parse the row Ak[i] because we need to use r[i] not available in C.
         //
 
-        typename sparse_vector<c_data>::iterator c_begin, c_end;
+        typename sparse_vector<c_data<Float>>::iterator c_begin, c_end;
         std::tie(c_begin, c_end) = C.range(k);
         for (auto c_it = c_begin; c_it != c_end; ++c_it) {
             R[c_it->id_r].value = -R[c_it->id_r].value;
             auto var = it + c_it->id_r;
-            P[var->value] = -P[var->value];
+            c_it->value = P[var->value];
         }
 
         bk += static_cast<int>(std::distance(c_begin, c_end));
@@ -254,7 +254,7 @@ struct solver_equalities_101coeff
 
         int selected = select_variables_equality(r_size, bk);
 
-        affect_variables(x, it, k, selected, r_size, kappa, delta);
+        Float d = affect_variables(x, it, k, selected, r_size, kappa, delta);
 
         //
         // Clean up: correct negated costs and adjust value of negated
@@ -263,7 +263,12 @@ struct solver_equalities_101coeff
 
         for (auto c_it = c_begin; c_it != c_end; ++c_it) {
             auto var = it + c_it->id_r;
-            P[var->value] = -P[var->value];
+
+            if (c_it->value - P[var->value] < 0)
+                P[var->value] = c_it->value + d;
+            else
+                P[var->value] = c_it->value - d;
+
             x.invert(var->column);
         }
     }
@@ -293,14 +298,13 @@ struct solver_equalities_101coeff
             Float sum_a_pi = 0;
             Float sum_a_p = 0;
 
-            typename sparse_matrix<int>::const_col_iterator ht, hend;
-            std::tie(ht, hend) = ap.column(begin->column);
+            auto ht = ap.column(begin->column);
 
-            for (; ht != hend; ++ht) {
-                auto a = static_cast<Float>(A[ht->value]);
+            for (; std::get<0>(ht) != std::get<1>(ht); ++std::get<0>(ht)) {
+                auto a = static_cast<Float>(A[std::get<0>(ht)->value]);
 
-                sum_a_pi += a * pi[ht->row];
-                sum_a_p += a * P[ht->value];
+                sum_a_pi += a * pi[std::get<0>(ht)->row];
+                sum_a_p += a * P[std::get<0>(ht)->value];
             }
 
             R[r_size].id = r_size;
@@ -324,35 +328,41 @@ struct solver_equalities_101coeff
     // value j such as b(0, k) <= Sum A(k, R[j]) < b(1, k).
     //
     template<typename Xtype>
-    void affect_variables(Xtype& x,
-                          sparse_matrix<int>::row_iterator it,
-                          int k,
-                          int selected,
-                          int r_size,
-                          const Float kappa,
-                          const Float delta) noexcept
+    Float affect_variables(Xtype& x,
+                           sparse_matrix<int>::row_iterator it,
+                           int k,
+                           int selected,
+                           int r_size,
+                           const Float kappa,
+                           const Float delta) noexcept
     {
+        Float d;
+
         if (selected < 0) {
+            pi[k] += R[0].value;
+            d = -delta;
+
             for (int i = 0; i != r_size; ++i) {
                 auto var = it + R[i].id;
 
                 x.set(var->column, false);
-                P[var->value] -= delta;
+                P[var->value] += d;
             }
         } else if (selected + 1 >= r_size) {
             pi[k] += R[selected].value;
+            d = delta;
 
             for (int i = 0; i != r_size; ++i) {
                 auto var = it + R[i].id;
 
                 x.set(var->column, true);
-                P[var->value] += delta;
+                P[var->value] += d;
             }
         } else {
             pi[k] += ((R[selected].value + R[selected + 1].value) /
                       static_cast<Float>(2.0));
 
-            Float d = delta + ((kappa / (static_cast<Float>(1.0) - kappa)) *
+            d = delta + ((kappa / (static_cast<Float>(1.0) - kappa)) *
                                (R[selected + 1].value - R[selected].value));
 
             int i = 0;
@@ -370,6 +380,8 @@ struct solver_equalities_101coeff
                 P[var->value] -= d;
             }
         }
+
+        return d;
     }
 
     template<typename Xtype, typename Iterator>
