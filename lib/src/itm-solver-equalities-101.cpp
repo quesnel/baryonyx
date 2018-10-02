@@ -23,6 +23,7 @@
 #include "itm-common.hpp"
 #include "itm-optimizer-common.hpp"
 #include "itm-solver-common.hpp"
+#include "sparse-vector.hpp"
 
 namespace baryonyx {
 namespace itm {
@@ -39,7 +40,9 @@ struct solver_equalities_101coeff
     std::unique_ptr<Float[]> P;
     std::unique_ptr<int[]> A;
     std::unique_ptr<r_data<Float>[]> R;
-    fixed_array<fixed_array<c_data>> C;
+
+    sparse_vector<c_data> C;
+
     std::unique_ptr<int[]> b;
     std::unique_ptr<Float[]> pi;
 
@@ -59,7 +62,7 @@ struct solver_equalities_101coeff
       , A(std::make_unique<int[]>(ap.size()))
       , R(std::make_unique<r_data<Float>[]>(
           compute_reduced_costs_vector_size(csts)))
-      , C(m_)
+      , C(csts)
       , b(std::make_unique<int[]>(m_))
       , pi(std::make_unique<Float[]>(m_))
       , c(c_)
@@ -83,24 +86,6 @@ struct solver_equalities_101coeff
             bx_ensures(csts[i].min == csts[i].max);
 
             b[i] = csts[i].min;
-
-            if (lower > 0) {
-                C[i] = fixed_array<c_data>(lower);
-
-                int id_in_r = 0;
-                int id_in_c = 0;
-
-                typename sparse_matrix<int>::const_row_iterator it, et;
-                std::tie(it, et) = ap.row(i);
-
-                for (; it != et; ++it) {
-                    if (A[it->value] < 0) {
-                        C[i][id_in_c].id_r = id_in_r;
-                        ++id_in_c;
-                    }
-                    ++id_in_r;
-                }
-            }
         }
     }
 
@@ -239,8 +224,6 @@ struct solver_equalities_101coeff
 
         decrease_preference(it, et, theta);
 
-        const auto& ck = C[k];
-        const int c_size = length(ck);
         const int r_size = compute_reduced_costs(it, et);
 
         //
@@ -257,15 +240,15 @@ struct solver_equalities_101coeff
         // parse the row Ak[i] because we need to use r[i] not available in C.
         //
 
-        for (int i = 0; i != c_size; ++i) {
-            R[ck[i].id_r].value = -R[ck[i].id_r].value;
-
-            auto var = it + ck[i].id_r;
-
+        typename sparse_vector<c_data>::iterator c_begin, c_end;
+        std::tie(c_begin, c_end) = C.range(k);
+        for (auto c_it = c_begin; c_it != c_end; ++c_it) {
+            R[c_it->id_r].value = -R[c_it->id_r].value;
+            auto var = it + c_it->id_r;
             P[var->value] = -P[var->value];
         }
 
-        bk += c_size;
+        bk += static_cast<int>(std::distance(c_begin, c_end));
 
         calculator_sort(R.get(), R.get() + r_size, rng, Mode());
 
@@ -278,9 +261,8 @@ struct solver_equalities_101coeff
         // variables.
         //
 
-        for (int i = 0; i != c_size; ++i) {
-            auto var = it + ck[i].id_r;
-
+        for (auto c_it = c_begin; c_it != c_end; ++c_it) {
+            auto var = it + c_it->id_r;
             P[var->value] = -P[var->value];
             x.invert(var->column);
         }
@@ -401,7 +383,7 @@ struct solver_equalities_101coeff
     {
         for (; first != last; ++first) {
             auto k = constraint(first);
-            if (!C[k]) {
+            if (C.empty(k)) {
                 compute_update_row_01_eq(
                   x, k, b[k], kappa, delta, theta, obj_amp);
             } else {
@@ -421,7 +403,7 @@ struct solver_equalities_101coeff
     {
         for (; first != last; ++first) {
             auto k = constraint(first);
-            if (!C[k]) {
+            if (C.empty(k)) {
                 compute_update_row_01_eq(
                   x, k, b[k], kappa, delta, theta, static_cast<Float>(0));
             } else {
