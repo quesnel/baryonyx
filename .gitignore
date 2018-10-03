@@ -11,3 +11,4 @@ rbaryonyx_*.tar.gz
 .dir-locals.el
 *sol
 *dump
+compile_commands.json
