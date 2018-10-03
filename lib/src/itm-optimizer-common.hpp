@@ -92,13 +92,13 @@ struct best_solution_recorder
 
                 if (loop >= 0)
                     info(m_ctx,
-                         "  - Solution found: {:F} (i={} t={}s)\n",
+                         "  - Solution found: {:f} (i={} t={}s)\n",
                          value,
                          loop,
                          m_best.duration);
                 else
                     info(m_ctx,
-                         "  - Solution found via push: {:F} (i={} t={}s)\n",
+                         "  - Solution found via push: {:f} (i={} t={}s)\n",
                          value,
                          loop,
                          m_best.duration);

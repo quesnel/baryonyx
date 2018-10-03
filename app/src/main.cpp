@@ -630,7 +630,7 @@ resume(const baryonyx::result& result, FILE* fd) noexcept
                "\\ solver................: {}\n"
                "\\ constraints...........: {}\n"
                "\\ variables.............: {}\n"
-               "\\ duration..............: {}\n"
+               "\\ duration..............: {:f}\n"
                "\\ loop..................: {}\n"
                "\\ status................: ",
                result.method,
@@ -653,7 +653,7 @@ resume(const baryonyx::result& result, FILE* fd) noexcept
             break;                    // empty.
 
         fmt::print(fd,
-                   "\\ value.................: {}\n"
+                   "\\ value.................: {:f}\n"
                    "\\ other value...........: ",
                    result.solutions.back().value);
 
@@ -776,7 +776,7 @@ main(int argc, const char* argv[])
 
             if (ret.status == baryonyx::result_status::success) {
                 fmt::print(ofs.get(),
-                           "\\ Solution found: {}\n",
+                           "\\ Solution found: {:f}\n",
                            ret.solutions.back().value);
                 resume(ret, ofs.get());
             } else {
@@ -829,7 +829,7 @@ main(int argc, const char* argv[])
 
                 if (ret.status == baryonyx::result_status::success) {
                     fmt::print(ofs.get(),
-                               "{} {} ",
+                               "{:f} {}s ",
                                ret.solutions.back().value,
                                ret.duration);
 
