@@ -122,20 +122,22 @@ struct optimize_functor
     std::chrono::time_point<std::chrono::steady_clock> m_begin;
     std::chrono::time_point<std::chrono::steady_clock> m_end;
 
+    const std::vector<std::string>& variable_names;
+    const affected_variables& affected_vars;
+
     result m_best;
 
     optimize_functor(const context_ptr& ctx,
                      unsigned thread_id,
                      typename Random::result_type seed,
-                     const std::vector<std::string>& variable_names,
-                     const affected_variables& affected_vars)
+                     const std::vector<std::string>& variable_names_,
+                     const affected_variables& affected_vars_)
       : m_ctx(ctx)
       , m_rng(seed)
       , m_thread_id(thread_id)
-    {
-        m_best.affected_vars = affected_vars;
-        m_best.variable_name = variable_names;
-    }
+      , variable_names(variable_names_)
+      , affected_vars(affected_vars_)
+    {}
 
     result operator()(best_solution_recorder<Float, Mode>& best_recorder,
                       const std::vector<merged_constraint>& constraints,
@@ -395,7 +397,6 @@ optimize_problem(const context_ptr& ctx, const problem& pb)
     print(ctx);
 
     result ret;
-    auto affected_vars = std::move(pb.affected_vars);
 
     auto constraints{ make_merged_constraints(ctx, pb) };
     if (!constraints.empty() && !pb.vars.values.empty()) {
@@ -406,7 +407,6 @@ optimize_problem(const context_ptr& ctx, const problem& pb)
         auto norm_costs =
           normalize_costs<Float, Random>(ctx, cost, rng, variables);
         auto cost_constant = pb.objective.value;
-        auto names = std::move(pb.vars.names);
 
         const auto thread = get_thread_number(ctx);
 
@@ -427,7 +427,7 @@ optimize_problem(const context_ptr& ctx, const problem& pb)
         for (unsigned i{ 0 }; i != thread; ++i) {
             std::packaged_task<baryonyx::result()> task(
               std::bind(optimize_functor<Solver, Float, Mode, Order, Random>(
-                          ctx, i, seeds[i], names, affected_vars),
+                          ctx, i, seeds[i], pb.vars.names, pb.affected_vars),
                         std::ref(result),
                         std::ref(constraints),
                         variables,
@@ -444,6 +444,9 @@ optimize_problem(const context_ptr& ctx, const problem& pb)
             t.join();
 
         ret = std::move(result.m_best);
+        ret.affected_vars = pb.affected_vars;
+        ret.variable_name = pb.vars.names;
+
         std::set<solution> all_solutions;
 
         for (unsigned i{ 0 }; i != thread; ++i) {
