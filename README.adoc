@@ -292,11 +292,28 @@ To assign parameters to solver or optimizer algorithms, use the `-p
 | string
 | Constraints matrix A order. Values are:
 
-* `none` (default): use the lp format constraint order.
-* `less,greater,equal` or `greater,less,equal` or any other form: use the type of operator
-* `variables-number` (experimental): use number variable links.
-* `variables-weight` (experimental): sort variables weights (sum variable appearance in all constraints).
-* `constraints-weight` (experimental): use number constraint links.
+* `none`: Use the raw_problem (or lp file) order for constraints and variables.
+* `memory`: Default, use the raw_problem (or lp file) order for constraints but sort the variables to improve the memory cache efficiency.
+* `less_greater_equal`: sort constraints according to their type (first less and finally greater then equal) and sort variable to improve the memory cache efficiency.
+* `less_equal_greater`: sort constraints according to their type (first less
+  and finally equal then greater) and sort variable to improve the memory cache
+  efficiency.
+* `greater_less_equal`: sort constraints according to their type (first greater
+  then less and finally equal) and sort variable to improve the memory cache
+  efficiency.
+* `greater_equal_less`: sort constraints according to their type (first greater
+  then equal and finally less) and sort variable to improve the memory cache
+  efficiency.
+* `equal_less_greater`: sort constraints according to their type (first equal
+  then less and finally greater) and sort variable to improve the memory cache
+  efficiency.
+* `equal_greater_less`: sort constraints according to their type (first equal
+  then greater and finally less) and sort variable to improve the memory cache
+  efficiency.
+* `p1`: reserved
+* `p2`: reserved
+* `p3`: reserved
+* `p4`: reserved
 
 | observation
 | string
