@@ -1,6 +1,29 @@
 = Baryonyx
 Gauthier Quesnel <gauthier.quesnel@inra.fr>
 
+== baryonyx v0.3.3 - 2018-10-04
+
+main:
+
+* output: better render output float number
+
+solver/optimizer::
+
+* Fix the preference matrix assignment for both equalities and inequalities
+  with -1 and 1 coefficients, we replace the preference matrix clean up
+  algorithm (invert the variable values for negative coefficients) with a
+  version that revert only the added or subtracted value during the preferences
+  update process.
+* Fix core dump if no solution are found
+
+preprocessor::
+
+* update the preprocessing solver option: Replace the old preprocessing option
+  with new one but without description (p1, p2, p3 and p4). Options are `none`
+  to use the raw_problem (or lp file) order for constraints and variables.
+  `memory`, the default, to use the raw_problem (or lp file) order for
+  constraints but sort the variables to improve the memory cache efficiency.
+
 == baryonyx v0.3.2 - 2018-09-24
 
 solver/optimizer::
