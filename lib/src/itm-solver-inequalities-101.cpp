@@ -464,7 +464,6 @@ struct solver_inequalities_101coeff
         Float d;
 
         if (selected < 0) {
-            pi[k] += R[0].value;
             d = -delta;
 
             for (int i = 0; i != r_size; ++i) {

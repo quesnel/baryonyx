@@ -339,7 +339,6 @@ struct solver_equalities_101coeff
         Float d;
 
         if (selected < 0) {
-            pi[k] += R[0].value;
             d = -delta;
 
             for (int i = 0; i != r_size; ++i) {
@@ -363,7 +362,7 @@ struct solver_equalities_101coeff
                       static_cast<Float>(2.0));
 
             d = delta + ((kappa / (static_cast<Float>(1.0) - kappa)) *
-                               (R[selected + 1].value - R[selected].value));
+                         (R[selected + 1].value - R[selected].value));
 
             int i = 0;
             for (; i <= selected; ++i) {
