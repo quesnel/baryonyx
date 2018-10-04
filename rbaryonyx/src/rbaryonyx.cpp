@@ -53,6 +53,39 @@ r_write(int level, std::string msg)
     Rprintf("%s", msg.c_str());
 }
 
+static baryonyx::solver_parameters::pre_constraint_order
+get_pre_constraint_order(int prep)
+{
+    namespace bx = baryonyx;
+
+    switch (prep) {
+    case 0:
+        return bx::solver_parameters::pre_constraint_order::none;
+    case 2:
+        return bx::solver_parameters::pre_constraint_order::less_greater_equal;
+    case 3:
+        return bx::solver_parameters::pre_constraint_order::less_equal_greater;
+    case 4:
+        return bx::solver_parameters::pre_constraint_order::greater_less_equal;
+    case 5:
+        return bx::solver_parameters::pre_constraint_order::greater_equal_less;
+    case 6:
+        return bx::solver_parameters::pre_constraint_order::equal_less_greater;
+    case 7:
+        return bx::solver_parameters::pre_constraint_order::equal_greater_less;
+    case 8:
+        return bx::solver_parameters::pre_constraint_order::p1;
+    case 9:
+        return bx::solver_parameters::pre_constraint_order::p2;
+    case 10:
+        return bx::solver_parameters::pre_constraint_order::p3;
+    case 11:
+        return bx::solver_parameters::pre_constraint_order::p4;
+    default:
+        return bx::solver_parameters::pre_constraint_order::memory;
+    }
+}
+
 static baryonyx::solver_parameters::constraint_order
 get_constrait_order(int order)
 {
@@ -141,6 +174,7 @@ assign_parameters(const baryonyx::context_ptr& ctx,
                   int limit,
                   double theta,
                   double delta,
+                  int pre_constraint_order,
                   int constraint_order,
                   double kappa_min,
                   double kappa_step,
@@ -181,6 +215,8 @@ assign_parameters(const baryonyx::context_ptr& ctx,
     params.w = w;
     params.pushes_limit = pushes_limit;
     params.pushing_iteration_limit = pushing_iteration_limit;
+
+    params.pre_order = get_pre_constraint_order(pre_constraint_order);
     params.order = get_constrait_order(constraint_order);
     params.cost_norm = get_cost_norm(norm);
     params.init_policy = get_init_policy(init_policy);
@@ -241,8 +277,22 @@ convert_result(const baryonyx::result& res, bool minimize)
 
 //' Tries to solve the 01 linear programming problem.
 //'
-//' @param constraint_order between each run over R. DEfault is to use the
-//'    order defined in model (lp file).
+//' @param pre_constraint_order order of the raw problem.
+//'     0: none
+//'     1: memory
+//'     2: less_greater_equal
+//'     3: less_equal_greater
+//'     4: greater_less_equal
+//'     5: greater_equal_less
+//'     6: equal_less_greater
+//'     7: equal_greater_less
+//'     8: p1
+//'     9: p2
+//'     10: p3
+//'     11: p4
+//'
+//' @param constraint_order order between each run over R. DEfault is to use
+//'    the order defined in model (lp file).
 //'    - 0: none
 //'    - 1: reversing
 //'    - 2: random-sorting
@@ -302,6 +352,7 @@ solve_01lp_problem(std::string file_path,
                    int limit = 1000,
                    double theta = 0.5,
                    double delta = -1,
+                   int pre_constraint_order = 1,
                    int constraint_order = 0,
                    double kappa_min = 0.0,
                    double kappa_step = 1.0e-3,
@@ -336,6 +387,7 @@ solve_01lp_problem(std::string file_path,
                           limit,
                           theta,
                           delta,
+                          pre_constraint_order,
                           constraint_order,
                           kappa_min,
                           kappa_step,
@@ -371,6 +423,20 @@ solve_01lp_problem(std::string file_path,
 }
 
 //' Tries to optimize the 01 linear programming problem.
+//'
+//' @param pre_constraint_order order of the raw problem.
+//'     0: none
+//'     1: memory
+//'     2: less_greater_equal
+//'     3: less_equal_greater
+//'     4: greater_less_equal
+//'     5: greater_equal_less
+//'     6: equal_less_greater
+//'     7: equal_greater_less
+//'     8: p1
+//'     9: p2
+//'     10: p3
+//'     11: p4
 //'
 //' @param constraint_order between each run over R. DEfault is to use the
 //'    order defined in model (lp file).
@@ -433,6 +499,7 @@ optimize_01lp_problem(std::string file_path,
                       int limit = 1000,
                       double theta = 0.5,
                       double delta = -1,
+                      int pre_constraint_order = 1,
                       int constraint_order = 0,
                       double kappa_min = 0.0,
                       double kappa_step = 1.0e-3,
@@ -466,6 +533,7 @@ optimize_01lp_problem(std::string file_path,
                           limit,
                           theta,
                           delta,
+                          pre_constraint_order,
                           constraint_order,
                           kappa_min,
                           kappa_step,
