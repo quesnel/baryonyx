@@ -1,0 +1,17 @@
+image: gcc
+
+variables:
+  GIT_SUBMODULE_STRATEGY: recursive
+
+build:
+  stage: build
+  before_script:
+    - apt update && apt -y install cmake g++ ninja-build
+  script:
+    - mkdir build && cd build
+    - cmake -G Ninja ..
+    - ninja
+    - ninja install
+    - ctest -V -R testio
+    - ctest -V -R testlib
+    - ctest -V -R testsolver
