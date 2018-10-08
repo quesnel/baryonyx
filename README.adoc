@@ -319,7 +319,7 @@ To assign parameters to solver or optimizer algorithms, use the `-p
 
 | observation
 | string
-| Select the type of observation mechanism
+| Select the type of observation mechanism (only in solve mode)
 
 * `none` no observation (default).
 * `pnm` produce picture files for the P matrix (one per loop) and Pi vector (Lagrangian multipliers) each loop

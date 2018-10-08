@@ -67,7 +67,8 @@ struct output_c_file
     {
         auto* stream = fopen(filename, "w");
         if (!stream) {
-            fmt::print(stderr, "Fail open {}: {}\n", filename, strerror(errno));
+            fmt::print(
+              stderr, "Fail open {}: {}\n", filename, strerror(errno));
         } else {
             ptr = stream;
         }
@@ -238,6 +239,7 @@ help() noexcept
       "  - limit: integer ]-oo, +oo[ in loop number\n"
       "  - time-limit: real [0, +oo[ in seconds\n"
       "  - floating-point-type: float double longdouble\n"
+      "  - observer-type: none (default), pnm, file\n"
       "  - storage-type: one bound five\n"
       "  - print-level: [0, 2]\n"
       " * In The Middle parameters\n"
@@ -327,8 +329,15 @@ assign_parameter(baryonyx::solver_parameters& params,
             params.float_type =
               baryonyx::solver_parameters::floating_point_type::double_type;
         else if (value == "longdouble")
-            params.float_type =
-              baryonyx::solver_parameters::floating_point_type::longdouble_type;
+            params.float_type = baryonyx::solver_parameters::
+              floating_point_type::longdouble_type;
+    } else if (is_equal(name, "observer-type")) {
+        if (value == "none")
+            params.observer = baryonyx::solver_parameters::observer_type::none;
+        else if (value == "pnm")
+            params.observer = baryonyx::solver_parameters::observer_type::pnm;
+        else if (value == "file")
+            params.observer = baryonyx::solver_parameters::observer_type::file;
     } else if (is_equal(name, "print-level")) {
         params.print_level = assign(value, 0, 2, params.print_level);
     } else if (is_equal(name, "preprocessing")) {
@@ -378,11 +387,11 @@ assign_parameter(baryonyx::solver_parameters& params,
             params.order =
               baryonyx::solver_parameters::constraint_order::random_sorting;
         else if (value == "infeasibility-decr")
-            params.order =
-              baryonyx::solver_parameters::constraint_order::infeasibility_decr;
+            params.order = baryonyx::solver_parameters::constraint_order::
+              infeasibility_decr;
         else if (value == "infeasibility-incr")
-            params.order =
-              baryonyx::solver_parameters::constraint_order::infeasibility_incr;
+            params.order = baryonyx::solver_parameters::constraint_order::
+              infeasibility_incr;
         else if (value == "lagrangian-decr")
             params.order =
               baryonyx::solver_parameters::constraint_order::lagrangian_decr;
@@ -422,7 +431,8 @@ assign_parameter(baryonyx::solver_parameters& params,
         else if (value == "l2")
             params.cost_norm = baryonyx::solver_parameters::cost_norm_type::l2;
         else if (value == "loo")
-            params.cost_norm = baryonyx::solver_parameters::cost_norm_type::loo;
+            params.cost_norm =
+              baryonyx::solver_parameters::cost_norm_type::loo;
     } else if (is_equal(name, "pushes-limit")) {
         params.pushes_limit = assign(
           value, 0, std::numeric_limits<int>::max(), params.pushes_limit);
@@ -430,10 +440,11 @@ assign_parameter(baryonyx::solver_parameters& params,
         params.pushing_objective_amplifier =
           assign_0oo(value, params.pushing_objective_amplifier);
     } else if (is_equal(name, "pushing-iteration-limit")) {
-        params.pushing_iteration_limit = assign(value,
-                                                0,
-                                                std::numeric_limits<int>::max(),
-                                                params.pushing_iteration_limit);
+        params.pushing_iteration_limit =
+          assign(value,
+                 0,
+                 std::numeric_limits<int>::max(),
+                 params.pushing_iteration_limit);
     } else if (is_equal(name, "pushing-k-factor")) {
         params.pushing_k_factor = assign_0oo(value, params.pushing_k_factor);
     } else if (is_equal(name, "init-policy")) {
@@ -665,7 +676,8 @@ resume(const baryonyx::result& result, FILE* fd) noexcept
         fmt::print(fd, "\n");
         fmt::print(fd, "\\ variables.............: \n");
 
-        for (std::size_t i{ 0 }, e{ result.affected_vars.names.size() }; i != e;
+        for (std::size_t i{ 0 }, e{ result.affected_vars.names.size() };
+             i != e;
              ++i)
             fmt::print(fd,
                        "{}={}\n",
@@ -734,7 +746,8 @@ main(int argc, const char* argv[])
             fmt::print("  - output file: {}\n", filename);
 
             if (params.check) {
-                auto result = baryonyx::make_result(ctx, params.check_filename);
+                auto result =
+                  baryonyx::make_result(ctx, params.check_filename);
 
                 if (result) {
                     auto valid = baryonyx::is_valid_solution(pb, result);
@@ -790,7 +803,8 @@ main(int argc, const char* argv[])
         } catch (const baryonyx::postcondition_failure& e) {
             fmt::print(stderr, "internal failure: {}\n", e.what());
         } catch (const baryonyx::numeric_cast_failure& e) {
-            fmt::print(stderr, "numeric cast internal failure: {}\n", e.what());
+            fmt::print(
+              stderr, "numeric cast internal failure: {}\n", e.what());
         } catch (const baryonyx::file_access_failure& e) {
             fmt::print(stderr,
                        "file `{}' fail {}: {}\n",
