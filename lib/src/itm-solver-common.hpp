@@ -134,7 +134,7 @@ struct solver_functor
 
             if (remaining == 0) {
                 store_if_better(
-                  x, slv.results(x, original_costs, cost_constant), i);
+                  x, results(x, original_costs, cost_constant, variables), i);
                 best_remaining = remaining;
                 start_push = true;
                 break;
@@ -184,7 +184,7 @@ struct solver_functor
                 if (remaining == 0)
                     store_if_better(
                       x,
-                      slv.results(x, original_costs, cost_constant),
+                      results(x, original_costs, cost_constant, variables),
                       -push * p.pushing_iteration_limit - 1);
 
                 if (is_timelimit_reached())
@@ -196,7 +196,7 @@ struct solver_functor
                     if (remaining == 0) {
                         store_if_better(
                           x,
-                          slv.results(x, original_costs, cost_constant),
+                          results(x, original_costs, cost_constant, variables),
                           -push * p.pushing_iteration_limit - iter - 1);
                         break;
                     }

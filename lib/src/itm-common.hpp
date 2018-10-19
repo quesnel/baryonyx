@@ -80,7 +80,8 @@ struct x_type
         return 0;
     }
 
-    void clear() {}
+    void clear()
+    {}
 
     std::vector<bool> data() const noexcept
     {
@@ -218,6 +219,57 @@ struct bound
     int min;
     int max;
 };
+
+template<typename Solver, typename Xtype>
+bool
+is_valid_constraint(const Solver& slv, int k, const Xtype& x)
+{
+    typename sparse_matrix<int>::const_row_iterator it, et;
+
+    std::tie(it, et) = slv.ap.row(k);
+    int v = 0;
+
+    for (; it != et; ++it)
+        v += slv.factor(it->value) * x[it->column];
+
+    return slv.bound_min(k) <= v && v <= slv.bound_max(k);
+}
+
+template<typename Solver, typename Xtype>
+bool
+is_valid_solution(const Solver& slv, const Xtype& x)
+{
+    for (int k = 0; k != slv.m; ++k)
+        if (!is_valid_constraint(slv, k, x))
+            return false;
+
+    return true;
+}
+
+template<typename Solver, typename Xtype>
+int
+compute_violated_constraints(const Solver& slv,
+                             const Xtype& x,
+                             std::vector<int>& out)
+{
+    out.clear();
+
+    for (int k = 0; k != slv.m; ++k)
+        if (!is_valid_constraint(slv, k, x))
+            out.emplace_back(k);
+
+    return length(out);
+}
+
+template<typename Xtype, typename Cost>
+double
+results(const Xtype& x, const Cost& c, double cost_constant, int n)
+{
+    for (int i = 0; i != n; ++i)
+        cost_constant += static_cast<double>(c[i] * x[i]);
+
+    return cost_constant;
+}
 
 template<typename floatingpointT>
 struct r_data
@@ -391,6 +443,94 @@ compute_reduced_costs_vector_size(
         rsizemax = std::max(rsizemax, csts[i].elements.size());
 
     return rsizemax;
+}
+
+/*
+ * The bkmin and bkmax constraint bounds are not equal and can be assigned to
+ * -infinity or +infinity. We have to scan the r vector and search a value j
+ * such as b(0, k) <= Sum A(k, R[j]) < b(1, k).
+ */
+template<typename Solver, typename Xtype, typename Iterator, typename Float>
+void
+affect(Solver& slv,
+       Xtype& x,
+       Iterator it,
+       int k,
+       int selected,
+       int r_size,
+       const Float kappa,
+       const Float delta)
+{
+    constexpr Float one{ 1 };
+    constexpr Float two{ 2 };
+    constexpr Float middle{ (two + one) / two };
+
+    auto d = delta;
+
+    if (selected < 0) {
+        slv.pi[k] += slv.R[0].value / two;
+        d += (kappa / (one - kappa)) * (slv.R[0].value / two);
+
+        for (int i = 0; i != r_size; ++i) {
+            auto var = it + slv.R[i].id;
+
+            if (slv.R[i].is_negative()) {
+                x.set(var->column, true);
+                slv.P[var->value] += d;
+            } else {
+                x.set(var->column, false);
+                slv.P[var->value] -= d;
+            }
+        }
+    } else if (selected + 1 >= r_size) {
+        slv.pi[k] += slv.R[selected].value * middle;
+        d += (kappa / (one - kappa)) * (slv.R[selected].value * middle);
+
+        for (int i = 0; i != r_size; ++i) {
+            auto var = it + slv.R[i].id;
+
+            if (slv.R[i].is_negative()) {
+                x.set(var->column, false);
+                slv.P[var->value] -= d;
+            } else {
+                x.set(var->column, true);
+                slv.P[var->value] += d;
+            }
+        }
+    } else {
+        slv.pi[k] +=
+          ((slv.R[selected].value + slv.R[selected + 1].value) / two);
+        d += (kappa / (one - kappa)) *
+             (slv.R[selected + 1].value - slv.R[selected].value);
+
+        int i = 0;
+        for (; i <= selected; ++i) {
+            auto var = it + slv.R[i].id;
+
+            if (slv.R[i].is_negative()) {
+                x.set(var->column, false);
+                slv.P[var->value] -= d;
+            } else {
+                x.set(var->column, true);
+                slv.P[var->value] += d;
+            }
+        }
+
+        for (; i != r_size; ++i) {
+            auto var = it + slv.R[i].id;
+
+            if (slv.R[i].is_negative()) {
+                x.set(var->column, true);
+                slv.P[var->value] += d;
+            } else {
+                x.set(var->column, false);
+                slv.P[var->value] -= d;
+            }
+        }
+    }
+
+    // TODO job: develops is_valid_constraint for all the solvers
+    bx_expects(is_valid_constraint(slv, k, x));
 }
 
 namespace detail {
@@ -826,7 +966,7 @@ struct compute_none
     compute_none(const solverT& s, const Xtype& x, randomT&)
       : R(s.m)
     {
-        s.compute_violated_constraints(x, R);
+        compute_violated_constraints(s, x, R);
     }
 
     template<typename solverT, typename Xtype>
@@ -840,7 +980,7 @@ struct compute_none
         solver.push_and_compute_update_row(
           x, R.cbegin(), R.cend(), kappa, delta, theta, objective_amplifier);
 
-        return solver.compute_violated_constraints(x, R);
+        return compute_violated_constraints(solver, x, R);
     }
 
     template<typename solverT, typename Xtype>
@@ -852,7 +992,7 @@ struct compute_none
     {
         solver.compute_update_row(x, R.begin(), R.end(), kappa, delta, theta);
 
-        return solver.compute_violated_constraints(x, R);
+        return compute_violated_constraints(solver, x, R);
     }
 };
 
@@ -865,7 +1005,7 @@ struct compute_reversing
     compute_reversing(solverT& s, const Xtype& x, randomT&)
       : R(s.m)
     {
-        s.compute_violated_constraints(x, R);
+        compute_violated_constraints(s, x, R);
     }
 
     template<typename solverT, typename Xtype>
@@ -879,7 +1019,7 @@ struct compute_reversing
         solver.push_and_compute_update_row(
           x, R.crbegin(), R.crend(), kappa, delta, theta, objective_amplifier);
 
-        return solver.compute_violated_constraints(x, R);
+        return compute_violated_constraints(solver, x, R);
     }
 
     template<typename solverT, typename Xtype>
@@ -892,7 +1032,7 @@ struct compute_reversing
         solver.compute_update_row(
           x, R.crbegin(), R.crend(), kappa, delta, theta);
 
-        return solver.compute_violated_constraints(x, R);
+        return compute_violated_constraints(solver, x, R);
     }
 };
 
@@ -905,7 +1045,7 @@ struct compute_lagrangian_order
     compute_lagrangian_order(solverT& s, const Xtype& x, Random&)
       : R(s.m)
     {
-        s.compute_violated_constraints(x, R);
+        compute_violated_constraints(s, x, R);
     }
 
     template<typename solverT, typename Xtype>
@@ -924,7 +1064,7 @@ struct compute_lagrangian_order
         solver.push_and_compute_update_row(
           x, R.cbegin(), R.cend(), kappa, delta, theta, objective_amplifier);
 
-        return solver.compute_violated_constraints(x, R);
+        return compute_violated_constraints(solver, x, R);
     }
 
     template<typename solverT, typename Xtype>
@@ -935,9 +1075,10 @@ struct compute_lagrangian_order
             return op(solver.pi[lhs], solver.pi[rhs]);
         });
 
-        solver.compute_update_row(x, R.cbegin(), R.cend(), kappa, delta, theta);
+        solver.compute_update_row(
+          x, R.cbegin(), R.cend(), kappa, delta, theta);
 
-        return solver.compute_violated_constraints(x, R);
+        return compute_violated_constraints(solver, x, R);
     }
 };
 
@@ -954,7 +1095,7 @@ struct compute_random
       : R(s.m)
       , rng(rng_)
     {
-        s.compute_violated_constraints(x, R);
+        compute_violated_constraints(s, x, R);
     }
 
     template<typename solverT, typename Xtype>
@@ -970,7 +1111,7 @@ struct compute_random
         solver.push_and_compute_update_row(
           x, R.begin(), R.end(), kappa, delta, theta, objective_amplifier);
 
-        return solver.compute_violated_constraints(x, R);
+        return compute_violated_constraints(solver, x, R);
     }
 
     template<typename solverT, typename Xtype>
@@ -984,7 +1125,7 @@ struct compute_random
 
         solver.compute_update_row(x, R.begin(), R.end(), kappa, delta, theta);
 
-        return solver.compute_violated_constraints(x, R);
+        return compute_violated_constraints(solver, x, R);
     }
 };
 

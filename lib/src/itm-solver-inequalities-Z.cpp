@@ -36,13 +36,29 @@ struct solver_inequalities_Zcoeff
 
     Random& rng;
 
+    struct rc_data
+    {
+        Float value;
+        int id;
+        bool is_negative_coeff;
+
+        constexpr bool is_negative() const
+        {
+            return is_negative_coeff;
+        }
+    };
+
+    struct rc_size
+    {
+        int r_size;
+        int c_size;
+    };
+
     sparse_matrix<int> ap;
     std::unique_ptr<Float[]> P;
     std::unique_ptr<int[]> A;
-    std::unique_ptr<r_data<Float>[]> R;
-    fixed_array<fixed_array<c_data<Float>>> C;
+    std::unique_ptr<rc_data[]> R;
     std::vector<bool> Z;
-
     std::unique_ptr<bound[]> b;
     std::unique_ptr<Float[]> pi;
 
@@ -59,9 +75,7 @@ struct solver_inequalities_Zcoeff
       , ap(csts, m_, n_)
       , P(std::make_unique<Float[]>(ap.size()))
       , A(std::make_unique<int[]>(ap.size()))
-      , R(std::make_unique<r_data<Float>[]>(
-          compute_reduced_costs_vector_size(csts)))
-      , C(m_)
+      , R(std::make_unique<rc_data[]>(compute_reduced_costs_vector_size(csts)))
       , Z(m_, false)
       , b(std::make_unique<bound[]>(m_))
       , pi(std::make_unique<Float[]>(m_))
@@ -71,20 +85,16 @@ struct solver_inequalities_Zcoeff
     {
         int id = 0;
         for (int i = 0, e = length(csts); i != e; ++i) {
-            int lower_size = 0, upper_size = 0;
             int lower = 0, upper = 0;
 
             for (const auto& cst : csts[i].elements) {
                 bx_ensures(cst.factor);
                 A[id++] = cst.factor;
 
-                if (cst.factor > 0) {
-                    upper_size++;
+                if (cst.factor > 0)
                     upper += cst.factor;
-                } else {
-                    lower_size++;
+                else
                     lower += cst.factor;
-                }
 
                 if (std::abs(cst.factor) > 1)
                     Z[i] = true;
@@ -98,23 +108,7 @@ struct solver_inequalities_Zcoeff
                 b[i].max = std::min(upper, csts[i].max);
             }
 
-            if (lower_size > 0) {
-                C[i] = fixed_array<c_data<Float>>(lower_size);
-
-                int id_in_r = 0;
-                int id_in_c = 0;
-
-                typename sparse_matrix<int>::const_row_iterator it, et;
-                std::tie(it, et) = ap.row(i);
-
-                for (; it != et; ++it) {
-                    if (A[it->value] < 0) {
-                        C[i][id_in_c].id_r = id_in_r;
-                        ++id_in_c;
-                    }
-                    ++id_in_r;
-                }
-            }
+            bx_ensures(b[i].min <= b[i].max);
         }
     }
 
@@ -161,392 +155,6 @@ struct solver_inequalities_Zcoeff
         return ret;
     }
 
-    template<typename Xtype>
-    bool is_valid_solution(const Xtype& x) const
-    {
-        for (int k = 0, ek = m; k != ek; ++k) {
-            typename sparse_matrix<int>::const_row_iterator it, et;
-
-            std::tie(it, et) = ap.row(k);
-            int v = 0;
-
-            for (; it != et; ++it)
-                v += A[it->value] * x[it->column];
-
-            if (!(b[k].min <= v && v <= b[k].max))
-                return false;
-        }
-
-        return true;
-    }
-
-    template<typename Xtype>
-    int compute_violated_constraints(const Xtype& x,
-                                     std::vector<int>& container) const
-    {
-        typename sparse_matrix<int>::const_row_iterator it, et;
-
-        container.clear();
-
-        for (int k = 0; k != m; ++k) {
-            std::tie(it, et) = ap.row(k);
-            int v = 0;
-
-            for (; it != et; ++it)
-                v += A[it->value] * x[it->column];
-
-            if (!(b[k].min <= v && v <= b[k].max))
-                container.emplace_back(k);
-        }
-
-        return length(container);
-    }
-
-    template<typename Xtype>
-    double results(const Xtype& x,
-                   const std::unique_ptr<Float[]>& original_costs,
-                   const double cost_constant) const
-    {
-        bx_expects(is_valid_solution(x));
-
-        auto value = static_cast<double>(cost_constant);
-
-        for (int i{ 0 }, ei{ n }; i != ei; ++i)
-            value += static_cast<double>(original_costs[i] * x[i]);
-
-        return value;
-    }
-
-    template<typename Xtype>
-    void compute_update_row_Z_eq(Xtype& x,
-                                 int k,
-                                 int bk,
-                                 Float kappa,
-                                 Float delta,
-                                 Float theta,
-                                 Float objective_amplifier)
-    {
-        typename sparse_matrix<int>::row_iterator it, et;
-        std::tie(it, et) = ap.row(k);
-
-        decrease_preference(it, et, theta);
-
-        const auto& ck = C[k];
-        const int c_size = length(ck);
-        const int r_size = compute_reduced_costs(it, et);
-        int bk_move = 0;
-
-        //
-        // Before sort and select variables, we apply the push method: for each
-        // reduces cost, we had the cost multiply with an objective amplifier.
-        //
-
-        if (objective_amplifier)
-            for (int i = 0; i != r_size; ++i)
-                R[i].value += objective_amplifier * c[(it + R[i].id)->column];
-
-        //
-        // Negate reduced costs and coefficients of these variables. We need to
-        // parse the row Ak[i] because we need to use r[i] not available in C.
-        //
-
-        for (int i = 0; i != c_size; ++i) {
-            R[ck[i].id_r].value = -R[ck[i].id_r].value;
-
-            auto var = it + ck[i].id_r;
-
-            P[var->value] = -P[var->value];
-            bk_move += A[var->value];
-        }
-
-        bk += std::abs(bk_move);
-
-        calculator_sort(R.get(), R.get() + r_size, rng, Mode());
-
-        //
-        //
-        //
-
-        int selected = select_variables_equality_Z(it, r_size, bk);
-
-        affect_variables(x, it, k, selected, r_size, kappa, delta);
-
-        //
-        // Clean up: correct negated costs and adjust value of negated
-        // variables.
-        //
-
-        for (int i = 0; i != c_size; ++i) {
-            auto var = it + ck[i].id_r;
-
-            P[var->value] = -P[var->value];
-            x.invert(var->column);
-        }
-    }
-
-    template<typename Xtype>
-    void compute_update_row_Z_ineq(Xtype& x,
-                                   int k,
-                                   int bkmin,
-                                   int bkmax,
-                                   Float kappa,
-                                   Float delta,
-                                   Float theta,
-                                   Float objective_amplifier)
-    {
-        typename sparse_matrix<int>::row_iterator it, et;
-        std::tie(it, et) = ap.row(k);
-
-        decrease_preference(it, et, theta);
-
-        const auto& ck = C[k];
-        const int c_size = (ck) ? length(ck) : 0;
-        const int r_size = compute_reduced_costs(it, et);
-        int bk_move = 0;
-
-        //
-        // Before sort and select variables, we apply the push method: for each
-        // reduces cost, we had the cost multiply with an objective amplifier.
-        //
-
-        if (objective_amplifier)
-            for (int i = 0; i != r_size; ++i)
-                R[i].value += objective_amplifier * c[(it + R[i].id)->column];
-
-        //
-        // Negate reduced costs and coefficients of these variables. We need to
-        // parse the row Ak[i] because we need to use r[i] not available in C.
-        //
-
-        for (int i = 0; i != c_size; ++i) {
-            R[ck[i].id_r].value = -R[ck[i].id_r].value;
-
-            auto var = it + ck[i].id_r;
-
-            P[var->value] = -P[var->value];
-            bk_move += A[var->value];
-        }
-
-        bkmin += std::abs(bk_move);
-        bkmax += std::abs(bk_move);
-
-        calculator_sort(R.get(), R.get() + r_size, rng, Mode());
-
-        //
-        //
-        //
-
-        int selected = select_variables_inequality_Z(it, r_size, bkmin, bkmax);
-
-        affect_variables(x, it, k, selected, r_size, kappa, delta);
-
-        //
-        // Clean up: correct negated costs and adjust value of negated
-        // variables.
-        //
-
-        for (int i = 0; i != c_size; ++i) {
-            auto var = it + ck[i].id_r;
-
-            P[var->value] = -P[var->value];
-            x.invert(var->column);
-        }
-    }
-
-    template<typename Xtype>
-    void compute_update_row_01_eq(Xtype& x,
-                                  int k,
-                                  int bk,
-                                  Float kappa,
-                                  Float delta,
-                                  Float theta,
-                                  Float objective_amplifier)
-    {
-        typename sparse_matrix<int>::row_iterator it, et;
-        std::tie(it, et) = ap.row(k);
-
-        decrease_preference(it, et, theta);
-
-        const int r_size = compute_reduced_costs(it, et);
-
-        //
-        // Before sort and select variables, we apply the push method: for each
-        // reduces cost, we had the cost multiply with an objective amplifier.
-        //
-
-        if (objective_amplifier)
-            for (int i = 0; i != r_size; ++i)
-                R[i].value += objective_amplifier * c[(it + R[i].id)->column];
-
-        calculator_sort(R.get(), R.get() + r_size, rng, Mode());
-
-        int selected = select_variables_equality(r_size, bk);
-
-        affect_variables(x, it, k, selected, r_size, kappa, delta);
-    }
-
-    template<typename Xtype>
-    void compute_update_row_01_ineq(Xtype& x,
-                                    int k,
-                                    int bkmin,
-                                    int bkmax,
-                                    Float kappa,
-                                    Float delta,
-                                    Float theta,
-                                    Float objective_amplifier)
-    {
-        typename sparse_matrix<int>::row_iterator it, et;
-        std::tie(it, et) = ap.row(k);
-
-        decrease_preference(it, et, theta);
-
-        const int r_size = compute_reduced_costs(it, et);
-
-        //
-        // Before sort and select variables, we apply the push method: for each
-        // reduces cost, we had the cost multiply with an objective amplifier.
-        //
-
-        if (objective_amplifier)
-            for (int i = 0; i != r_size; ++i)
-                R[i].value += objective_amplifier * c[(it + R[i].id)->column];
-
-        calculator_sort(R.get(), R.get() + r_size, rng, Mode());
-
-        int selected = select_variables_inequality(r_size, bkmin, bkmax);
-
-        affect_variables(x, it, k, selected, r_size, kappa, delta);
-    }
-
-    template<typename Xtype>
-    void compute_update_row_101_eq(Xtype& x,
-                                   int k,
-                                   int bk,
-                                   Float kappa,
-                                   Float delta,
-                                   Float theta,
-                                   Float objective_amplifier)
-    {
-        typename sparse_matrix<int>::row_iterator it, et;
-        std::tie(it, et) = ap.row(k);
-
-        decrease_preference(it, et, theta);
-
-        const auto& ck = C[k];
-        const int c_size = length(ck);
-        const int r_size = compute_reduced_costs(it, et);
-
-        //
-        // Before sort and select variables, we apply the push method: for each
-        // reduces cost, we had the cost multiply with an objective amplifier.
-        //
-
-        if (objective_amplifier)
-            for (int i = 0; i != r_size; ++i)
-                R[i].value += objective_amplifier * c[(it + R[i].id)->column];
-
-        //
-        // Negate reduced costs and coefficients of these variables. We need to
-        // parse the row Ak[i] because we need to use r[i] not available in C.
-        //
-
-        for (int i = 0; i != c_size; ++i) {
-            R[ck[i].id_r].value = -R[ck[i].id_r].value;
-
-            auto var = it + ck[i].id_r;
-
-            P[var->value] = -P[var->value];
-        }
-
-        bk += c_size;
-
-        calculator_sort(R.get(), R.get() + r_size, rng, Mode());
-
-        int selected = select_variables_equality(r_size, bk);
-
-        affect_variables(x, it, k, selected, r_size, kappa, delta);
-
-        //
-        // Clean up: correct negated costs and adjust value of negated
-        // variables.
-        //
-
-        for (int i = 0; i != c_size; ++i) {
-            auto var = it + ck[i].id_r;
-
-            P[var->value] = -P[var->value];
-            x.invert(var->column);
-        }
-    }
-
-    template<typename Xtype>
-    void compute_update_row_101_ineq(Xtype& x,
-                                     int k,
-                                     int bkmin,
-                                     int bkmax,
-                                     Float kappa,
-                                     Float delta,
-                                     Float theta,
-                                     Float objective_amplifier)
-    {
-        typename sparse_matrix<int>::row_iterator it, et;
-        std::tie(it, et) = ap.row(k);
-
-        decrease_preference(it, et, theta);
-
-        const auto& ck = C[k];
-        const int c_size = (ck) ? length(ck) : 0;
-        const int r_size = compute_reduced_costs(it, et);
-
-        //
-        // Before sort and select variables, we apply the push method: for each
-        // reduces cost, we had the cost multiply with an objective amplifier.
-        //
-
-        if (objective_amplifier)
-            for (int i = 0; i != r_size; ++i)
-                R[i].value += objective_amplifier * c[(it + R[i].id)->column];
-
-        //
-        // Negate reduced costs and coefficients of these variables. We need to
-        // parse the row Ak[i] because we need to use r[i] not available in C.
-        //
-
-        for (int i = 0; i != c_size; ++i) {
-            R[ck[i].id_r].value = -R[ck[i].id_r].value;
-
-            auto var = it + ck[i].id_r;
-
-            P[var->value] = -P[var->value];
-        }
-
-        bkmin += c_size;
-        bkmax += c_size;
-
-        calculator_sort(R.get(), R.get() + r_size, rng, Mode());
-
-        int selected = select_variables_inequality(r_size, bkmin, bkmax);
-
-        affect_variables(x, it, k, selected, r_size, kappa, delta);
-
-        //
-        // Clean up: correct negated costs and adjust value of negated
-        // variables.
-        //
-
-        for (int i = 0; i != c_size; ++i) {
-            auto var = it + ck[i].id_r;
-
-            P[var->value] = -P[var->value];
-            x.invert(var->column);
-        }
-    }
-
-    //
-    // Decrease influence of local preferences. 0 will completely reset the
-    // preference values for the current row. > 0 will keep former decision in
-    // mind.
-    //
     void decrease_preference(sparse_matrix<int>::row_iterator begin,
                              sparse_matrix<int>::row_iterator end,
                              Float theta) noexcept
@@ -558,32 +166,37 @@ struct solver_inequalities_Zcoeff
     //
     // Compute the reduced costs and return the size of the newly R vector.
     //
-    int compute_reduced_costs(sparse_matrix<int>::row_iterator begin,
-                              sparse_matrix<int>::row_iterator end)
+    rc_size compute_reduced_costs(
+      sparse_matrix<int>::row_iterator begin,
+      sparse_matrix<int>::row_iterator end) noexcept
     {
         int r_size = 0;
+        int c_size = 0;
 
         for (; begin != end; ++begin) {
             Float sum_a_pi = 0;
             Float sum_a_p = 0;
 
-            typename sparse_matrix<int>::const_col_iterator ht, hend;
-            std::tie(ht, hend) = ap.column(begin->column);
+            auto ht = ap.column(begin->column);
 
-            for (; ht != hend; ++ht) {
-                auto a = std::abs(static_cast<Float>(A[ht->value]));
-
-                sum_a_pi += a * pi[ht->row];
-                sum_a_p += a * P[ht->value];
+            for (; std::get<0>(ht) != std::get<1>(ht); ++std::get<0>(ht)) {
+                sum_a_pi += pi[std::get<0>(ht)->row];
+                sum_a_p += P[std::get<0>(ht)->value];
             }
 
-            // R[r_size].id = begin->column;
             R[r_size].id = r_size;
             R[r_size].value = c[begin->column] - sum_a_pi - sum_a_p;
+            R[r_size].is_negative_coeff = A[begin->value] < 0;
+
+            if (R[r_size].is_negative()) {
+                R[r_size].value = -R[r_size].value;
+                ++c_size;
+            }
+
             ++r_size;
         }
 
-        return r_size;
+        return { r_size, c_size };
     }
 
     int select_variables_equality(const int r_size, int bk)
@@ -593,122 +206,40 @@ struct solver_inequalities_Zcoeff
         return bk - 1;
     }
 
-    int select_variables_inequality(const int r_size, int bkmin, int bkmax)
+    int select_variables(const rc_size& sizes, int bkmin, int bkmax, int k)
     {
-        bkmin = std::min(bkmin, r_size);
-        bkmax = std::min(bkmax, r_size);
+        if (Z[k]) {
+            // If the previous selection failed or the constraint is a equal
+            // constraint, we try the dynamic programming to solve this
+            // knapsack 01 problem.
 
-        for (int i = bkmin; i <= bkmax; ++i)
-            if (stop_iterating(R[i].value, rng, Mode()))
-                return i - 1;
-
-        return bkmax - 1;
-    }
-
-    int select_variables_equality_Z(sparse_matrix<int>::row_iterator it,
-                                    const int r_size,
-                                    int bk)
-    {
-        int sum = A[(it + R[0].id)->value];
-        if (sum == bk)
-            return 0;
-
-        for (int i = 1; i != r_size; ++i) {
-            sum += A[(it + R[i].id)->value];
-
-            if (sum == bk)
-                return i;
-
-            if (sum > bk)
-                break;
-        }
-
-        //
-        // If the previous selection failed, we try a dynamic programming to
-        // solve this knapsack 01 problem.
-        //
-
-        return knapsack_dp_solver<Mode, Float>(A, R, it, r_size, bk);
-    }
-
-    int select_variables_inequality_Z(sparse_matrix<int>::row_iterator it,
-                                      const int r_size,
-                                      int bkmin,
-                                      int bkmax)
-    {
-        int sum = A[(it + R[0].id)->value];
-        if (bkmin <= sum && sum <= bkmax)
-            return 0;
-
-        for (int i = 1; i != r_size; ++i) {
-            sum += A[(it + R[i].id)->value];
-
-            if (bkmin <= sum && sum <= bkmax)
-                return i;
-
-            if (sum > bkmax)
-                break;
-        }
-
-        //
-        // If the previous selection failed, we try a dynamic programming to
-        // solve this knapsack 01 problem.
-        //
-
-        return knapsack_dp_solver<Mode, Float>(A, R, it, r_size, bkmax);
-    }
-
-    //
-    // The bkmin and bkmax constraint bounds are not equal and can be assigned
-    // to -infinity or +infinity. We have to scan the r vector and search a
-    // value j such as b(0, k) <= Sum A(k, R[j]) < b(1, k).
-    //
-    template<typename Xtype>
-    void affect_variables(Xtype& x,
-                          sparse_matrix<int>::row_iterator it,
-                          int k,
-                          int selected,
-                          int r_size,
-                          const Float kappa,
-                          const Float delta) noexcept
-    {
-        if (selected < 0) {
-            for (int i = 0; i != r_size; ++i) {
-                auto var = it + R[i].id;
-
-                x.set(var->column, false);
-                P[var->value] -= delta;
-            }
-        } else if (selected + 1 >= r_size) {
-            pi[k] += R[selected].value;
-
-            for (int i = 0; i != r_size; ++i) {
-                auto var = it + R[i].id;
-
-                x.set(var->column, true);
-                P[var->value] += delta;
-            }
+            return knapsack_dp_solver<Mode, Float>(
+              A, R, std::get<0>(ap.row(k)), sizes.r_size, bkmax);
         } else {
-            pi[k] += ((R[selected].value + R[selected + 1].value) /
-                      static_cast<Float>(2.0));
+            if (bkmin == bkmax)
+                return std::min(bkmin + sizes.c_size, sizes.r_size) - 1;
 
-            Float d = delta + ((kappa / (static_cast<Float>(1.0) - kappa)) *
-                               (R[selected + 1].value - R[selected].value));
+            bkmin = std::min(bkmin, sizes.r_size);
+            bkmax = std::min(bkmax, sizes.r_size);
 
-            int i = 0;
-            for (; i <= selected; ++i) {
-                auto var = it + R[i].id;
+            for (int i = bkmin; i <= bkmax; ++i)
+                if (stop_iterating(R[i].value, rng, Mode()))
+                    return i - 1;
 
-                x.set(var->column, true);
-                P[var->value] += d;
-            }
+            return bkmax - 1;
+        }
+        if (!Z[k]) {
+            if (bkmin == bkmax)
+                return std::min(bkmin + sizes.c_size, sizes.r_size) - 1;
 
-            for (; i != r_size; ++i) {
-                auto var = it + R[i].id;
+            bkmin = std::min(bkmin, sizes.r_size);
+            bkmax = std::min(bkmax, sizes.r_size);
 
-                x.set(var->column, false);
-                P[var->value] -= d;
-            }
+            for (int i = bkmin; i <= bkmax; ++i)
+                if (stop_iterating(R[i].value, rng, Mode()))
+                    return i - 1;
+
+            return bkmax - 1;
         }
     }
 
@@ -724,28 +255,30 @@ struct solver_inequalities_Zcoeff
         for (; first != last; ++first) {
             auto k = constraint(first);
 
-            if (Z[k]) {
-                if (b[k].min == b[k].max)
-                    compute_update_row_Z_eq(
-                      x, k, b[k].min, kappa, delta, theta, obj_amp);
-                else
-                    compute_update_row_Z_ineq(
-                      x, k, b[k].min, b[k].max, kappa, delta, theta, obj_amp);
-            } else if (!C[k]) {
-                if (b[k].min == b[k].max)
-                    compute_update_row_01_eq(
-                      x, k, b[k].min, kappa, delta, theta, obj_amp);
-                else
-                    compute_update_row_01_ineq(
-                      x, k, b[k].min, b[k].max, kappa, delta, theta, obj_amp);
-            } else {
-                if (b[k].min == b[k].max)
-                    compute_update_row_101_eq(
-                      x, k, b[k].min, kappa, delta, theta, obj_amp);
-                else
-                    compute_update_row_101_ineq(
-                      x, k, b[k].min, b[k].max, kappa, delta, theta, obj_amp);
-            }
+            const auto it = ap.row(k);
+            decrease_preference(std::get<0>(it), std::get<1>(it), theta);
+
+            const auto sizes =
+              compute_reduced_costs(std::get<0>(it), std::get<1>(it));
+
+            // Before sort and select variables, we apply the push method: for
+            // each reduces cost, we had the cost multiply with an objective
+            // amplifier.
+
+            for (int i = 0; i != sizes.r_size; ++i)
+                R[i].value += obj_amp * c[(std::get<0>(it) + R[i].id)->column];
+            calculator_sort(R.get(), R.get() + sizes.r_size, rng, Mode());
+
+            int selected = select_variables(sizes, b[k].min, b[k].max, k);
+
+            affect(*this,
+                   x,
+                   std::get<0>(it),
+                   k,
+                   selected,
+                   sizes.r_size,
+                   kappa,
+                   delta);
         }
     }
 
@@ -759,61 +292,24 @@ struct solver_inequalities_Zcoeff
     {
         for (; first != last; ++first) {
             auto k = constraint(first);
-            if (Z[k]) {
-                if (b[k].min == b[k].max)
-                    compute_update_row_Z_eq(x,
-                                            k,
-                                            b[k].min,
-                                            kappa,
-                                            delta,
-                                            theta,
-                                            static_cast<Float>(0));
-                else
-                    compute_update_row_Z_ineq(x,
-                                              k,
-                                              b[k].min,
-                                              b[k].max,
-                                              kappa,
-                                              delta,
-                                              theta,
-                                              static_cast<Float>(0));
-            } else if (!C[k]) {
-                if (b[k].min == b[k].max)
-                    compute_update_row_01_eq(x,
-                                             k,
-                                             b[k].min,
-                                             kappa,
-                                             delta,
-                                             theta,
-                                             static_cast<Float>(0));
-                else
-                    compute_update_row_01_ineq(x,
-                                               k,
-                                               b[k].min,
-                                               b[k].max,
-                                               kappa,
-                                               delta,
-                                               theta,
-                                               static_cast<Float>(0));
-            } else {
-                if (b[k].min == b[k].max)
-                    compute_update_row_101_eq(x,
-                                              k,
-                                              b[k].min,
-                                              kappa,
-                                              delta,
-                                              theta,
-                                              static_cast<Float>(0));
-                else
-                    compute_update_row_101_ineq(x,
-                                                k,
-                                                b[k].min,
-                                                b[k].max,
-                                                kappa,
-                                                delta,
-                                                theta,
-                                                static_cast<Float>(0));
-            }
+
+            const auto it = ap.row(k);
+            decrease_preference(std::get<0>(it), std::get<1>(it), theta);
+
+            const auto sizes =
+              compute_reduced_costs(std::get<0>(it), std::get<1>(it));
+
+            calculator_sort(R.get(), R.get() + sizes.r_size, rng, Mode());
+            int selected = select_variables(sizes, b[k].min, b[k].max, k);
+
+            affect(*this,
+                   x,
+                   std::get<0>(it),
+                   k,
+                   selected,
+                   sizes.r_size,
+                   kappa,
+                   delta);
         }
     }
 };

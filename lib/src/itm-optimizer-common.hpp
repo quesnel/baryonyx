@@ -232,11 +232,10 @@ struct optimize_functor
                 auto remaining = compute.run(slv, x, kappa, delta, theta);
 
                 if (remaining == 0) {
-                    store_if_better(
-                      x,
-                      slv.results(x, original_costs, cost_constant),
-                      i,
-                      best_recorder);
+                    store_if_better(x,
+                                    results(x, original_costs, cost_constant, variables),
+                                    i,
+                                    best_recorder);
                     best_remaining = remaining;
                     break;
                 }
@@ -278,11 +277,10 @@ struct optimize_functor
                                        pushing_objective_amplifier);
 
                 if (remaining == 0)
-                    store_if_better(
-                      x,
-                      slv.results(x, original_costs, cost_constant),
-                      -push * p.pushing_iteration_limit - 1,
-                      best_recorder);
+                    store_if_better(x,
+                                    results(x, original_costs, cost_constant, variables),
+                                    -push * p.pushing_iteration_limit - 1,
+                                    best_recorder);
 
                 for (int iter = 0; iter < p.pushing_iteration_limit; ++iter) {
                     remaining = compute.run(slv, x, kappa, delta, theta);
@@ -290,7 +288,7 @@ struct optimize_functor
                     if (remaining == 0) {
                         store_if_better(
                           x,
-                          slv.results(x, original_costs, cost_constant),
+                          results(x, original_costs, cost_constant, variables),
                           -push * p.pushing_iteration_limit - iter - 1,
                           best_recorder);
                         break;

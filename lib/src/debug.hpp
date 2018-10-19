@@ -55,7 +55,7 @@ fail_fast(const char* type,
 {
     print(type, cond, file, line);
 
-#ifdef BARYONYX_FAIL_FAST
+#ifndef BARYONYX_FAIL_FAST
     std::terminate();
 #else
     throw std::logic_error(cond);
