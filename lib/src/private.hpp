@@ -60,7 +60,8 @@ to_string(solver_parameters::pre_constraint_order type) noexcept
                                  "reversing",
                                  "random-sorting",
                                  "infeasibility-decr",
-                                 "infeasibility-incr" };
+                                 "infeasibility-incr",
+                                 "lagrangian" };
 
     return ret[static_cast<int>(type)];
 }
@@ -120,8 +121,7 @@ struct context
     {
         if (verbose_level_ != 6)
             log_priority = static_cast<context::message_type>(
-              verbose_level_ < 0 ? 0
-                                 : verbose_level_ > 7 ? 7 : verbose_level_);
+              verbose_level_ < 0 ? 0 : verbose_level_ > 7 ? 7 : verbose_level_);
     }
 
     solver_parameters parameters;
@@ -729,6 +729,8 @@ constraint_order_to_string(solver_parameters::constraint_order type) noexcept
         "random-sorting",
         "infeasibility-decr",
         "infeasibility-incr",
+        "lagrangian-decr",
+        "lagrangian-incr"
     };
 
     return ret[static_cast<int>(type)];

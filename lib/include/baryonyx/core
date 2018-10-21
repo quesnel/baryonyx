@@ -317,6 +317,8 @@ struct BARYONYX_API solver_parameters
         random_sorting,
         infeasibility_decr,
         infeasibility_incr,
+        lagrangian_decr,
+        lagrangian_incr,
     };
 
     enum class cost_norm_type

@@ -336,40 +336,35 @@ select_order(const context_ptr& ctx, const problem& pb, bool is_optimization)
     const auto c = static_cast<int>(ctx->parameters.order);
 
     if (c == 0)
-        return solve_or_optimize<
-          solver_equalities_01coeff<Float, Mode, Random>,
-          Float,
-          Mode,
-          constraint_sel<Float, Random, 0>,
-          Random>(ctx, pb, is_optimization);
+        return solve_or_optimize<solver_equalities_01coeff<Float, Mode, Random>,
+                                 Float,
+                                 Mode,
+                                 constraint_sel<Float, Random, 0>,
+                                 Random>(ctx, pb, is_optimization);
     else if (c == 1)
-        return solve_or_optimize<
-          solver_equalities_01coeff<Float, Mode, Random>,
-          Float,
-          Mode,
-          constraint_sel<Float, Random, 1>,
-          Random>(ctx, pb, is_optimization);
+        return solve_or_optimize<solver_equalities_01coeff<Float, Mode, Random>,
+                                 Float,
+                                 Mode,
+                                 constraint_sel<Float, Random, 1>,
+                                 Random>(ctx, pb, is_optimization);
     else if (c == 2)
-        return solve_or_optimize<
-          solver_equalities_01coeff<Float, Mode, Random>,
-          Float,
-          Mode,
-          constraint_sel<Float, Random, 2>,
-          Random>(ctx, pb, is_optimization);
+        return solve_or_optimize<solver_equalities_01coeff<Float, Mode, Random>,
+                                 Float,
+                                 Mode,
+                                 constraint_sel<Float, Random, 2>,
+                                 Random>(ctx, pb, is_optimization);
     else if (c == 3)
-        return solve_or_optimize<
-          solver_equalities_01coeff<Float, Mode, Random>,
-          Float,
-          Mode,
-          constraint_sel<Float, Random, 3>,
-          Random>(ctx, pb, is_optimization);
+        return solve_or_optimize<solver_equalities_01coeff<Float, Mode, Random>,
+                                 Float,
+                                 Mode,
+                                 constraint_sel<Float, Random, 3>,
+                                 Random>(ctx, pb, is_optimization);
     else
-        return solve_or_optimize<
-          solver_equalities_01coeff<Float, Mode, Random>,
-          Float,
-          Mode,
-          constraint_sel<Float, Random, 4>,
-          Random>(ctx, pb, is_optimization);
+        return solve_or_optimize<solver_equalities_01coeff<Float, Mode, Random>,
+                                 Float,
+                                 Mode,
+                                 constraint_sel<Float, Random, 4>,
+                                 Random>(ctx, pb, is_optimization);
 }
 
 template<typename Float, typename Mode>
@@ -386,9 +381,8 @@ select_mode(const context_ptr& ctx, const problem& pb, bool is_optimization)
 {
     const auto m = static_cast<int>(pb.type);
 
-    return m == 0
-             ? select_random<Float, mode_sel<0>>(ctx, pb, is_optimization)
-             : select_random<Float, mode_sel<1>>(ctx, pb, is_optimization);
+    return m == 0 ? select_random<Float, mode_sel<0>>(ctx, pb, is_optimization)
+                  : select_random<Float, mode_sel<1>>(ctx, pb, is_optimization);
 }
 
 static result
