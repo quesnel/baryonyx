@@ -53,21 +53,6 @@ namespace baryonyx {
 
 using string_logger_functor = std::function<void(int, std::string)>;
 
-inline const char*
-to_string(solver_parameters::pre_constraint_order type) noexcept
-{
-    static const char* ret[] = { "none",
-                                 "reversing",
-                                 "random-sorting",
-                                 "infeasibility-decr",
-                                 "infeasibility-incr",
-                                 "lagrangian" };
-
-    return ret[static_cast<int>(type)];
-}
-
-// Context
-
 struct context
 {
     enum class message_type
