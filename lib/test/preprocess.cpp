@@ -169,12 +169,13 @@ test_split()
 }
 
 int
-main(int /*argc*/, char* /* argv */ [])
+main(int /*argc*/, char* /* argv */[])
 {
-    test_bound_affectation();
-    test_cleaning_affected_variables();
-    test_affect_variable();
-    test_split();
+    unit_test::checks("bound_affectation", test_bound_affectation);
+    unit_test::checks("cleaning_affected_variables",
+                      test_cleaning_affected_variables);
+    unit_test::checks("affect_variable", test_affect_variable);
+    unit_test::checks("split", test_split);
 
     return unit_test::report_errors();
 }

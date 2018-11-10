@@ -82,11 +82,9 @@ check_numeric_cast()
     Ensures(baryonyx::is_numeric_castable<long long>(large_negative));
 
     Ensures(baryonyx::is_numeric_castable<unsigned long long>(small_positive));
-    Ensures(
-      !baryonyx::is_numeric_castable<unsigned long long>(small_negative));
+    Ensures(!baryonyx::is_numeric_castable<unsigned long long>(small_negative));
     Ensures(baryonyx::is_numeric_castable<unsigned long long>(large_positive));
-    Ensures(
-      !baryonyx::is_numeric_castable<unsigned long long>(large_negative));
+    Ensures(!baryonyx::is_numeric_castable<unsigned long long>(large_negative));
 
     Ensures(!baryonyx::is_numeric_castable<size_t>(small_negative));
     Ensures(!baryonyx::is_numeric_castable<size_t>(large_negative));
@@ -381,36 +379,30 @@ check_observer_pnm()
         baryonyx::pnm_array obs(7, 2);
         Ensures(obs);
 
-        if (obs) {
-            std::transform(
-              v.begin(), v.end(), obs.begin(), baryonyx::colormap(-5.f, 5.f));
+        std::transform(
+          v.begin(), v.end(), obs.begin(), baryonyx::colormap(-5.f, 5.f));
 
-            for (auto ob : obs)
-                fmt::print("{}/{}/{} ", ob.red(), ob.green(), ob.blue());
+        for (auto ob : obs)
+            fmt::print("{}/{}/{} ", ob.red(), ob.green(), ob.blue());
 
-            obs("test.pnm");
-        }
+        obs("test.pnm");
     }
 
     {
         baryonyx::pnm_vector obs("test2.pnm", 4, 4);
         Ensures(obs);
 
-        if (obs) {
-            std::vector<double> v{ 0, 0.1, 0.2, 0.3 };
+        std::vector<double> v{ 0, 0.1, 0.2, 0.3 };
 
-            for (int i = 0; i != 4; ++i) {
-                std::transform(v.begin(),
-                               v.end(),
-                               obs.begin(),
-                               baryonyx::colormap(-1.0f, 1.0f));
-                obs.flush();
+        for (int i = 0; i != 4; ++i) {
+            std::transform(
+              v.begin(), v.end(), obs.begin(), baryonyx::colormap(-1.0f, 1.0f));
+            obs.flush();
 
-                std::transform(v.begin(),
-                               v.end(),
-                               v.begin(),
-                               std::bind1st(std::plus<double>(), 0.1));
-            }
+            std::transform(v.begin(),
+                           v.end(),
+                           v.begin(),
+                           std::bind1st(std::plus<double>(), 0.1));
         }
     }
 }
@@ -444,16 +436,17 @@ check_show_size()
 }
 
 int
-main(int /* argc */, char* /* argv */ [])
+main(int /* argc */, char* /* argv */[])
 {
-    check_clamp();
-    check_numeric_cast();
-    check_fixed_array();
-    check_fixed_2darray();
-    check_knapsack_solver();
-    check_branch_and_bound_solver();
-    check_observer_pnm();
-    check_show_size();
+    unit_test::checks("check_clamp", check_clamp);
+    unit_test::checks("check_numeric_cast", check_numeric_cast);
+    unit_test::checks("check_fixed_array", check_fixed_array);
+    unit_test::checks("check_fixed_2darray", check_fixed_2darray);
+    unit_test::checks("check_knapsack_solver", check_knapsack_solver);
+    unit_test::checks("check_branch_and_bound_solver",
+                      check_branch_and_bound_solver);
+    unit_test::checks("check_observer_pnm", check_observer_pnm);
+    unit_test::checks("check_show_size", check_show_size);
 
     return unit_test::report_errors();
 }

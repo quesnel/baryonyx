@@ -54,8 +54,7 @@ is_essentially_equal(const T v1, const T v2, const T epsilon)
 int
 get_variable(const baryonyx::result& r, std::string variable_name)
 {
-    for (int i = 0, e = static_cast<int>(r.affected_vars.values.size());
-         i != e;
+    for (int i = 0, e = static_cast<int>(r.affected_vars.values.size()); i != e;
          ++i)
         if (r.affected_vars.names[i] == variable_name)
             return i;
@@ -169,8 +168,7 @@ test_preprocessor()
 
         Ensures(baryonyx::is_valid_solution(pb, result) == true);
 
-        Ensures(
-          is_essentially_equal(result.solutions.back().value, 6.5, 0.01));
+        Ensures(is_essentially_equal(result.solutions.back().value, 6.5, 0.01));
 
         ss << result;
         if (!ss.good())
@@ -199,8 +197,7 @@ test_preprocessor_2()
     double r;
 
     {
-        auto pb =
-          baryonyx::make_problem(ctx, EXAMPLES_DIR "/capmo1_direct.lp");
+        auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/capmo1_direct.lp");
 
         auto result = baryonyx::solve(ctx, pb);
 
@@ -224,8 +221,7 @@ test_preprocessor_2()
     {
         ss.seekg(0, std::ios::beg);
 
-        auto pb =
-          baryonyx::make_problem(ctx, EXAMPLES_DIR "/capmo1_direct.lp");
+        auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/capmo1_direct.lp");
 
         baryonyx::result result;
         ss >> result;
@@ -575,8 +571,7 @@ test_aim_50_1_6_yes1_2()
 {
     auto ctx = baryonyx::make_context(stdout, 7);
 
-    auto pb =
-      baryonyx::make_problem(ctx, EXAMPLES_DIR "/aim-50-1_6-yes1-2.lp");
+    auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/aim-50-1_6-yes1-2.lp");
 
     baryonyx::solver_parameters params;
     params.limit = -1;
@@ -676,24 +671,27 @@ test_bibd1n()
 #endif
 
 int
-main(int /*argc*/, char* /* argv */ [])
+main(int /*argc*/, char* /* argv */[])
 {
-    test_preprocessor();
-    test_preprocessor_2();
-    test_real_cost();
-    test_assignment_problem();
-    test_assignment_problem_random_coast();
-    test_negative_coeff();
-    test_negative_coeff2();
-    test_negative_coeff3();
-    test_negative_coeff4();
-    test_negative_coeff5();
-    test_8_queens_puzzle_fixed_cost();
-    test_8_queens_puzzle_random_cost();
-    test_qap();
-    test_uf50_0448();
-    test_flat30_7();
-    test_aim_50_1_6_yes1_2();
+    unit_test::checks("preprocessor", test_preprocessor);
+    unit_test::checks("preprocessor_2", test_preprocessor_2);
+    unit_test::checks("real_cost", test_real_cost);
+    unit_test::checks("assignment_problem", test_assignment_problem);
+    unit_test::checks("assignment_problem_random_coast",
+                      test_assignment_problem_random_coast);
+    unit_test::checks("negative_coeff", test_negative_coeff);
+    unit_test::checks("negative_coeff2", test_negative_coeff2);
+    unit_test::checks("negative_coeff3", test_negative_coeff3);
+    unit_test::checks("negative_coeff4", test_negative_coeff4);
+    unit_test::checks("negative_coeff5", test_negative_coeff5);
+    unit_test::checks("8_queens_puzzle_fixed_cost",
+                      test_8_queens_puzzle_fixed_cost);
+    unit_test::checks("8_queens_puzzle_random_cost",
+                      test_8_queens_puzzle_random_cost);
+    unit_test::checks("qap", test_qap);
+    unit_test::checks("uf50_0448", test_uf50_0448);
+    unit_test::checks("flat30_7", test_flat30_7);
+    unit_test::checks("aim_50_1_6_yes1_2", test_aim_50_1_6_yes1_2);
 
 #if 0
     test_Z_coefficient_1();

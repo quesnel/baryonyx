@@ -35,8 +35,9 @@
 #include <sstream>
 
 void
-test_bibd1n(const baryonyx::context_ptr& ctx)
+test_bibd1n()
 {
+    auto ctx = baryonyx::make_context(stdout, 6);
     auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/bibd1n.lp");
 
     baryonyx::solver_parameters params;
@@ -51,8 +52,9 @@ test_bibd1n(const baryonyx::context_ptr& ctx)
 }
 
 void
-test_qap(const baryonyx::context_ptr& ctx)
+test_qap()
 {
+    auto ctx = baryonyx::make_context(stdout, 6);
     auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/small4.lp");
 
     baryonyx::solver_parameters params;
@@ -86,8 +88,9 @@ test_qap(const baryonyx::context_ptr& ctx)
 }
 
 void
-test_n_queens_problem(const baryonyx::context_ptr& ctx)
+test_n_queens_problem()
 {
+    auto ctx = baryonyx::make_context(stdout, 6);
     std::vector<bool> valid_solutions(30, false);
     std::vector<double> solutions(30, 0.0);
     std::vector<double> cplex_solutions(30, 0.0);
@@ -173,13 +176,11 @@ test_n_queens_problem(const baryonyx::context_ptr& ctx)
 }
 
 int
-main(int /* argc */, char* /* argv */ [])
+main(int /* argc */, char* /* argv */[])
 {
-    auto ctx = baryonyx::make_context(stdout, 6);
-
-    test_bibd1n(ctx);
-    test_qap(ctx);
-    test_n_queens_problem(ctx);
+    unit_test::checks("bibd1n", test_bibd1n);
+    unit_test::checks("qap", test_qap);
+    unit_test::checks("n_queens_problem", test_n_queens_problem);
 
     return unit_test::report_errors();
 }

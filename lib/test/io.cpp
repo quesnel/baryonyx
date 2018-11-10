@@ -107,8 +107,9 @@ test_examples_1()
 }
 
 void
-test_examples_2(const baryonyx::context_ptr& ctx)
+test_examples_2()
 {
+    auto ctx = baryonyx::make_context();
     std::ifstream ifs;
 
     std::vector<std::vector<int>> values(3);
@@ -138,8 +139,9 @@ test_examples_2(const baryonyx::context_ptr& ctx)
 }
 
 void
-test_examples_3(const baryonyx::context_ptr& ctx)
+test_examples_3()
 {
+    auto ctx = baryonyx::make_context();
     auto pb = baryonyx::make_problem(
       ctx, EXAMPLES_DIR "/geom-30a-3-ext_1000_support.lp");
     fmt::print("{}\n{}\n", __func__, baryonyx::resume(pb));
@@ -157,8 +159,9 @@ test_examples_3(const baryonyx::context_ptr& ctx)
 }
 
 void
-test_examples_4(const baryonyx::context_ptr& ctx)
+test_examples_4()
 {
+    auto ctx = baryonyx::make_context();
     auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/general.lp");
     fmt::print("{}\n{}\n", __func__, baryonyx::resume(pb));
 
@@ -175,8 +178,9 @@ test_examples_4(const baryonyx::context_ptr& ctx)
 }
 
 void
-test_examples_sudoku(const baryonyx::context_ptr& ctx)
+test_examples_sudoku()
 {
+    auto ctx = baryonyx::make_context();
     auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/sudoku.lp");
 
     Ensures(pb.vars.names.size() == 81);
@@ -192,8 +196,9 @@ test_examples_sudoku(const baryonyx::context_ptr& ctx)
 }
 
 void
-test_examples_8_queens_puzzle(const baryonyx::context_ptr& ctx)
+test_examples_8_queens_puzzle()
 {
+    auto ctx = baryonyx::make_context();
     auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/8_queens_puzzle.lp");
 
     Ensures(pb.vars.names.size() == 64);
@@ -209,34 +214,35 @@ test_examples_8_queens_puzzle(const baryonyx::context_ptr& ctx)
 }
 
 void
-test_examples_vm(const baryonyx::context_ptr& ctx)
+test_examples_vm()
 {
+    auto ctx = baryonyx::make_context();
     auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/vm.lp");
 
     fmt::print("{}\n{}\n", __func__, baryonyx::resume(pb));
 }
 
 void
-test_verger_5_5(const baryonyx::context_ptr& ctx)
+test_verger_5_5()
 {
+    auto ctx = baryonyx::make_context();
     auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/verger_5_5.lp");
 
     fmt::print("{}\n{}\n", __func__, baryonyx::resume(pb));
 }
 
 int
-main(int /* argc */, char* /* argv */ [])
+main(int /* argc */, char* /* argv */[])
 {
-    auto ctx = baryonyx::make_context();
-
-    test_examples_1();
-    test_examples_2(ctx);
-    test_examples_3(ctx);
-    test_examples_4(ctx);
-    test_examples_sudoku(ctx);
-    test_examples_8_queens_puzzle(ctx);
-    test_examples_vm(ctx);
-    test_verger_5_5(ctx);
+    unit_test::checks("examples_1", test_examples_1);
+    unit_test::checks("examples_2", test_examples_2);
+    unit_test::checks("examples_3", test_examples_3);
+    unit_test::checks("examples_4", test_examples_4);
+    unit_test::checks("examples_sudoku", test_examples_sudoku);
+    unit_test::checks("examples_8_queens_puzzle",
+                      test_examples_8_queens_puzzle);
+    unit_test::checks("examples_vm", test_examples_vm);
+    unit_test::checks("verger_5_5", test_verger_5_5);
 
     return unit_test::report_errors();
 }
