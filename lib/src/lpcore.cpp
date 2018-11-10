@@ -66,60 +66,6 @@ make_context(string_logger_functor logger, int verbose_level)
     return context_ptr(pointer, &context_deleter);
 }
 
-context_ptr
-copy_context(const context_ptr& ctx, FILE* f)
-{
-    auto pointer = new context(*ctx);
-
-    pointer->string_logger = nullptr;
-    pointer->cfile_logger = f ? f : stdout;
-    pointer->logger = context::logger_type::c_file;
-
-    return context_ptr(pointer, &context_deleter);
-}
-
-context_ptr
-copy_context(const context_ptr& ctx, string_logger_functor logger)
-{
-    auto pointer = new context(*ctx);
-
-    pointer->string_logger = logger;
-    pointer->cfile_logger = nullptr;
-    pointer->logger = context::logger_type::string;
-
-    return context_ptr(pointer, &context_deleter);
-}
-
-context_ptr
-copy_context(const context_ptr& ctx, FILE* f, int verbose_level)
-{
-    auto pointer = new context(*ctx);
-
-    pointer->string_logger = nullptr;
-    pointer->cfile_logger = f ? f : stdout;
-    pointer->logger = context::logger_type::c_file;
-    pointer->log_priority = static_cast<context::message_type>(
-      verbose_level < 0 ? 0 : verbose_level > 7 ? 7 : verbose_level);
-
-    return context_ptr(pointer, &context_deleter);
-}
-
-context_ptr
-copy_context(const context_ptr& ctx,
-             string_logger_functor logger,
-             int verbose_level)
-{
-    auto pointer = new context(*ctx);
-
-    pointer->string_logger = logger;
-    pointer->cfile_logger = nullptr;
-    pointer->logger = context::logger_type::string;
-    pointer->log_priority = static_cast<context::message_type>(
-      verbose_level < 0 ? 0 : verbose_level > 7 ? 7 : verbose_level);
-
-    return context_ptr(pointer, &context_deleter);
-}
-
 raw_problem
 make_problem(const baryonyx::context_ptr& ctx, const std::string& filename)
 {

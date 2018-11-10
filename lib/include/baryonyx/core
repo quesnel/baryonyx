@@ -426,21 +426,6 @@ BARYONYX_API context_ptr
 make_context(std::function<void(int, std::string)> logger,
              int verbose_level = 6);
 
-BARYONYX_API context_ptr
-copy_context(const context_ptr& ctx, FILE* f = stdout);
-
-BARYONYX_API context_ptr
-copy_context(const context_ptr& ctx,
-             std::function<void(int, std::string)> logger);
-
-BARYONYX_API context_ptr
-copy_context(const context_ptr& ctx, FILE* f, int verbose_level);
-
-BARYONYX_API context_ptr
-copy_context(const context_ptr& ctx,
-             std::function<void(int, std::string)> logger,
-             int verbose_level);
-
 /**
  * @brief Assign baryonyx internal parameters.
  *
