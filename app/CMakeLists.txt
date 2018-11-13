@@ -1,4 +1,4 @@
-add_executable(app src/main.cpp)
+add_executable(app src/main.cpp src/main.hpp src/benchmark.cpp)
 
 target_link_libraries(app libbaryonyx-static threads)
 

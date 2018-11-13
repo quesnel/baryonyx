@@ -1,0 +1,14 @@
+file optimum status cplex
+cplex:
+c1 feasible 26 26
+c1a feasible 26 26
+c2 feasible 29 29
+r1 feasible 11 11
+r1a feasible 11 11
+r2 feasible 14 14
+r3 feasible 16 16
+r4 feasible 25 25
+r5 feasible 29 29
+r5a feasible 28 28
+t1 feasible 7 7
+t2 feasible 19 19
