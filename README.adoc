@@ -19,7 +19,7 @@ The software is released under the MIT license. See the LICENSE file.
 
 == Baryonyx
 
-=== Requirements
+=== Requirements and recommended
 
 * `cmake` (≥ 3)
 * c++ compiler with c++14 support (`gcc` ≥ 5, `clang` ≥ 3.5, visual
@@ -36,8 +36,6 @@ apt-get install build-essential cmake clang
 For Windows, install the https://www.cmake.org[CMake program] and
 Visual Studio 2017 (MSVC). You may also install the vcpkg program to
 install nlopt and other dependencies.
-
-=== Recommended
 
 * `nlopt` library - optimization library to automatic parametrization
  of the Baryonyx solver parameters.
@@ -139,7 +137,9 @@ cmake -DCMAKE_BUILD_TYPE=Release ..
 make install
 ....
 
-=== Usage
+== Usage
+
+=== Solver & Optimizer
 
 To run Baryonyx in solver mode (i.e. trying to valid all constraints):
 
@@ -178,6 +178,10 @@ some specific for the optimization algorithms.
 | --quiet -q
 |
 | Remove many console output
+
+| --bench [name]
+|
+| Start benchmark. Need csv input files
 
 | --optimize -O
 |
@@ -366,18 +370,38 @@ baryonyx -p limit:1000000 lib/test/prevl1.lp
 baryonyx -p limit:-1 -p kappa-min:0.2 lib/test/prevl1.lp
 ....
 
-=== Upgrade
+=== Benchmark
 
-To upgrade to the latest version of Baryonyx, under bash (or
-equivalent):
+Baryonyx permits to run benchmark on a set of problems described in a csv files. This option is available using the `--bench [name]` option and csv files. All Baryonyx parameters are available to perform the benchmark.
+
+For example:
 
 ....
-cd baryonyx
-git pull -r
-cd build
-make -j4
-make install install
+baryonyx --bench bx-0.3 -pdelta:0.01 -ptime-limit:60 spp.csv
 ....
+
+The benchmark mode generates a new `spp-new.csv` file with results of computation. The csv format is:
+
+....
+file optimum status cplex lsp bx-0.2 <1>
+cplex:
+lsp:    <2>
+bx-0.2:
+scp410 optimum 514 514 514 804 <3>
+scp41 optimum 429 429 429 627
+scp42 optimum 512 512 512 934
+....
+
+<1> The header: three columns mandatory (`file`, `optimum`, `status`) and one
+solver per column. In this example, cplex, local solver and baryonyx 0.2.
+<2> The description part: one line per solver to describe version and parameter
+for example.
+<3> Finally, one line per solve: model name (with or without extension), status
+(optimum/feasible), best solution found and solver's solution. `inf` can be use
+to indicate no solution found.
+
+In benchmark directory, some files are provided and a script to download
+classical problem.
 
 == R
 
