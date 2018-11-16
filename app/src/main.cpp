@@ -37,9 +37,7 @@
 #include <tuple>
 #include <utility>
 
-#include <cerrno>
-#include <cmath>
-#include <cstdio>
+#include <cctype>
 #include <cstring>
 
 #ifndef _WIN32

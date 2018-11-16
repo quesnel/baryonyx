@@ -27,6 +27,7 @@
 
 #include <string>
 
+#include <cerrno>
 #include <climits>
 #include <cmath>
 
