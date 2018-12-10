@@ -20,6 +20,8 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+#include "debug.hpp"
+#include "dynarray.hpp"
 #include "main.hpp"
 
 #include <fstream>
@@ -30,8 +32,6 @@
 #include <fmt/color.h>
 #include <fmt/format.h>
 #include <fmt/ostream.h>
-
-#include "dynarray.hpp"
 
 #include <cmath>
 
@@ -69,7 +69,9 @@ have_lp_extension(std::string filename)
 static inline int
 get_digits_number(double x) noexcept
 {
-    return 5 + static_cast<int>(std::floor(std::log10(std::abs(x))));
+    bx_expects(x < static_cast<double>(std::numeric_limits<int>::max()));
+
+    return static_cast<int>(std::floor(std::log10(std::abs(x)))) + 5;
 }
 
 constexpr bool
@@ -92,8 +94,8 @@ struct bench
 
         model(std::string name_, std::string status_, double best_solution_)
           : name(name_)
-          , status(model_status_from_string(status_))
           , best_solution(best_solution_)
+          , status(model_status_from_string(status_))
         {}
 
         std::string name;     // e.g. scpnrf3, scpd1 etc.
@@ -324,9 +326,9 @@ struct bench
         const auto model_size{ models.size() };
         const auto solver_size{ solvers.size() };
 
-        std::vector<size_t> row_length(solvers.size(), 5);
-        size_t best_solution_row_length = { 10 };
-        size_t current_row_length = { 10 };
+        std::vector<int> row_length(solvers.size(), 5);
+        int best_solution_row_length = { 10 };
+        int current_row_length = { 10 };
 
         for (size_t i{ 0 }; i != model_size; ++i) {
             for (size_t j{ 0 }; j != solver_size; ++j) {
@@ -453,7 +455,7 @@ bool
 benchmark(const baryonyx::context_ptr& ctx,
           std::string filepath,
           std::string name,
-          std::string description)
+          std::string /*description*/)
 {
     std::ifstream ifs(filepath);
     if (!ifs.is_open()) {
