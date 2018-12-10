@@ -471,7 +471,7 @@ optimize_problem(const context_ptr& ctx, const problem& pb)
             case solver_parameters::storage_type::five: {
                 int i = 0;
                 for (auto& elem : all_solutions) {
-                    ret.solutions.push_back(*(all_solutions.rbegin()));
+                    ret.solutions.push_back(elem);
                     ++i;
 
                     if (i >= 5)
