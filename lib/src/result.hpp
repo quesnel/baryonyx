@@ -34,7 +34,7 @@ namespace detail {
 
 template<typename Mode>
 inline bool
-store_one_solution(const context_ptr& ctx,
+store_one_solution(const context_ptr& /*ctx*/,
                    result& res,
                    const std::vector<bool>& solution,
                    double value)
@@ -49,7 +49,7 @@ store_one_solution(const context_ptr& ctx,
 
 template<typename Mode>
 inline bool
-store_bound_solutions(const context_ptr& ctx,
+store_bound_solutions(const context_ptr& /*ctx*/,
                       result& res,
                       const std::vector<bool>& solution,
                       double value)
@@ -75,7 +75,7 @@ store_bound_solutions(const context_ptr& ctx,
 
 template<typename Mode>
 inline bool
-store_five_solutions(const context_ptr& ctx,
+store_five_solutions(const context_ptr& /*ctx*/,
                      result& res,
                      const std::vector<bool>& solution,
                      double value)
