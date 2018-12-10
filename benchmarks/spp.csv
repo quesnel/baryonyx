@@ -1,8 +1,4 @@
-file status optimum LocalSolver7.5-1c-600 LocalSolver7.5-10c-60 bx-0.2-10c-60s bx-0.2-1c-600s
-LocalSolver7.5-1c-600
-LocalSolver7.5-10c-60
-bx-0.2-10c-60s
-bx-0.2-1c-600s
+file status optimum cplex ls75-1c-600 ls75-10c-60 bx-0.2-10c-60s bx-0.2-1c-600s
 sppaa01 optimum 56137 inf inf 56598 57411
 sppaa02 optimum 30494 inf inf 30564 30914
 sppaa03 optimum 49649 49649 49649 49994 50507

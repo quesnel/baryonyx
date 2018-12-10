@@ -131,13 +131,7 @@ struct bench
           : name(name_)
         {}
 
-        solver(std::string name_, std::string description_)
-          : name(name_)
-          , description(description_)
-        {}
-
-        std::string name;        // e.g. cplex-10.0.1, baryonyx-0.2
-        std::string description; // e.g. argument?
+        std::string name; // e.g. cplex-10.0.1, baryonyx-0.2
 
         bool operator<(const solver& other)
         {
@@ -208,9 +202,6 @@ struct bench
             fmt::print(os, "{} ", elem.name);
         fmt::print(os, "\n");
 
-        for (const auto& elem : solvers)
-            fmt::print(os, "{}\n", elem.description);
-
         for (std::size_t i{ 0 }, e{ models.size() }; i != e; ++i) {
             fmt::print(os,
                        "{} {} {} ",
@@ -260,22 +251,6 @@ struct bench
         }
 
         ++line_pos;
-
-        {
-            // Read description, one per solver with the same order as column
-            // definition in the header.
-
-            auto length{ solvers.size() };
-            for (std::size_t i{ 0 }; i != length; ++i) {
-                if (!std::getline(is, solvers[i].description)) {
-                    fmt::print(fmt::color::red,
-                               "benchmark: fail to read comments\n");
-                    return false;
-                }
-                ++line_pos;
-            }
-        }
-
         array.init(solvers.size());
 
         {
@@ -454,8 +429,7 @@ struct bench
 bool
 benchmark(const baryonyx::context_ptr& ctx,
           std::string filepath,
-          std::string name,
-          std::string /*description*/)
+          std::string name)
 {
     std::ifstream ifs(filepath);
     if (!ifs.is_open()) {

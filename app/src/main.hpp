@@ -37,8 +37,6 @@
  * @param ctx Context with all parameters use to perform optimization.
  * @param filepath Description file.
  * @param name The name of the solver (e.g: cplex-10.0.3, baryonyx-0.2)
- * @param description A description (e.g. -pkappa-step:1e-5
- *     -pconstraint-order:reversing).
  * @return @c true if the processing to the benchmark success, @c false
  *     otherwise.
  *
@@ -47,8 +45,7 @@
 bool
 benchmark(const baryonyx::context_ptr& ctx,
           std::string filepath,
-          std::string name,
-          std::string descrption);
+          std::string name);
 
 inline double
 to_double(std::string s, double bad_value) noexcept

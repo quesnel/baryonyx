@@ -1,5 +1,4 @@
-file optimum status bx-0.2
-bx-02: 100s 4threads
+file optimum status cplex bx-0.2
 deer_rescaled_0034.K10.F100.model_spp feasible 5195375 6631563
 deer_rescaled_0034.K10.F100.model_support feasible 5195375 inf
 grid80x80.f15.wrap_spp feasible 2293410 inf

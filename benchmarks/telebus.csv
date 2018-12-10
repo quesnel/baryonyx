@@ -1,7 +1,4 @@
-file status optimum LocalSolver7.5-1c-600s LocalSolver7.5-10c-60s bx-0.2-10c-60s
-x
-x
-x
+file status optimum ls7.5-1c-600s ls7.5-10c-60s bx-0.2-10c-60s
 t0415 feasible 5404140 inf inf 5404140
 t0416 feasible 6093843 6.09E+06 inf 6093843
 t0417 feasible 5953029 inf inf 5953029

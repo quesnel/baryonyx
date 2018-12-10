@@ -682,7 +682,7 @@ main(int argc, const char* argv[])
                        filename,
                        params.bench_name);
 
-            if (!benchmark(ctx, filename, params.bench_name, "To fill"))
+            if (!benchmark(ctx, filename, params.bench_name))
                 fmt::print(
                   fmt::color::red, "Benchmark for {} failed.\n", filename);
         }
