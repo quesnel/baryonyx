@@ -70,7 +70,7 @@ equivalent). If you install into `$HOME/usr` for example, you need to
 define in your `.bashrc`:
 
 ....
-export PATH=$PATH:$HOME/usr
+export PATH=$PATH:$HOME/usr/bin
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME/usr/lib
 export PKG_CONFIG_PATH=$PKG_CONFIX_PATH:$HOME/usr/lib/pkgconfig
 ....
