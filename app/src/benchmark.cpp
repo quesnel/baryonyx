@@ -35,6 +35,7 @@
 #include <fmt/ostream.h>
 
 #include <cmath>
+#include <utility>
 
 #if 0
 struct csv_whitespace : std::ctype<char>
@@ -154,7 +155,7 @@ struct bench
         solver() = default;
 
         solver(std::string name_)
-          : name(name_)
+          : name(std::move(name_))
         {}
 
         std::string name; // e.g. cplex-10.0.1, baryonyx-0.2
@@ -182,7 +183,6 @@ struct bench
 
         element(double duration_)
           : duration(duration_)
-          , success(false)
         {}
 
         double duration = std::numeric_limits<double>::infinity();

@@ -38,11 +38,11 @@ const fmt::text_style context::message_style[] = {
 
 void
 context_set_parameters(const context_ptr& ctx,
-                       std::string name,
+                       const std::string& name,
                        std::string value)
 {
     if (name == "method")
-        ctx->method = value;
+        ctx->method = std::move(value);
     else
         warning(ctx, "context: unknown variable {}.\n", name);
 }

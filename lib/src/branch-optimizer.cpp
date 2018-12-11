@@ -96,9 +96,9 @@ struct node
     {}
 
     baryonyx::problem problem;
-    double solution;
-    int remaining_constraints;
-    int annoying_variable;
+    double solution = 0.0;
+    int remaining_constraints = -1;
+    int annoying_variable = -1;
 };
 
 struct node_affected_compare

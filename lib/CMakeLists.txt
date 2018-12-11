@@ -69,6 +69,11 @@ set_target_properties(libbaryonyx PROPERTIES
   CXX_STANDARD 14
   CXX_STANDARD_REQUIRED ON)
 
+if (CLANG_TIDY_EXE)
+  set_target_properties(libbaryonyx PROPERTIES
+    CXX_CLANG_TIDY "${DO_CLANG_TIDY}")
+endif ()
+
 target_compile_definitions(libbaryonyx
   PRIVATE
   $<$<BOOL:${WITH_FULL_OPTIMIZATION}>:BARYONYX_FULL_OPTIMIZATION>

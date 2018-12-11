@@ -1024,7 +1024,11 @@ void
 write_function_element(std::ostream& os, const Problem& p, const Function& f)
 {
     for (auto& elem : f) {
-        os << ((elem.factor < 0) ? "- " : "+ ");
+        if (elem.factor < 0)
+            os << "- ";
+        else
+            os << "+ ";
+
         if (elem.factor != 1)
             os << std::abs(elem.factor) << ' ';
 
