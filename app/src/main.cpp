@@ -158,7 +158,7 @@ help() noexcept
       "\n"
       "  --quiet                       Remove any verbose message\n"
       "  --verbose|-v int              Set verbose level\n"
-      "  --bench:[name]|-b             Select the bench mode\n\n"
+      "  --bench|-b file_name.csv      Select the bench mode and store in file_name.csv\n\n"
       "Parameter list for in the middle heuristic\n"
       " * Global parameters"
       "  - limit: integer ]-oo, +oo[ in loop number\n"

@@ -1,81 +1,81 @@
-file optimum status cplex lsp bx-0.2
-scp410 optimum 514 514 514
-scp41 optimum 429 429 429
-scp42 optimum 512 512 512
-scp43 optimum 516 516 516
-scp44 optimum 494 494 494
-scp45 optimum 512 512 512
-scp46 optimum 560 560 560
-scp47 optimum 430 430 430
-scp48 optimum 492 492 492
-scp49 optimum 641 641 641
-scp510 optimum 265 265 265
-scp51 optimum 253 253 253
-scp52 optimum 302 302 302
-scp53 optimum 226 226 226
-scp54 optimum 242 242 242
-scp55 optimum 211 211 211
-scp56 optimum 213 213 213
-scp57 optimum 293 293 293
-scp58 optimum 288 288 288
-scp59 optimum 279 279 279
-scp61 optimum 138 138 138
-scp62 optimum 146 146 146
-scp63 optimum 145 145 145
-scp64 optimum 131 131 131
-scp65 optimum 161 161 161
-scpa1 optimum 253 253 253
-scpa2 optimum 252 252 286
-scpa3 optimum 232 232 232
-scpa4 optimum 234 234 234
-scpa5 optimum 236 236 236
-scpb1 optimum 69 69 69
-scpb2 optimum 76 76 109
-scpb3 optimum 80 80 85
-scpb4 optimum 79 79 107
-scpb5 optimum 72 72 72
-scpc1 optimum 227 227 227
-scpc2 optimum 219 219 287
-scpc3 optimum 243 243 256
-scpc4 optimum 219 219 219
-scpc5 optimum 215 215 215
-scpclr10 optimum 25 25 25
-scpclr11 optimum 23 23 23
-scpclr12 optimum 23 23 24
-scpclr13 optimum 28 28 29
-scpcyc06 optimum 60 60 60
-scpcyc07 optimum 144 144 145
-scpcyc08 optimum 348 348 352
-scpcyc09 optimum 807 807 852
-scpcyc10 optimum 1916 1916 1981
-scpcyc11 optimum 4280 4280 4550
-scpd1 optimum 60 60 91
-scpd2 optimum 66 66 135
-scpd3 optimum 72 72 106
-scpd4 optimum 62 62 94
-scpd5 optimum 61 61 151
-scpe1 optimum 5 5 5
-scpe2 optimum 5 5 5
-scpe3 optimum 5 5 5
-scpe4 optimum 5 5 5
-scpe5 optimum 5 5 5
-scpnre1 optimum 29 29 59
-scpnre2 optimum 30 30 41
-scpnre3 optimum 27 27 36
-scpnre4 optimum 28 28 46
-scpnre5 optimum 28 28 53
-scpnrf1 optimum 14 14 19
-scpnrf2 optimum 15 15 17
-scpnrf3 optimum 14 14 21
-scpnrf4 optimum 14 14 19
-scpnrf5 optimum 13 13 23
-scpnrg1 optimum 176 176 403
-scpnrg2 optimum 155 155 323
-scpnrg3 optimum 168 168 311
-scpnrg4 optimum 171 171 292
-scpnrg5 optimum 170 170 353
-scpnrh1 optimum 64 64 258
-scpnrh2 optimum 66 66 218
-scpnrh3 optimum 62 62 211
-scpnrh4 optimum 60 60 179
-scpnrh5 optimum 55 55 170
+file,optimum,status,cplex,lsp
+scp410,optimum,514,514,514
+scp41,optimum,429,429,429
+scp42,optimum,512,512,512
+scp43,optimum,516,516,516
+scp44,optimum,494,494,494
+scp45,optimum,512,512,512
+scp46,optimum,560,560,560
+scp47,optimum,430,430,430
+scp48,optimum,492,492,492
+scp49,optimum,641,641,641
+scp510,optimum,265,265,265
+scp51,optimum,253,253,253
+scp52,optimum,302,302,302
+scp53,optimum,226,226,226
+scp54,optimum,242,242,242
+scp55,optimum,211,211,211
+scp56,optimum,213,213,213
+scp57,optimum,293,293,293
+scp58,optimum,288,288,288
+scp59,optimum,279,279,279
+scp61,optimum,138,138,138
+scp62,optimum,146,146,146
+scp63,optimum,145,145,145
+scp64,optimum,131,131,131
+scp65,optimum,161,161,161
+scpa1,optimum,253,253,253
+scpa2,optimum,252,252,286
+scpa3,optimum,232,232,232
+scpa4,optimum,234,234,234
+scpa5,optimum,236,236,236
+scpb1,optimum,69,69,69
+scpb2,optimum,76,76,109
+scpb3,optimum,80,80,85
+scpb4,optimum,79,79,107
+scpb5,optimum,72,72,72
+scpc1,optimum,227,227,227
+scpc2,optimum,219,219,287
+scpc3,optimum,243,243,256
+scpc4,optimum,219,219,219
+scpc5,optimum,215,215,215
+scpclr10,optimum,25,25,25
+scpclr11,optimum,23,23,23
+scpclr12,optimum,23,23,24
+scpclr13,optimum,28,28,29
+scpcyc06,optimum,60,60,60
+scpcyc07,optimum,144,144,145
+scpcyc08,optimum,348,348,352
+scpcyc09,optimum,807,807,852
+scpcyc10,optimum,1916,1916,1981
+scpcyc11,optimum,4280,4280,4550
+scpd1,optimum,60,60,91
+scpd2,optimum,66,66,135
+scpd3,optimum,72,72,106
+scpd4,optimum,62,62,94
+scpd5,optimum,61,61,151
+scpe1,optimum,5,5,5
+scpe2,optimum,5,5,5
+scpe3,optimum,5,5,5
+scpe4,optimum,5,5,5
+scpe5,optimum,5,5,5
+scpnre1,optimum,29,29,59
+scpnre2,optimum,30,30,41
+scpnre3,optimum,27,27,36
+scpnre4,optimum,28,28,46
+scpnre5,optimum,28,28,53
+scpnrf1,optimum,14,14,19
+scpnrf2,optimum,15,15,17
+scpnrf3,optimum,14,14,21
+scpnrf4,optimum,14,14,19
+scpnrf5,optimum,13,13,23
+scpnrg1,optimum,176,176,403
+scpnrg2,optimum,155,155,323
+scpnrg3,optimum,168,168,311
+scpnrg4,optimum,171,171,292
+scpnrg5,optimum,170,170,353
+scpnrh1,optimum,64,64,258
+scpnrh2,optimum,66,66,218
+scpnrh3,optimum,62,62,211
+scpnrh4,optimum,60,60,179
+scpnrh5,optimum,55,55,170

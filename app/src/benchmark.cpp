@@ -41,6 +41,31 @@ enum class model_status
     feasible
 };
 
+enum class read_status
+{
+    success,
+    eof,
+    error
+};
+
+read_status
+read_string(std::istream& is, std::string& value)
+{
+    if (!(std::getline(is, value, ',')))
+        return is.eof() ? read_status::eof : read_status::error;
+
+    return read_status::success;
+}
+
+read_status
+read_last_string(std::istream& is, std::string& value)
+{
+    if (!(std::getline(is, value)))
+        return is.eof() ? read_status::eof : read_status::error;
+
+    return read_status::success;
+}
+
 constexpr const char* const model_status_string[]{ "optimum", "feasible" };
 
 static model_status
@@ -196,10 +221,10 @@ struct bench
 
     void save(std::ostream& os, const std::vector<element>& c)
     {
-        fmt::print(os, "file st opt ");
+        fmt::print(os, "file,st,opt");
 
         for (const auto& elem : solvers)
-            fmt::print(os, "{} ", elem.name);
+            fmt::print(os, ",{}", elem.name);
         fmt::print(os, "\n");
 
         for (std::size_t i{ 0 }, e{ models.size() }; i != e; ++i) {
@@ -211,7 +236,7 @@ struct bench
                        models[i].best_solution);
 
             for (std::size_t j{ 0 }, end_j{ solvers.size() }; j != end_j; ++j)
-                fmt::print(os, "{} ", array(i, j));
+                fmt::print(os, "{},", array(i, j));
 
             fmt::print(os, "{}\n", c[i].solution);
         }
@@ -231,7 +256,7 @@ struct bench
 
         {
             std::string::size_type begin{ 0 };
-            std::string::size_type end = line.find(' ', begin);
+            std::string::size_type end = line.find(',', begin);
             int i{ 0 };
 
             do {
@@ -241,13 +266,15 @@ struct bench
                     push_back_solver(line.substr(begin, end - begin));
 
                 begin = end == std::string::npos ? end : end + 1;
-                end = line.find(' ', begin);
+                end = line.find(',', begin);
             } while (begin < line.size());
 
             if (solvers.empty()) {
                 fmt::print(fmt::color::red, "benchmark: not enough");
                 return false;
             }
+
+            fmt::print("{} solvers\n", solvers.size());
         }
 
         ++line_pos;
@@ -256,23 +283,29 @@ struct bench
         {
             std::string name;
             std::string status;
-            double best_solution;
+            std::string best_solution;
             std::string current;
+            read_status ret = { read_status::success };
 
             while (is) {
-                if (!(is >> name >> status >> best_solution)) {
-                    if (is.eof())
-                        break;
-                    else {
-                        fmt::print(
-                          fmt::color::red,
-                          "benchmark: fail to read model status at line {}\n",
-                          line_pos);
-                        return false;
-                    }
-                }
+                ret = read_string(is, name);
+                if (ret != read_status::success)
+                    break;
 
-                push_back_model(name, status, best_solution);
+                ret = read_string(is, status);
+                if (ret != read_status::success)
+                    break;
+
+                ret = read_string(is, best_solution);
+                if (ret != read_status::success)
+                    break;
+
+                push_back_model(
+                  name,
+                  status,
+                  to_double(best_solution,
+                            std::numeric_limits<double>::infinity()));
+
                 array.push_line();
 
                 auto length{ solvers.size() };
