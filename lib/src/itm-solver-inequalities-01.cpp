@@ -420,41 +420,59 @@ select_order(const context_ptr& ctx, const problem& pb, bool is_optimization)
 {
     const auto c = static_cast<int>(ctx->parameters.order);
 
-    if (c == 0)
+    switch (ctx->parameters.order) {
+    case solver_parameters::constraint_order::none:
         return solve_or_optimize<
           solver_inequalities_01coeff<Float, Mode, Random>,
           Float,
           Mode,
           constraint_sel<Float, Random, 0>,
           Random>(ctx, pb, is_optimization);
-    else if (c == 1)
+    case solver_parameters::constraint_order::reversing:
         return solve_or_optimize<
           solver_inequalities_01coeff<Float, Mode, Random>,
           Float,
           Mode,
           constraint_sel<Float, Random, 1>,
           Random>(ctx, pb, is_optimization);
-    else if (c == 2)
+    case solver_parameters::constraint_order::random_sorting:
         return solve_or_optimize<
           solver_inequalities_01coeff<Float, Mode, Random>,
           Float,
           Mode,
           constraint_sel<Float, Random, 2>,
           Random>(ctx, pb, is_optimization);
-    else if (c == 3)
+    case solver_parameters::constraint_order::infeasibility_decr:
         return solve_or_optimize<
           solver_inequalities_01coeff<Float, Mode, Random>,
           Float,
           Mode,
           constraint_sel<Float, Random, 3>,
           Random>(ctx, pb, is_optimization);
-    else
+    case solver_parameters::constraint_order::infeasibility_incr:
         return solve_or_optimize<
           solver_inequalities_01coeff<Float, Mode, Random>,
           Float,
           Mode,
           constraint_sel<Float, Random, 4>,
           Random>(ctx, pb, is_optimization);
+    case solver_parameters::constraint_order::lagrangian_decr:
+        return solve_or_optimize<
+          solver_inequalities_01coeff<Float, Mode, Random>,
+          Float,
+          Mode,
+          constraint_sel<Float, Random, 5>,
+          Random>(ctx, pb, is_optimization);
+    case solver_parameters::constraint_order::lagrangian_incr:
+        return solve_or_optimize<
+          solver_inequalities_01coeff<Float, Mode, Random>,
+          Float,
+          Mode,
+          constraint_sel<Float, Random, 6>,
+          Random>(ctx, pb, is_optimization);
+    default:
+        bx_reach();
+    }
 }
 
 template<typename Float, typename Mode>

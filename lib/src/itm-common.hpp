@@ -869,7 +869,8 @@ struct compute_lagrangian_order
                      Float objective_amplifier)
     {
         std::sort(R.begin(), R.end(), [&solver](int lhs, int rhs) {
-            return Operator(solver.pi[lhs], solver.pi[rhs]);
+            Operator op;
+            return op(solver.pi[lhs], solver.pi[rhs]);
         });
 
         solver.push_and_compute_update_row(
@@ -886,7 +887,8 @@ struct compute_lagrangian_order
             Float theta)
     {
         std::sort(R.begin(), R.end(), [&solver](int lhs, int rhs) {
-            return solver.pi[lhs] > solver.pi[rhs];
+            Operator op;
+            return op(solver.pi[lhs], solver.pi[rhs]);
         });
 
         solver.compute_update_row(x, R.cbegin(), R.cend(), kappa, delta, theta);
