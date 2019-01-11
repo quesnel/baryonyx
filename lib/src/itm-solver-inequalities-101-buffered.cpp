@@ -623,8 +623,6 @@ template<typename Float, typename Mode, typename Random>
 static result
 select_order(const context_ptr& ctx, const problem& pb, bool is_optimization)
 {
-    const auto c = static_cast<int>(ctx->parameters.order);
-
     switch (ctx->parameters.order) {
     case solver_parameters::constraint_order::none:
         return solve_or_optimize<
@@ -679,7 +677,6 @@ select_order(const context_ptr& ctx, const problem& pb, bool is_optimization)
         bx_reach();
     }
 }
-
 
 template<typename Float, typename Mode>
 static result
