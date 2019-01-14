@@ -106,7 +106,8 @@ struct context
     {
         if (verbose_level_ != 6)
             log_priority = static_cast<context::message_type>(
-              verbose_level_ < 0 ? 0 : verbose_level_ > 7 ? 7 : verbose_level_);
+              verbose_level_ < 0 ? 0
+                                 : verbose_level_ > 7 ? 7 : verbose_level_);
     }
 
     solver_parameters parameters;
@@ -431,6 +432,8 @@ debug(const context_ptr& ctx, const char* fmt, const Args&... args)
 #else
     detail::sink(ctx, fmt, args...);
 #endif
+#else
+    detail::sink(ctx, fmt, args...);
 #endif
 }
 
@@ -545,6 +548,8 @@ debug(const context_ptr& ctx,
 #else
     detail::sink(ctx, fmt, arg1, args...);
 #endif
+#else
+    detail::sink(ctx, fmt, arg1, args...);
 #endif
 }
 
@@ -675,6 +680,8 @@ debug(const context_ptr& ctx, const T& msg)
 #else
     detail::sink(ctx, msg);
 #endif
+#else
+    detail::sink(ctx, msg);
 #endif
 }
 
@@ -708,15 +715,13 @@ pre_constraint_order_to_string(
 inline const char*
 constraint_order_to_string(solver_parameters::constraint_order type) noexcept
 {
-    static const char* ret[] = {
-        "none",
-        "reversing",
-        "random-sorting",
-        "infeasibility-decr",
-        "infeasibility-incr",
-        "lagrangian-decr",
-        "lagrangian-incr"
-    };
+    static const char* ret[] = { "none",
+                                 "reversing",
+                                 "random-sorting",
+                                 "infeasibility-decr",
+                                 "infeasibility-incr",
+                                 "lagrangian-decr",
+                                 "lagrangian-incr" };
 
     return ret[static_cast<int>(type)];
 }
