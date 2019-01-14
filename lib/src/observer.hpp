@@ -1,4 +1,4 @@
-/* Copyright (C) 2018 INRA
+/* Copyright (C) 2018-2019 INRA
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the
@@ -252,8 +252,7 @@ public:
                   int /*loop*/)
     {}
 
-    void make_observation()
-    {}
+    void make_observation() {}
 };
 
 } // namespace baryonyx

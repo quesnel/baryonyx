@@ -1,4 +1,4 @@
-/* Copyright (C) 2016-2018 INRA
+/* Copyright (C) 2016-2019 INRA
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the
@@ -99,9 +99,8 @@ fill_merged_constraints(const baryonyx::context_ptr& ctx,
                                  baryonyx::numeric_cast<int>(elem.value),
                                  elem.id);
             } else {
-                ret[it->second].max =
-                  std::min(ret[it->second].max,
-                           baryonyx::numeric_cast<int>(elem.value));
+                ret[it->second].max = std::min(
+                  ret[it->second].max, baryonyx::numeric_cast<int>(elem.value));
             }
         }
         break;
@@ -115,9 +114,8 @@ fill_merged_constraints(const baryonyx::context_ptr& ctx,
                                  std::numeric_limits<int>::max(),
                                  elem.id);
             } else {
-                ret[it->second].min =
-                  std::max(ret[it->second].min,
-                           baryonyx::numeric_cast<int>(elem.value));
+                ret[it->second].min = std::max(
+                  ret[it->second].min, baryonyx::numeric_cast<int>(elem.value));
             }
         }
         break;
@@ -144,8 +142,7 @@ make_unsorted_merged_constraints(const baryonyx::context_ptr& ctx,
 
     fill_merged_constraints(
       ctx, cache, baryonyx::operator_type::equal, pb, ret);
-    fill_merged_constraints(
-      ctx, cache, baryonyx::operator_type::less, pb, ret);
+    fill_merged_constraints(ctx, cache, baryonyx::operator_type::less, pb, ret);
     fill_merged_constraints(
       ctx, cache, baryonyx::operator_type::greater, pb, ret);
 
@@ -156,7 +153,7 @@ make_unsorted_merged_constraints(const baryonyx::context_ptr& ctx,
     return ret;
 }
 
-/** @brief Build a merged constaints vector and sort constraints 
+/** @brief Build a merged constaints vector and sort constraints
  *    using the type of constraints (equal, less, greater or any order).
  */
 static std::vector<merged_constraint>

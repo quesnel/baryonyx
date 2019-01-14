@@ -1,4 +1,4 @@
-/* Copyright (C) 2016-2018 INRA
+/* Copyright (C) 2016-2019 INRA
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the
@@ -307,8 +307,7 @@ private:
                           "      - equal constraint {} will be removed.\n",
                           pb.equal_constraints[cst].label);
 
-                    auto v =
-                      reduce_equal_constraint(pb.equal_constraints[cst]);
+                    auto v = reduce_equal_constraint(pb.equal_constraints[cst]);
                     equal_constraints[cst] = 0;
 
                     if (std::get<0>(v) >= 0)
@@ -471,8 +470,7 @@ private:
 
                         less_constraints[i] = 0;
 
-                        for (const auto& elem :
-                             pb.less_constraints[i].elements)
+                        for (const auto& elem : pb.less_constraints[i].elements)
                             lifo.emplace(elem.variable_index, false);
                     } else if (sum_factor(pb.less_constraints[i]) ==
                                pb.less_constraints[i].value) {
@@ -518,8 +516,7 @@ public:
 
         for (int i = 0, e = bx::length(pb.equal_constraints); i != e; ++i)
             for (const auto& elem : pb.equal_constraints[i].elements)
-                cache[elem.variable_index].in_equal_constraints.emplace_back(
-                  i);
+                cache[elem.variable_index].in_equal_constraints.emplace_back(i);
 
         for (int i = 0, e = bx::length(pb.greater_constraints); i != e; ++i)
             for (const auto& elem : pb.greater_constraints[i].elements)

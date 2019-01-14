@@ -1,4 +1,4 @@
-/* Copyright (C) 2016-2018 INRA
+/* Copyright (C) 2016-2019 INRA
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the
@@ -792,8 +792,8 @@ read_constraint(parser_stack& stack, baryonyx::raw_problem& p)
             label = tmp;
             stack.substr_front(1);
         } else {
-            cst.elements.emplace_back(
-              1, get_variable(stack.cache(), p.vars, tmp));
+            cst.elements.emplace_back(1,
+                                      get_variable(stack.cache(), p.vars, tmp));
         }
     }
 

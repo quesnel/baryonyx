@@ -1,4 +1,4 @@
-/* Copyright (C) 2016-2018 INRA
+/* Copyright (C) 2016-2019 INRA
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the
@@ -256,8 +256,8 @@ assign_parameter(baryonyx::solver_parameters& params,
             params.float_type =
               baryonyx::solver_parameters::floating_point_type::double_type;
         else if (value == "longdouble")
-            params.float_type = baryonyx::solver_parameters::
-              floating_point_type::longdouble_type;
+            params.float_type =
+              baryonyx::solver_parameters::floating_point_type::longdouble_type;
     } else if (is_equal(name, "observer-type")) {
         if (value == "none")
             params.observer = baryonyx::solver_parameters::observer_type::none;
@@ -314,11 +314,11 @@ assign_parameter(baryonyx::solver_parameters& params,
             params.order =
               baryonyx::solver_parameters::constraint_order::random_sorting;
         else if (value == "infeasibility-decr")
-            params.order = baryonyx::solver_parameters::constraint_order::
-              infeasibility_decr;
+            params.order =
+              baryonyx::solver_parameters::constraint_order::infeasibility_decr;
         else if (value == "infeasibility-incr")
-            params.order = baryonyx::solver_parameters::constraint_order::
-              infeasibility_incr;
+            params.order =
+              baryonyx::solver_parameters::constraint_order::infeasibility_incr;
         else if (value == "lagrangian-decr")
             params.order =
               baryonyx::solver_parameters::constraint_order::lagrangian_decr;
@@ -358,8 +358,7 @@ assign_parameter(baryonyx::solver_parameters& params,
         else if (value == "l2")
             params.cost_norm = baryonyx::solver_parameters::cost_norm_type::l2;
         else if (value == "loo")
-            params.cost_norm =
-              baryonyx::solver_parameters::cost_norm_type::loo;
+            params.cost_norm = baryonyx::solver_parameters::cost_norm_type::loo;
     } else if (is_equal(name, "pushes-limit")) {
         params.pushes_limit = assign(
           value, 0, std::numeric_limits<int>::max(), params.pushes_limit);
@@ -367,11 +366,10 @@ assign_parameter(baryonyx::solver_parameters& params,
         params.pushing_objective_amplifier =
           assign_0oo(value, params.pushing_objective_amplifier);
     } else if (is_equal(name, "pushing-iteration-limit")) {
-        params.pushing_iteration_limit =
-          assign(value,
-                 0,
-                 std::numeric_limits<int>::max(),
-                 params.pushing_iteration_limit);
+        params.pushing_iteration_limit = assign(value,
+                                                0,
+                                                std::numeric_limits<int>::max(),
+                                                params.pushing_iteration_limit);
     } else if (is_equal(name, "pushing-k-factor")) {
         params.pushing_k_factor = assign_0oo(value, params.pushing_k_factor);
     } else if (is_equal(name, "init-policy")) {
@@ -621,8 +619,7 @@ resume(const baryonyx::result& result, std::ostream& os) noexcept
         fmt::print(os, "\n");
         fmt::print(os, "\\ variables.............: \n");
 
-        for (std::size_t i{ 0 }, e{ result.affected_vars.names.size() };
-             i != e;
+        for (std::size_t i{ 0 }, e{ result.affected_vars.names.size() }; i != e;
              ++i)
             fmt::print(os,
                        "{}={}\n",
@@ -700,11 +697,10 @@ main(int argc, const char* argv[])
     } else {
         if (params.filenames.size() == 1) {
             try {
-                auto pb =
-                  baryonyx::make_problem(ctx, params.filenames.front());
+                auto pb = baryonyx::make_problem(ctx, params.filenames.front());
 
-                auto filename = fmt::format(
-                  "{}-{}.sol", params.filenames.front(), get_pid());
+                auto filename =
+                  fmt::format("{}-{}.sol", params.filenames.front(), get_pid());
                 fmt::print("  - output file: {}\n", filename);
 
                 if (params.check) {

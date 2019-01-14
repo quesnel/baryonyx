@@ -1,4 +1,4 @@
-/* Copyright (C) 2018 INRA
+/* Copyright (C) 2018-2019 INRA
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the
@@ -65,32 +65,32 @@ fail_fast(const char* type,
 } // namespace details
 } // namespace baryonyx
 
-#define BX_CONTRACT_FAIL(type)                                                \
-    baryonyx::details::fail_fast(                                             \
+#define BX_CONTRACT_FAIL(type)                                                 \
+    baryonyx::details::fail_fast(                                              \
       type, bx_stringify(cond), __FILE__, bx_stringify(__LINE__))
 
-#define BX_CONTRACT_CHECK(type, cond)                                         \
-    (bx_likely(cond)                                                          \
-       ? static_cast<void>(0)                                                 \
-       : baryonyx::details::fail_fast(                                        \
+#define BX_CONTRACT_CHECK(type, cond)                                          \
+    (bx_likely(cond)                                                           \
+       ? static_cast<void>(0)                                                  \
+       : baryonyx::details::fail_fast(                                         \
            type, bx_stringify(cond), __FILE__, bx_stringify(__LINE__)))
 
-#define BX_CONTRACT_CHECK_RETURN_VAL(type, cond, val)                         \
-    do {                                                                      \
-        if (bx_unlikely(!(cond))) {                                           \
-            baryonyx::details::print(                                         \
-              type, bx_stringify(cond), __FILE__, bx_stringify(__LINE__));    \
-            return val;                                                       \
-        }                                                                     \
+#define BX_CONTRACT_CHECK_RETURN_VAL(type, cond, val)                          \
+    do {                                                                       \
+        if (bx_unlikely(!(cond))) {                                            \
+            baryonyx::details::print(                                          \
+              type, bx_stringify(cond), __FILE__, bx_stringify(__LINE__));     \
+            return val;                                                        \
+        }                                                                      \
     } while (0)
 
-#define BX_CONTRACT_CHECK_RETURN(type, cond)                                  \
-    do {                                                                      \
-        if (bx_unlikely(!(cond))) {                                           \
-            baryonyx::details::print(                                         \
-              type, bx_stringify(cond), __FILE__, bx_stringify(__LINE__));    \
-            return;                                                           \
-        }                                                                     \
+#define BX_CONTRACT_CHECK_RETURN(type, cond)                                   \
+    do {                                                                       \
+        if (bx_unlikely(!(cond))) {                                            \
+            baryonyx::details::print(                                          \
+              type, bx_stringify(cond), __FILE__, bx_stringify(__LINE__));     \
+            return;                                                            \
+        }                                                                      \
     } while (0)
 
 #ifdef BARYONYX_FULL_OPTIMIZATION
@@ -105,7 +105,7 @@ fail_fast(const char* type,
 
 #define bx_reach() BX_CONTRACT_FAIL("Reached")
 
-#define bx_return_val_if_fail(cond, val)                                      \
+#define bx_return_val_if_fail(cond, val)                                       \
     BX_CONTRACT_CHECK_RETURN_VAL("Precondition", cond, val)
 #define bx_return_if_fail(cond) BX_CONTRACT_CHECK_RETURN("Precondition", cond)
 

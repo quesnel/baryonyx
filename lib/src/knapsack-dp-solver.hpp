@@ -1,4 +1,4 @@
-/* Copyright (C) 2016-2018 INRA
+/* Copyright (C) 2016-2019 INRA
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the
@@ -113,11 +113,10 @@ struct knapsack_dp_solver
             for (i = 1; i <= n; ++i) {
                 for (j = 1; j <= W; ++j) {
                     if (items[i - 1].factor <= static_cast<int>(j))
-                        best(i, j) =
-                          get_best(best(i - 1, j),
-                                   items[i - 1].r +
-                                     best(i - 1, j - items[i - 1].factor),
-                                   modeT());
+                        best(i, j) = get_best(
+                          best(i - 1, j),
+                          items[i - 1].r + best(i - 1, j - items[i - 1].factor),
+                          modeT());
                     else
                         best(i, j) = best(i - 1, j);
                 }

@@ -1,4 +1,4 @@
-/* Copyright (C) 2016-2018 INRA
+/* Copyright (C) 2016-2019 INRA
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the
@@ -80,8 +80,7 @@ struct x_type
         return 0;
     }
 
-    void clear()
-    {}
+    void clear() {}
 
     std::vector<bool> data() const noexcept
     {
@@ -936,8 +935,7 @@ struct compute_lagrangian_order
             return op(solver.pi[lhs], solver.pi[rhs]);
         });
 
-        solver.compute_update_row(
-          x, R.cbegin(), R.cend(), kappa, delta, theta);
+        solver.compute_update_row(x, R.cbegin(), R.cend(), kappa, delta, theta);
 
         return solver.compute_violated_constraints(x, R);
     }

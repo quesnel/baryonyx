@@ -1,4 +1,4 @@
-/* Copyright (C) 2018 INRA
+/* Copyright (C) 2018-2019 INRA
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the
@@ -211,8 +211,7 @@ public:
         m_check_index(row, 0);
 
         const_row_iterator begin = m_rows_values.begin() + m_rows_access[row];
-        const_row_iterator end =
-          m_rows_values.begin() + m_rows_access[row + 1];
+        const_row_iterator end = m_rows_values.begin() + m_rows_access[row + 1];
 
         return std::make_tuple(begin, end);
     }
@@ -223,8 +222,7 @@ public:
         m_check_index(0, col);
 
         const_col_iterator begin = m_cols_values.begin() + m_cols_access[col];
-        const_col_iterator end =
-          m_cols_values.begin() + m_cols_access[col + 1];
+        const_col_iterator end = m_cols_values.begin() + m_cols_access[col + 1];
 
         return std::make_tuple(begin, end);
     }

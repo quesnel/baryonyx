@@ -1,4 +1,4 @@
-/* Copyright (C) 2016-2018 INRA
+/* Copyright (C) 2016-2019 INRA
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the
@@ -106,8 +106,7 @@ struct context
     {
         if (verbose_level_ != 6)
             log_priority = static_cast<context::message_type>(
-              verbose_level_ < 0 ? 0
-                                 : verbose_level_ > 7 ? 7 : verbose_level_);
+              verbose_level_ < 0 ? 0 : verbose_level_ > 7 ? 7 : verbose_level_);
     }
 
     solver_parameters parameters;

@@ -1,4 +1,4 @@
-/* Copyright (C) 2016-2018 INRA
+/* Copyright (C) 2016-2019 INRA
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the
@@ -497,8 +497,7 @@ benchmark(const baryonyx::context_ptr& ctx,
             auto result = baryonyx::optimize(ctx, rawpb);
 
             if (result)
-                current[i] = { result.duration,
-                               result.solutions.back().value };
+                current[i] = { result.duration, result.solutions.back().value };
             else
                 current[i] = { result.duration };
 
@@ -507,8 +506,7 @@ benchmark(const baryonyx::context_ptr& ctx,
         } catch (const baryonyx::postcondition_failure& e) {
             fmt::print(stderr, "internal failure: {}\n", e.what());
         } catch (const baryonyx::numeric_cast_failure& e) {
-            fmt::print(
-              stderr, "numeric cast internal failure: {}\n", e.what());
+            fmt::print(stderr, "numeric cast internal failure: {}\n", e.what());
         } catch (const baryonyx::file_access_failure& e) {
             fmt::print(stderr,
                        "file `{}' fail {}: {}\n",

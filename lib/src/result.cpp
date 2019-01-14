@@ -1,4 +1,4 @@
-/* Copyright (C) 2016-2018 INRA
+/* Copyright (C) 2016-2019 INRA
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the
@@ -71,8 +71,7 @@ operator>>(std::istream& is, result& ret)
 
         auto it = buffer.find('=', 0);
         if (it == std::string::npos)
-            throw file_format_failure(
-              file_format_error_tag::bad_name, line, 0);
+            throw file_format_failure(file_format_error_tag::bad_name, line, 0);
 
         std::string name = buffer.substr(0, it);
         int value;
@@ -80,8 +79,7 @@ operator>>(std::istream& is, result& ret)
         try {
             value = std::stoi(buffer.substr(it + 1));
         } catch (...) {
-            throw file_format_failure(
-              file_format_error_tag::bad_name, line, 0);
+            throw file_format_failure(file_format_error_tag::bad_name, line, 0);
         }
 
         ret.variable_name.emplace_back(name);
