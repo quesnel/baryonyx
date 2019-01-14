@@ -80,7 +80,8 @@ struct x_type
         return 0;
     }
 
-    void clear() {}
+    void clear()
+    {}
 
     std::vector<bool> data() const noexcept
     {
@@ -457,17 +458,41 @@ init_solver(Solver& slv,
                   i,
                   init_x(slv.c[i], d(slv.rng), typename Solver::mode_type()));
         }
-        type = solver_parameters::init_policy_type::random;
         break;
     case solver_parameters::init_policy_type::random:
         for (int i = 0; i != slv.n; ++i)
             x.set(i, d(slv.rng));
-        type = solver_parameters::init_policy_type::best;
         break;
     case solver_parameters::init_policy_type::best:
         for (int i = 0; i != slv.n; ++i)
             x.set(i, d(slv.rng));
-        type = solver_parameters::init_policy_type::bastert;
+        break;
+    case solver_parameters::init_policy_type::bastert_cycle:
+        if (init_random == 0.0 || init_random == 1.0) {
+            bool value_if_cost_0 = init_random == 1.0;
+
+            for (int i = 0; i != slv.n; ++i)
+                x.set(i,
+                      init_x(slv.c[i],
+                             value_if_cost_0,
+                             typename Solver::mode_type()));
+        } else {
+            for (int i = 0; i != slv.n; ++i)
+                x.set(
+                  i,
+                  init_x(slv.c[i], d(slv.rng), typename Solver::mode_type()));
+        }
+        type = solver_parameters::init_policy_type::random_cycle;
+        break;
+    case solver_parameters::init_policy_type::random_cycle:
+        for (int i = 0; i != slv.n; ++i)
+            x.set(i, d(slv.rng));
+        type = solver_parameters::init_policy_type::best_cycle;
+        break;
+    case solver_parameters::init_policy_type::best_cycle:
+        for (int i = 0; i != slv.n; ++i)
+            x.set(i, d(slv.rng));
+        type = solver_parameters::init_policy_type::bastert_cycle;
         break;
     }
 
@@ -515,20 +540,44 @@ init_solver(Solver& slv,
                   i,
                   init_x(slv.c[i], d(slv.rng), typename Solver::mode_type()));
         }
-
-        type = solver_parameters::init_policy_type::random;
         break;
     case solver_parameters::init_policy_type::random:
         for (int i = 0; i != slv.n; ++i)
             x.set(i, d(slv.rng));
-
-        type = solver_parameters::init_policy_type::best;
         break;
     case solver_parameters::init_policy_type::best:
         for (int i = 0; i != slv.n; ++i)
             x.set(i, (d(slv.rng)) ? (best_previous[i]) : (!best_previous[i]));
+        break;
+    case solver_parameters::init_policy_type::bastert_cycle:
+        if (init_random == 0.0 || init_random == 1.0) {
+            bool value_if_cost_0 = init_random == 1.0;
 
-        type = solver_parameters::init_policy_type::bastert;
+            for (int i = 0; i != slv.n; ++i)
+                x.set(i,
+                      init_x(slv.c[i],
+                             value_if_cost_0,
+                             typename Solver::mode_type()));
+        } else {
+            for (int i = 0; i != slv.n; ++i)
+                x.set(
+                  i,
+                  init_x(slv.c[i], d(slv.rng), typename Solver::mode_type()));
+        }
+
+        type = solver_parameters::init_policy_type::random_cycle;
+        break;
+    case solver_parameters::init_policy_type::random_cycle:
+        for (int i = 0; i != slv.n; ++i)
+            x.set(i, d(slv.rng));
+
+        type = solver_parameters::init_policy_type::best_cycle;
+        break;
+    case solver_parameters::init_policy_type::best_cycle:
+        for (int i = 0; i != slv.n; ++i)
+            x.set(i, (d(slv.rng)) ? (best_previous[i]) : (!best_previous[i]));
+
+        type = solver_parameters::init_policy_type::bastert_cycle;
         break;
     }
 
@@ -880,18 +929,15 @@ struct compute_lagrangian_order
     }
 
     template<typename solverT, typename Xtype>
-    int run(solverT& solver,
-            Xtype& x,
-            Float kappa,
-            Float delta,
-            Float theta)
+    int run(solverT& solver, Xtype& x, Float kappa, Float delta, Float theta)
     {
         std::sort(R.begin(), R.end(), [&solver](int lhs, int rhs) {
             Operator op;
             return op(solver.pi[lhs], solver.pi[rhs]);
         });
 
-        solver.compute_update_row(x, R.cbegin(), R.cend(), kappa, delta, theta);
+        solver.compute_update_row(
+          x, R.cbegin(), R.cend(), kappa, delta, theta);
 
         return solver.compute_violated_constraints(x, R);
     }
@@ -1284,9 +1330,10 @@ using constraint_sel = typename std::conditional<
           o == 4,
           compute_infeasibility<Float, Random, compute_infeasibility_incr>,
           typename std::conditional<
-          o == 5,
-          compute_lagrangian_order<Float, Random, std::greater<Float>>,
-          compute_lagrangian_order<Float, Random, std::less<Float>>>::type>::type>::type>::type>::type>::type;
+            o == 5,
+            compute_lagrangian_order<Float, Random, std::greater<Float>>,
+            compute_lagrangian_order<Float, Random, std::less<Float>>>::type>::
+          type>::type>::type>::type>::type;
 
 template<int f>
 using float_sel = typename std::conditional<

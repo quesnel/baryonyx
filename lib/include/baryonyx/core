@@ -300,7 +300,10 @@ struct BARYONYX_API solver_parameters
     {
         bastert = 0,
         random,
-        best
+        best,
+        bastert_cycle,
+        random_cycle,
+        best_cycle
     };
 
     enum class floating_point_type

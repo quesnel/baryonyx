@@ -343,11 +343,14 @@ To assign parameters to solver or optimizer algorithms, use the `-p
 
 | init-policy
 | string
-| Change the (re)initialization policy of the solution vector. Values are:
+| Change the initialization and reinitialization policy of the solution vector. Values are:
 
 * `bastert` (default): use cost values.
 * `random`: use random value.
 * `best`: use best solution found if available (`bastert` otherwise).
+* `bastert-cycle`: start with bastert policy then start a cycle between random, best and bastert.
+* `random-cycle`: start with random policy then start a cycle between best, bastert and random.
+* `best-cycle`: start with best policy then start a cycle between bastert, random and best.
 
 | init-random
 | real

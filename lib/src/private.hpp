@@ -742,7 +742,10 @@ floating_point_type_to_string(
 inline const char*
 init_policy_type_to_string(solver_parameters::init_policy_type type) noexcept
 {
-    static const char* ret[] = { "bastert", "random", "best" };
+    static const char* ret[] = {
+        "bastert",       "random",       "best",
+        "bastert_cycle", "random_cycle", "best_cycle"
+    };
 
     return ret[static_cast<int>(type)];
 }

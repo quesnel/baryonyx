@@ -130,10 +130,18 @@ get_init_policy(int type)
     namespace bx = baryonyx;
 
     switch (type) {
+    case 0:
+        return bx::solver_parameters::init_policy_type::bastert;
     case 1:
         return bx::solver_parameters::init_policy_type::random;
     case 2:
         return bx::solver_parameters::init_policy_type::best;
+    case 3:
+        return bx::solver_parameters::init_policy_type::bastert_cycle;
+    case 4:
+        return bx::solver_parameters::init_policy_type::random_cycle;
+    case 5:
+        return bx::solver_parameters::init_policy_type::best_cycle;
     default:
         return bx::solver_parameters::init_policy_type::bastert;
     }

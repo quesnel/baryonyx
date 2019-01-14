@@ -158,7 +158,8 @@ help() noexcept
       "\n"
       "  --quiet                       Remove any verbose message\n"
       "  --verbose|-v int              Set verbose level\n"
-      "  --bench|-b file_name.csv      Select the bench mode and store in file_name.csv\n\n"
+      "  --bench|-b file_name.csv      Select the bench mode and store in "
+      "file_name.csv\n\n"
       "Parameter list for in the middle heuristic\n"
       " * Global parameters"
       "  - limit: integer ]-oo, +oo[ in loop number\n"
@@ -186,7 +187,8 @@ help() noexcept
       "  - pushing-iteration-limit: integer [0, +oo[\n"
       "  - pushing-k-factor: real [0, +oo[\n"
       " * Initialization parameters\n"
-      "  - init-policy: bastert random best\n"
+      "  - init-policy: bastert random best bastert-cycle random-cycle "
+      "best-cycle\n"
       "  - init-random: real [0, 1]\n");
 }
 
@@ -382,6 +384,15 @@ assign_parameter(baryonyx::solver_parameters& params,
         else if (value == "best")
             params.init_policy =
               baryonyx::solver_parameters::init_policy_type::best;
+        else if (value == "bastert-cycle")
+            params.init_policy =
+              baryonyx::solver_parameters::init_policy_type::bastert_cycle;
+        else if (value == "random-cycle")
+            params.init_policy =
+              baryonyx::solver_parameters::init_policy_type::random_cycle;
+        else if (value == "best-cycle")
+            params.init_policy =
+              baryonyx::solver_parameters::init_policy_type::best_cycle;
     } else if (is_equal(name, "init-random")) {
         params.init_random = assign_01(value, params.init_random);
     } else if (is_equal(name, "thread")) {
