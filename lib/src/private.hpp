@@ -28,13 +28,10 @@
 #include <unordered_map>
 #include <utility>
 
+#include <fmt/color.h>
 #include <fmt/format.h>
 
 #include <cstdio>
-
-#ifndef _WIN32
-#include <unistd.h>
-#endif
 
 #define bx_stringify_detail(x) #x
 #define bx_stringify(x) bx_stringify_detail(x)
@@ -67,6 +64,8 @@ struct context
         debug,     ///< debug-level message
     };
 
+    static const fmt::text_style message_style[];
+
     enum class logger_type
     {
         c_file, ///< log are send to a C FILE* structure.
@@ -79,11 +78,6 @@ struct context
         if (verbose_level != 6)
             log_priority = static_cast<context::message_type>(
               verbose_level < 0 ? 0 : verbose_level > 7 ? 7 : verbose_level);
-
-#ifndef _WIN32
-        if (::isatty(::fileno(cfile_logger)))
-            color_cfile_logger = true;
-#endif
     }
 
     context(FILE* f, int verbose_level = 6)
@@ -92,11 +86,6 @@ struct context
         if (verbose_level != 6)
             log_priority = static_cast<context::message_type>(
               verbose_level < 0 ? 0 : verbose_level > 7 ? 7 : verbose_level);
-
-#ifndef _WIN32
-        if (::isatty(::fileno(cfile_logger)))
-            color_cfile_logger = true;
-#endif
     }
 
     context(string_logger_functor logger_, int verbose_level_ = 6)
@@ -106,7 +95,8 @@ struct context
     {
         if (verbose_level_ != 6)
             log_priority = static_cast<context::message_type>(
-              verbose_level_ < 0 ? 0 : verbose_level_ > 7 ? 7 : verbose_level_);
+              verbose_level_ < 0 ? 0
+                                 : verbose_level_ > 7 ? 7 : verbose_level_);
     }
 
     solver_parameters parameters;
@@ -116,132 +106,17 @@ struct context
     FILE* cfile_logger = stdout;
     message_type log_priority = context::message_type::info;
     logger_type logger = context::logger_type::c_file;
-    bool color_cfile_logger = false;
 };
 
 namespace details {
 
-enum class colors
-{
-    Default = 0,
-    Black,
-    Red,
-    Green,
-    Yellow,
-    Blue,
-    Magenta,
-    Cyan,
-    Light_gray,
-    Dark_gray,
-    Light_red,
-    Light_green,
-    Light_yellow,
-    Light_blue,
-    Light_magenta,
-    Light_cyan,
-    White,
-    No_color_change
-};
-
-enum class setters
-{
-    Reset = 0,
-    Bold,
-    Dim,
-    Underlined,
-    No_setter_change
-};
-
-static const char colors_str[][10] = {
-    "\033[39m", "\033[30m", "\033[31m", "\033[32m", "\033[33m", "\033[34m",
-    "\033[35m", "\033[36m", "\033[37m", "\033[90m", "\033[91m", "\033[92m",
-    "\033[93m", "\033[94m", "\033[95m", "\033[96m", "\033[97m"
-};
-
-static const char setters_str[][10] = { "\033[0m",
-                                        "\033[1m",
-                                        "\033[2m",
-                                        "\033[4m" };
-
 #ifdef __unix__
 #define error_symbol "\u26d4 "
 #define warning_symbol "\u26a0 "
+#else
+#define error_symbol ""
+#define warning_symbol ""
 #endif
-
-constexpr const char*
-color_to_str(baryonyx::details::colors c) noexcept
-{
-    return colors_str[static_cast<int>(c)];
-}
-
-constexpr inline const char*
-setter_to_str(baryonyx::details::setters s) noexcept
-{
-    return setters_str[static_cast<int>(s)];
-}
-
-struct log_color
-{
-    FILE* f;
-
-    constexpr log_color(FILE* f_, context::message_type type)
-      : f(f_)
-    {
-        switch (type) {
-        case context::message_type::emerg:
-            fmt::print(f, color_to_str(colors::Red));
-            fmt::print(f, setter_to_str(setters::Bold));
-#ifdef __unix__
-            fmt::print(f, error_symbol);
-#endif
-            break;
-        case context::message_type::alert:
-            fmt::print(f, color_to_str(colors::Red));
-#ifdef __unix__
-            fmt::print(f, error_symbol);
-#endif
-            break;
-        case context::message_type::crit:
-            fmt::print(f, color_to_str(colors::Magenta));
-            fmt::print(f, setter_to_str(setters::Bold));
-#ifdef __unix__
-            fmt::print(f, error_symbol);
-#endif
-            break;
-        case context::message_type::err:
-            fmt::print(f, color_to_str(colors::Magenta));
-#ifdef __unix__
-            fmt::print(f, error_symbol);
-#endif
-            break;
-        case context::message_type::warning:
-            fmt::print(f, color_to_str(colors::Yellow));
-            fmt::print(f, setter_to_str(setters::Bold));
-#ifdef __unix__
-            fmt::print(f, warning_symbol);
-#endif
-            break;
-        case context::message_type::notice:
-            fmt::print(f, color_to_str(colors::Yellow));
-            break;
-        case context::message_type::info:
-            fmt::print(f, color_to_str(colors::Default));
-            break;
-        case context::message_type::debug:
-            fmt::print(f, color_to_str(colors::Dark_gray));
-            break;
-        }
-    }
-
-    ~log_color() noexcept
-    {
-        try {
-            fmt::print(f, color_to_str(colors::Default));
-            fmt::print(f, setter_to_str(setters::Reset));
-        } catch (...) {
-        }
-    }
-};
 
 } // namespace details
 
@@ -263,12 +138,10 @@ log(const context_ptr& ctx,
         return;
 
     if (ctx->logger == context::logger_type::c_file) {
-        if (ctx->color_cfile_logger) {
-            details::log_color lc(ctx->cfile_logger, level);
-            fmt::print(ctx->cfile_logger, fmt, args...);
-        } else {
-            fmt::print(ctx->cfile_logger, fmt, args...);
-        }
+        fmt::print(ctx->cfile_logger,
+                   context::message_style[static_cast<int>(level)],
+                   fmt,
+                   args...);
     } else {
         ctx->string_logger(static_cast<int>(level), fmt::format(fmt, args...));
     }
@@ -282,12 +155,9 @@ log(const context_ptr& ctx, context::message_type level, const char* msg)
         return;
 
     if (ctx->logger == context::logger_type::c_file) {
-        if (ctx->color_cfile_logger) {
-            details::log_color lc(ctx->cfile_logger, level);
-            fmt::print(ctx->cfile_logger, msg);
-        } else {
-            fmt::print(ctx->cfile_logger, msg);
-        }
+        fmt::print(ctx->cfile_logger,
+                   context::message_style[static_cast<int>(level)],
+                   msg);
     } else {
         ctx->string_logger(static_cast<int>(level), fmt::format(msg));
     }
@@ -304,12 +174,10 @@ log(baryonyx::context* ctx,
         return;
 
     if (ctx->logger == context::logger_type::c_file) {
-        if (ctx->color_cfile_logger) {
-            details::log_color lc(ctx->cfile_logger, level);
-            fmt::print(ctx->cfile_logger, fmt, args...);
-        } else {
-            fmt::print(ctx->cfile_logger, fmt, args...);
-        }
+        fmt::print(ctx->cfile_logger,
+                   context::message_style[static_cast<int>(level)],
+                   fmt,
+                   args...);
     } else {
         ctx->string_logger(static_cast<int>(level), fmt::format(fmt, args...));
     }
@@ -323,12 +191,9 @@ log(baryonyx::context* ctx, context::message_type level, const char* msg)
         return;
 
     if (ctx->logger == context::logger_type::c_file) {
-        if (ctx->color_cfile_logger) {
-            details::log_color lc(ctx->cfile_logger, level);
-            fmt::print(ctx->cfile_logger, msg);
-        } else {
-            fmt::print(ctx->cfile_logger, msg);
-        }
+        fmt::print(ctx->cfile_logger,
+                   context::message_style[static_cast<int>(level)],
+                   msg);
     } else {
         ctx->string_logger(static_cast<int>(level), fmt::format(msg));
     }
@@ -560,12 +425,10 @@ log(const context_ptr& ctx, context::message_type level, const T& msg)
         return;
 
     if (ctx->logger == context::logger_type::c_file) {
-        if (ctx->color_cfile_logger) {
-            details::log_color lc(ctx->cfile_logger, level);
-            fmt::print(ctx->cfile_logger, "{}", msg);
-        } else {
-            fmt::print(ctx->cfile_logger, "{}", msg);
-        }
+        fmt::print(ctx->cfile_logger,
+                   context::message_style[static_cast<int>(level)],
+                   "{}",
+                   msg);
     } else {
         ctx->string_logger(static_cast<int>(level), fmt::format("{}", msg));
     }
@@ -579,12 +442,10 @@ log(baryonyx::context* ctx, context::message_type level, const T& msg)
         return;
 
     if (ctx->logger == context::logger_type::c_file) {
-        if (ctx->color_cfile_logger) {
-            details::log_color lc(ctx->cfile_logger, level);
-            fmt::print(ctx->cfile_logger, "{}", msg);
-        } else {
-            fmt::print(ctx->cfile_logger, "{}", msg);
-        }
+        fmt::print(ctx->cfile_logger,
+                   context::message_style[static_cast<int>(level)],
+                   "{}",
+                   msg);
     } else {
         ctx->string_logger(static_cast<int>(level), fmt::format("{}", msg));
     }

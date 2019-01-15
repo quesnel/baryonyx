@@ -686,8 +686,9 @@ main(int argc, const char* argv[])
     auto params = parse(argc, argv);
 
     if (params.filenames.empty()) {
-        fmt::print(fmt::color::red,
-                   "Missing lp/benchmark file(s), see --help\n");
+        fmt::print(stderr,
+                   fmt::emphasis::bold | fmt::fg(fmt::terminal_color::red),
+                   "Missing lp or benchmark file(s), see --help\n");
         return EXIT_SUCCESS;
     }
 
@@ -706,8 +707,11 @@ main(int argc, const char* argv[])
                        params.bench_name);
 
             if (!benchmark(ctx, filename, params.bench_name))
-                fmt::print(
-                  fmt::color::red, "Benchmark for {} failed.\n", filename);
+                fmt::print(stderr,
+                           fmt::emphasis::bold |
+                             fmt::fg(fmt::terminal_color::red),
+                           "Benchmark for {} failed.\n",
+                           filename);
         }
     } else {
         if (params.filenames.size() == 1) {

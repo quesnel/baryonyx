@@ -52,7 +52,8 @@ struct tester
     ~tester() noexcept
     {
         if (called_report_function == false) {
-            fmt::print(fmt::color::red,
+            fmt::print(stderr,
+                       fmt::emphasis::bold | fg(fmt::terminal_color::red),
                        "unit_test::report_errors() not called.\n\nUsage:\n"
                        "int main(int argc, char*[] argc)\n"
                        "{\n"
@@ -74,9 +75,13 @@ test_errors()
 }
 
 inline void
-ensures_impl(const char* expr, const char* file, int line, const char* function)
+ensures_impl(const char* expr,
+             const char* file,
+             int line,
+             const char* function)
 {
-    fmt::print(fmt::color::red,
+    fmt::print(stderr,
+               fmt::emphasis::bold | fg(fmt::terminal_color::red),
                "{} ({}): test '{}' failed in function '{}'\n",
                file,
                line,
@@ -93,7 +98,8 @@ ensures_equal_impl(const char* expr1,
                    int line,
                    const char* function)
 {
-    fmt::print(fmt::color::red,
+    fmt::print(stderr,
+               fmt::emphasis::bold | fg(fmt::terminal_color::red),
                "{} ({}): test '{} == {}' failed in function '{}'\n",
                file,
                line,
@@ -111,7 +117,8 @@ ensures_not_equal_impl(const char* expr1,
                        int line,
                        const char* function)
 {
-    fmt::print(fmt::color::red,
+    fmt::print(stderr,
+               fmt::emphasis::bold | fg(fmt::terminal_color::red),
                "{} ({}): test '{} != {}' failed in function '{}'\n",
                file,
                line,
@@ -128,7 +135,8 @@ ensures_throw_impl(const char* excep,
                    int line,
                    const char* function)
 {
-    fmt::print(fmt::color::red,
+    fmt::print(stderr,
+               fmt::emphasis::bold | fg(fmt::terminal_color::red),
                "{} ({}): exception '{}' throw failed in function '{}'\n",
                file,
                line,
@@ -144,7 +152,8 @@ ensures_not_throw_impl(const char* excep,
                        int line,
                        const char* function)
 {
-    fmt::print(fmt::color::red,
+    fmt::print(stderr,
+               fmt::emphasis::bold | fg(fmt::terminal_color::red),
                "{} ({}): exception '{}' not throw failed in function '{}'\n",
                file,
                line,
@@ -164,9 +173,12 @@ report_errors()
     int errors = tester.errors;
 
     if (errors == 0)
-        fmt::print(fmt::color::green, "\nNo errors detected.\n");
+        fmt::print(stdout,
+                   fmt::emphasis::bold | fg(fmt::terminal_color::green),
+                   "\nNo errors detected.\n");
     else
-        fmt::print(fmt::color::orange_red,
+        fmt::print(stderr,
+                   fmt::emphasis::bold | fg(fmt::terminal_color::red),
                    "\n{} error{} detected.\n",
                    errors,
                    (errors == 1 ? "" : "s"));
@@ -182,68 +194,75 @@ checks(const char* str, F f) noexcept
         f();
     } catch (const detail::unit_test_error&) {
     } catch (const std::exception& e) {
-        fmt::print(fmt::color::red, "{}: Exception throw: {}\n", str, e.what());
+        fmt::print(stderr,
+                   fmt::emphasis::bold | fg(fmt::terminal_color::red),
+                   "{}: Exception throw: {}\n",
+                   str,
+                   e.what());
         ++detail::test_errors();
     } catch (...) {
-        fmt::print(fmt::color::red, "{}: Unknown exception throw\n", str);
+        fmt::print(stderr,
+                   fmt::emphasis::bold | fg(fmt::terminal_color::red),
+                   "{}: Unknown exception throw\n",
+                   str);
         ++detail::test_errors();
     }
 }
 
 } // namespace unit_test
 
-#define Ensures(expr)                                                          \
-    do {                                                                       \
-        if (!(expr)) {                                                         \
-            unit_test::detail::ensures_impl(                                   \
-              #expr, __FILE__, __LINE__, __func__);                            \
-            throw unit_test::detail::unit_test_error();                        \
-        }                                                                      \
+#define Ensures(expr)                                                         \
+    do {                                                                      \
+        if (!(expr)) {                                                        \
+            unit_test::detail::ensures_impl(                                  \
+              #expr, __FILE__, __LINE__, __func__);                           \
+            throw unit_test::detail::unit_test_error();                       \
+        }                                                                     \
     } while (0)
 
-#define EnsuresEqual(expr1, expr2)                                             \
-    do {                                                                       \
-        if (!((expr1) == (expr2))) {                                           \
-            unit_test::detail::ensures_equal_impl(                             \
-              #expr1, #expr2, __FILE__, __LINE__, __func__);                   \
-            throw unit_test::detail::unit_test_error();                        \
-        }                                                                      \
+#define EnsuresEqual(expr1, expr2)                                            \
+    do {                                                                      \
+        if (!((expr1) == (expr2))) {                                          \
+            unit_test::detail::ensures_equal_impl(                            \
+              #expr1, #expr2, __FILE__, __LINE__, __func__);                  \
+            throw unit_test::detail::unit_test_error();                       \
+        }                                                                     \
     } while (0)
 
-#define EnsuresNotEqual(expr1, expr2)                                          \
-    do {                                                                       \
-        if (!((expr1) != (expr2))) {                                           \
-            unit_test::detail::ensures_not_equal_impl(                         \
-              #expr1, #expr2, __FILE__, __LINE__, __func__);                   \
-            throw unit_test::detail::unit_test_error();                        \
-        }                                                                      \
+#define EnsuresNotEqual(expr1, expr2)                                         \
+    do {                                                                      \
+        if (!((expr1) != (expr2))) {                                          \
+            unit_test::detail::ensures_not_equal_impl(                        \
+              #expr1, #expr2, __FILE__, __LINE__, __func__);                  \
+            throw unit_test::detail::unit_test_error();                       \
+        }                                                                     \
     } while (0)
 
-#define EnsuresThrow(expr, Excep)                                              \
-    do {                                                                       \
-        try {                                                                  \
-            expr;                                                              \
-            unit_test::detail::ensures_throw_impl(                             \
-              #Excep, __FILE__, __LINE__, __func__);                           \
-            throw unit_test::detail::unit_test_error();                        \
-        } catch (const Excep&) {                                               \
-        } catch (...) {                                                        \
-            unit_test::detail::ensures_throw_impl(                             \
-              #Excep, __FILE__, __LINE__, __func__);                           \
-            throw unit_test::detail::unit_test_error();                        \
-        }                                                                      \
+#define EnsuresThrow(expr, Excep)                                             \
+    do {                                                                      \
+        try {                                                                 \
+            expr;                                                             \
+            unit_test::detail::ensures_throw_impl(                            \
+              #Excep, __FILE__, __LINE__, __func__);                          \
+            throw unit_test::detail::unit_test_error();                       \
+        } catch (const Excep&) {                                              \
+        } catch (...) {                                                       \
+            unit_test::detail::ensures_throw_impl(                            \
+              #Excep, __FILE__, __LINE__, __func__);                          \
+            throw unit_test::detail::unit_test_error();                       \
+        }                                                                     \
     } while (0)
 
-#define EnsuresNotThrow(expr, Excep)                                           \
-    do {                                                                       \
-        try {                                                                  \
-            expr;                                                              \
-        } catch (const Excep&) {                                               \
-            unit_test::detail::ensures_not_throw_impl(                         \
-              #Excep, __FILE__, __LINE__, __func__);                           \
-            throw unit_test::detail::unit_test_error();                        \
-        } catch (...) {                                                        \
-        }                                                                      \
+#define EnsuresNotThrow(expr, Excep)                                          \
+    do {                                                                      \
+        try {                                                                 \
+            expr;                                                             \
+        } catch (const Excep&) {                                              \
+            unit_test::detail::ensures_not_throw_impl(                        \
+              #Excep, __FILE__, __LINE__, __func__);                          \
+            throw unit_test::detail::unit_test_error();                       \
+        } catch (...) {                                                       \
+        }                                                                     \
     } while (0)
 
 #endif // #ifndef ORG_VLEPROJECT_UNIT_TEST_HPP

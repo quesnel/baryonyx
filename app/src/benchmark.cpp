@@ -249,7 +249,8 @@ struct bench
         line.reserve(BUFSIZ);
 
         if (!std::getline(is, line)) {
-            fmt::print(fmt::color::red, "benchmark: fail to read header\n");
+          fmt::print(stderr, fmt::emphasis::bold | fmt::fg(fmt::terminal_color::red),
+                       "benchmark: fail to read header\n");
             return false;
         }
 
@@ -304,7 +305,8 @@ struct bench
                     fmt::print("rest solver\n");
                     is >> current;
                     if (!is) {
-                        fmt::print(fmt::color::red,
+                        fmt::print(fmt::emphasis::bold |
+                                     fmt::fg(fmt::terminal_color::red),
                                    "benchmark: fail to read data at line {}\n",
                                    line_pos);
                         return false;
@@ -414,12 +416,12 @@ struct bench
                  ++solver) {
 
                 if (array(i, solver) == lower)
-                    fmt::print(fmt::color::green,
+                    fmt::print(fg(fmt::color::green),
                                "{:>{}.3f} ",
                                array(i, solver),
                                row_length[solver]);
                 else if (array(i, solver) == upper)
-                    fmt::print(fmt::color::blue,
+                    fmt::print(fg(fmt::color::blue),
                                "{:>{}.3f} ",
                                array(i, solver),
                                row_length[solver]);
@@ -429,12 +431,12 @@ struct bench
             }
 
             if (current[i].solution == lower)
-                fmt::print(fmt::color::green,
+              fmt::print(fg(fmt::color::green),
                            "{:>{}.3f} ",
                            current[i].solution,
                            current_row_length);
             else if (current[i].solution == upper)
-                fmt::print(fmt::color::blue,
+                fmt::print(fg(fmt::color::blue),
                            "{:>{}.3f} ",
                            current[i].solution,
                            current_row_length);
@@ -454,15 +456,19 @@ benchmark(const baryonyx::context_ptr& ctx,
 {
     std::ifstream ifs(filepath);
     if (!ifs.is_open()) {
-        fmt::print(
-          fmt::color::red, "Can not open {} to start benchmark\n", filepath);
+        fmt::print(stderr,
+                   fmt::emphasis::bold | fmt::fg(fmt::terminal_color::red),
+                   "Can not open {} to start benchmark\n",
+                   filepath);
         return false;
     }
 
     bench b;
     if (!b.load(ifs)) {
-        fmt::print(
-          fmt::color::red, "Error reading the benchmark file: {}\n", filepath);
+        fmt::print(stderr,
+                   fmt::emphasis::bold | fmt::fg(fmt::terminal_color::red),
+                   "Error reading the benchmark file: {}\n",
+                   filepath);
         return false;
     }
 
