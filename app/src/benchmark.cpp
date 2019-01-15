@@ -26,6 +26,7 @@
 
 #include <fstream>
 #include <limits>
+#include <locale>
 #include <numeric>
 #include <unordered_map>
 
@@ -35,10 +36,44 @@
 
 #include <cmath>
 
-enum class model_status
+#if 0
+struct csv_whitespace : std::ctype<char>
 {
-    optimum,
-    feasible
+    static const mask* make_table()
+    {
+        static std::vector<mask> v(classic_table(),
+                                   classic_table() + table_size);
+
+        v[','] |= space;  // comma will be classified as whitespace
+        v[' '] &= ~space; // space will not be classified as whitespace
+
+        return &v[0];
+    }
+
+    csv_whitespace(std::size_t refs = 0)
+      : ctype(make_table(), false, refs)
+    {}
+};
+#endif
+
+struct csv_whitespace : std::ctype<char>
+{
+    static mask* make_table()
+    {
+        auto* v = new mask[table_size];
+        std::copy_n(classic_table(), table_size, v);
+
+        v[static_cast<int>(',')] |=
+          space; // comma will be classified as whitespace
+        v[static_cast<int>(' ')] &=
+          ~space; // space will not be classified as whitespace
+
+        return &v[0];
+    }
+
+    csv_whitespace(std::size_t refs = 0)
+      : ctype(make_table(), true, refs)
+    {}
 };
 
 enum class read_status
@@ -47,38 +82,6 @@ enum class read_status
     eof,
     error
 };
-
-read_status
-read_string(std::istream& is, std::string& value)
-{
-    if (!(std::getline(is, value, ',')))
-        return is.eof() ? read_status::eof : read_status::error;
-
-    return read_status::success;
-}
-
-read_status
-read_last_string(std::istream& is, std::string& value)
-{
-    if (!(std::getline(is, value)))
-        return is.eof() ? read_status::eof : read_status::error;
-
-    return read_status::success;
-}
-
-constexpr const char* const model_status_string[]{ "optimum", "feasible" };
-
-static model_status
-model_status_from_string(std::string s)
-{
-    if (s == "optimum")
-        return model_status::optimum;
-
-    if (s == "feasible")
-        return model_status::feasible;
-
-    return model_status::optimum;
-}
 
 static bool
 have_lp_extension(std::string filename)
@@ -114,18 +117,16 @@ struct bench
 
         model(std::string name_)
           : name(name_)
-          , status(model_status::optimum)
+          , best_solution(std::numeric_limits<double>::infinity())
         {}
 
-        model(std::string name_, std::string status_, double best_solution_)
+        model(std::string name_, double best_solution_)
           : name(name_)
           , best_solution(best_solution_)
-          , status(model_status_from_string(status_))
         {}
 
         std::string name;     // e.g. scpnrf3, scpd1 etc.
         double best_solution; // e.g. the best or optimum solution.
-        model_status status;  // status of the previous attribute.
 
         std::string filename() const
         {
@@ -195,13 +196,14 @@ struct bench
     std::unordered_map<std::string, int> solver_id;
     baryonyx::dynamic_array<double> array;
 
-    int push_back_model(std::string name,
-                        std::string status,
-                        double best_solution)
+    int push_back_model(std::string name, double best_solution)
     {
+        fmt::print("push back model {} - {}\n", name, best_solution);
+
         auto ret = filename_id.emplace(name, 0);
         if (ret.second) {
-            models.emplace_back(name, status, best_solution);
+            fmt::print(" => does not exists.\n");
+            models.emplace_back(name, best_solution);
             ret.first->second = static_cast<int>(models.size());
         }
 
@@ -210,8 +212,10 @@ struct bench
 
     int push_back_solver(std::string name)
     {
+        fmt::print("push back solver {}\n", name);
         auto ret = solver_id.emplace(name, 0);
         if (ret.second) {
+            fmt::print(" => does not exists.\n");
             solvers.emplace_back(name);
             ret.first->second = static_cast<int>(solvers.size());
         }
@@ -219,21 +223,18 @@ struct bench
         return ret.first->second;
     }
 
-    void save(std::ostream& os, const std::vector<element>& c)
+    void save(std::ostream& os,
+              std::string name,
+              const std::vector<element>& c)
     {
-        fmt::print(os, "file,st,opt");
+        fmt::print(os, "file,opt");
 
         for (const auto& elem : solvers)
             fmt::print(os, ",{}", elem.name);
-        fmt::print(os, "\n");
+        fmt::print(os, ",{}\n", name);
 
         for (std::size_t i{ 0 }, e{ models.size() }; i != e; ++i) {
-            fmt::print(os,
-                       "{} {} {} ",
-                       models[i].name,
-                       models[i].status == model_status::optimum ? "optimum"
-                                                                 : "feasible",
-                       models[i].best_solution);
+            fmt::print(os, "{},{},", models[i].name, models[i].best_solution);
 
             for (std::size_t j{ 0 }, end_j{ solvers.size() }; j != end_j; ++j)
                 fmt::print(os, "{},", array(i, j));
@@ -253,7 +254,6 @@ struct bench
         }
 
         int line_pos = 1;
-
         {
             std::string::size_type begin{ 0 };
             std::string::size_type end = line.find(',', begin);
@@ -262,17 +262,15 @@ struct bench
             do {
                 ++i;
 
-                if (i > 3)
+                fmt::print("load header: {}\n",
+                           line.substr(begin, end - begin));
+
+                if (i > 2)
                     push_back_solver(line.substr(begin, end - begin));
 
                 begin = end == std::string::npos ? end : end + 1;
                 end = line.find(',', begin);
             } while (begin < line.size());
-
-            if (solvers.empty()) {
-                fmt::print(fmt::color::red, "benchmark: not enough");
-                return false;
-            }
 
             fmt::print("{} solvers\n", solvers.size());
         }
@@ -280,29 +278,22 @@ struct bench
         ++line_pos;
         array.init(solvers.size());
 
+        is.imbue(std::locale(is.getloc(), new csv_whitespace));
+
         {
             std::string name;
-            std::string status;
             std::string best_solution;
             std::string current;
-            read_status ret = { read_status::success };
 
             while (is) {
-                ret = read_string(is, name);
-                if (ret != read_status::success)
+                is >> name >> best_solution;
+                if (!is.good())
                     break;
 
-                ret = read_string(is, status);
-                if (ret != read_status::success)
-                    break;
-
-                ret = read_string(is, best_solution);
-                if (ret != read_status::success)
-                    break;
+                fmt::print("load array: {} {}\n", name, best_solution);
 
                 push_back_model(
                   name,
-                  status,
                   to_double(best_solution,
                             std::numeric_limits<double>::infinity()));
 
@@ -310,6 +301,7 @@ struct bench
 
                 auto length{ solvers.size() };
                 for (std::size_t i{ 0 }; i != length; ++i) {
+                    fmt::print("rest solver\n");
                     is >> current;
                     if (!is) {
                         fmt::print(fmt::color::red,
@@ -326,7 +318,7 @@ struct bench
             }
         }
 
-        return array.rows() > 0 && array.cols() > 0;
+        return !models.empty();
     }
 
     void show_to_console(const std::vector<element>& current, std::string name)
@@ -374,11 +366,9 @@ struct bench
                            })
             ->name.size());
 
-        fmt::print("{:^{}} {:^{}} {:>{}} | ",
+        fmt::print("{:^{}} {:>{}} | ",
                    "file",
                    modelname_lenght_max,
-                   "status",
-                   8,
                    "best",
                    best_solution_row_length);
 
@@ -390,11 +380,9 @@ struct bench
         fmt::print("{:>{}}\n", name, current_row_length);
 
         for (size_t i{ 0 }; i != model_size; ++i) {
-            fmt::print("{:^{}} {:^{}} {:>{}.3f} | ",
+            fmt::print("{:^{}} {:>{}.3f} | ",
                        models[i].name,
                        modelname_lenght_max,
-                       model_status_string[static_cast<int>(models[i].status)],
-                       8,
                        models[i].best_solution,
                        best_solution_row_length);
 
@@ -497,7 +485,8 @@ benchmark(const baryonyx::context_ptr& ctx,
             auto result = baryonyx::optimize(ctx, rawpb);
 
             if (result)
-                current[i] = { result.duration, result.solutions.back().value };
+                current[i] = { result.duration,
+                               result.solutions.back().value };
             else
                 current[i] = { result.duration };
 
@@ -506,7 +495,8 @@ benchmark(const baryonyx::context_ptr& ctx,
         } catch (const baryonyx::postcondition_failure& e) {
             fmt::print(stderr, "internal failure: {}\n", e.what());
         } catch (const baryonyx::numeric_cast_failure& e) {
-            fmt::print(stderr, "numeric cast internal failure: {}\n", e.what());
+            fmt::print(
+              stderr, "numeric cast internal failure: {}\n", e.what());
         } catch (const baryonyx::file_access_failure& e) {
             fmt::print(stderr,
                        "file `{}' fail {}: {}\n",
@@ -598,10 +588,9 @@ benchmark(const baryonyx::context_ptr& ctx,
         }
     }
 
-    std::string output_filepath =
-      filepath.substr(0, filepath.rfind(".csv")) + "-new.csv";
-    std::ofstream ofs(output_filepath);
-    b.save(ofs, current);
+    std::ofstream ofs(filepath);
+    if (ofs.is_open())
+        b.save(ofs, name, current);
 
     b.show_to_console(current, name);
 
