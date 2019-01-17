@@ -46,6 +46,141 @@ check_clamp()
     Ensures(baryonyx::clamp(168, 0, +255) == 168);
     Ensures(baryonyx::clamp(128, -128, +127) == 127);
     Ensures(baryonyx::clamp(128, 0, +255) == 128);
+
+    fmt::print("\n\nOnly 16 colors:\n");
+    fmt::print(fg(fmt::terminal_color::black), "A test of the color black\n");
+    fmt::print(fg(fmt::terminal_color::red), "A test of the color red\n");
+    fmt::print(fg(fmt::terminal_color::green), "A test of the color green\n");
+    fmt::print(fg(fmt::terminal_color::yellow),
+               "A test of the color yellow\n");
+    fmt::print(fg(fmt::terminal_color::blue), "A test of the color blue\n");
+    fmt::print(fg(fmt::terminal_color::magenta),
+               "A test of the color magenta\n");
+    fmt::print(fg(fmt::terminal_color::cyan), "A test of the color cyan\n");
+    fmt::print(fg(fmt::terminal_color::white), "A test of the color white\n");
+    fmt::print(fg(fmt::terminal_color::bright_black),
+               "A test of the color bright_black\n");
+    fmt::print(fg(fmt::terminal_color::bright_red),
+               "A test of the color bright_red\n");
+    fmt::print(fg(fmt::terminal_color::bright_green),
+               "A test of the color bright_green\n");
+    fmt::print(fg(fmt::terminal_color::bright_yellow),
+               "A test of the color bright_yellow\n");
+    fmt::print(fg(fmt::terminal_color::bright_blue),
+               "A test of the color bright_blue\n");
+    fmt::print(fg(fmt::terminal_color::bright_magenta),
+               "A test of the color bright_magenta\n");
+    fmt::print(fg(fmt::terminal_color::bright_cyan),
+               "A test of the color bright_cyan\n");
+    fmt::print(fg(fmt::terminal_color::bright_white),
+               "A test of the color bright_white\n");
+
+    fmt::print("\n\nBold + 16 colors:\n");
+    fmt::print(fmt::emphasis::bold | fg(fmt::terminal_color::black),
+               "A test of the color black\n");
+    fmt::print(fmt::emphasis::bold | fg(fmt::terminal_color::red),
+               "A test of the color red\n");
+    fmt::print(fmt::emphasis::bold | fg(fmt::terminal_color::green),
+               "A test of the color green\n");
+    fmt::print(fmt::emphasis::bold | fg(fmt::terminal_color::yellow),
+               "A test of the color yellow\n");
+    fmt::print(fmt::emphasis::bold | fg(fmt::terminal_color::blue),
+               "A test of the color blue\n");
+    fmt::print(fmt::emphasis::bold | fg(fmt::terminal_color::magenta),
+               "A test of the color magenta\n");
+    fmt::print(fmt::emphasis::bold | fg(fmt::terminal_color::cyan),
+               "A test of the color cyan\n");
+    fmt::print(fmt::emphasis::bold | fg(fmt::terminal_color::white),
+               "A test of the color white\n");
+    fmt::print(fmt::emphasis::bold | fg(fmt::terminal_color::bright_black),
+               "A test of the color bright_black\n");
+    fmt::print(fmt::emphasis::bold | fg(fmt::terminal_color::bright_red),
+               "A test of the color bright_red\n");
+    fmt::print(fmt::emphasis::bold | fg(fmt::terminal_color::bright_green),
+               "A test of the color bright_green\n");
+    fmt::print(fmt::emphasis::bold | fg(fmt::terminal_color::bright_yellow),
+               "A test of the color bright_yellow\n");
+    fmt::print(fmt::emphasis::bold | fg(fmt::terminal_color::bright_blue),
+               "A test of the color bright_blue\n");
+    fmt::print(fmt::emphasis::bold | fg(fmt::terminal_color::bright_magenta),
+               "A test of the color bright_magenta\n");
+    fmt::print(fmt::emphasis::bold | fg(fmt::terminal_color::bright_cyan),
+               "A test of the color bright_cyan\n");
+    fmt::print(fmt::emphasis::bold | fg(fmt::terminal_color::bright_white),
+               "A test of the color bright_white\n");
+
+    fmt::print("\n\nItalic + 16 colors:\n");
+    fmt::print(fmt::emphasis::italic | fg(fmt::terminal_color::black),
+               "A test of the color black\n");
+    fmt::print(fmt::emphasis::italic | fg(fmt::terminal_color::red),
+               "A test of the color red\n");
+    fmt::print(fmt::emphasis::italic | fg(fmt::terminal_color::green),
+               "A test of the color green\n");
+    fmt::print(fmt::emphasis::italic | fg(fmt::terminal_color::yellow),
+               "A test of the color yellow\n");
+    fmt::print(fmt::emphasis::italic | fg(fmt::terminal_color::blue),
+               "A test of the color blue\n");
+    fmt::print(fmt::emphasis::italic | fg(fmt::terminal_color::magenta),
+               "A test of the color magenta\n");
+    fmt::print(fmt::emphasis::italic | fg(fmt::terminal_color::cyan),
+               "A test of the color cyan\n");
+    fmt::print(fmt::emphasis::italic | fg(fmt::terminal_color::white),
+               "A test of the color white\n");
+    fmt::print(fmt::emphasis::italic | fg(fmt::terminal_color::bright_black),
+               "A test of the color bright_black\n");
+    fmt::print(fmt::emphasis::italic | fg(fmt::terminal_color::bright_red),
+               "A test of the color bright_red\n");
+    fmt::print(fmt::emphasis::italic | fg(fmt::terminal_color::bright_green),
+               "A test of the color bright_green\n");
+    fmt::print(fmt::emphasis::italic | fg(fmt::terminal_color::bright_yellow),
+               "A test of the color bright_yellow\n");
+    fmt::print(fmt::emphasis::italic | fg(fmt::terminal_color::bright_blue),
+               "A test of the color bright_blue\n");
+    fmt::print(fmt::emphasis::italic | fg(fmt::terminal_color::bright_magenta),
+               "A test of the color bright_magenta\n");
+    fmt::print(fmt::emphasis::italic | fg(fmt::terminal_color::bright_cyan),
+               "A test of the color bright_cyan\n");
+    fmt::print(fmt::emphasis::italic | fg(fmt::terminal_color::bright_white),
+               "A test of the color bright_white\n");
+
+    fmt::print("\n\nUnderline + 16 colors:\n");
+    fmt::print(fmt::emphasis::underline | fg(fmt::terminal_color::black),
+               "A test of the color black\n");
+    fmt::print(fmt::emphasis::underline | fg(fmt::terminal_color::red),
+               "A test of the color red\n");
+    fmt::print(fmt::emphasis::underline | fg(fmt::terminal_color::green),
+               "A test of the color green\n");
+    fmt::print(fmt::emphasis::underline | fg(fmt::terminal_color::yellow),
+               "A test of the color yellow\n");
+    fmt::print(fmt::emphasis::underline | fg(fmt::terminal_color::blue),
+               "A test of the color blue\n");
+    fmt::print(fmt::emphasis::underline | fg(fmt::terminal_color::magenta),
+               "A test of the color magenta\n");
+    fmt::print(fmt::emphasis::underline | fg(fmt::terminal_color::cyan),
+               "A test of the color cyan\n");
+    fmt::print(fmt::emphasis::underline | fg(fmt::terminal_color::white),
+               "A test of the color white\n");
+    fmt::print(fmt::emphasis::underline |
+                 fg(fmt::terminal_color::bright_black),
+               "A test of the color bright_black\n");
+    fmt::print(fmt::emphasis::underline | fg(fmt::terminal_color::bright_red),
+               "A test of the color bright_red\n");
+    fmt::print(fmt::emphasis::underline |
+                 fg(fmt::terminal_color::bright_green),
+               "A test of the color bright_green\n");
+    fmt::print(fmt::emphasis::underline |
+                 fg(fmt::terminal_color::bright_yellow),
+               "A test of the color bright_yellow\n");
+    fmt::print(fmt::emphasis::underline | fg(fmt::terminal_color::bright_blue),
+               "A test of the color bright_blue\n");
+    fmt::print(fmt::emphasis::underline |
+                 fg(fmt::terminal_color::bright_magenta),
+               "A test of the color bright_magenta\n");
+    fmt::print(fmt::emphasis::underline | fg(fmt::terminal_color::bright_cyan),
+               "A test of the color bright_cyan\n");
+    fmt::print(fmt::emphasis::underline |
+                 fg(fmt::terminal_color::bright_white),
+               "A test of the color bright_white\n");
 }
 
 static void

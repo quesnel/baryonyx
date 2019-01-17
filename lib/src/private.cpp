@@ -26,13 +26,14 @@
 namespace baryonyx {
 
 const fmt::text_style context::message_style[] = {
-        ( fmt::emphasis::bold | fmt::fg(fmt::terminal_color::red) ),
-        ( fmt::emphasis::bold | fmt::fg(fmt::terminal_color::red) ),
-        ( fmt::emphasis::bold | fmt::fg(fmt::terminal_color::bright_red) ),
-        ( fmt::fg(fmt::terminal_color::magenta) ),
-        ( fmt::fg(fmt::terminal_color::blue) ),
-        ( fmt::fg(fmt::terminal_color::blue) ),
-        ( fmt::emphasis::italic | fmt::fg(fmt::terminal_color::blue) )
+    (fmt::emphasis::bold | fmt::fg(fmt::terminal_color::red)), // emerg
+    (fmt::emphasis::bold | fmt::fg(fmt::terminal_color::red)), // alert
+    (fmt::emphasis::bold | fmt::fg(fmt::terminal_color::red)), // crit
+    (fmt::fg(fmt::terminal_color::red)),                       // err
+    (fmt::fg(fmt::terminal_color::yellow)),                    // warning
+    (fmt::fg(fmt::terminal_color::white)),                     // notice
+    (fmt::fg(fmt::terminal_color::white)),                     // info
+    (fmt::fg(fmt::terminal_color::blue))                       // debug
 };
 
 void
