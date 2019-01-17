@@ -217,9 +217,11 @@ check_numeric_cast()
     Ensures(baryonyx::is_numeric_castable<long long>(large_negative));
 
     Ensures(baryonyx::is_numeric_castable<unsigned long long>(small_positive));
-    Ensures(!baryonyx::is_numeric_castable<unsigned long long>(small_negative));
+    Ensures(
+      !baryonyx::is_numeric_castable<unsigned long long>(small_negative));
     Ensures(baryonyx::is_numeric_castable<unsigned long long>(large_positive));
-    Ensures(!baryonyx::is_numeric_castable<unsigned long long>(large_negative));
+    Ensures(
+      !baryonyx::is_numeric_castable<unsigned long long>(large_negative));
 
     Ensures(!baryonyx::is_numeric_castable<size_t>(small_negative));
     Ensures(!baryonyx::is_numeric_castable<size_t>(large_negative));
@@ -530,8 +532,10 @@ check_observer_pnm()
         std::vector<double> v{ 0, 0.1, 0.2, 0.3 };
 
         for (int i = 0; i != 4; ++i) {
-            std::transform(
-              v.begin(), v.end(), obs.begin(), baryonyx::colormap(-1.0f, 1.0f));
+            std::transform(v.begin(),
+                           v.end(),
+                           obs.begin(),
+                           baryonyx::colormap(-1.0f, 1.0f));
             obs.flush();
 
             std::transform(v.begin(),
@@ -571,7 +575,7 @@ check_show_size()
 }
 
 int
-main(int /* argc */, char* /* argv */[])
+main(int /* argc */, char* /* argv */ [])
 {
     unit_test::checks("check_clamp", check_clamp);
     unit_test::checks("check_numeric_cast", check_numeric_cast);
