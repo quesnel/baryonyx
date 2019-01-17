@@ -1,9 +1,41 @@
 = Baryonyx
 Gauthier Quesnel <gauthier.quesnel@inra.fr>
 
+== baryonyx v0.3.4 - 2019-01-17
+
+main::
+
+* benchmark: add a benchmark mode to permit to run benchmark on a set of
+  problems described in a `csv` files and make easy comparison.
+
+* colours: improve colour rendering in log system. Replace specific Linux/Unix
+  source code about colour in (pseudo)terminal with the `fmt::text_style` and
+  `fmt::terminal_color` enumeration.
+
+* add warning message for unknown parameters
+
+solver/optimizer::
+
+* core: add init policy cycle:
+  ** `bastert` (default): use cost values.
+  ** `random`: use random value.
+  ** `best`: use best solution found if available (`bastert` otherwise).
+  ** `bastert-cycle`: start with bastert policy then start a cycle between
+       random, best and bastert.
+  ** `random-cycle`: start with random policy then start a cycle between best,
+       bastert and random.
+  ** `best-cycle`: start with best policy then start a cycle between bastert,
+       random and best.
+
+* core: add lagrangian runtime constraint order.
+  ** `lagrangian-decr`: sort violated constraints according to the Lagrangian
+     multiplier values in decremental order.
+  ** `lagrangian-incr`: sort violated constraints according to the Lagrangian
+     multiplier values in incremental order
+
 == baryonyx v0.3.3 - 2018-10-04
 
-main:
+main::
 
 * output: better render output float number
 

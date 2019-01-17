@@ -375,7 +375,9 @@ baryonyx -p limit:-1 -p kappa-min:0.2 lib/test/prevl1.lp
 
 === Benchmark
 
-Baryonyx permits to run benchmark on a set of problems described in a csv files. This option is available using the `--bench [name]` option and csv files. All Baryonyx parameters are available to perform the benchmark.
+Baryonyx permits to run benchmark on a set of problems described in a `csv`
+files. This option is available using the `--bench [name]` option and `csv`
+files. All Baryonyx parameters are available to perform the benchmark.
 
 For example:
 
@@ -383,7 +385,8 @@ For example:
 baryonyx --bench bx-0.3 -pdelta:0.01 -ptime-limit:60 spp.csv
 ....
 
-The benchmark mode generates a new `spp-new.csv` file with results of computation. The csv format is:
+The benchmark mode updates the `csv` file with results of computation. The
+`csv` format is:
 
 ....
 file optimum status cplex lsp bx-0.2 <1>
