@@ -102,6 +102,10 @@ struct context
     solver_parameters parameters;
     std::string method;
 
+    solver_started_cb start;
+    solver_updated_cb update;
+    solver_finished_cb finish;
+
     string_logger_functor string_logger;
     FILE* cfile_logger = stdout;
     message_type log_priority = context::message_type::info;

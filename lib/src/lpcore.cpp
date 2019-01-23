@@ -63,6 +63,17 @@ make_context(string_logger_functor logger, int verbose_level)
                        &context_deleter);
 }
 
+void
+context_assign_callback(const context_ptr& ctx,
+                        solver_started_cb start,
+                        solver_updated_cb update,
+                        solver_finished_cb finish)
+{
+    ctx->start = start;
+    ctx->update = update;
+    ctx->finish = finish;
+}
+
 raw_problem
 make_problem(const baryonyx::context_ptr& ctx, const std::string& filename)
 {
