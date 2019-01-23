@@ -23,7 +23,6 @@
 #include "itm-common.hpp"
 #include "itm-optimizer-common.hpp"
 #include "itm-solver-common.hpp"
-#include "sparse-vector.hpp"
 
 namespace baryonyx {
 namespace itm {

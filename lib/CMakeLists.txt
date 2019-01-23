@@ -45,7 +45,6 @@ set(private_baryonyx_source
  src/result.hpp
  src/resume.hpp
  src/sparse-matrix.hpp
- src/sparse-vector.hpp
  src/utils.hpp)
 
 add_library(libbaryonyx SHARED ${public_baryonyx_header} ${private_baryonyx_source})
