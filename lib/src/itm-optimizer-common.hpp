@@ -70,7 +70,7 @@ struct best_solution_recorder
                   compute_duration(m_start, std::chrono::steady_clock::now());
 
                 if (m_ctx->update)
-                    m_ctx->update(m_ctx, m_best);
+                    m_ctx->update(m_best);
 #if 0
                 info(m_ctx,
                      "  - Constraints remaining: {} (i={} t={}s)\n",
@@ -95,7 +95,7 @@ struct best_solution_recorder
                   compute_duration(m_start, std::chrono::steady_clock::now());
 
                 if (m_ctx->update)
-                    m_ctx->update(m_ctx, m_best);
+                    m_ctx->update(m_best);
 #if 0
                 if (loop >= 0)
                     info(m_ctx,
@@ -240,10 +240,11 @@ struct optimize_functor
                 auto remaining = compute.run(slv, x, kappa, delta, theta);
 
                 if (remaining == 0) {
-                    store_if_better(x,
-                                    results(x, original_costs, cost_constant, variables),
-                                    i,
-                                    best_recorder);
+                    store_if_better(
+                      x,
+                      results(x, original_costs, cost_constant, variables),
+                      i,
+                      best_recorder);
                     best_remaining = remaining;
                     break;
                 }
@@ -285,10 +286,11 @@ struct optimize_functor
                                        pushing_objective_amplifier);
 
                 if (remaining == 0)
-                    store_if_better(x,
-                                    results(x, original_costs, cost_constant, variables),
-                                    -push * p.pushing_iteration_limit - 1,
-                                    best_recorder);
+                    store_if_better(
+                      x,
+                      results(x, original_costs, cost_constant, variables),
+                      -push * p.pushing_iteration_limit - 1,
+                      best_recorder);
 
                 for (int iter = 0; iter < p.pushing_iteration_limit; ++iter) {
                     remaining = compute.run(slv, x, kappa, delta, theta);
@@ -400,7 +402,7 @@ inline result
 optimize_problem(const context_ptr& ctx, const problem& pb)
 {
     if (ctx->start)
-        ctx->start(ctx);
+        ctx->start(ctx->parameters);
 
 #if 0
     info(ctx, "- Optimizer initializing\n");
@@ -495,6 +497,9 @@ optimize_problem(const context_ptr& ctx, const problem& pb)
             }
         }
     }
+
+    if (ctx->finish)
+        ctx->finish(ret);
 
     return ret;
 }

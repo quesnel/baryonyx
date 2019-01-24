@@ -202,17 +202,16 @@ struct solver_inequalities_101coeff_buffered
                 return i - 1;
 
         return bkmax - 1;
-
     }
 
     template<typename Xtype, typename Iterator>
-    void push_and_compute_update_row(Xtype& x,
+    void push_and_compute_update_row(Xtype& /*x*/,
                                      Iterator first,
                                      Iterator last,
-                                     Float kappa,
-                                     Float delta,
+                                     Float /*kappa*/,
+                                     Float /*delta*/,
                                      Float theta,
-                                     Float obj_amp)
+                                     Float /*obj_amp*/)
     {
         for (int i = 0; i != n; ++i)
             sum_ap[i] =
@@ -276,11 +275,11 @@ struct solver_inequalities_101coeff_buffered
     }
 
     template<typename Xtype, typename Iterator>
-    void compute_update_row(Xtype& x,
+    void compute_update_row(Xtype& /*x*/,
                             Iterator first,
                             Iterator last,
-                            Float kappa,
-                            Float delta,
+                            Float /*kappa*/,
+                            Float /*delta*/,
                             Float theta)
     {
         for (int i = 0; i != n; ++i)
@@ -433,8 +432,9 @@ select_mode(const context_ptr& ctx, const problem& pb, bool is_optimization)
 {
     const auto m = static_cast<int>(pb.type);
 
-    return m == 0 ? select_random<Float, mode_sel<0>>(ctx, pb, is_optimization)
-                  : select_random<Float, mode_sel<1>>(ctx, pb, is_optimization);
+    return m == 0
+             ? select_random<Float, mode_sel<0>>(ctx, pb, is_optimization)
+             : select_random<Float, mode_sel<1>>(ctx, pb, is_optimization);
 }
 
 static result

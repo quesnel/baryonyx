@@ -643,20 +643,30 @@ struct result
     }
 };
 
-using solver_started_cb = std::function<void(const context_ptr& ctx)>;
+/// Function called after the preprocessor.
+using solver_started_cb = std::function<void(const solver_parameters& params)>;
 
-using solver_updated_cb = std::function<void(const context_ptr& ctx, const
-                                             result& r)>;
+/// Function called for each solution improvement.
+using solver_updated_cb = std::function<void(const result& r)>;
 
-using solver_finished_cb = std::function<void(const context_ptr& ctx, const
-                                              result& r)>;
+/// finish Function called at the end of the computation.
+using solver_finished_cb = std::function<void(const result& r)>;
 
+/**
+ * @brief Register callback functions.
+ * @details These functions are called during computation of the @c solver or
+ *     @c optimize functions. They allow to retrieve data during computation.
+ *
+ * @param ctx Baryonyx's internal state.
+ * @param start Function called after the preprocessor.
+ * @param update Function called for each solution improvement.
+ * @param finish Function called at the end of the computation.
+ */
 BARYONYX_API void
-context_assign_callback(
-    const context_ptr& ctx,
-    solver_started_cb start = solver_started_cb(),
-    solver_updated_cb update = solver_updated_cb(),
-    solver_finished_cb finish = solver_finished_cb());
+context_register(const context_ptr& ctx,
+                 solver_started_cb start = solver_started_cb(),
+                 solver_updated_cb update = solver_updated_cb(),
+                 solver_finished_cb finish = solver_finished_cb());
 
 /**
  * Read a @e lp file from the @e file.

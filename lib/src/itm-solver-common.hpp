@@ -126,9 +126,6 @@ struct solver_functor
         m_begin = std::chrono::steady_clock::now();
         m_end = std::chrono::steady_clock::now();
 
-        if (m_ctx->start)
-            m_ctx->start(m_ctx);
-
         for (int i = 0; i != p.limit; ++i) {
             auto remaining = compute.run(slv, x, kappa, delta, theta);
             obs.make_observation();
@@ -253,7 +250,7 @@ private:
             m_best.duration = duration();
 
             if (m_ctx->update)
-                m_ctx->update(m_ctx, m_best);
+                m_ctx->update(m_best);
 
 #if 0
             info(m_ctx,
@@ -275,7 +272,7 @@ private:
             m_best.duration = duration();
 
             if (m_ctx->update)
-                m_ctx->update(m_ctx, m_best);
+                m_ctx->update(m_best);
 
 #if 0
             if (i >= 0)
@@ -304,7 +301,7 @@ inline result
 solve_problem(const context_ptr& ctx, const problem& pb)
 {
     if (ctx->start)
-        ctx->start(ctx);
+        ctx->start(ctx->parameters);
 
 #if 0
     info(ctx, "- Solver initializing\n");
@@ -358,6 +355,9 @@ solve_problem(const context_ptr& ctx, const problem& pb)
         ret.status = result_status::success;
     }
     ret.affected_vars = std::move(affected_vars);
+
+    if (ctx->finish)
+        ctx->finish(ret);
 
     return ret;
 }

@@ -20,6 +20,7 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+#include <baryonyx/core-out>
 #include <baryonyx/core-utils>
 
 #include "main.hpp"
@@ -59,6 +60,130 @@ get_pid() noexcept
     return ::GetCurrentProcessId();
 }
 #endif
+
+static void
+solver_started_cb(const baryonyx::solver_parameters& params)
+{
+    fmt::print("Solver starts\n");
+
+    fmt::print(" * Global parameters:\n"
+               "  - limit: {}\n"
+               "  - time-limit: {:.10g}s\n"
+               "  - floating-point-type: {}\n"
+               "  - print-level: {}\n"
+               "  - auto-tune: {}\n"
+               "  - observation: {}\n",
+               params.limit,
+               params.time_limit,
+               baryonyx::floating_point_type_to_string(params.float_type),
+               params.print_level,
+               baryonyx::mode_type_to_string(params.mode),
+               baryonyx::observer_type_to_string(params.observer));
+
+    fmt::print(" * In The Middle parameters:\n"
+               "  - preprocessing: {}\n"
+               "  - constraint-order: {}\n"
+               "  - theta: {:.10g}\n"
+               "  - delta: {:.10g}\n"
+               "  - kappa: {:.10g} {:.10g} {:.10g}\n"
+               "  - alpha: {:.10g}\n"
+               "  - w: {}\n"
+               "  - norm: {}\n",
+               baryonyx::pre_constraint_order_to_string(params.pre_order),
+               baryonyx::constraint_order_to_string(params.order),
+               params.theta,
+               params.delta,
+               params.kappa_min,
+               params.kappa_step,
+               params.kappa_max,
+               params.alpha,
+               params.w,
+               baryonyx::cost_norm_type_to_string(params.cost_norm));
+
+    fmt::print(" * Pushes system parameters:\n"
+               "  - pushes-limit: {}\n"
+               "  - pushing-objective-amplifier: {:.10g}\n"
+               "  - pushing-iteration-limit: {}\n"
+               "  - pushing-k-factor: {:.10g}\n",
+               params.pushes_limit,
+               params.pushing_objective_amplifier,
+               params.pushing_iteration_limit,
+               params.pushing_k_factor);
+
+    fmt::print(" * Initialization parameters:\n"
+               "  - init-policy: {}\n"
+               "  - init-random: {:.10g}\n",
+               baryonyx::init_policy_type_to_string(params.init_policy),
+               params.init_random);
+}
+
+static void
+solver_updated_cb(const baryonyx::result& r)
+{
+    if (r.status != baryonyx::result_status::success) {
+        fmt::print("  - Constraints remaining: {} (loop: {} t: {}s)\n",
+                   r.remaining_constraints,
+                   r.loop,
+                   r.duration);
+    } else {
+        if (r.loop >= 0)
+            fmt::print("  - Solution found: {:f} (loop: {} t: {}s)\n",
+                       r.solutions.back().value,
+                       r.loop,
+                       r.duration);
+        else
+            fmt::print("  - Solution found via push: {:f} (loop: {} t: {}s)\n",
+                       r.solutions.back().value,
+                       -r.loop,
+                       r.duration);
+    }
+}
+
+static void
+solver_finished_cb(const baryonyx::result& r)
+{
+    fmt::print("Solver finished\n");
+
+    switch (r.status) {
+    case baryonyx::result_status::success:
+        if (r.loop >= 0)
+            fmt::print("Best solution found: {:.10g} in {} loop and {}s\n",
+                       r.solutions.back().value,
+                       r.loop,
+                       r.duration);
+        else
+            fmt::print(
+              "Best solution found via push: {:.10g} in {} loop and {}s\n",
+              r.solutions.back().value,
+              -r.loop,
+              r.duration);
+        break;
+    case baryonyx::result_status::internal_error:
+        fmt::print("No solution. Internal error\n");
+        break;
+    case baryonyx::result_status::uninitialized:
+        fmt::print("No solution. Uninitialized error\n");
+        break;
+    case baryonyx::result_status::kappa_max_reached:
+        fmt::print(
+          "No solution. Constraint remaining: {}. Kappa reached in {}s.\n",
+          r.remaining_constraints,
+          r.duration);
+        break;
+    case baryonyx::result_status::time_limit_reached:
+        fmt::print("No solution. Constraint remaining: {}. Time limit reached "
+                   "at {}s.\n",
+                   r.remaining_constraints,
+                   r.duration);
+        break;
+    case baryonyx::result_status::limit_reached:
+        fmt::print("No solution. Constraint remaining: {}. Loop limit reached "
+                   "in {}s.\n",
+                   r.remaining_constraints,
+                   r.duration);
+        break;
+    }
+}
 
 static std::tuple<std::string, std::string>
 split_argument(const char* param)
@@ -135,11 +260,8 @@ struct get_param
 static void
 help() noexcept
 {
-    fmt::print(stdout,
-               "Baryonyx v{}.{}.{}",
-               VERSION_MAJOR,
-               VERSION_MINOR,
-               VERSION_PATCH);
+    fmt::print(
+      "Baryonyx v{}.{}.{}", VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH);
 
     if (VERSION_TWEAK)
         fmt::print("-{}", VERSION_TWEAK);
@@ -696,6 +818,9 @@ main(int argc, const char* argv[])
     auto ctx = baryonyx::make_context(stdout, params.verbose);
     context_set_solver_parameters(ctx, params.parameters);
 
+    context_register(
+      ctx, solver_started_cb, solver_updated_cb, solver_finished_cb);
+
     if (params.bench) {
         for (auto filename : params.filenames) {
             if (params.bench_name.empty())
@@ -749,16 +874,6 @@ main(int argc, const char* argv[])
                   std::put_time(std::localtime(&in_time_t), "%Y-%m-%d %X"));
 
                 auto ret = solve_or_optimize(ctx, pb, params.optimize);
-
-                if (ret.status == baryonyx::result_status::success) {
-                    fmt::print("Best solution found: {} in {}s\n",
-                               ret.solutions.back().value,
-                               ret.duration);
-                } else {
-                    fmt::print("No solution found. Missing constraints: {}\n",
-                               ret.remaining_constraints);
-                }
-
                 in_time_t = std::chrono::system_clock::to_time_t(now);
 
                 fmt::print(

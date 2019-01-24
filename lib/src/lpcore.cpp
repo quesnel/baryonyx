@@ -64,14 +64,14 @@ make_context(string_logger_functor logger, int verbose_level)
 }
 
 void
-context_assign_callback(const context_ptr& ctx,
-                        solver_started_cb start,
-                        solver_updated_cb update,
-                        solver_finished_cb finish)
+context_register(const context_ptr& ctx,
+                 solver_started_cb start,
+                 solver_updated_cb update,
+                 solver_finished_cb finish)
 {
-    ctx->start = start;
-    ctx->update = update;
-    ctx->finish = finish;
+    ctx->start = std::move(start);
+    ctx->update = std::move(update);
+    ctx->finish = std::move(finish);
 }
 
 raw_problem
