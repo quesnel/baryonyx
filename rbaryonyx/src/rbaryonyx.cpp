@@ -28,6 +28,84 @@
 using namespace Rcpp;
 
 static void
+r_solver_started_cb(const baryonyx::solver_parameters& /*params*/)
+{
+    R_FlushConsole();
+    R_ProcessEvents();
+}
+
+static void
+r_solver_updated_cb(const baryonyx::result& r)
+{
+    if (r.status != baryonyx::result_status::success) {
+        Rprintf("  - Constraints remaining: %d (loop: %d t: %fs)\n",
+                r.remaining_constraints,
+                r.loop,
+                r.duration);
+    } else {
+        if (r.loop >= 0)
+            Rprintf("  - Solution found: %f (loop: %d t: %fs)\n",
+                    r.solutions.back().value,
+                    r.loop,
+                    r.duration);
+        else
+            Rprintf("  - Solution found via push: %f (loop: %d t: %fs)\n",
+                    r.solutions.back().value,
+                    -r.loop,
+                    r.duration);
+    }
+
+    R_FlushConsole();
+    R_ProcessEvents();
+}
+
+static void
+r_solver_finished_cb(const baryonyx::result& r)
+{
+    switch (r.status) {
+    case baryonyx::result_status::success:
+        if (r.loop >= 0)
+            Rprintf("Best solution found: %f in %d loop and %fs\n",
+                    r.solutions.back().value,
+                    r.loop,
+                    r.duration);
+        else
+            Rprintf("Best solution found via push: %f in %d loop and %fs\n",
+                    r.solutions.back().value,
+                    -r.loop,
+                    r.duration);
+        break;
+    case baryonyx::result_status::internal_error:
+        Rprintf("No solution. Internal error\n");
+        break;
+    case baryonyx::result_status::uninitialized:
+        Rprintf("No solution. Uninitialized error\n");
+        break;
+    case baryonyx::result_status::kappa_max_reached:
+        Rprintf(
+          "No solution. Constraint remaining: %d. Kappa reached in %fs.\n",
+          r.remaining_constraints,
+          r.duration);
+        break;
+    case baryonyx::result_status::time_limit_reached:
+        Rprintf("No solution. Constraint remaining: %d. Time limit reached "
+                "at %fs.\n",
+                r.remaining_constraints,
+                r.duration);
+        break;
+    case baryonyx::result_status::limit_reached:
+        Rprintf("No solution. Constraint remaining: %d. Loop limit reached "
+                "in %fs.\n",
+                r.remaining_constraints,
+                r.duration);
+        break;
+    }
+
+    R_FlushConsole();
+    R_ProcessEvents();
+}
+
+static void
 r_write(int level, std::string msg)
 {
     switch (level) {
@@ -387,6 +465,9 @@ solve_01lp_problem(std::string file_path,
 
     try {
         auto ctx = baryonyx::make_context(&r_write, verbose ? 6 : 4);
+        baryonyx::context_register(
+          ctx, r_solver_started_cb, r_solver_updated_cb, r_solver_finished_cb);
+
         auto pb = baryonyx::make_problem(ctx, file_path);
 
         minimize = (pb.type == baryonyx::objective_function_type::minimize);
@@ -533,6 +614,9 @@ optimize_01lp_problem(std::string file_path,
 
     try {
         auto ctx = baryonyx::make_context(&r_write, verbose ? 6 : 4);
+        baryonyx::context_register(
+          ctx, r_solver_started_cb, r_solver_updated_cb, r_solver_finished_cb);
+
         auto pb = baryonyx::make_problem(ctx, file_path);
 
         minimize = (pb.type == baryonyx::objective_function_type::minimize);
