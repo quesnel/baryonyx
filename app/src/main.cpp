@@ -263,9 +263,6 @@ help() noexcept
     fmt::print(
       "Baryonyx v{}.{}.{}", VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH);
 
-    if (VERSION_TWEAK)
-        fmt::print("-{}", VERSION_TWEAK);
-
     fmt::print(
       "\nGeneral options:\n"
       "  --help|-h                     This help message\n"

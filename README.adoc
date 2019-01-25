@@ -1,6 +1,6 @@
 = Baryonyx
 Gauthier Quesnel <gauthier.quesnel@inra.fr>
-v0.3.3, 2018-10-04
+v0.4.x, 2019-??-??
 :toc:
 :homepage: https://github.com/quesnel/baryonyx/
 
@@ -50,9 +50,9 @@ cd baryonyx
 git submodule update --init --recursive
 ....
 
-Default, Baryonyx provides a shared library `libbaryonyx-0.3.so` (with
-hidden symbol), a static library `libbaryonyx-0.3.a` (all symbols are
-public) and an executable `baryonyx-0.3`. To compile and install in
+Default, Baryonyx provides a shared library `libbaryonyx-0.4.so` (with
+hidden symbol), a static library `libbaryonyx-0.4.a` (all symbols are
+public) and an executable `baryonyx-0.4`. To compile and install in
 the default CMake install directory:
 
 ....
@@ -144,7 +144,7 @@ make install
 To run Baryonyx in solver mode (i.e. trying to valid all constraints):
 
 ....
-baryonyx-0.3 file.lp
+baryonyx-0.4 file.lp
 ....
 
 To run baryonyx into the heuristic model (i.e. trying to valid all
@@ -152,7 +152,7 @@ constraints and optimize the solution), add a `-o` or `--optimize`
 option to the command line:
 
 ....
-baryonyx-0.3 -o file.lp
+baryonyx-0.4 -o file.lp
 ....
 
 To run baryonyx into the heuristic model (i.e. trying to valid all
@@ -160,7 +160,7 @@ constraints and optimize the solution), add a `-o` or `--optimize`
 option to the command line:
 
 ....
-baryonyx-0.3 -o file.lp
+baryonyx-0.4 -o file.lp
 ....
 
 The Baryonyx solver have many parameters. Some parameters are global,
@@ -382,7 +382,7 @@ files. All Baryonyx parameters are available to perform the benchmark.
 For example:
 
 ....
-baryonyx --bench bx-0.3 -pdelta:0.01 -ptime-limit:60 spp.csv
+baryonyx --bench bx-0.4 -pdelta:0.01 -ptime-limit:60 spp.csv
 ....
 
 The benchmark mode updates the `csv` file with results of computation. The
