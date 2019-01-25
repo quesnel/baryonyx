@@ -1,4 +1,4 @@
-project(libbaryonyx VERSION 0.3.4.0 LANGUAGES CXX)
+project(libbaryonyx VERSION 0.4.0 LANGUAGES CXX)
 
 option(WITH_FULL_OPTIMIZATION "Disable all logging facilities and active heavy optimization code. [default: off]" OFF)
 
@@ -83,8 +83,7 @@ target_compile_definitions(libbaryonyx
   $<$<CXX_COMPILER_ID:MSVC>:_SCL_SECURE_NO_WARNINGS>
   VERSION_MAJOR=${PROJECT_VERSION_MAJOR}
   VERSION_MINOR=${PROJECT_VERSION_MINOR}
-  VERSION_PATCH=${PROJECT_VERSION_PATCH}
-  VERSION_TWEAK=${PROJECT_VERSION_TWEAK})
+  VERSION_PATCH=${PROJECT_VERSION_PATCH})
 
 target_compile_options(libbaryonyx PRIVATE
   $<$<CXX_COMPILER_ID:MSVC>:/bigobj>)
@@ -121,8 +120,7 @@ target_compile_definitions(libbaryonyx-static
   $<$<CXX_COMPILER_ID:MSVC>:_SCL_SECURE_NO_WARNINGS>
   VERSION_MAJOR=${PROJECT_VERSION_MAJOR}
   VERSION_MINOR=${PROJECT_VERSION_MINOR}
-  VERSION_PATCH=${PROJECT_VERSION_PATCH}
-  VERSION_TWEAK=${PROJECT_VERSION_TWEAK})
+  VERSION_PATCH=${PROJECT_VERSION_PATCH})
 
 target_compile_options(libbaryonyx-static PRIVATE
   $<$<CXX_COMPILER_ID:MSVC>:/bigobj>)
