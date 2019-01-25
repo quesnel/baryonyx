@@ -217,10 +217,11 @@ struct solver_inequalities_101coeff_buffered
             sum_ap[i] =
               std::make_tuple(static_cast<Float>(0), static_cast<Float>(0));
 
-        std::transform(P.get(),
-                       P.get() + ap.length(),
-                       P.get(),
-                       std::bind1st(std::multiplies<Float>(), theta));
+        std::transform(
+          P.get(),
+          P.get() + ap.length(),
+          P.get(),
+          std::bind(std::multiplies<Float>(), theta, std::placeholders::_1));
 
         for (auto it = first; it != last; ++it) {
             auto k = constraint(it);
@@ -286,10 +287,11 @@ struct solver_inequalities_101coeff_buffered
             sum_ap[i] =
               std::make_tuple(static_cast<Float>(0), static_cast<Float>(0));
 
-        std::transform(P.get(),
-                       P.get() + ap.length(),
-                       P.get(),
-                       std::bind1st(std::multiplies<Float>(), theta));
+        std::transform(
+          P.get(),
+          P.get() + ap.length(),
+          P.get(),
+          std::bind(std::multiplies<Float>(), theta, std::placeholders::_1));
 
         for (auto it = first; it != last; ++it) {
             auto k = constraint(it);

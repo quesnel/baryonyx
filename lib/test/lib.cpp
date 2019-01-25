@@ -538,10 +538,11 @@ check_observer_pnm()
                            baryonyx::colormap(-1.0f, 1.0f));
             obs.flush();
 
-            std::transform(v.begin(),
-                           v.end(),
-                           v.begin(),
-                           std::bind1st(std::plus<double>(), 0.1));
+            std::transform(
+              v.begin(),
+              v.end(),
+              v.begin(),
+              std::bind(std::plus<double>(), 0.1, std::placeholders::_1));
         }
     }
 }
