@@ -65,7 +65,7 @@ set_target_properties(libbaryonyx PROPERTIES
   INTERPROCEDURAL_OPTIMIZATION ON
   CXX_VISIBILITY_PRESET hidden
   VISIBILITY_INLINES_HIDDEN ON
-  CXX_STANDARD 14
+  CXX_STANDARD 17
   CXX_STANDARD_REQUIRED ON)
 
 if (CLANG_TIDY_EXE)
@@ -107,7 +107,7 @@ set_target_properties(libbaryonyx-static PROPERTIES
   POSITION_INDEPENDENT_CODE true
   OUTPUT_NAME "baryonyx-static-${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}"
   INTERPROCEDURAL_OPTIMIZATION ON
-  CXX_STANDARD 14
+  CXX_STANDARD 17
   CXX_STANDARD_REQUIRED ON)
 
 target_compile_definitions(libbaryonyx-static
@@ -153,7 +153,7 @@ add_executable(testio test/io.cpp)
 set_target_properties(testio PROPERTIES
   COMPILE_DEFINITIONS EXAMPLES_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}/test\"
   INTERPROCEDURAL_OPTIMIZATION ON
-  CXX_STANDARD 14
+  CXX_STANDARD 17
   CXX_STANDARD_REQUIRED ON)
 target_compile_definitions(testio
   PRIVATE
@@ -173,7 +173,7 @@ add_executable(testlib test/lib.cpp)
 set_target_properties(testlib PROPERTIES
   INTERPROCEDURAL_OPTIMIZATION ON
   COMPILE_DEFINITIONS EXAMPLES_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}/test\"
-  CXX_STANDARD 14
+  CXX_STANDARD 17
   CXX_STANDARD_REQUIRED ON)
 target_compile_definitions(testlib
   PRIVATE
@@ -193,7 +193,7 @@ add_executable(testpreprocess test/preprocess.cpp)
 set_target_properties(testpreprocess PROPERTIES
   INTERPROCEDURAL_OPTIMIZATION ON
   COMPILE_DEFINITIONS EXAMPLES_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}/test\"
-  CXX_STANDARD 14
+  CXX_STANDARD 17
   CXX_STANDARD_REQUIRED ON)
 target_compile_definitions(testpreprocess
   PRIVATE
@@ -213,7 +213,7 @@ add_executable(testsolver test/solve.cpp)
 set_target_properties(testsolver PROPERTIES
   INTERPROCEDURAL_OPTIMIZATION ON
   COMPILE_DEFINITIONS EXAMPLES_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}/test\"
-  CXX_STANDARD 14
+  CXX_STANDARD 17
   CXX_STANDARD_REQUIRED ON)
 target_compile_definitions(testsolver
   PRIVATE
@@ -233,7 +233,7 @@ add_executable(testoptimizer test/optimize.cpp)
 set_target_properties(testoptimizer PROPERTIES
   INTERPROCEDURAL_OPTIMIZATION ON
   COMPILE_DEFINITIONS EXAMPLES_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}/test\"
-  CXX_STANDARD 14
+  CXX_STANDARD 17
   CXX_STANDARD_REQUIRED ON)
 target_compile_definitions(testoptimizer
   PRIVATE

@@ -13,7 +13,7 @@ heuristic.
 | https://travis-ci.org/quesnel/baryonyx[image:https://travis-ci.org/quesnel/baryonyx.png?branch=master[Build Status]] | https://ci.appveyor.com/project/quesnel/baryonyx?branch=master[image:https://ci.appveyor.com/api/projects/status/github/quesnel/baryonyx?branch=master&svg=true[Build Status]]
 |============
 
-Copyright © 2017-2018 http://www.inra.fr/en[INRA]
+Copyright © 2017-2019 http://www.inra.fr/en[INRA]
 
 The software is released under the MIT license. See the LICENSE file.
 
@@ -21,9 +21,11 @@ The software is released under the MIT license. See the LICENSE file.
 
 === Requirements and recommended
 
-* `cmake` (≥ 3)
-* c++ compiler with c++14 support (`gcc` ≥ 5, `clang` ≥ 3.5, visual
-  studio 2017)
+* `cmake` (≥ 3.11)
+* $$C++$$ compiler with $$C++17$$ support:
+** `gcc` ≥ 7 (https://www.gnu.org/software/gcc/projects/cxx-status.html[notes])
+** `clang` ≥ 5 (https://clang.llvm.org/cxx_status.html[notes])
+** `visual studio 2017 15.9` with the latest patchs of 2018 (https://docs.microsoft.com/en-us/visualstudio/releasenotes/vs2017-relnotes[notes])
 
 For recent Debian GNU/Linux and Ubuntu derivatives (remove clang to
 only use gcc):
