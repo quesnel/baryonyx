@@ -1,9 +1,9 @@
-PKG_CPPFLAGS = -std=c++14 -I$(LP_PATH)/$(WIN)/lib/include -I$(MINGW_PATH)/mingw$(WIN)/include
-PKG_LIBS = -std=c++14 -Llibbaryonyx-0.3 -lbaryonyx-0.3
+PKG_CPPFLAGS = -std=c++17 -I$(LP_PATH)/$(WIN)/lib/include -I$(MINGW_PATH)/mingw$(WIN)/include
+PKG_LIBS = -std=c++17 -Llibbaryonyx-0.4 -lbaryonyx-0.4
 
-$(SHLIB): libbaryonyx-0.3/libbaryonyx-0.3.a
+$(SHLIB): libbaryonyx-0.4/libbaryonyx-0.4.a
 
-libbaryonyx-0.3/libbaryonyx-0.3.a:
-        @(rm -fr libbaryonyx-0.3 && mkdir libbaryonyx-0.3)
-        @(cp $(LP_PATH)/$(WIN)/lib/libbaryonyx-0.3.a libbaryonyx-0.3/libbaryonyx-0.3.a)
+libbaryonyx-0.4/libbaryonyx-0.4.a:
+        @(rm -fr libbaryonyx-0.4 && mkdir libbaryonyx-0.4)
+        @(cp $(LP_PATH)/$(WIN)/lib/libbaryonyx-0.4.a libbaryonyx-0.4/libbaryonyx-0.4.a)
 
