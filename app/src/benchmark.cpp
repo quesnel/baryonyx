@@ -37,26 +37,6 @@
 #include <cmath>
 #include <utility>
 
-#if 0
-struct csv_whitespace : std::ctype<char>
-{
-    static const mask* make_table()
-    {
-        static std::vector<mask> v(classic_table(),
-                                   classic_table() + table_size);
-
-        v[','] |= space;  // comma will be classified as whitespace
-        v[' '] &= ~space; // space will not be classified as whitespace
-
-        return &v[0];
-    }
-
-    csv_whitespace(std::size_t refs = 0)
-      : ctype(make_table(), false, refs)
-    {}
-};
-#endif
-
 struct csv_whitespace : std::ctype<char>
 {
     static mask* make_table()
@@ -64,24 +44,18 @@ struct csv_whitespace : std::ctype<char>
         auto* v = new mask[table_size];
         std::copy_n(classic_table(), table_size, v);
 
-        v[static_cast<int>(',')] |=
-          space; // comma will be classified as whitespace
-        v[static_cast<int>(' ')] &=
-          ~space; // space will not be classified as whitespace
+        // Comma will be classified as whitespace.
+        v[static_cast<int>(',')] |= space;
 
-        return &v[0];
+        // Space will not be classified as whitespace.
+        v[static_cast<int>(' ')] &= ~space;
+
+        return v;
     }
 
     csv_whitespace(std::size_t refs = 0)
       : ctype(make_table(), true, refs)
     {}
-};
-
-enum class read_status
-{
-    success,
-    eof,
-    error
 };
 
 static bool
@@ -198,11 +172,8 @@ struct bench
 
     int push_back_model(std::string name, double best_solution)
     {
-        fmt::print("push back model {} - {}\n", name, best_solution);
-
         auto ret = filename_id.emplace(name, 0);
         if (ret.second) {
-            fmt::print(" => does not exists.\n");
             models.emplace_back(name, best_solution);
             ret.first->second = static_cast<int>(models.size());
         }
@@ -212,10 +183,8 @@ struct bench
 
     int push_back_solver(std::string name)
     {
-        fmt::print("push back solver {}\n", name);
         auto ret = solver_id.emplace(name, 0);
         if (ret.second) {
-            fmt::print(" => does not exists.\n");
             solvers.emplace_back(name);
             ret.first->second = static_cast<int>(solvers.size());
         }
@@ -249,7 +218,8 @@ struct bench
         line.reserve(BUFSIZ);
 
         if (!std::getline(is, line)) {
-          fmt::print(stderr, fmt::emphasis::bold | fmt::fg(fmt::terminal_color::red),
+            fmt::print(stderr,
+                       fmt::emphasis::bold | fmt::fg(fmt::terminal_color::red),
                        "benchmark: fail to read header\n");
             return false;
         }
@@ -263,17 +233,12 @@ struct bench
             do {
                 ++i;
 
-                fmt::print("load header: {}\n",
-                           line.substr(begin, end - begin));
-
                 if (i > 2)
                     push_back_solver(line.substr(begin, end - begin));
 
                 begin = end == std::string::npos ? end : end + 1;
                 end = line.find(',', begin);
             } while (begin < line.size());
-
-            fmt::print("{} solvers\n", solvers.size());
         }
 
         ++line_pos;
@@ -291,8 +256,6 @@ struct bench
                 if (!is.good())
                     break;
 
-                fmt::print("load array: {} {}\n", name, best_solution);
-
                 push_back_model(
                   name,
                   to_double(best_solution,
@@ -302,7 +265,6 @@ struct bench
 
                 auto length{ solvers.size() };
                 for (std::size_t i{ 0 }; i != length; ++i) {
-                    fmt::print("rest solver\n");
                     is >> current;
                     if (!is) {
                         fmt::print(fmt::emphasis::bold |
@@ -431,7 +393,7 @@ struct bench
             }
 
             if (current[i].solution == lower)
-              fmt::print(fg(fmt::color::green),
+                fmt::print(fg(fmt::color::green),
                            "{:>{}.3f} ",
                            current[i].solution,
                            current_row_length);
