@@ -149,35 +149,19 @@ struct solver_functor
                                                alpha);
 
             if (kappa > kappa_max) {
-#if 0
-                info(m_ctx, "  - Kappa max reached: {:+.6f}\n", kappa);
-#endif
                 m_best.status = result_status::kappa_max_reached;
                 break;
             }
 
             if (is_timelimit_reached()) {
-#if 0
-                info(m_ctx, "  - Time limit reached: {} {:+.6f}\n", i, kappa);
-#endif
                 m_best.status = result_status::time_limit_reached;
                 break;
             }
         }
 
         if (!start_push) {
-#if 0
-            info(m_ctx, "  - No solution found.\n");
-#endif
             m_best.status = result_status::limit_reached;
         } else {
-#if 0
-            info(m_ctx,
-                 "  - Starts pushes (limit: {} iterations: {})\n",
-                 p.pushes_limit,
-                 p.pushing_iteration_limit);
-#endif
-
             for (int push = 0; push < p.pushes_limit; ++push) {
                 auto remaining =
                   compute.push_and_run(slv,
@@ -251,14 +235,6 @@ private:
 
             if (m_ctx->update)
                 m_ctx->update(m_best);
-
-#if 0
-            info(m_ctx,
-                 "  - Constraints remaining: {} (i={} t={}s)\n",
-                 remaining,
-                 i,
-                 m_best.duration);
-#endif
         }
     }
 
@@ -273,21 +249,6 @@ private:
 
             if (m_ctx->update)
                 m_ctx->update(m_best);
-
-#if 0
-            if (i >= 0)
-                info(m_ctx,
-                     "  - Solution found: {:f} (i={} t={}s)\n",
-                     current,
-                     i,
-                     m_best.duration);
-            else
-                info(m_ctx,
-                     "  - Solution found via push: {:f} (i={} t={}s)\n",
-                     current,
-                     i,
-                     m_best.duration);
-#endif
         }
     }
 };
@@ -302,11 +263,6 @@ solve_problem(const context_ptr& ctx, const problem& pb)
 {
     if (ctx->start)
         ctx->start(ctx->parameters);
-
-#if 0
-    info(ctx, "- Solver initializing\n");
-    print(ctx);
-#endif
 
     result ret;
     auto affected_vars = std::move(pb.affected_vars);

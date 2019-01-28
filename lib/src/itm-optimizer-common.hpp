@@ -71,13 +71,6 @@ struct best_solution_recorder
 
                 if (m_ctx->update)
                     m_ctx->update(m_best);
-#if 0
-                info(m_ctx,
-                     "  - Constraints remaining: {} (i={} t={}s)\n",
-                     remaining_constraints,
-                     loop,
-                     m_best.duration);
-#endif
             }
         } catch (const std::exception& e) {
             error(m_ctx, "sync optimization error: {}", e.what());
@@ -96,20 +89,6 @@ struct best_solution_recorder
 
                 if (m_ctx->update)
                     m_ctx->update(m_best);
-#if 0
-                if (loop >= 0)
-                    info(m_ctx,
-                         "  - Solution found: {:f} (i={} t={}s)\n",
-                         value,
-                         loop,
-                         m_best.duration);
-                else
-                    info(m_ctx,
-                         "  - Solution found via push: {:f} (i={} t={}s)\n",
-                         value,
-                         loop,
-                         m_best.duration);
-#endif
             }
         } catch (const std::exception& e) {
             error(m_ctx, "sync optimization error: {}", e.what());
@@ -404,11 +383,6 @@ optimize_problem(const context_ptr& ctx, const problem& pb)
     if (ctx->start)
         ctx->start(ctx->parameters);
 
-#if 0
-    info(ctx, "- Optimizer initializing\n");
-    print(ctx);
-#endif
-
     result ret;
 
     auto constraints{ make_merged_constraints(ctx, pb) };
@@ -429,13 +403,6 @@ optimize_problem(const context_ptr& ctx, const problem& pb)
         results.clear();
 
         best_solution_recorder<Float, Mode> result(ctx);
-
-#if 0
-        if (thread == 1)
-            info(ctx, "  - optimizer uses one thread\n");
-        else
-            info(ctx, "  - optimizer uses {} threads\n", thread);
-#endif
 
         auto seeds = generate_seed(rng, thread);
 
