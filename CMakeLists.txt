@@ -28,7 +28,7 @@ if (NOT WIN32)
   else ()
     message(STATUS "clang-tidy found: ${CLANG_TIDY_EXE}")
     set (DO_CLANG_TIDY "${CLANG_TIDY_EXE}"
-      "-checks=-*,cppcoreguidelines-*,readibility-*,modernize-*,performance-*,bugprone-*")
+      "-checks=-*,modernize-*,performance-*,bugprone-*")
   endif ()
 endif ()
 
