@@ -1,3 +1,4 @@
-PKG_CPPFLAGS = -std=c++17 -static-libstdc++ -static-libgcc `pkg-config --cflags baryonyx-0.4`
-PKG_LIBS = -std=c++17 -static-libstdc++ -static-libgcc `pkg-config --libs-only-L baryonyx-0.4` -lbaryonyx-static-0.4
-
+PKG_CPPFLAGS = -std=c++17 `pkg-config --cflags baryonyx-0.4`
+PKG_LIBS = -std=c++17 `pkg-config --libs baryonyx-0.4`
+# PKG_CPPFLAGS = -std=c++17 -static-libstdc++ -static-libgcc `pkg-config --cflags baryonyx-0.4`
+# PKG_LIBS = -std=c++17 `pkg-config --libs-only-L baryonyx-0.4` -lbaryonyx-static-0.4 -static-libstdc++ -static-libgcc
