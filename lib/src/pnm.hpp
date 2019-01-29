@@ -155,8 +155,13 @@ public:
 };
 
 class pnm_iterator
-  : public std::iterator<std::forward_iterator_tag, pnm_iterator_entry>
 {
+public:
+    using iterator_category = std::forward_iterator_tag;
+    using value_type = pnm_iterator_entry;
+    using difference_type = std::ptrdiff_t;
+    using pointer = value_type*;
+    using reference = value_type&;
 private:
     pnm_iterator_entry m_entry;
 
