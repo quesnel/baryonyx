@@ -318,28 +318,23 @@ is_better_solution(Float lhs, Float rhs) noexcept
         return lhs > rhs;
 }
 
-template<typename floatingpointT>
+template<typename Mode, typename Float>
 inline bool
-init_x(floatingpointT cost, int value_if_cost_0, minimize_tag) noexcept
+init_x(Float cost, int value_if_cost_0) noexcept
 {
-    if (cost < 0)
-        return true;
+    if constexpr (std::is_same_v<Mode, minimize_tag>) {
+        if (cost < 0)
+            return true;
 
-    if (cost == 0)
-        return value_if_cost_0;
+        if (cost == 0)
+            return value_if_cost_0;
+    } else {
+        if (cost > 0)
+            return true;
 
-    return false;
-}
-
-template<typename floatingpointT>
-inline bool
-init_x(floatingpointT cost, int value_if_cost_0, maximize_tag) noexcept
-{
-    if (cost > 0)
-        return true;
-
-    if (cost == 0)
-        return value_if_cost_0;
+        if (cost == 0)
+            return value_if_cost_0;
+    }
 
     return false;
 }
@@ -491,6 +486,7 @@ init_solver(Solver& slv,
             solver_parameters::init_policy_type type,
             double init_random)
 {
+    using Mode = typename Solver::mode_type;
     using floatingpointT = typename Solver::float_type;
 
     x.clear();
@@ -510,15 +506,10 @@ init_solver(Solver& slv,
             bool value_if_cost_0 = init_random == 1.0;
 
             for (int i = 0; i != slv.n; ++i)
-                x.set(i,
-                      init_x(slv.c[i],
-                             value_if_cost_0,
-                             typename Solver::mode_type()));
+                x.set(i, init_x<Mode>(slv.c[i], value_if_cost_0));
         } else {
             for (int i = 0; i != slv.n; ++i)
-                x.set(
-                  i,
-                  init_x(slv.c[i], d(slv.rng), typename Solver::mode_type()));
+                x.set(i, init_x<Mode>(slv.c[i], d(slv.rng)));
         }
         break;
     case solver_parameters::init_policy_type::random:
@@ -534,15 +525,10 @@ init_solver(Solver& slv,
             bool value_if_cost_0 = init_random == 1.0;
 
             for (int i = 0; i != slv.n; ++i)
-                x.set(i,
-                      init_x(slv.c[i],
-                             value_if_cost_0,
-                             typename Solver::mode_type()));
+                x.set(i, init_x<Mode>(slv.c[i], value_if_cost_0));
         } else {
             for (int i = 0; i != slv.n; ++i)
-                x.set(
-                  i,
-                  init_x(slv.c[i], d(slv.rng), typename Solver::mode_type()));
+                x.set(i, init_x<Mode>(slv.c[i], d(slv.rng)));
         }
         type = solver_parameters::init_policy_type::random_cycle;
         break;
@@ -569,6 +555,7 @@ init_solver(Solver& slv,
             solver_parameters::init_policy_type type,
             double init_random)
 {
+    using Mode = typename Solver::mode_type;
     using floatingpointT = typename Solver::float_type;
 
     x.clear();
@@ -592,15 +579,10 @@ init_solver(Solver& slv,
             bool value_if_cost_0 = init_random == 1.0;
 
             for (int i = 0; i != slv.n; ++i)
-                x.set(i,
-                      init_x(slv.c[i],
-                             value_if_cost_0,
-                             typename Solver::mode_type()));
+                x.set(i, init_x<Mode>(slv.c[i], value_if_cost_0));
         } else {
             for (int i = 0; i != slv.n; ++i)
-                x.set(
-                  i,
-                  init_x(slv.c[i], d(slv.rng), typename Solver::mode_type()));
+                x.set(i, init_x<Mode>(slv.c[i], d(slv.rng)));
         }
         break;
     case solver_parameters::init_policy_type::random:
@@ -616,15 +598,10 @@ init_solver(Solver& slv,
             bool value_if_cost_0 = init_random == 1.0;
 
             for (int i = 0; i != slv.n; ++i)
-                x.set(i,
-                      init_x(slv.c[i],
-                             value_if_cost_0,
-                             typename Solver::mode_type()));
+                x.set(i, init_x<Mode>(slv.c[i], value_if_cost_0));
         } else {
             for (int i = 0; i != slv.n; ++i)
-                x.set(
-                  i,
-                  init_x(slv.c[i], d(slv.rng), typename Solver::mode_type()));
+                x.set(i, init_x<Mode>(slv.c[i], d(slv.rng)));
         }
 
         type = solver_parameters::init_policy_type::random_cycle;
