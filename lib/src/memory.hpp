@@ -47,24 +47,20 @@ memory_consumed_size(T size) noexcept
       (std::is_integral<T>::value || std::is_floating_point<T>::value),
       "Integer or real required.");
 
-    auto kb = static_cast<double>(size) / 1024.;
-    auto mb = kb / 1024.;
-    auto gb = mb / 1024.;
+    const auto kb = static_cast<double>(size) / 1024.;
+    const auto mb = kb / 1024.;
+    const auto gb = mb / 1024.;
 
-    auto ret = std::make_tuple(static_cast<double>(size), show_size_type::B);
+    if (gb > 0.5)
+        return { gb, show_size_type::GB };
 
-    if (gb > 0.5) {
-        std::get<0>(ret) = gb;
-        std::get<1>(ret) = show_size_type::GB;
-    } else if (mb > 0.5) {
-        std::get<0>(ret) = mb;
-        std::get<1>(ret) = show_size_type::MB;
-    } else if (kb > 0.5) {
-        std::get<0>(ret) = kb;
-        std::get<1>(ret) = show_size_type::KB;
-    }
+    if (mb > 0.5)
+        return { mb, show_size_type::MB };
 
-    return ret;
+    if (kb > 0.5)
+        return { kb, show_size_type::KB };
+
+    return { static_cast<double>(size), show_size_type::B };
 }
 
 std::string
