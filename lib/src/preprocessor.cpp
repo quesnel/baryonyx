@@ -611,17 +611,17 @@ private:
                                  pb.less_constraints,
                                  copy.less_constraints);
 
-        for (auto cst : copy.equal_constraints)
+        for (const auto& cst : copy.equal_constraints)
             for (auto elem : cst.elements)
                 bx_expects(elem.variable_index >= 0 &&
                            elem.variable_index < bx::length(copy.vars.values));
 
-        for (auto cst : copy.greater_constraints)
+        for (const auto& cst : copy.greater_constraints)
             for (auto elem : cst.elements)
                 bx_expects(elem.variable_index >= 0 &&
                            elem.variable_index < bx::length(copy.vars.values));
 
-        for (auto cst : copy.greater_constraints)
+        for (const auto& cst : copy.greater_constraints)
             for (auto elem : cst.elements)
                 bx_expects(elem.variable_index >= 0 &&
                            elem.variable_index < bx::length(copy.vars.values));
