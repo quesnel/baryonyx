@@ -39,7 +39,7 @@ store_one_solution(const context_ptr& /*ctx*/,
                    const std::vector<bool>& solution,
                    double value)
 {
-    if (itm::is_better_solution(value, res.solutions.back().value, Mode())) {
+    if (itm::is_better_solution<Mode>(value, res.solutions.back().value)) {
         res.solutions.back() = { solution, value };
         return true;
     }
@@ -55,18 +55,18 @@ store_bound_solutions(const context_ptr& /*ctx*/,
                       double value)
 {
     if (res.solutions.size() == static_cast<size_t>(1)) {
-        if (itm::is_better_solution(
-              value, res.solutions.back().value, Mode())) {
+        if (itm::is_better_solution<Mode>(
+              value, res.solutions.back().value)) {
             res.solutions.emplace_back(solution, value);
         } else {
             res.solutions.emplace(res.solutions.begin(), solution, value);
         }
     }
 
-    if (itm::is_better_solution(value, res.solutions.back().value, Mode())) {
+    if (itm::is_better_solution<Mode>(value, res.solutions.back().value)) {
         res.solutions.back() = { solution, value };
-    } else if (itm::is_better_solution(
-                 res.solutions.front().value, value, Mode())) {
+    } else if (itm::is_better_solution<Mode>(
+                 res.solutions.front().value, value)) {
         res.solutions.front() = { solution, value };
     }
 
@@ -90,7 +90,7 @@ store_five_solutions(const context_ptr& /*ctx*/,
             // previous solutions, drop the worst and replace the
             // solution.
 
-            if (itm::is_better_solution(value, it->value, Mode())) {
+            if (itm::is_better_solution<Mode>(value, it->value)) {
                 auto found = it.base();
                 auto first = res.solutions.begin() + 1;
 
@@ -102,7 +102,7 @@ store_five_solutions(const context_ptr& /*ctx*/,
         }
     } else {
         for (; it != et; ++it)
-            if (itm::is_better_solution(value, it->value, Mode()))
+            if (itm::is_better_solution<Mode>(value, it->value))
                 res.solutions.emplace(it.base(), solution, value);
     }
 
