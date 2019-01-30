@@ -273,7 +273,7 @@ calculator_sort(Iterator begin, Iterator end, Random& rng)
 {
     if (std::distance(begin, end) > 1) {
         std::sort(begin, end, [](const auto& lhs, const auto& rhs) {
-            if constexpr (std::is_same_v <Mode, minimize_tag>)
+            if constexpr (std::is_same_v<Mode, minimize_tag>)
                 return lhs.value < rhs.value;
             else
                 return rhs.value < lhs.value;
@@ -283,42 +283,29 @@ calculator_sort(Iterator begin, Iterator end, Random& rng)
     }
 }
 
-template<typename floatingpointT, typename randomT>
+template<typename Mode, typename Float, typename Random>
 inline bool
-stop_iterating(floatingpointT value, randomT& rng, minimize_tag) noexcept
+stop_iterating(Float value, Random& rng) noexcept
 {
     if (value == 0) {
         std::bernoulli_distribution d(0.5);
         return d(rng);
     }
 
-    return value > 0;
+    if constexpr (std::is_same_v<Mode, minimize_tag>)
+        return value > 0;
+    else
+        return value < 0;
 }
 
-template<typename floatingpointT, typename randomT>
+template<typename Mode, typename Float>
 inline bool
-stop_iterating(floatingpointT value, randomT& rng, maximize_tag) noexcept
+stop_iterating(Float value) noexcept
 {
-    if (value == 0) {
-        std::bernoulli_distribution d(0.5);
-        return d(rng);
-    }
-
-    return value < 0;
-}
-
-template<typename floatingpointT>
-inline bool
-stop_iterating(floatingpointT value, minimize_tag) noexcept
-{
-    return value > 0;
-}
-
-template<typename floatingpointT>
-inline bool
-stop_iterating(floatingpointT value, maximize_tag) noexcept
-{
-    return value < 0;
+    if constexpr (std::is_same_v<Mode, minimize_tag>)
+        return value > 0;
+    else
+        return value < 0;
 }
 
 template<typename floatingpointT>

@@ -169,7 +169,7 @@ struct knapsack_dp_solver
             for (; i != r_size; ++i) {
                 sum += items[i].factor;
 
-                if (sum > capacity || stop_iterating(items[i].r, modeT()))
+                if (sum > capacity || stop_iterating<modeT>(items[i].r))
                     break;
             }
 
