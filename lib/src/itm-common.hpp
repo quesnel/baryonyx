@@ -308,22 +308,14 @@ stop_iterating(Float value) noexcept
         return value < 0;
 }
 
-template<typename floatingpointT>
+template<typename Mode, typename Float>
 inline bool
-is_better_solution(floatingpointT lhs,
-                   floatingpointT rhs,
-                   minimize_tag) noexcept
+is_better_solution(Float lhs, Float rhs) noexcept
 {
-    return lhs < rhs;
-}
-
-template<typename floatingpointT>
-inline bool
-is_better_solution(floatingpointT lhs,
-                   floatingpointT rhs,
-                   maximize_tag) noexcept
-{
-    return lhs > rhs;
+    if constexpr (std::is_same_v<Mode, minimize_tag>)
+        return lhs < rhs;
+    else
+        return lhs > rhs;
 }
 
 template<typename floatingpointT>
