@@ -3,6 +3,7 @@ branches:
   only:
     - master
     - test
+    - next
 
 environment:
   matrix:
