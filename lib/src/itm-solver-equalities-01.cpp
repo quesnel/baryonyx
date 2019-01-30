@@ -185,7 +185,7 @@ struct solver_equalities_01coeff
             for (int i = 0; i != r_size; ++i)
                 R[i].value += objective_amplifier * c[R[i].id];
 
-            calculator_sort(R.get(), R.get() + r_size, rng, Mode());
+            calculator_sort<Mode>(R.get(), R.get() + r_size, rng);
             int selected = select_variables(r_size, b[k]);
             affect(
               *this, x, std::get<0>(it), k, selected, r_size, kappa, delta);
@@ -209,7 +209,7 @@ struct solver_equalities_01coeff
             const auto r_size =
               compute_reduced_costs(std::get<0>(it), std::get<1>(it));
 
-            calculator_sort(R.get(), R.get() + r_size, rng, Mode());
+            calculator_sort<Mode>(R.get(), R.get() + r_size, rng);
             int selected = select_variables(r_size, b[k]);
 
             affect(
