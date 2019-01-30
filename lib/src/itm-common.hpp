@@ -1035,24 +1035,6 @@ struct compute_infeasibility_incr
 struct compute_infeasibility_decr
 {};
 
-template<typename iteratorT>
-void
-sort(iteratorT begin, iteratorT end, compute_infeasibility_incr)
-{
-    std::sort(begin, end, [](const auto& lhs, const auto& rhs) {
-        return lhs.second < rhs.second;
-    });
-}
-
-template<typename iteratorT>
-void
-sort(iteratorT begin, iteratorT end, compute_infeasibility_decr)
-{
-    std::sort(begin, end, [](const auto& lhs, const auto& rhs) {
-        return rhs.second < lhs.second;
-    });
-}
-
 template<typename floatingpointT, typename randomT, typename directionT>
 struct compute_infeasibility
 {
@@ -1092,6 +1074,18 @@ struct compute_infeasibility
         return length(m_order);
     }
 
+    template<typename Iterator>
+    void local_sort(Iterator begin, Iterator end) noexcept
+    {
+        std::sort(begin, end, [](const auto& lhs, const auto& rhs) {
+            if constexpr (std::is_same_v<directionT,
+                                         compute_infeasibility_incr>)
+                return lhs.second < rhs.second;
+            else
+                return rhs.second < lhs.second;
+        });
+    }
+
     template<typename solverT, typename Xtype>
     int push_and_run(solverT& solver,
                      Xtype& x,
@@ -1100,7 +1094,7 @@ struct compute_infeasibility
                      floatingpointT theta,
                      floatingpointT objective_amplifier)
     {
-        itm::sort(m_order.begin(), m_order.end(), direction_type());
+        local_sort(m_order.begin(), m_order.end());
 
         solver.push_and_compute_update_row(x,
                                            m_order.cbegin(),
@@ -1120,7 +1114,7 @@ struct compute_infeasibility
             floatingpointT delta,
             floatingpointT theta)
     {
-        itm::sort(m_order.begin(), m_order.end(), direction_type());
+        local_sort(m_order.begin(), m_order.end());
 
         solver.compute_update_row(
           x, m_order.cbegin(), m_order.cend(), kappa, delta, theta);
