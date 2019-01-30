@@ -267,26 +267,16 @@ random_shuffle_unique(iteratorT begin, iteratorT end, randomT& rng) noexcept
     std::shuffle(ret, begin, rng);
 }
 
-template<typename iteratorT, typename randomT>
+template<typename Mode, typename Iterator, typename Random>
 inline void
-calculator_sort(iteratorT begin, iteratorT end, randomT& rng, minimize_tag)
+calculator_sort(Iterator begin, Iterator end, Random& rng)
 {
     if (std::distance(begin, end) > 1) {
         std::sort(begin, end, [](const auto& lhs, const auto& rhs) {
-            return lhs.value < rhs.value;
-        });
-
-        random_shuffle_unique(begin, end, rng);
-    }
-}
-
-template<typename iteratorT, typename randomT>
-inline void
-calculator_sort(iteratorT begin, iteratorT end, randomT& rng, maximize_tag)
-{
-    if (std::distance(begin, end) > 1) {
-        std::sort(begin, end, [](const auto& lhs, const auto& rhs) {
-            return rhs.value < lhs.value;
+            if constexpr (std::is_same_v <Mode, minimize_tag>)
+                return lhs.value < rhs.value;
+            else
+                return rhs.value < lhs.value;
         });
 
         random_shuffle_unique(begin, end, rng);

@@ -237,7 +237,7 @@ struct solver_inequalities_101coeff
             for (int i = 0; i != sizes.r_size; ++i)
                 R[i].value += obj_amp * c[(std::get<0>(it) + R[i].id)->column];
 
-            calculator_sort(R.get(), R.get() + sizes.r_size, rng, Mode());
+            calculator_sort<Mode>(R.get(), R.get() + sizes.r_size, rng);
             int selected = select_variables(sizes, b[k].min, b[k].max);
 
             affect(*this,
@@ -268,7 +268,7 @@ struct solver_inequalities_101coeff
             const auto sizes =
               compute_reduced_costs(std::get<0>(it), std::get<1>(it));
 
-            calculator_sort(R.get(), R.get() + sizes.r_size, rng, Mode());
+            calculator_sort<Mode>(R.get(), R.get() + sizes.r_size, rng);
             int selected = select_variables(sizes, b[k].min, b[k].max);
 
             affect(*this,
