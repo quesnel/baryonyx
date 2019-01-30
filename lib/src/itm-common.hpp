@@ -167,26 +167,6 @@ struct maximize_tag
 struct minimize_tag
 {};
 
-inline bool
-is_better_result(const result& lhs, const result& rhs, maximize_tag) noexcept
-{
-    if (lhs)
-        return rhs ? lhs.solutions.back().value > rhs.solutions.back().value
-                   : true;
-
-    return rhs ? false : lhs.remaining_constraints < rhs.remaining_constraints;
-}
-
-inline bool
-is_better_result(const result& lhs, const result& rhs, minimize_tag) noexcept
-{
-    if (lhs)
-        return rhs ? lhs.solutions.back().value < rhs.solutions.back().value
-                   : true;
-
-    return rhs ? false : lhs.remaining_constraints < rhs.remaining_constraints;
-}
-
 struct merged_constraint
 {
     merged_constraint(std::vector<function_element> elements_,
@@ -271,33 +251,6 @@ results(const Xtype& x, const Cost& c, double cost_constant, int n)
 
     return cost_constant;
 }
-
-template<typename floatingpointT>
-struct r_data
-{
-    r_data() = default;
-
-    r_data(floatingpointT value_, int index_)
-      : value(value_)
-      , id(index_)
-    {}
-
-    floatingpointT value; ///< Reduced cost value.
-    int id;               ///< Index in ap.row() vector.
-};
-
-template<typename floatingpointT>
-struct c_data
-{
-    c_data() = default;
-
-    c_data(int id_r_)
-      : id_r(id_r_)
-    {}
-
-    floatingpointT value; ///< The pki value.
-    int id_r;             ///< Index in ap.row() vector.
-};
 
 template<typename iteratorT, typename randomT>
 inline void
