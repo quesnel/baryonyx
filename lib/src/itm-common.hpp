@@ -855,6 +855,12 @@ struct bounds_printer
     }
 };
 
+struct compute_incremental_order
+{};
+
+struct compute_decremental_order
+{};
+
 template<typename floatingpointT, typename randomT>
 struct compute_none
 {
@@ -936,7 +942,7 @@ struct compute_reversing
     }
 };
 
-template<typename Float, typename Random, typename Operator>
+template<typename Float, typename Random, typename Order>
 struct compute_lagrangian_order
 {
     std::vector<int> R;
@@ -948,6 +954,17 @@ struct compute_lagrangian_order
         compute_violated_constraints(s, x, R);
     }
 
+    template<typename Iterator, typename Solver>
+    static void local_sort(Iterator begin, Iterator end, const Solver& solver)
+    {
+        std::sort(begin, end, [&solver](const auto lhs, const auto rhs) {
+            if constexpr (std::is_same_v<Order, compute_incremental_order>)
+                return solver.pi[lhs] < solver.pi[rhs];
+            else
+                return solver.pi[rhs] < solver.pi[lhs];
+        });
+    }
+
     template<typename solverT, typename Xtype>
     int push_and_run(solverT& solver,
                      Xtype& x,
@@ -956,10 +973,7 @@ struct compute_lagrangian_order
                      Float theta,
                      Float objective_amplifier)
     {
-        std::sort(R.begin(), R.end(), [&solver](int lhs, int rhs) {
-            Operator op;
-            return op(solver.pi[lhs], solver.pi[rhs]);
-        });
+        local_sort(R.begin(), R.end(), solver);
 
         solver.push_and_compute_update_row(
           x, R.cbegin(), R.cend(), kappa, delta, theta, objective_amplifier);
@@ -970,10 +984,7 @@ struct compute_lagrangian_order
     template<typename solverT, typename Xtype>
     int run(solverT& solver, Xtype& x, Float kappa, Float delta, Float theta)
     {
-        std::sort(R.begin(), R.end(), [&solver](int lhs, int rhs) {
-            Operator op;
-            return op(solver.pi[lhs], solver.pi[rhs]);
-        });
+        local_sort(R.begin(), R.end(), solver);
 
         solver.compute_update_row(
           x, R.cbegin(), R.cend(), kappa, delta, theta);
@@ -1029,17 +1040,10 @@ struct compute_random
     }
 };
 
-struct compute_infeasibility_incr
-{};
-
-struct compute_infeasibility_decr
-{};
-
-template<typename floatingpointT, typename randomT, typename directionT>
+template<typename floatingpointT, typename randomT, typename Order>
 struct compute_infeasibility
 {
     using random_type = randomT;
-    using direction_type = directionT;
 
     std::vector<std::pair<int, int>> m_order;
     random_type& rng;
@@ -1075,11 +1079,11 @@ struct compute_infeasibility
     }
 
     template<typename Iterator>
-    void local_sort(Iterator begin, Iterator end) noexcept
+    static void local_sort(Iterator begin, Iterator end) noexcept
     {
         std::sort(begin, end, [](const auto& lhs, const auto& rhs) {
-            if constexpr (std::is_same_v<directionT,
-                                         compute_infeasibility_incr>)
+            if constexpr (std::is_same_v<Order,
+                                         compute_incremental_order>)
                 return lhs.second < rhs.second;
             else
                 return rhs.second < lhs.second;
@@ -1358,14 +1362,16 @@ using constraint_sel = typename std::conditional<
       compute_random<Float, Random>,
       typename std::conditional<
         o == 3,
-        compute_infeasibility<Float, Random, compute_infeasibility_decr>,
+        compute_infeasibility<Float, Random, compute_decremental_order>,
         typename std::conditional<
           o == 4,
-          compute_infeasibility<Float, Random, compute_infeasibility_incr>,
+          compute_infeasibility<Float, Random, compute_incremental_order>,
           typename std::conditional<
             o == 5,
-            compute_lagrangian_order<Float, Random, std::greater<Float>>,
-            compute_lagrangian_order<Float, Random, std::less<Float>>>::type>::
+            compute_lagrangian_order<Float, Random, compute_decremental_order>,
+            compute_lagrangian_order<Float,
+                                     Random,
+                                     compute_incremental_order>>::type>::
           type>::type>::type>::type>::type;
 
 template<int f>
