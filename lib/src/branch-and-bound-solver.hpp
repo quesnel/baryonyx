@@ -243,7 +243,7 @@ struct branch_and_bound_solver
         for (; i != e; ++i) {
             sum += items[i].factor;
 
-            if (sum > bound || stop_iterating(items[i].r, modeT()))
+            if (sum > bound || stop_iterating<modeT>(items[i].r))
                 break;
         }
 

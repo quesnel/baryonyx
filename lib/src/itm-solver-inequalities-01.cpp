@@ -172,7 +172,7 @@ struct solver_inequalities_01coeff
         bkmax = std::min(bkmax, r_size);
 
         for (int i = bkmin; i <= bkmax; ++i)
-            if (stop_iterating(R[i].value, rng, Mode()))
+            if (stop_iterating<Mode>(R[i].value, rng))
                 return i - 1;
 
         return bkmax - 1;
