@@ -52,44 +52,44 @@ namespace itm {
 struct x_type
 {
     x_type(int size)
-      : _data(size)
+      : m_data(size)
     {}
 
     bool operator[](int index) const noexcept
     {
-        return _data[index];
+        return m_data[index];
     }
 
     void invert(index index) noexcept
     {
-        _data[index] = !_data[index];
+        m_data[index] = !m_data[index];
     }
 
     void set(index index, bool value) noexcept
     {
-        _data[index] = value;
+        m_data[index] = value;
     }
 
     bool empty() const noexcept
     {
-        return _data.empty();
+        return m_data.empty();
     }
 
-    int upper() const
+    int upper() const noexcept
     {
         return 0;
     }
 
-    void clear()
+    void clear() const noexcept
     {}
 
     std::vector<bool> data() const noexcept
     {
-        return _data;
+        return m_data;
     }
 
 private:
-    std::vector<bool> _data;
+    std::vector<bool> m_data;
 };
 
 /**
@@ -103,21 +103,21 @@ private:
 struct x_counter_type
 {
     x_counter_type(int size)
-      : _data(size)
-      , _counter(size, 0)
+      : m_data(size)
+      , m_counter(size, 0)
     {}
 
     bool operator[](int index) const noexcept
     {
-        return _data[index];
+        return m_data[index];
     }
 
     void invert(index index) noexcept
     {
-        // NOTE: only the data vector is updated. Normally, _data and _counter
-        // have been already updated in the update_row function.
+        // NOTE: only the data vector is updated. Normally, m_data and
+        // m_counter have been already updated in the update_row function.
 
-        _data[index] = !_data[index];
+        m_data[index] = !m_data[index];
     }
 
     void set(index index, bool value) noexcept
@@ -125,39 +125,40 @@ struct x_counter_type
         // TODO: Maybe use integer class members to store upper and lower index
         // and make upper() and lower() function O(1).
 
-        if (_data[index] != value) {
-            _data[index] = value;
-            ++_counter[index];
+        if (m_data[index] != value) {
+            m_data[index] = value;
+            ++m_counter[index];
         }
     }
 
     bool empty() const noexcept
     {
-        return _data.empty();
+        return m_data.empty();
     }
 
-    void clear()
+    void clear() noexcept
     {
-        std::fill(_counter.begin(), _counter.end(), 0);
+        std::fill(m_counter.begin(), m_counter.end(), 0);
     }
 
     std::vector<bool> data() const noexcept
     {
-        return _data;
+        return m_data;
     }
 
-    int upper() const
+    int upper() const noexcept
     {
         int upper_index = 0;
-        for (int i = 1, e = length(_counter); i != e; ++i)
-            if (_counter[i] > _counter[upper_index])
+        for (int i = 1, e = length(m_counter); i != e; ++i)
+            if (m_counter[i] > m_counter[upper_index])
                 upper_index = i;
 
         return upper_index;
     }
 
-    std::vector<bool> _data;
-    std::vector<int> _counter;
+private:
+    std::vector<bool> m_data;
+    std::vector<int> m_counter;
 };
 
 struct maximize_tag
