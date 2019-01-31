@@ -72,7 +72,7 @@ struct solver_equalities_01coeff
       , n(n_)
     {
         for (int i = 0; i != m; ++i) {
-            for (const auto& cst : csts[i].elements)
+            for ([[maybe_unused]] const auto& cst : csts[i].elements)
                 bx_ensures(cst.factor == 1);
 
             bx_ensures(csts[i].min == csts[i].max);
