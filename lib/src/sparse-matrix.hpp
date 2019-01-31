@@ -187,7 +187,7 @@ public:
 
     std::tuple<row_iterator, row_iterator> row(int row) noexcept
     {
-        m_check_index(row, 0);
+        bx_expects(m_is_valid_index(row, 0));
 
         row_iterator begin = m_rows_values.begin() + m_rows_access[row];
         row_iterator end = m_rows_values.begin() + m_rows_access[row + 1];
@@ -197,7 +197,7 @@ public:
 
     std::tuple<col_iterator, col_iterator> column(int col) noexcept
     {
-        m_check_index(0, col);
+        bx_expects(m_is_valid_index(0, col));
 
         col_iterator begin = m_cols_values.begin() + m_cols_access[col];
         col_iterator end = m_cols_values.begin() + m_cols_access[col + 1];
@@ -208,10 +208,11 @@ public:
     std::tuple<const_row_iterator, const_row_iterator> row(int row) const
       noexcept
     {
-        m_check_index(row, 0);
+        bx_expects(m_is_valid_index(row, 0));
 
         const_row_iterator begin = m_rows_values.begin() + m_rows_access[row];
-        const_row_iterator end = m_rows_values.begin() + m_rows_access[row + 1];
+        const_row_iterator end =
+          m_rows_values.begin() + m_rows_access[row + 1];
 
         return std::make_tuple(begin, end);
     }
@@ -219,10 +220,11 @@ public:
     std::tuple<const_col_iterator, const_col_iterator> column(int col) const
       noexcept
     {
-        m_check_index(0, col);
+        bx_expects(m_is_valid_index(0, col));
 
         const_col_iterator begin = m_cols_values.begin() + m_cols_access[col];
-        const_col_iterator end = m_cols_values.begin() + m_cols_access[col + 1];
+        const_col_iterator end =
+          m_cols_values.begin() + m_cols_access[col + 1];
 
         return std::make_tuple(begin, end);
     }
@@ -238,13 +240,12 @@ public:
     }
 
 private:
-    void m_check_index(index_type row, index_type col) const noexcept
+    bool m_is_valid_index(index_type row, index_type col) const noexcept
     {
-        bx_expects(col >= 0 &&
-                   static_cast<size_type>(col) < (m_cols_access.size() - 1));
-
-        bx_expects(row >= 0 &&
-                   static_cast<size_type>(row) < (m_rows_access.size() - 1));
+        return col >= 0 &&
+               static_cast<size_type>(col) < (m_cols_access.size() - 1) &&
+               row >= 0 &&
+               static_cast<size_type>(row) < (m_rows_access.size() - 1);
     }
 };
 }
