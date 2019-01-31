@@ -328,8 +328,9 @@ select_mode(const context_ptr& ctx, const problem& pb, bool is_optimization)
 {
     const auto m = static_cast<int>(pb.type);
 
-    return m == 0 ? select_random<Float, mode_sel<0>>(ctx, pb, is_optimization)
-                  : select_random<Float, mode_sel<1>>(ctx, pb, is_optimization);
+    return m == 0
+             ? select_random<Float, mode_sel<0>>(ctx, pb, is_optimization)
+             : select_random<Float, mode_sel<1>>(ctx, pb, is_optimization);
 }
 
 static result

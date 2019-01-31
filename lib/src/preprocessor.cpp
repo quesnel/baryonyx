@@ -483,7 +483,8 @@ private:
 
                         less_constraints[i] = 0;
 
-                        for (const auto& elem : pb.less_constraints[i].elements)
+                        for (const auto& elem :
+                             pb.less_constraints[i].elements)
                             lifo.emplace(elem.variable_index, false);
                     } else if (sum_factor(pb.less_constraints[i]) ==
                                pb.less_constraints[i].value) {
@@ -529,7 +530,8 @@ public:
 
         for (int i = 0, e = bx::length(pb.equal_constraints); i != e; ++i)
             for (const auto& elem : pb.equal_constraints[i].elements)
-                cache[elem.variable_index].in_equal_constraints.emplace_back(i);
+                cache[elem.variable_index].in_equal_constraints.emplace_back(
+                  i);
 
         for (int i = 0, e = bx::length(pb.greater_constraints); i != e; ++i)
             for (const auto& elem : pb.greater_constraints[i].elements)
@@ -606,10 +608,12 @@ private:
         copy.objective = objective_function_exclude_copy(mapping);
         std::tie(copy.vars, copy.affected_vars) = variables_exclude_copy();
 
-        for (int i = 0, e = bx::length(pb.vars.values); i != e; ++i)
-            if (mapping[i].first >= 0)
+        for (int i = 0, e = bx::length(pb.vars.values); i != e; ++i) {
+            if (mapping[i].first >= 0) {
                 bx_ensures(pb.vars.names[i] ==
                            copy.vars.names[mapping[i].first]);
+            }
+        }
 
         constraints_exclude_copy(mapping,
                                  equal_constraints,
