@@ -1082,8 +1082,7 @@ struct compute_infeasibility
     static void local_sort(Iterator begin, Iterator end) noexcept
     {
         std::sort(begin, end, [](const auto& lhs, const auto& rhs) {
-            if constexpr (std::is_same_v<Order,
-                                         compute_incremental_order>)
+            if constexpr (std::is_same_v<Order, compute_incremental_order>)
                 return lhs.second < rhs.second;
             else
                 return rhs.second < lhs.second;
@@ -1181,7 +1180,7 @@ random_epsilon_unique(iteratorT begin,
     std::uniform_real_distribution<floatingpointT> distribution(min, max);
 
     for (; begin != end; ++begin)
-        begin->first += distribution(rng);
+        begin->first = distribution(rng);
 }
 
 template<typename floatingpointT, typename randomT>
@@ -1192,10 +1191,8 @@ rng_normalize_costs(const std::unique_ptr<floatingpointT[]>& c,
 {
     std::vector<std::pair<floatingpointT, int>> r(n);
 
-    for (int i = 0; i != n; ++i) {
-        r[i].first = c[i];
-        r[i].second = i;
-    }
+    for (int i = 0; i != n; ++i)
+        r[i] = { c[i], i };
 
     std::sort(r.begin(), r.end(), [](const auto& lhs, const auto& rhs) {
         return lhs.first < rhs.first;
@@ -1204,20 +1201,29 @@ rng_normalize_costs(const std::unique_ptr<floatingpointT[]>& c,
     auto begin = r.begin();
     auto end = r.end();
     auto next = r.begin()++;
-    for (; begin != end; ++begin) {
+    for (; next != end; ++next) {
         if (next->first != begin->first) {
-            floatingpointT min = next->first;
-            floatingpointT max;
+            if (std::distance(begin, next) > 1)
+                random_epsilon_unique(
+                  begin, next, rng, begin->first, next->first);
 
-            if (begin != end)
-                max = begin->first;
-            else
-                max = next->first + 1;
-
-            random_epsilon_unique(next, begin, rng, min, max);
+            begin = next;
         }
+    }
 
-        next = begin;
+    if (std::distance(begin, end) > 1) {
+        if (begin == r.begin()) {
+            random_epsilon_unique(
+              begin, end, rng, begin->first, begin->first + 1);
+        } else {
+            auto value = linearize(std::ptrdiff_t(0),
+                                   r.front().first,
+                                   std::distance(r.begin(), begin),
+                                   begin->first,
+                                   std::distance(r.begin(), r.end()));
+
+            random_epsilon_unique(begin, end, rng, begin->first, value);
+        }
     }
 
     // Reorder the vector according to the variable index, so, it restores
