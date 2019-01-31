@@ -111,6 +111,18 @@ clamp(const T& v, const T& lo, const T& hi)
     return v < lo ? lo : v > hi ? hi : v;
 }
 
+template<typename Xtype, typename Ytype>
+constexpr Ytype
+linearize(Xtype p1x, Ytype p1y, Xtype p2x, Ytype p2y, Xtype value) noexcept
+{
+    bx_expects(p1x - p2x != 0);
+
+    auto m = static_cast<double>(p1y - p2y) / static_cast<double>(p1x - p2x);
+    auto p = static_cast<double>(p2y) - m * static_cast<double>(p2x);
+
+    return static_cast<Ytype>(std::ceil(m * static_cast<double>(value) + p));
+}
+
 template<typename T>
 inline bool
 is_essentially_equal(const T v1, const T v2, const T epsilon)
