@@ -48,6 +48,18 @@ is_all_factor_ge_than_zero(const bx::constraint& cst)
            cst.elements.cend();
 }
 
+[[maybe_unused]] static bool
+is_valid_variable_index(const std::vector<bx::constraint>& csts,
+                        int size) noexcept
+{
+    for (const auto& cst : csts)
+        for (auto elem : cst.elements)
+            if (!(elem.variable_index >= 0 && elem.variable_index < size))
+                return false;
+
+    return true;
+}
+
 static inline int
 sum_factor(const bx::constraint& cst)
 {
@@ -307,7 +319,8 @@ private:
                           "      - equal constraint {} will be removed.\n",
                           pb.equal_constraints[cst].label);
 
-                    auto v = reduce_equal_constraint(pb.equal_constraints[cst]);
+                    auto v =
+                      reduce_equal_constraint(pb.equal_constraints[cst]);
                     equal_constraints[cst] = 0;
 
                     if (std::get<0>(v) >= 0)
@@ -611,20 +624,12 @@ private:
                                  pb.less_constraints,
                                  copy.less_constraints);
 
-        for (const auto& cst : copy.equal_constraints)
-            for (auto elem : cst.elements)
-                bx_expects(elem.variable_index >= 0 &&
-                           elem.variable_index < bx::length(copy.vars.values));
-
-        for (const auto& cst : copy.greater_constraints)
-            for (auto elem : cst.elements)
-                bx_expects(elem.variable_index >= 0 &&
-                           elem.variable_index < bx::length(copy.vars.values));
-
-        for (const auto& cst : copy.greater_constraints)
-            for (auto elem : cst.elements)
-                bx_expects(elem.variable_index >= 0 &&
-                           elem.variable_index < bx::length(copy.vars.values));
+        bx_ensures(is_valid_variable_index(copy.equal_constraints,
+                                           bx::length(copy.vars.values)) &&
+                   is_valid_variable_index(copy.greater_constraints,
+                                           bx::length(copy.vars.values)) &&
+                   is_valid_variable_index(copy.less_constraints,
+                                           bx::length(copy.vars.values)));
 
         copy.problem_type = copy.which_problem_type();
 

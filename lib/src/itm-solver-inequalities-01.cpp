@@ -72,8 +72,8 @@ struct solver_inequalities_01coeff
       , n(n_)
     {
         for (int i = 0; i != m; ++i) {
-            for (const auto& cst : csts[i].elements)
-                bx_expects(cst.factor == 1);
+            for ([[maybe_unused]] const auto& elem : csts[i].elements)
+                bx_ensures(elem.factor == 1);
 
             if (csts[i].min == csts[i].max) {
                 b[i].min = csts[i].min;
