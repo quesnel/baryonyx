@@ -278,11 +278,11 @@ To assign parameters to solver or optimizer algorithms, use the `-p
 | string
 | Select the cost normalization function
 
-* `none`  let unmodified costs.
+* `none`  let unmodified costs
 * `l1` use the l1-norm function
 * `l2` use the l2-norm function
-* `rng` (experimental)
-* `inf` (default): use the infinity norm.
+* `random` try to avoid equal cost
+* `inf` (default): use the infinity norm
 
 | constraint-order
 | string
