@@ -48,7 +48,7 @@ struct csv_whitespace : std::ctype<char>
         v[static_cast<int>(',')] |= space;
 
         // Space will not be classified as whitespace.
-        v[static_cast<int>(' ')] &= ~space;
+        v[static_cast<int>(' ')] &= static_cast<mask>(~space);
 
         return v;
     }
@@ -552,7 +552,8 @@ benchmark(const baryonyx::context_ptr& ctx,
             if (number > 0)
                 fmt::print("Average distance from the solution of {}: {}%\n",
                            b.solvers[solver].name,
-                           mean_distance / current.size());
+                           mean_distance /
+                             static_cast<double>(current.size()));
         }
     }
 
