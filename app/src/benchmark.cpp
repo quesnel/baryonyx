@@ -47,8 +47,8 @@ struct csv_whitespace : std::ctype<char>
         // Comma will be classified as whitespace.
         v[static_cast<int>(',')] |= space;
 
-        // Space will not be classified as whitespace.
-        v[static_cast<int>(' ')] &= static_cast<mask>(~space);
+        // Space will be classified as character with graphic representation.
+        v[static_cast<int>(' ')] = graph;
 
         return v;
     }
