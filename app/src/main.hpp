@@ -25,6 +25,7 @@
 
 #include <baryonyx/core>
 
+#include <charconv>
 #include <string>
 
 #include <cerrno>
@@ -59,6 +60,19 @@ to_double(std::string s, double bad_value) noexcept
         return bad_value;
 
     return value;
+}
+
+inline double
+to_double(std::string_view s, double bad_value) noexcept
+{
+    // waiting for std::fron_chars or boost::qi dependencies
+    // if (auto [p, ec] =
+    //       std::from_chars(s.data(), s.data() + s.size(), value, 10);
+    //     ec != std::errc())
+    //     return bad_value;
+    // return value;
+
+    return to_double(std::string(s), bad_value);
 }
 
 inline int
