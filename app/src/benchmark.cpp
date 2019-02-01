@@ -23,6 +23,7 @@
 #include "debug.hpp"
 #include "dynarray.hpp"
 #include "main.hpp"
+#include "utils.hpp"
 
 #include <fstream>
 #include <limits>
@@ -90,18 +91,11 @@ struct bench
     {
         model() = default;
 
-        model(std::string name_)
-          : name(name_)
-          , best_solution(std::numeric_limits<double>::infinity())
+        model(std::string_view name_)
+          : name(baryonyx::trim(name_))
         {}
 
-        model(std::string name_, double best_solution_)
-          : name(name_)
-          , best_solution(best_solution_)
-        {}
-
-        std::string name;     // e.g. scpnrf3, scpd1 etc.
-        double best_solution; // e.g. the best or optimum solution.
+        std::string name; // e.g. scpnrf3, scpd1 etc.
 
         std::string filename() const
         {
@@ -128,8 +122,8 @@ struct bench
     {
         solver() = default;
 
-        solver(std::string name_)
-          : name(std::move(name_))
+        solver(std::string_view name_)
+          : name(baryonyx::trim(name_))
         {}
 
         std::string name; // e.g. cplex-10.0.1, baryonyx-0.2
@@ -149,61 +143,45 @@ struct bench
     {
         element() = default;
 
-        element(double duration_, double solution_)
-          : duration(duration_)
-          , solution(solution_)
+        element(double solution_)
+          : solution(solution_)
           , success(true)
         {}
 
-        element(double duration_)
-          : duration(duration_)
-        {}
-
-        double duration = std::numeric_limits<double>::infinity();
         double solution = std::numeric_limits<double>::infinity();
         bool success = false;
     };
 
     std::vector<model> models;
     std::vector<solver> solvers;
-    std::unordered_map<std::string, int> filename_id;
-    std::unordered_map<std::string, int> solver_id;
     baryonyx::dynamic_array<double> array;
 
-    int push_back_model(std::string name, double best_solution)
+    model& push_back_model(std::string_view name)
     {
-        auto ret = filename_id.emplace(name, 0);
-        if (ret.second) {
-            models.emplace_back(name, best_solution);
-            ret.first->second = static_cast<int>(models.size());
-        }
+        models.emplace_back(baryonyx::trim(name));
 
-        return ret.first->second;
+        return models.back();
     }
 
-    int push_back_solver(std::string name)
+    solver& push_back_solver(std::string_view name)
     {
-        auto ret = solver_id.emplace(name, 0);
-        if (ret.second) {
-            solvers.emplace_back(name);
-            ret.first->second = static_cast<int>(solvers.size());
-        }
+        solvers.emplace_back(baryonyx::trim(name));
 
-        return ret.first->second;
+        return solvers.back();
     }
 
     void save(std::ostream& os,
               std::string name,
               const std::vector<element>& c)
     {
-        fmt::print(os, "file,opt");
+        fmt::print(os, "file");
 
         for (const auto& elem : solvers)
             fmt::print(os, ",{}", elem.name);
         fmt::print(os, ",{}\n", name);
 
         for (std::size_t i{ 0 }, e{ models.size() }; i != e; ++i) {
-            fmt::print(os, "{},{},", models[i].name, models[i].best_solution);
+            fmt::print(os, "{},", models[i].name);
 
             for (std::size_t j{ 0 }, end_j{ solvers.size() }; j != end_j; ++j)
                 fmt::print(os, "{},", array(i, j));
@@ -214,10 +192,10 @@ struct bench
 
     bool load(std::istream& is)
     {
-        std::string line;
-        line.reserve(BUFSIZ);
+        std::string buffer;
+        buffer.reserve(BUFSIZ);
 
-        if (!std::getline(is, line)) {
+        if (!std::getline(is, buffer)) {
             fmt::print(stderr,
                        fmt::emphasis::bold | fmt::fg(fmt::terminal_color::red),
                        "benchmark: fail to read header\n");
@@ -225,48 +203,67 @@ struct bench
         }
 
         int line_pos = 1;
+
         {
+            // Tries to read the first column (lp file) and forget the string
             std::string::size_type begin{ 0 };
-            std::string::size_type end = line.find(',', begin);
-            int i{ 0 };
+            std::string::size_type end{ buffer.find(',', begin) };
 
-            do {
-                ++i;
+            // If more than one column exists, we read solvers.
+            if (end != std::string::npos) {
+                do {
+                    begin = end + 1;
+                    end = buffer.find(',', begin);
 
-                if (i > 2)
-                    push_back_solver(line.substr(begin, end - begin));
+                    if (end == std::string::npos)
+                        push_back_solver(std::string_view(
+                          buffer.data() + begin, buffer.size() - begin));
+                    else if (begin + 1 != end)
+                        push_back_solver(std::string_view(
+                          buffer.data() + begin, end - begin));
+                    else {
+                        fmt::print(stderr,
+                                   fmt::emphasis::bold |
+                                     fmt::fg(fmt::terminal_color::red),
+                                   "benchmark fail to read model at line {} "
+                                   "column {}\n",
+                                   line_pos,
+                                   begin);
+                        return false;
+                    }
 
-                begin = end == std::string::npos ? end : end + 1;
-                end = line.find(',', begin);
-            } while (begin < line.size());
+                } while (end != std::string::npos);
+            }
         }
 
         ++line_pos;
-        array.init(solvers.size());
+
+        if (!solvers.empty())
+            array.init(solvers.size());
 
         is.imbue(std::locale(is.getloc(), new csv_whitespace));
 
-        {
-            std::string name;
-            std::string best_solution;
-            std::string current;
+        while (is) {
+            is >> buffer;
+            if (!is.good())
+                break;
 
-            while (is) {
-                is >> name >> best_solution;
-                if (!is.good())
-                    break;
+            if (buffer.empty()) {
+                fmt::print(fmt::emphasis::bold |
+                             fmt::fg(fmt::terminal_color::red),
+                           "benchmark: fail to model name at line {}\n",
+                           line_pos);
+                return false;
+            }
 
-                push_back_model(
-                  name,
-                  to_double(best_solution,
-                            std::numeric_limits<double>::infinity()));
+            push_back_model(std::string_view(buffer));
 
+            if (const auto length{ solvers.size() }; length > 0) {
                 array.push_line();
 
-                auto length{ solvers.size() };
                 for (std::size_t i{ 0 }; i != length; ++i) {
-                    is >> current;
-                    if (!is) {
+                    is >> buffer;
+                    if (!is || buffer.empty()) {
                         fmt::print(fmt::emphasis::bold |
                                      fmt::fg(fmt::terminal_color::red),
                                    "benchmark: fail to read data at line {}\n",
@@ -274,12 +271,13 @@ struct bench
                         return false;
                     }
 
-                    array(array.rows() - 1, i) = to_double(
-                      current, std::numeric_limits<double>::infinity());
+                    array(array.rows() - 1, i) =
+                      to_double(baryonyx::trim(std::string_view(buffer)),
+                                std::numeric_limits<double>::infinity());
                 }
-
-                ++line_pos;
             }
+
+            ++line_pos;
         }
 
         return !models.empty();
@@ -291,7 +289,6 @@ struct bench
         const auto solver_size{ solvers.size() };
 
         std::vector<int> row_length(solvers.size(), 5);
-        int best_solution_row_length = { 10 };
         int current_row_length = { 10 };
 
         for (size_t i{ 0 }; i != model_size; ++i) {
@@ -312,13 +309,6 @@ struct bench
                 if (digits > current_row_length)
                     current_row_length = digits;
             }
-
-            if (is_valid(models[i].best_solution)) {
-                auto digits = get_digits_number(models[i].best_solution);
-
-                if (digits > best_solution_row_length)
-                    best_solution_row_length = digits;
-            }
         }
 
         auto modelname_lenght_max = std::max(
@@ -330,11 +320,7 @@ struct bench
                            })
             ->name.size());
 
-        fmt::print("{:^{}} {:>{}} | ",
-                   "file",
-                   modelname_lenght_max,
-                   "best",
-                   best_solution_row_length);
+        fmt::print("{:^{}} | ", "file", modelname_lenght_max);
 
         for (std::size_t solver{ 0 }; solver != solver_size; ++solver)
             fmt::print("{:>{}} ",
@@ -344,11 +330,7 @@ struct bench
         fmt::print("{:>{}}\n", name, current_row_length);
 
         for (size_t i{ 0 }; i != model_size; ++i) {
-            fmt::print("{:^{}} {:>{}.3f} | ",
-                       models[i].name,
-                       modelname_lenght_max,
-                       models[i].best_solution,
-                       best_solution_row_length);
+            fmt::print("{:^{}} | ", models[i].name, modelname_lenght_max);
 
             auto lower = std::numeric_limits<double>::max();
             auto upper = std::numeric_limits<double>::lowest();
@@ -453,10 +435,9 @@ benchmark(const baryonyx::context_ptr& ctx,
             auto result = baryonyx::optimize(ctx, rawpb);
 
             if (result)
-                current[i] = { result.duration,
-                               result.solutions.back().value };
+                current[i] = result.solutions.back().value;
             else
-                current[i] = { result.duration };
+                current[i] = std::numeric_limits<double>::infinity();
 
         } catch (const baryonyx::precondition_failure& e) {
             fmt::print(stderr, "internal failure: {}\n", e.what());
@@ -512,15 +493,14 @@ benchmark(const baryonyx::context_ptr& ctx,
         double mean_distance{ 0 };
         int optimum_number{ 0 };
 
-        for (std::size_t i{ 0 }, e{ current.size() }; i != e; ++i) {
-            if (is_valid(b.models[i].best_solution) &&
+        for (std::size_t i{ 1 }, e{ current.size() }; i < e; ++i) {
+            if (is_valid(current[0].solution) &&
                 is_valid(current[i].solution)) {
                 ++optimum_number;
 
-                mean_distance +=
-                  ((b.models[i].best_solution - current[i].solution) /
-                   b.models[i].best_solution) *
-                  100.0;
+                mean_distance += ((current[0].solution - current[i].solution) /
+                                  current[0].solution) *
+                                 100.0;
             }
         }
 
