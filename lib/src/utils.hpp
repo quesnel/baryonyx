@@ -37,6 +37,56 @@
 namespace baryonyx {
 
 /**
+ * @brief Get a sub-string without any @c std::isspace characters at left.
+ *
+ * @param s The string-view to clean up.
+ *
+ * @return An update sub-string or the same string-view.
+ */
+constexpr inline std::string_view
+left_trim(std::string_view s) noexcept
+{
+    auto found = s.find_first_not_of(" \t\n\v\f\r");
+
+    if (found == std::string::npos)
+        return {};
+
+    return s.substr(found, std::string::npos);
+}
+
+/**
+ * @brief Get a sub-string without any @c std::isspace characters at right.
+ *
+ * @param s The string-view to clean up.
+ *
+ * @return An update sub-string or the same string-view.
+ */
+constexpr inline std::string_view
+right_trim(std::string_view s) noexcept
+{
+    auto found = s.find_last_not_of(" \t\n\v\f\r");
+
+    if (found == std::string::npos)
+        return {};
+
+    return s.substr(0, found + 1);
+}
+
+/**
+ * @brief Get a sub-string without any @c std::isspace characters at left and
+ * right
+ *
+ * @param s The string-view to clean up.
+ *
+ * @return An update sub-string or the same string-view.
+ */
+constexpr inline std::string_view
+trim(std::string_view s) noexcept
+{
+    return left_trim(right_trim(s));
+}
+
+/**
  * @brief Compute the length of the @c container.
  * @details Return the @c size provided by the @c C::size() but cast it into a
  *     @c int. This is a specific baryonyx function, we know that number of

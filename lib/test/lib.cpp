@@ -575,6 +575,58 @@ check_show_size()
     Ensures(size > 16 && size < 17 && type == baryonyx::show_size_type::GB);
 }
 
+void
+check_trim_functions()
+{
+    {
+        std::string str = "    xxxx    ";
+        Ensures(baryonyx::left_trim(str) == "xxxx    ");
+        Ensures(baryonyx::right_trim(str) == "    xxxx");
+        Ensures(baryonyx::trim(str) == "xxxx");
+        Ensures(str == "    xxxx    ");
+    }
+
+    {
+        std::string str = "xxxx    ";
+        Ensures(baryonyx::left_trim(str) == "xxxx    ");
+        Ensures(baryonyx::right_trim(str) == "xxxx");
+        Ensures(baryonyx::trim(str) == "xxxx");
+        Ensures(str == "xxxx    ");
+    }
+
+    {
+        std::string str = "    xxxx";
+        Ensures(baryonyx::left_trim(str) == "xxxx");
+        Ensures(baryonyx::right_trim(str) == "    xxxx");
+        Ensures(baryonyx::trim(str) == "xxxx");
+        Ensures(str == "    xxxx");
+    }
+
+    {
+        std::string str = "    ";
+        Ensures(baryonyx::left_trim(str) == "");
+        Ensures(baryonyx::right_trim(str) == "");
+        Ensures(baryonyx::trim(str) == "");
+        Ensures(str == "    ");
+    }
+
+    {
+        std::string str = "";
+        Ensures(baryonyx::left_trim(str) == "");
+        Ensures(baryonyx::right_trim(str) == "");
+        Ensures(baryonyx::trim(str) == "");
+        Ensures(str == "");
+    }
+
+    {
+        std::string str = "abc";
+        Ensures(baryonyx::left_trim(str) == "abc");
+        Ensures(baryonyx::right_trim(str) == "abc");
+        Ensures(baryonyx::trim(str) == "abc");
+        Ensures(str == "abc");
+    }
+}
+
 int
 main(int /* argc */, char* /* argv */ [])
 {
@@ -587,6 +639,7 @@ main(int /* argc */, char* /* argv */ [])
                       check_branch_and_bound_solver);
     unit_test::checks("check_observer_pnm", check_observer_pnm);
     unit_test::checks("check_show_size", check_show_size);
+    unit_test::checks("check_trim_functions", check_trim_functions);
 
     return unit_test::report_errors();
 }
