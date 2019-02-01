@@ -66,7 +66,7 @@ have_lp_extension(std::string filename)
     if (pos == std::string::npos)
         return false;
 
-    return filename.compare(pos, 3, ".lp");
+    return filename.compare(pos, 3, ".lp") == 0;
 }
 
 static inline int
