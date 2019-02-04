@@ -43,7 +43,7 @@ namespace baryonyx {
  *
  * @return An update sub-string or the same string-view.
  */
-constexpr inline std::string_view
+inline std::string_view
 left_trim(std::string_view s) noexcept
 {
     auto found = s.find_first_not_of(" \t\n\v\f\r");
@@ -61,7 +61,7 @@ left_trim(std::string_view s) noexcept
  *
  * @return An update sub-string or the same string-view.
  */
-constexpr inline std::string_view
+inline std::string_view
 right_trim(std::string_view s) noexcept
 {
     auto found = s.find_last_not_of(" \t\n\v\f\r");
@@ -80,7 +80,7 @@ right_trim(std::string_view s) noexcept
  *
  * @return An update sub-string or the same string-view.
  */
-constexpr inline std::string_view
+inline std::string_view
 trim(std::string_view s) noexcept
 {
     return left_trim(right_trim(s));
