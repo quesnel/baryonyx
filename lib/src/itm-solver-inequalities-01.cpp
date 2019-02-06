@@ -72,8 +72,13 @@ struct solver_inequalities_01coeff
       , n(n_)
     {
         for (int i = 0; i != m; ++i) {
-            for ([[maybe_unused]] const auto& elem : csts[i].elements)
-                bx_ensures(elem.factor == 1);
+#if !defined(BARYONYX_FULL_OPTIMIZATION)
+            // mscv 15.9.6 fail to build this line:
+            // for ([[maybe_unused]] const auto& cst : csts[i].elements)
+            //    bx_ensures(cst.factor == 1);
+            for (const auto& cst : csts[i].elements)
+                bx_ensures(cst.factor == 1);
+#endif
 
             if (csts[i].min == csts[i].max) {
                 b[i].min = csts[i].min;
