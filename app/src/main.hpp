@@ -25,7 +25,6 @@
 
 #include <baryonyx/core>
 
-#include <charconv>
 #include <string>
 
 #include <cerrno>
