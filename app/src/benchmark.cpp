@@ -29,7 +29,9 @@
 #include <limits>
 #include <locale>
 #include <numeric>
+#include <optional>
 #include <unordered_map>
+#include <variant>
 
 #include <fmt/color.h>
 #include <fmt/format.h>
@@ -85,57 +87,110 @@ is_valid(double d) noexcept
            d != std::numeric_limits<double>::infinity();
 }
 
+struct success
+{};
+
+struct open_file_error
+{
+    std::string file_name;
+    int errc;
+};
+
+struct read_header_error
+{
+    int line;
+};
+
+struct read_data_error
+{
+    int line;
+};
+
+struct model_name_error
+{
+    std::string token;
+    int line;
+};
+
+struct solver_name_error
+{
+    std::string token;
+    int line;
+    std::string::size_type column;
+};
+
+struct open_result_file_error
+{
+    std::string file_name;
+    int errc;
+};
+
+using benchmark_result = std::variant<success,
+                                      open_file_error,
+                                      read_header_error,
+                                      read_data_error,
+                                      model_name_error,
+                                      solver_name_error,
+                                      open_result_file_error>;
+
 struct bench
 {
-    struct model
+    class model
     {
-        model() = default;
-
         model(std::string_view name_)
-          : name(baryonyx::trim(name_))
+          : m_name(name_)
         {}
 
-        std::string name; // e.g. scpnrf3, scpd1 etc.
+        std::string m_name;
+
+    public:
+        static std::optional<model> make_model(std::string_view name)
+        {
+            auto trim_name = baryonyx::trim(name);
+            if (trim_name.empty())
+                return std::nullopt;
+
+            return model(name);
+        }
+
+        std::string_view name() const
+        {
+            return m_name;
+        }
+
+        std::size_t size() const noexcept
+        {
+            return m_name.size();
+        }
 
         std::string filename() const
         {
-            return have_lp_extension(name) ? name : fmt::format("{}.lp", name);
-        }
-
-        std::size_t name_length() const noexcept
-        {
-            return name.size();
-        }
-
-        bool operator<(const model& other)
-        {
-            return name < other.name;
-        }
-
-        bool operator==(const model& other)
-        {
-            return name == other.name;
+            return have_lp_extension(m_name) ? m_name
+                                             : fmt::format("{}.lp", m_name);
         }
     };
 
-    struct solver
+    class solver
     {
-        solver() = default;
-
         solver(std::string_view name_)
-          : name(baryonyx::trim(name_))
+          : m_name(name_)
         {}
 
-        std::string name; // e.g. cplex-10.0.1, baryonyx-0.2
+        std::string m_name;
 
-        bool operator<(const solver& other)
+    public:
+        static std::optional<solver> make_solver(std::string_view name)
         {
-            return name < other.name;
+            auto trim_name = baryonyx::trim(name);
+            if (trim_name.empty())
+                return std::nullopt;
+
+            return solver(name);
         }
 
-        bool operator==(const solver& other)
+        std::string_view name() const
         {
-            return name == other.name;
+            return m_name;
         }
     };
 
@@ -156,18 +211,27 @@ struct bench
     std::vector<solver> solvers;
     baryonyx::dynamic_array<double> array;
 
-    model& push_back_model(std::string_view name)
+    bool push_back_model(std::string_view name)
     {
-        models.emplace_back(baryonyx::trim(name));
+        auto mdl = model::make_model(name);
 
-        return models.back();
+        if (!mdl)
+            return false;
+
+        models.emplace_back(*mdl);
+
+        return true;
     }
 
-    solver& push_back_solver(std::string_view name)
+    bool push_back_solver(std::string_view name)
     {
-        solvers.emplace_back(baryonyx::trim(name));
+        auto slv = solver::make_solver(name);
+        if (!slv)
+            return false;
 
-        return solvers.back();
+        solvers.emplace_back(*slv);
+
+        return true;
     }
 
     void save(std::ostream& os,
@@ -177,11 +241,11 @@ struct bench
         fmt::print(os, "file");
 
         for (const auto& elem : solvers)
-            fmt::print(os, ",{}", elem.name);
+            fmt::print(os, ",{}", elem.name());
         fmt::print(os, ",{}\n", name);
 
         for (std::size_t i{ 0 }, e{ models.size() }; i != e; ++i) {
-            fmt::print(os, "{},", models[i].name);
+            fmt::print(os, "{},", models[i].name());
 
             for (std::size_t j{ 0 }, end_j{ solvers.size() }; j != end_j; ++j)
                 fmt::print(os, "{},", array(i, j));
@@ -190,17 +254,13 @@ struct bench
         }
     }
 
-    bool load(std::istream& is)
+    benchmark_result load(std::istream& is)
     {
         std::string buffer;
         buffer.reserve(BUFSIZ);
 
-        if (!std::getline(is, buffer)) {
-            fmt::print(stderr,
-                       fmt::emphasis::bold | fmt::fg(fmt::terminal_color::red),
-                       "benchmark: fail to read header\n");
-            return false;
-        }
+        if (!std::getline(is, buffer))
+            return read_header_error{ 1 };
 
         int line_pos = 1;
 
@@ -215,23 +275,28 @@ struct bench
                     begin = end + 1;
                     end = buffer.find(',', begin);
 
-                    if (end == std::string::npos)
-                        push_back_solver(std::string_view(
-                          buffer.data() + begin, buffer.size() - begin));
-                    else if (begin + 1 != end)
-                        push_back_solver(std::string_view(
-                          buffer.data() + begin, end - begin));
-                    else {
-                        fmt::print(stderr,
-                                   fmt::emphasis::bold |
-                                     fmt::fg(fmt::terminal_color::red),
-                                   "benchmark fail to read model at line {} "
-                                   "column {}\n",
-                                   line_pos,
-                                   begin);
-                        return false;
-                    }
+                    if (end == std::string::npos) {
+                        if (!push_back_solver(std::string_view(
+                              buffer.data() + begin, buffer.size() - begin)))
+                            return solver_name_error{ std::string(
+                                                        buffer.data() + begin,
+                                                        buffer.size() - begin),
+                                                      1,
+                                                      begin };
 
+                    } else if (begin + 1 != end) {
+                        if (!push_back_solver(std::string_view(
+                              buffer.data() + begin, end - begin)))
+                            return solver_name_error{ std::string(
+                                                        buffer.data() + begin,
+                                                        end - begin),
+                                                      1,
+                                                      begin };
+                    } else {
+                        return solver_name_error{
+                            std::string(buffer.data() + begin), 1, begin
+                        };
+                    }
                 } while (end != std::string::npos);
             }
         }
@@ -248,28 +313,19 @@ struct bench
             if (!is.good())
                 break;
 
-            if (buffer.empty()) {
-                fmt::print(fmt::emphasis::bold |
-                             fmt::fg(fmt::terminal_color::red),
-                           "benchmark: fail to model name at line {}\n",
-                           line_pos);
-                return false;
-            }
+            if (buffer.empty())
+                return model_name_error{ buffer, line_pos };
 
-            push_back_model(std::string_view(buffer));
+            if (!push_back_model(std::string_view(buffer)))
+                return model_name_error{ buffer, line_pos };
 
             if (const auto length{ solvers.size() }; length > 0) {
                 array.push_line();
 
                 for (std::size_t i{ 0 }; i != length; ++i) {
                     is >> buffer;
-                    if (!is || buffer.empty()) {
-                        fmt::print(fmt::emphasis::bold |
-                                     fmt::fg(fmt::terminal_color::red),
-                                   "benchmark: fail to read data at line {}\n",
-                                   line_pos);
-                        return false;
-                    }
+                    if (!is || buffer.empty())
+                        return read_data_error{ line_pos };
 
                     array(array.rows() - 1, i) =
                       to_double(baryonyx::trim(std::string_view(buffer)),
@@ -280,7 +336,7 @@ struct bench
             ++line_pos;
         }
 
-        return !models.empty();
+        return success{};
     }
 
     void show_to_console(const std::vector<element>& current, std::string name)
@@ -311,26 +367,26 @@ struct bench
             }
         }
 
-        auto modelname_lenght_max = std::max(
-          static_cast<std::string::size_type>(4),
-          std::max_element(models.cbegin(),
-                           models.cend(),
-                           [](const auto& lhs, const auto& rhs) {
-                               return lhs.name.size() < rhs.name.size();
-                           })
-            ->name.size());
+        auto modelname_lenght_max =
+          std::max(static_cast<std::string::size_type>(4),
+                   std::max_element(models.cbegin(),
+                                    models.cend(),
+                                    [](const auto& lhs, const auto& rhs) {
+                                        return lhs.size() < rhs.size();
+                                    })
+                     ->size());
 
         fmt::print("{:^{}} | ", "file", modelname_lenght_max);
 
         for (std::size_t solver{ 0 }; solver != solver_size; ++solver)
             fmt::print("{:>{}} ",
-                       solvers[solver].name.substr(0, 10),
+                       solvers[solver].name().substr(0, 10),
                        row_length[solver]);
 
         fmt::print("{:>{}}\n", name, current_row_length);
 
         for (size_t i{ 0 }; i != model_size; ++i) {
-            fmt::print("{:^{}} | ", models[i].name, modelname_lenght_max);
+            fmt::print("{:^{}} | ", models[i].name(), modelname_lenght_max);
 
             auto lower = std::numeric_limits<double>::max();
             auto upper = std::numeric_limits<double>::lowest();
@@ -393,41 +449,31 @@ struct bench
     }
 };
 
-bool
-benchmark(const baryonyx::context_ptr& ctx,
-          std::string filepath,
-          std::string name)
+static benchmark_result
+try_benchmark(const baryonyx::context_ptr& ctx,
+              std::string filepath,
+              std::string name)
 {
     std::ifstream ifs(filepath);
-    if (!ifs.is_open()) {
-        fmt::print(stderr,
-                   fmt::emphasis::bold | fmt::fg(fmt::terminal_color::red),
-                   "Can not open {} to start benchmark\n",
-                   filepath);
-        return false;
-    }
+    if (!ifs.is_open())
+        return open_file_error{ filepath, errno };
 
     bench b;
-    if (!b.load(ifs)) {
-        fmt::print(stderr,
-                   fmt::emphasis::bold | fmt::fg(fmt::terminal_color::red),
-                   "Error reading the benchmark file: {}\n",
-                   filepath);
-        return false;
-    }
+    auto ret = b.load(ifs);
+    if (!std::holds_alternative<success>(ret))
+        return ret;
 
     std::vector<bench::element> current(b.models.size());
-
     std::string dirname = filepath.substr(0, filepath.rfind(".csv")) + '/';
 
     for (std::size_t i{ 0 }, e{ b.models.size() }; i != e; ++i) {
-        fmt::print("- optimizing {}\n", b.models[i].name);
+        fmt::print("- optimizing {}\n", b.models[i].name());
 
         auto filename = b.models[i].filename();
 
         try {
             fmt::print("- optimizing: {} filename: {} in dirname: {}\n",
-                       b.models[i].name,
+                       b.models[i].name(),
                        filename,
                        dirname);
 
@@ -531,17 +577,88 @@ benchmark(const baryonyx::context_ptr& ctx,
 
             if (number > 0)
                 fmt::print("Average distance from the solution of {}: {}%\n",
-                           b.solvers[solver].name,
+                           b.solvers[solver].name(),
                            mean_distance /
                              static_cast<double>(current.size()));
         }
     }
 
     std::ofstream ofs(filepath);
-    if (ofs.is_open())
-        b.save(ofs, name, current);
+    if (!ofs.is_open())
+        return open_result_file_error{ filepath, errno };
 
+    b.save(ofs, name, current);
     b.show_to_console(current, name);
 
-    return true;
+    return success{};
+}
+
+template<class T>
+struct always_false : std::false_type
+{};
+
+bool
+benchmark(const baryonyx::context_ptr& ctx,
+          std::string filepath,
+          std::string name)
+{
+    auto ret = try_benchmark(ctx, filepath, name);
+
+    return std::visit(
+      [](auto&& err) -> bool {
+          using T = std::decay_t<decltype(err)>;
+
+          if constexpr (std::is_same_v<T, success>) {
+              return true;
+          } else if constexpr (std::is_same_v<T, open_file_error>) {
+              fmt::print(stderr,
+                         fmt::emphasis::bold |
+                           fmt::fg(fmt::terminal_color::red),
+                         "Can not open `{}' to start benchmark\n",
+                         err.file_name);
+              return false;
+          } else if constexpr (std::is_same_v<T, read_header_error>) {
+              fmt::print(stderr,
+                         fmt::emphasis::bold |
+                           fmt::fg(fmt::terminal_color::red),
+                         "Can not read header at line `{}'\n",
+                         err.line);
+              return false;
+          } else if constexpr (std::is_same_v<T, read_data_error>) {
+              fmt::print(stderr,
+                         fmt::emphasis::bold |
+                           fmt::fg(fmt::terminal_color::red),
+                         "Can not read data at line `{}'.\n",
+                         err.line);
+
+              return false;
+          } else if constexpr (std::is_same_v<T, model_name_error>) {
+              fmt::print(stderr,
+                         fmt::emphasis::bold |
+                           fmt::fg(fmt::terminal_color::red),
+                         "Can not read solver name model at line `{}'. Token "
+                         "read is `{}'\n",
+                         err.line,
+                         err.token);
+              return false;
+          } else if constexpr (std::is_same_v<T, solver_name_error>) {
+              fmt::print(stderr,
+                         fmt::emphasis::bold |
+                           fmt::fg(fmt::terminal_color::red),
+                         "Can not read solver name model at line `{}'. Token "
+                         "read is `{}'\n",
+                         err.line,
+                         err.token);
+              return false;
+          } else if constexpr (std::is_same_v<T, open_result_file_error>) {
+              fmt::print(stderr,
+                         fmt::emphasis::bold |
+                           fmt::fg(fmt::terminal_color::red),
+                         "Can not open `{}' to record benchmark results\n",
+                         err.file_name);
+              return false;
+          } else
+              static_assert(always_false<T>::value, "non-exhaustive visitor!");
+      },
+      ret);
 }
