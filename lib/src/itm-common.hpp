@@ -479,149 +479,184 @@ constraint(Iterator it)
     return detail::constraint(it);
 }
 
-template<typename Solver, typename Xtype>
-inline solver_parameters::init_policy_type
-init_solver(Solver& slv,
-            Xtype& x,
-            solver_parameters::init_policy_type type,
-            double init_random)
+template<typename Solver, typename Float, typename Mode, typename Xtype>
+class solver_initializer
 {
-    using Mode = typename Solver::mode_type;
-    using floatingpointT = typename Solver::float_type;
+    const solver_parameters::init_policy_type origin;
+    solver_parameters::init_policy_type current;
+    std::bernoulli_distribution dist;
 
-    x.clear();
+    static void init_solver(Solver& slv, Xtype& x) noexcept
+    {
+        x.clear();
 
-    std::fill(slv.P.get(),
-              slv.P.get() + slv.ap.length(),
-              static_cast<floatingpointT>(0));
-    std::fill(
-      slv.pi.get(), slv.pi.get() + slv.m, static_cast<floatingpointT>(0));
-
-    init_random = clamp(init_random, 0.0, 1.0);
-    std::bernoulli_distribution d(init_random);
-
-    switch (type) {
-    case solver_parameters::init_policy_type::bastert:
-        if (init_random == 0.0 || init_random == 1.0) {
-            bool value_if_cost_0 = init_random == 1.0;
-
-            for (int i = 0; i != slv.n; ++i)
-                x.set(i, init_x<Mode>(slv.c[i], value_if_cost_0));
-        } else {
-            for (int i = 0; i != slv.n; ++i)
-                x.set(i, init_x<Mode>(slv.c[i], d(slv.rng)));
-        }
-        break;
-    case solver_parameters::init_policy_type::random:
-        for (int i = 0; i != slv.n; ++i)
-            x.set(i, d(slv.rng));
-        break;
-    case solver_parameters::init_policy_type::best:
-        for (int i = 0; i != slv.n; ++i)
-            x.set(i, d(slv.rng));
-        break;
-    case solver_parameters::init_policy_type::bastert_cycle:
-        if (init_random == 0.0 || init_random == 1.0) {
-            bool value_if_cost_0 = init_random == 1.0;
-
-            for (int i = 0; i != slv.n; ++i)
-                x.set(i, init_x<Mode>(slv.c[i], value_if_cost_0));
-        } else {
-            for (int i = 0; i != slv.n; ++i)
-                x.set(i, init_x<Mode>(slv.c[i], d(slv.rng)));
-        }
-        type = solver_parameters::init_policy_type::random_cycle;
-        break;
-    case solver_parameters::init_policy_type::random_cycle:
-        for (int i = 0; i != slv.n; ++i)
-            x.set(i, d(slv.rng));
-        type = solver_parameters::init_policy_type::best_cycle;
-        break;
-    case solver_parameters::init_policy_type::best_cycle:
-        for (int i = 0; i != slv.n; ++i)
-            x.set(i, d(slv.rng));
-        type = solver_parameters::init_policy_type::bastert_cycle;
-        break;
+        std::fill(slv.P.get(), slv.P.get() + slv.ap.length(), Float{ 0 });
+        std::fill(slv.pi.get(), slv.pi.get() + slv.m, Float{ 0 });
     }
 
-    return type;
-}
+    /**
+     * @brief Use the Bastert behaviour to initialize X.
+     * @details Reset the X vector according to the @c init_random parameter of
+     *     the Bernouilli discrete probability function. If @c init_random
+     *     equals 0.25, we have 25% of chance to keep the value of the Bastert
+     *     behaviour and 75% of chance to get a uniform random boolean value.
+     *
+     * @note If @c init_random equal 1, this function use the default behaviour
+     *     of the algorithm describes in Bastert et al. The only difference: we
+     *     have a specific algorithm when cost value equal 0.
+     */
+    void init_solver_bastert(Solver& slv, Xtype& x) noexcept
+    {
+        const bool value_if_cost_0 = dist.p() == 1.0;
 
-template<typename Solver, typename Xtype>
-inline solver_parameters::init_policy_type
-init_solver(Solver& slv,
-            Xtype& x,
-            const std::vector<bool>& best_previous,
-            solver_parameters::init_policy_type type,
-            double init_random)
-{
-    using Mode = typename Solver::mode_type;
-    using floatingpointT = typename Solver::float_type;
+        std::bernoulli_distribution new_dist(0.5);
 
-    x.clear();
-
-    std::fill(slv.P.get(),
-              slv.P.get() + slv.ap.length(),
-              static_cast<floatingpointT>(0));
-    std::fill(
-      slv.pi.get(), slv.pi.get() + slv.m, static_cast<floatingpointT>(0));
-
-    if (best_previous.empty() &&
-        type == solver_parameters::init_policy_type::best)
-        type = solver_parameters::init_policy_type::bastert;
-
-    init_random = clamp(init_random, 0.0, 1.0);
-    std::bernoulli_distribution d(init_random);
-
-    switch (type) {
-    case solver_parameters::init_policy_type::bastert:
-        if (init_random == 0.0 || init_random == 1.0) {
-            bool value_if_cost_0 = init_random == 1.0;
-
-            for (int i = 0; i != slv.n; ++i)
+        for (int i = 0; i != slv.n; ++i) {
+            if (dist(slv.rng))
                 x.set(i, init_x<Mode>(slv.c[i], value_if_cost_0));
-        } else {
-            for (int i = 0; i != slv.n; ++i)
-                x.set(i, init_x<Mode>(slv.c[i], d(slv.rng)));
+            else
+                x.set(i, new_dist(slv.rng));
         }
-        break;
-    case solver_parameters::init_policy_type::random:
-        for (int i = 0; i != slv.n; ++i)
-            x.set(i, d(slv.rng));
-        break;
-    case solver_parameters::init_policy_type::best:
-        for (int i = 0; i != slv.n; ++i)
-            x.set(i, (d(slv.rng)) ? (best_previous[i]) : (!best_previous[i]));
-        break;
-    case solver_parameters::init_policy_type::bastert_cycle:
-        if (init_random == 0.0 || init_random == 1.0) {
-            bool value_if_cost_0 = init_random == 1.0;
-
-            for (int i = 0; i != slv.n; ++i)
-                x.set(i, init_x<Mode>(slv.c[i], value_if_cost_0));
-        } else {
-            for (int i = 0; i != slv.n; ++i)
-                x.set(i, init_x<Mode>(slv.c[i], d(slv.rng)));
-        }
-
-        type = solver_parameters::init_policy_type::random_cycle;
-        break;
-    case solver_parameters::init_policy_type::random_cycle:
-        for (int i = 0; i != slv.n; ++i)
-            x.set(i, d(slv.rng));
-
-        type = solver_parameters::init_policy_type::best_cycle;
-        break;
-    case solver_parameters::init_policy_type::best_cycle:
-        for (int i = 0; i != slv.n; ++i)
-            x.set(i, (d(slv.rng)) ? (best_previous[i]) : (!best_previous[i]));
-
-        type = solver_parameters::init_policy_type::bastert_cycle;
-        break;
     }
 
-    return type;
-}
+    /**
+     * @brief Use a random algorithm to initialize X.
+     * @details Reset the X vector according to the @c init_random parameter of
+     *     the Bernouilli discrete probability function. If @c init_random
+     *     equals 0.25, we have 25% of chance to have true and 75% of chance to
+     *     get false.
+     */
+    void init_solver_random(Solver& slv, Xtype& x) noexcept
+    {
+        for (int i = 0; i != slv.n; ++i)
+            x.set(i, dist(slv.rng));
+    }
+
+    /**
+     * @brief Use the best behaviour to initialize X.
+     * @details Reset the X vector according to the @c init_random parameter of
+     *     the Bernouilli discrete probability function. If @c init_random
+     *     equals 0.25, we have 25% of chance to keep the best solution found
+     *     in previous optimization run and 75% of chance to get a uniform
+     *     random boolean value.
+     *
+     * @note If @c init_random equal 1, this function keep the complete X of
+     *     the best solution.
+     */
+    void init_solver_best(Solver& slv, Xtype& x, const solution& best) noexcept
+    {
+        std::bernoulli_distribution new_dist(0.5);
+
+        for (int i = 0; i != slv.n; ++i) {
+            if (dist(slv.rng))
+                x.set(i, best.variables[i]);
+            else
+                x.set(i, new_dist(slv.rng));
+        }
+    }
+
+public:
+    solver_initializer(Solver& slv,
+                       Xtype& x,
+                       solver_parameters::init_policy_type policy,
+                       double init_random)
+      : origin(policy)
+      , current(policy)
+      , dist(init_random)
+    {
+        init_solver(slv, x);
+
+        if (current == solver_parameters::init_policy_type::best)
+            current = solver_parameters::init_policy_type::bastert;
+        else if (current == solver_parameters::init_policy_type::best_cycle)
+            current = solver_parameters::init_policy_type::bastert_cycle;
+
+        switch (current) {
+        case solver_parameters::init_policy_type::bastert:
+            init_solver_bastert(slv, x);
+            break;
+        case solver_parameters::init_policy_type::random:
+            init_solver_random(slv, x);
+            break;
+        case solver_parameters::init_policy_type::bastert_cycle:
+            init_solver_bastert(slv, x);
+            policy = solver_parameters::init_policy_type::random_cycle;
+            break;
+        case solver_parameters::init_policy_type::random_cycle:
+            init_solver_random(slv, x);
+            policy = solver_parameters::init_policy_type::best_cycle;
+            break;
+        case solver_parameters::init_policy_type::best:
+            bx_reach();
+            break;
+        case solver_parameters::init_policy_type::best_cycle:
+            bx_reach();
+            break;
+        }
+    }
+
+    void reinit(Solver& slv, Xtype& x)
+    {
+        init_solver(slv, x);
+
+        switch (current) {
+        case solver_parameters::init_policy_type::bastert:
+            init_solver_bastert(slv, x);
+            break;
+        case solver_parameters::init_policy_type::random:
+            init_solver_random(slv, x);
+            break;
+        case solver_parameters::init_policy_type::bastert_cycle:
+            init_solver_bastert(slv, x);
+            current = solver_parameters::init_policy_type::random_cycle;
+            break;
+        case solver_parameters::init_policy_type::random_cycle:
+            init_solver_random(slv, x);
+            current = solver_parameters::init_policy_type::bastert_cycle;
+            break;
+        case solver_parameters::init_policy_type::best:
+            bx_reach();
+            break;
+        case solver_parameters::init_policy_type::best_cycle:
+            bx_reach();
+            break;
+        }
+    }
+
+    void reinit(Solver& slv, Xtype& x, const solution& best)
+    {
+        init_solver(slv, x);
+
+        if ((current == solver_parameters::init_policy_type::bastert) &&
+            (origin == solver_parameters::init_policy_type::best ||
+             origin == solver_parameters::init_policy_type::best_cycle))
+            current = origin;
+
+        switch (current) {
+        case solver_parameters::init_policy_type::bastert:
+            init_solver_bastert(slv, x);
+            break;
+        case solver_parameters::init_policy_type::random:
+            init_solver_random(slv, x);
+            break;
+        case solver_parameters::init_policy_type::best:
+            init_solver_best(slv, x, best);
+            break;
+        case solver_parameters::init_policy_type::bastert_cycle:
+            init_solver_bastert(slv, x);
+            current = solver_parameters::init_policy_type::random_cycle;
+            break;
+        case solver_parameters::init_policy_type::random_cycle:
+            init_solver_random(slv, x);
+            current = solver_parameters::init_policy_type::best_cycle;
+            break;
+        case solver_parameters::init_policy_type::best_cycle:
+            init_solver_best(slv, x, best);
+            current = solver_parameters::init_policy_type::bastert_cycle;
+            break;
+        }
+    }
+};
 
 template<typename Solver, typename Xtype>
 inline void

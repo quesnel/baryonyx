@@ -192,7 +192,8 @@ struct optimize_functor
         Solver slv(
           m_rng, length(constraints), variables, norm_costs, constraints);
 
-        auto init_policy = init_solver(slv, x, p.init_policy, p.init_random);
+        solver_initializer<Solver, Float, Mode, Xtype> initializer(
+          slv, x, p.init_policy, p.init_random);
 
         Order compute(slv, x, m_rng);
 
@@ -205,15 +206,11 @@ struct optimize_functor
         bool finish = false;
         while (!finish) {
             auto kappa = static_cast<Float>(p.kappa_min);
-            init_policy =
-              m_best.solutions.empty()
-                ? init_solver(
-                    slv, x, init_policy, m_ctx->parameters.init_random)
-                : init_solver(slv,
-                              x,
-                              m_best.solutions.back().variables,
-                              init_policy,
-                              m_ctx->parameters.init_random);
+
+            if (m_best.solutions.empty())
+                initializer.reinit(slv, x);
+            else
+                initializer.reinit(slv, x, m_best.solutions.back());
 
             for (int i = 0; i != p.limit; ++i) {
                 auto remaining = compute.run(slv, x, kappa, delta, theta);

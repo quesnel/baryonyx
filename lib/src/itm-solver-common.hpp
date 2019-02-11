@@ -107,8 +107,8 @@ struct solver_functor
         Solver slv(
           m_rng, length(constraints), variables, norm_costs, constraints);
 
-        auto init_policy = init_solver(slv, x, p.init_policy, p.init_random);
-
+        solver_initializer<Solver, Float, Mode, x_type> initializer(
+          slv, x, p.init_policy, p.init_random);
         Order compute(slv, x, m_rng);
 
         m_best.variables = slv.m;
@@ -116,8 +116,6 @@ struct solver_functor
 
         bool start_push = false;
         auto kappa = static_cast<Float>(p.kappa_min);
-
-        init_solver(slv, x, init_policy, m_ctx->parameters.init_random);
 
         auto max_cost = max_cost_init(original_costs, variables, Mode());
         bounds_printer<Float, Mode> bound_print(max_cost);
