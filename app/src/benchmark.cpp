@@ -248,9 +248,9 @@ struct bench
             fmt::print(os, "{},", models[i].name());
 
             for (std::size_t j{ 0 }, end_j{ solvers.size() }; j != end_j; ++j)
-                fmt::print(os, "{},", array(i, j));
+                fmt::print(os, "{:.10g},", array(i, j));
 
-            fmt::print(os, "{}\n", c[i].solution);
+            fmt::print(os, "{:.10g}\n", c[i].solution);
         }
     }
 
@@ -551,7 +551,7 @@ try_benchmark(const baryonyx::context_ptr& ctx,
         }
 
         if (optimum_number > 0)
-            fmt::print("Average distance from the optimum: {}%\n",
+            fmt::print("Average distance from the optimum: {:.10g}%\n",
                        mean_distance / optimum_number);
     }
 
@@ -576,7 +576,7 @@ try_benchmark(const baryonyx::context_ptr& ctx,
             }
 
             if (number > 0)
-                fmt::print("Average distance from the solution of {}: {}%\n",
+                fmt::print("Average distance from the solution of {:.10g}: {:.10g}%\n",
                            b.solvers[solver].name(),
                            mean_distance /
                              static_cast<double>(current.size()));
