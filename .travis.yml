@@ -79,6 +79,7 @@ matrix:
             - clang-7
             - g++-7
     - os: osx
+      osx_image: xcode10.1
       env: CXX_COMPILER=clang++ CXXSTD=c++17
 
 install:
