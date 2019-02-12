@@ -576,7 +576,7 @@ try_benchmark(const baryonyx::context_ptr& ctx,
             }
 
             if (number > 0)
-                fmt::print("Average distance from the solution of {:.10g}: {:.10g}%\n",
+                fmt::print("Average distance from the solution of {}: {:.10g}%\n",
                            b.solvers[solver].name(),
                            mean_distance /
                              static_cast<double>(current.size()));
