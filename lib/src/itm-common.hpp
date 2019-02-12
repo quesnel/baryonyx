@@ -299,6 +299,23 @@ stop_iterating(Float value, Random& rng) noexcept
 }
 
 template<typename Mode, typename Float>
+constexpr Float
+bad_value() noexcept
+{
+    if constexpr (std::is_same_v<Mode, minimize_tag>)
+        return std::numeric_limits<Float>::infinity();
+    else
+        return -std::numeric_limits<Float>::infinity();
+}
+
+template<typename Mode, typename Float>
+constexpr bool
+is_bad_value(Float value) noexcept
+{
+    return value == bad_value<Mode, Float>();
+}
+
+template<typename Mode, typename Float>
 inline bool
 stop_iterating(Float value) noexcept
 {
@@ -482,9 +499,11 @@ constraint(Iterator it)
 template<typename Solver, typename Float, typename Mode, typename Xtype>
 class solver_initializer
 {
+    double old_best;
     const solver_parameters::init_policy_type origin;
     solver_parameters::init_policy_type current;
     std::bernoulli_distribution dist;
+    short best_iteration;
 
     static void init_solver(Solver& slv, Xtype& x) noexcept
     {
@@ -560,9 +579,11 @@ public:
                        Xtype& x,
                        solver_parameters::init_policy_type policy,
                        double init_random)
-      : origin(policy)
+      : old_best(bad_value<Mode, double>())
+      , origin(policy)
       , current(policy)
       , dist(init_random)
+      , best_iteration(0)
     {
         init_solver(slv, x);
 
@@ -631,6 +652,17 @@ public:
             (origin == solver_parameters::init_policy_type::best ||
              origin == solver_parameters::init_policy_type::best_cycle))
             current = origin;
+
+        if (is_better_solution<Mode, double>(old_best, best.value)) {
+            old_best = best.value;
+        } else {
+            ++best_iteration;
+
+            if (best_iteration >= 3) {
+                best_iteration = 0;
+                current = solver_parameters::init_policy_type::bastert_cycle;
+            }
+        }
 
         switch (current) {
         case solver_parameters::init_policy_type::bastert:
