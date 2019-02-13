@@ -78,9 +78,13 @@ matrix:
             - *common_packages
             - clang-7
             - g++-7
-    - os: osx
-      osx_image: xcode10.1
-      env: CXX_COMPILER=clang++ CXXSTD=c++17
+    # osx is disabled. We are waiting for a 10.14:
+    # /benchmark.cpp:607:12:
+    # error: call to unavailable function 'visit': introduced in macOS 10.14
+    #
+    # - os: osx
+    #   osx_image: xcode10.1
+    #   env: CXX_COMPILER=clang++ CXXSTD=c++17
 
 install:
   - cd ..
