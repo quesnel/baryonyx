@@ -93,6 +93,60 @@ is_valid(double d) noexcept
            d != std::numeric_limits<double>::infinity();
 }
 
+struct result
+{
+    result() = default;
+
+    result(double value_, size_t position_)
+      : value(value_)
+      , position(position_)
+    {}
+
+    double value{ 0 };
+    size_t position{ 0 };
+    size_t rank{ 0 };
+};
+
+template<typename Iterator>
+void
+sort_on_value(Iterator first,
+              Iterator last,
+              baryonyx::objective_function_type type)
+{
+    if (type == baryonyx::objective_function_type::minimize)
+        std::sort(first, last, [](const auto& lhs, const auto& rhs) {
+            if (is_valid(lhs.value)) {
+                if (is_valid(rhs.value)) {
+                    return lhs.value < rhs.value;
+                } else {
+                    return true;
+                }
+            } else {
+                if (is_valid(rhs.value)) {
+                    return false;
+                } else {
+                    return true;
+                }
+            }
+        });
+    else
+        std::sort(first, last, [](const auto& lhs, const auto& rhs) {
+            if (is_valid(lhs.value)) {
+                if (is_valid(rhs.value)) {
+                    return lhs.value > rhs.value;
+                } else {
+                    return true;
+                }
+            } else {
+                if (is_valid(rhs.value)) {
+                    return false;
+                } else {
+                    return true;
+                }
+            }
+        });
+}
+
 struct success
 {};
 
@@ -166,6 +220,11 @@ struct bench
                 return std::nullopt;
 
             return model(name);
+        }
+
+        baryonyx::objective_function_type objective_type() const noexcept
+        {
+            return m_objective_type;
         }
 
         void set_objective_type(
@@ -286,20 +345,6 @@ struct bench
     {
         save_header(os, name);
 
-        struct result
-        {
-            result() = default;
-
-            result(double value_, size_t position_)
-              : value(value_)
-              , position(position_)
-            {}
-
-            double value{ 0 };
-            size_t position{ 0 };
-            size_t rank{ 0 };
-        };
-
         std::vector<result> stats(solvers.size() + 1);
         std::vector<result> line(solvers.size() + 1);
 
@@ -308,11 +353,8 @@ struct bench
                 line[j] = { array(i, j), j };
             line[solvers.size()] = { c[i].solution, solvers.size() };
 
-            std::sort(std::begin(line),
-                      std::end(line),
-                      [](const auto& lhs, const auto& rhs) {
-                          return lhs.value < rhs.value;
-                      });
+            sort_on_value(
+              std::begin(line), std::end(line), models[i].objective_type());
 
             size_t rank = 1;
             line[0].rank = rank;
