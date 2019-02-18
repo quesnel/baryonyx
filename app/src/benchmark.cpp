@@ -152,9 +152,11 @@ struct bench
     {
         model(std::string_view name_)
           : m_name(name_)
+          , m_objective_type(baryonyx::objective_function_type::minimize)
         {}
 
         std::string m_name;
+        baryonyx::objective_function_type m_objective_type;
 
     public:
         static std::optional<model> make_model(std::string_view name)
@@ -164,6 +166,12 @@ struct bench
                 return std::nullopt;
 
             return model(name);
+        }
+
+        void set_objective_type(
+          baryonyx::objective_function_type type) noexcept
+        {
+            m_objective_type = type;
         }
 
         std::string_view name() const
@@ -598,6 +606,9 @@ try_benchmark(const baryonyx::context_ptr& ctx,
                        dirname);
 
             auto rawpb = baryonyx::make_problem(ctx, dirname + filename);
+
+            b.models[i].set_objective_type(rawpb.type);
+
             auto result = baryonyx::optimize(ctx, rawpb);
 
             if (result)
