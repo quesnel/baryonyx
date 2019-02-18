@@ -125,13 +125,20 @@ struct open_result_file_error
     int errc;
 };
 
+struct open_stats_file_error
+{
+    std::string file_name;
+    int errc;
+};
+
 using benchmark_result = std::variant<success,
                                       open_file_error,
                                       read_header_error,
                                       read_data_error,
                                       model_name_error,
                                       solver_name_error,
-                                      open_result_file_error>;
+                                      open_result_file_error,
+                                      open_stats_file_error>;
 
 struct bench
 {
@@ -576,10 +583,10 @@ try_benchmark(const baryonyx::context_ptr& ctx,
             }
 
             if (number > 0)
-                fmt::print("Average distance from the solution of {}: {:.10g}%\n",
-                           b.solvers[solver].name(),
-                           mean_distance /
-                             static_cast<double>(current.size()));
+                fmt::print(
+                  "Average distance from the solution of {}: {:.10g}%\n",
+                  b.solvers[solver].name(),
+                  mean_distance / static_cast<double>(current.size()));
         }
     }
 
@@ -654,8 +661,19 @@ benchmark(const baryonyx::context_ptr& ctx,
               fmt::print(stderr,
                          fmt::emphasis::bold |
                            fmt::fg(fmt::terminal_color::red),
-                         "Can not open `{}' to record benchmark results\n",
-                         err.file_name);
+                         "Can not open `{}' to record benchmark results "
+                         "(error code: {})\n",
+                         err.file_name,
+                         err.errc);
+              return false;
+          } else if constexpr (std::is_same_v<T, open_stats_file_error>) {
+              fmt::print(stderr,
+                         fmt::emphasis::bold |
+                           fmt::fg(fmt::terminal_color::red),
+                         "Can not open `{}' to record statistic benchmark "
+                         "results (error code: {})\n",
+                         err.file_name,
+                         err.errc);
               return false;
           } else
               static_assert(always_false<T>::value, "non-exhaustive visitor!");
