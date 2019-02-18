@@ -61,6 +61,12 @@ struct csv_whitespace : std::ctype<char>
     {}
 };
 
+static std::string
+make_stats_file_name(std::string_view str)
+{
+    return fmt::format("{}-stats.csv", str.substr(0, str.rfind('.')));
+}
+
 static bool
 have_lp_extension(std::string filename)
 {
@@ -241,15 +247,20 @@ struct bench
         return true;
     }
 
-    void save(std::ostream& os,
-              std::string name,
-              const std::vector<element>& c)
+    void save_header(std::ostream& os, std::string name)
     {
         fmt::print(os, "file");
 
         for (const auto& elem : solvers)
             fmt::print(os, ",{}", elem.name());
         fmt::print(os, ",{}\n", name);
+    }
+
+    void save(std::ostream& os,
+              std::string name,
+              const std::vector<element>& c)
+    {
+        save_header(os, name);
 
         for (std::size_t i{ 0 }, e{ models.size() }; i != e; ++i) {
             fmt::print(os, "{},", models[i].name());
@@ -259,6 +270,108 @@ struct bench
 
             fmt::print(os, "{:.10g}\n", c[i].solution);
         }
+    }
+
+    void save_stats(std::ostream& os,
+                    std::string name,
+                    const std::vector<element>& c)
+    {
+        save_header(os, name);
+
+        struct result
+        {
+            result() = default;
+
+            result(double value_, size_t position_)
+              : value(value_)
+              , position(position_)
+            {}
+
+            double value{ 0 };
+            size_t position{ 0 };
+            size_t rank{ 0 };
+        };
+
+        std::vector<result> stats(solvers.size() + 1);
+        std::vector<result> line(solvers.size() + 1);
+
+        for (size_t i{ 0 }, e{ models.size() }; i != e; ++i) {
+            for (size_t j{ 0 }, end_j{ line.size() }; j != end_j; ++j)
+                line[j] = { array(i, j), j };
+            line[solvers.size()] = { c[i].solution, solvers.size() };
+
+            std::sort(std::begin(line),
+                      std::end(line),
+                      [](const auto& lhs, const auto& rhs) {
+                          return lhs.value < rhs.value;
+                      });
+
+            size_t rank = 1;
+            line[0].rank = rank;
+
+            // values: 7 7 9 10 11 11
+            // ranks:  1 1 2  3  4  4
+            // but maybe we want:
+            // ranks:  1 1 3  4  5  5
+
+            for (size_t j = { 1 }, end_j{ line.size() }; j != end_j; ++j) {
+                if (line[j].value != line[j - 1].value)
+                    ++rank;
+
+                line[j].rank = rank;
+            }
+
+            for (size_t j{ 0 }, end_j{ line.size() }; j != end_j; ++j)
+                stats[line[j].position].rank += line[j].rank;
+
+            std::sort(std::begin(line),
+                      std::end(line),
+                      [](const auto& lhs, const auto& rhs) {
+                          return lhs.position < rhs.position;
+                      });
+
+            fmt::print(os, "{}", models[i].name());
+            for (size_t j{ 0 }, end_j{ line.size() }; j != end_j; ++j)
+                fmt::print(os, ",{}", line[j].rank);
+            fmt::print(os, "\n");
+        }
+
+        fmt::print(os, "mean");
+        for (size_t j{ 0 }, end_j{ line.size() }; j != end_j; ++j) {
+            stats[j].value =
+              stats[j].rank / static_cast<double>(models.size());
+            stats[j].position = j;
+
+            fmt::print(os, ",{}", stats[j].value);
+        }
+        fmt::print(os, "\n");
+
+        std::sort(std::begin(stats),
+                  std::end(stats),
+                  [](const auto& lhs, const auto& rhs) {
+                      return lhs.value < rhs.value;
+                  });
+
+        size_t rank = 1;
+        stats[0].rank = rank;
+
+        for (size_t i{ 1 }, e = stats.size(); i != e; ++i) {
+            if (stats[i].value != stats[i - 1].value)
+                ++rank;
+
+            stats[i].rank = rank;
+        }
+
+        std::sort(std::begin(stats),
+                  std::end(stats),
+                  [](const auto& lhs, const auto& rhs) {
+                      return lhs.position < rhs.position;
+                  });
+
+        fmt::print(os, "rank");
+        for (size_t i{ 0 }, e = stats.size(); i != e; ++i)
+            fmt::print(os, ",{}", stats[i].rank);
+        fmt::print(os, "\n");
     }
 
     benchmark_result load(std::istream& is)
@@ -590,11 +703,23 @@ try_benchmark(const baryonyx::context_ptr& ctx,
         }
     }
 
-    std::ofstream ofs(filepath);
-    if (!ofs.is_open())
-        return open_result_file_error{ filepath, errno };
+    {
+        std::ofstream ofs(filepath);
+        if (!ofs.is_open())
+            return open_result_file_error{ filepath, errno };
 
-    b.save(ofs, name, current);
+        b.save(ofs, name, current);
+    }
+
+    {
+        auto stats_file_name = make_stats_file_name(filepath);
+        std::ofstream ofs(stats_file_name);
+        if (!ofs.is_open())
+            return open_stats_file_error{ stats_file_name, errno };
+
+        b.save_stats(ofs, name, current);
+    }
+
     b.show_to_console(current, name);
 
     return success{};
