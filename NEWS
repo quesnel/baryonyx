@@ -1,6 +1,10 @@
 = Baryonyx
 Gauthier Quesnel <gauthier.quesnel@inra.fr>
 
+== baryonyx v0.5.0 - 2019-??-??
+
+
+
 == baryonyx v0.4.0 - 2019-02-19
 
 Bump C++ dependency to C++17 standard.
