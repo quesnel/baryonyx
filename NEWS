@@ -1,6 +1,29 @@
 = Baryonyx
 Gauthier Quesnel <gauthier.quesnel@inra.fr>
 
+== baryonyx v0.4.0 - 2019-02-19
+
+Bump C++ dependency to C++17 standard.
+
+main::
+
+* benchmark: add a second output `csv` file with the rank for each solvers and
+  models to show best solver.
+
+solver/optimizer::
+
+* Optimize all solver algorithms to improve performance: rewrite and
+  generalize.
+
+* Improve the `best-cycle` algorithm: is no best solution was found for three
+  complete optimization, solver restart to `bastert-cycle`.
+
+* Fix the initialization cycle behaviour.
+
+* Fix the random normalization behaviour.
+
+* Remove useless header (sparse-vector etc), dead code.
+
 == baryonyx v0.3.4 - 2019-01-17
 
 main::
