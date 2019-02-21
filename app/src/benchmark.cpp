@@ -20,7 +20,6 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include "debug.hpp"
 #include "dynarray.hpp"
 #include "main.hpp"
 #include "utils.hpp"
@@ -81,8 +80,6 @@ have_lp_extension(std::string filename)
 static inline int
 get_digits_number(double x) noexcept
 {
-    bx_expects(x < static_cast<double>(std::numeric_limits<int>::max()));
-
     return static_cast<int>(std::floor(std::log10(std::abs(x)))) + 5;
 }
 

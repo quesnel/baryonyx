@@ -31,35 +31,7 @@
 #include <tuple>
 #include <vector>
 
-#if defined _WIN32 || defined __CYGWIN__
-#define BARYONYX_HELPER_DLL_IMPORT __declspec(dllimport)
-#define BARYONYX_HELPER_DLL_EXPORT __declspec(dllexport)
-#define BARYONYX_HELPER_DLL_LOCAL
-#else
-#if __GNUC__ >= 4
-#define BARYONYX_HELPER_DLL_IMPORT __attribute__((visibility("default")))
-#define BARYONYX_HELPER_DLL_EXPORT __attribute__((visibility("default")))
-#define BARYONYX_HELPER_DLL_LOCAL __attribute__((visibility("hidden")))
-#else
-#define BARYONYX_HELPER_DLL_IMPORT
-#define BARYONYX_HELPER_DLL_EXPORT
-#define BARYONYX_HELPER_DLL_LOCAL
-#endif
-#endif
-
-#ifdef BARYONYX_DLL
-#ifdef libbaryonyx_EXPORTS
-#define BARYONYX_API BARYONYX_HELPER_DLL_EXPORT
-#else
-#define BARYONYX_API BARYONYX_HELPER_DLL_IMPORT
-#endif
-#define BARYONYX_LOCAL BARYONYX_HELPER_DLL_LOCAL
-#define BARYONYX_MODULE BARYONYX_HELPER_DLL_EXPORT
-#else
-#define BARYONYX_API
-#define BARYONYX_LOCAL
-#define BARYONYX_MODULE BARYONYX_HELPER_DLL_EXPORT
-#endif
+#include <baryonyx/export>
 
 namespace baryonyx {
 
@@ -256,7 +228,7 @@ private:
  *     @c delta or @c kappa-step variables, the default is used.
  *
  */
-struct BARYONYX_API solver_parameters
+struct BX_EXPORT solver_parameters
 {
     enum class pre_constraint_order
     {
@@ -422,10 +394,10 @@ struct context;
  */
 using context_ptr = std::unique_ptr<context, void (*)(context*)>;
 
-BARYONYX_API context_ptr
+BX_EXPORT context_ptr
 make_context(FILE* f = stdout, int verbose_level = 6);
 
-BARYONYX_API context_ptr
+BX_EXPORT context_ptr
 make_context(std::function<void(int, std::string)> logger,
              int verbose_level = 6);
 
@@ -441,7 +413,7 @@ make_context(std::function<void(int, std::string)> logger,
  * @param name The name of the parameters.
  * @param value A string representation of the parameters.
  */
-BARYONYX_API void
+BX_EXPORT void
 context_set_parameters(const context_ptr& ctx,
                        const std::string& name,
                        std::string value);
@@ -455,7 +427,7 @@ context_set_parameters(const context_ptr& ctx,
  * @param ctx Baryonyx's internal state.
  * @param params Parameters to be copied.
  */
-BARYONYX_API void
+BX_EXPORT void
 context_set_solver_parameters(const context_ptr& ctx,
                               const solver_parameters& params);
 
@@ -466,7 +438,7 @@ context_set_solver_parameters(const context_ptr& ctx,
  *
  * @return A copy of the internal state.
  */
-BARYONYX_API
+BX_EXPORT
 solver_parameters
 context_get_solver_parameters(const context_ptr& ctx);
 
@@ -662,7 +634,7 @@ using solver_finished_cb = std::function<void(const result& r)>;
  * @param update Function called for each solution improvement.
  * @param finish Function called at the end of the computation.
  */
-BARYONYX_API void
+BX_EXPORT void
 context_register(const context_ptr& ctx,
                  solver_started_cb start = solver_started_cb(),
                  solver_updated_cb update = solver_updated_cb(),
@@ -677,7 +649,7 @@ context_register(const context_ptr& ctx,
  * @param ctx Baryonyx's internal state.
  * @param filename The file to read.
  */
-BARYONYX_API
+BX_EXPORT
 raw_problem
 make_problem(const baryonyx::context_ptr& ctx, const std::string& filename);
 
@@ -689,7 +661,7 @@ make_problem(const baryonyx::context_ptr& ctx, const std::string& filename);
  * @param ctx Baryonyx's internal state.
  * @param filename The file to read.
  */
-BARYONYX_API
+BX_EXPORT
 result
 make_result(const baryonyx::context_ptr& ctx, const std::string& filename);
 
@@ -703,7 +675,7 @@ make_result(const baryonyx::context_ptr& ctx, const std::string& filename);
  * @exception baryonyx::solver_error
  * @exception baryonyx::problem_definition
  */
-BARYONYX_API
+BX_EXPORT
 result
 solve(const baryonyx::context_ptr& ctx, const raw_problem& pb);
 
@@ -718,7 +690,7 @@ solve(const baryonyx::context_ptr& ctx, const raw_problem& pb);
  *
  * @throw @c baryonyx::solver_error.
  */
-BARYONYX_API
+BX_EXPORT
 result
 optimize(const baryonyx::context_ptr& ctx, const raw_problem& pb);
 
@@ -731,7 +703,7 @@ optimize(const baryonyx::context_ptr& ctx, const raw_problem& pb);
  *
  * @return true if @c r is a solution of the problem @c pb, false otherwise.
  */
-BARYONYX_API
+BX_EXPORT
 bool
 is_valid_solution(const raw_problem& pb, const result& r);
 
@@ -745,7 +717,7 @@ is_valid_solution(const raw_problem& pb, const result& r);
  * @return the value of the solution if @c r is a solution of the problem
  *    @c pb.
  */
-BARYONYX_API
+BX_EXPORT
 double
 compute_solution(const raw_problem& pb, const result& r);
 }

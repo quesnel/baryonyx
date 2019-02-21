@@ -1,10 +1,9 @@
 add_executable(app src/main.cpp src/main.hpp src/benchmark.cpp)
 
-target_link_libraries(app libbaryonyx-static threads)
+target_link_libraries(app libbaryonyx threads)
 
 set_target_properties(app PROPERTIES
   OUTPUT_NAME "baryonyx-${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}"
-  INTERPROCEDURAL_OPTIMIZATION True
   CXX_STANDARD 17
   CXX_STANDARD_REQUIRED ON)
 
@@ -20,6 +19,6 @@ target_compile_definitions(app
   VERSION_TWEAK=${PROJECT_VERSION_TWEAK})
 
 install(TARGETS app
-  ARCHIVE DESTINATION lib
-  LIBRARY DESTINATION lib
-  RUNTIME DESTINATION bin)
+  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
