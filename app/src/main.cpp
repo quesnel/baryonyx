@@ -299,7 +299,7 @@ help() noexcept
       "  - kappa-max: real [0, 1[\n"
       "  - alpha: integer [0, 2]\n"
       "  - w: integer [0, +oo[\n"
-      "  - norm: l1 l2 inf none random\n"
+      "  - norm: l1 l2 loo none random\n"
       " * Pushes system parameters\n"
       "  - pushes-limit: integer [0, +oo[\n"
       "  - pushing-objective-amplifier: real [0, +oo[\n"
