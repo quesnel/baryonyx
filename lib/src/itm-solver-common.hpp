@@ -70,7 +70,6 @@ struct solver_functor
     result operator()(const std::vector<merged_constraint>& constraints,
                       int variables,
                       const std::unique_ptr<Float[]>& original_costs,
-                      const std::unique_ptr<Float[]>& norm_costs,
                       double cost_constant)
     {
         x_type x(variables);
@@ -78,6 +77,9 @@ struct solver_functor
         int best_remaining = INT_MAX;
 
         auto& p = m_ctx->parameters;
+
+        auto norm_costs = normalize_costs<Float, Random>(
+          m_ctx, original_costs, m_rng, variables);
 
         const auto kappa_step = static_cast<Float>(p.kappa_step);
         const auto kappa_max = static_cast<Float>(p.kappa_max);
@@ -271,8 +273,6 @@ solve_problem(const context_ptr& ctx, const problem& pb)
 
         auto variables = numeric_cast<int>(pb.vars.values.size());
         auto cost = make_objective_function<Float>(pb.objective, variables);
-        auto norm_costs =
-          normalize_costs<Float, Random>(ctx, cost, rng, variables);
         auto cost_constant = pb.objective.value;
         auto names = std::move(pb.vars.names);
 
@@ -283,7 +283,7 @@ solve_problem(const context_ptr& ctx, const problem& pb)
             solver_functor<Solver, Float, Mode, Order, Random, obs> slv(
               ctx, rng, names, affected_vars);
 
-            ret = slv(constraints, variables, cost, norm_costs, cost_constant);
+            ret = slv(constraints, variables, cost, cost_constant);
         } break;
         case solver_parameters::observer_type::file: {
             using obs = file_observer<Solver, Float>;
@@ -291,7 +291,7 @@ solve_problem(const context_ptr& ctx, const problem& pb)
             solver_functor<Solver, Float, Mode, Order, Random, obs> slv(
               ctx, rng, names, affected_vars);
 
-            ret = slv(constraints, variables, cost, norm_costs, cost_constant);
+            ret = slv(constraints, variables, cost, cost_constant);
         } break;
         default: {
             using obs = none_observer<Solver, Float>;
@@ -299,7 +299,7 @@ solve_problem(const context_ptr& ctx, const problem& pb)
             solver_functor<Solver, Float, Mode, Order, Random, obs> slv(
               ctx, rng, names, affected_vars);
 
-            ret = slv(constraints, variables, cost, norm_costs, cost_constant);
+            ret = slv(constraints, variables, cost, cost_constant);
             break;
         }
         }

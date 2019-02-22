@@ -130,7 +130,6 @@ struct optimize_functor
                       const std::vector<merged_constraint>& constraints,
                       int variables,
                       const std::unique_ptr<Float[]>& original_costs,
-                      const std::unique_ptr<Float[]>& norm_costs,
                       double cost_constant)
     {
         return ((m_ctx->parameters.mode &
@@ -140,13 +139,11 @@ struct optimize_functor
                                        constraints,
                                        variables,
                                        original_costs,
-                                       norm_costs,
                                        cost_constant)
                  : run<x_type>(best_recorder,
                                constraints,
                                variables,
                                original_costs,
-                               norm_costs,
                                cost_constant);
     }
 
@@ -155,7 +152,6 @@ struct optimize_functor
                const std::vector<merged_constraint>& constraints,
                int variables,
                const std::unique_ptr<Float[]>& original_costs,
-               const std::unique_ptr<Float[]>& norm_costs,
                double cost_constant)
     {
         Xtype x(variables);
@@ -163,6 +159,9 @@ struct optimize_functor
         int best_remaining = INT_MAX;
 
         auto& p = m_ctx->parameters;
+
+        auto norm_costs = normalize_costs<Float, Random>(
+          m_ctx, original_costs, m_rng, variables);
 
         const auto kappa_step = static_cast<Float>(p.kappa_step);
         const auto kappa_max = static_cast<Float>(p.kappa_max);
@@ -388,8 +387,6 @@ optimize_problem(const context_ptr& ctx, const problem& pb)
 
         auto variables = numeric_cast<int>(pb.vars.values.size());
         auto cost = make_objective_function<Float>(pb.objective, variables);
-        auto norm_costs =
-          normalize_costs<Float, Random>(ctx, cost, rng, variables);
         auto cost_constant = pb.objective.value;
 
         const auto thread = get_thread_number(ctx);
@@ -411,7 +408,6 @@ optimize_problem(const context_ptr& ctx, const problem& pb)
                         std::ref(constraints),
                         variables,
                         std::ref(cost),
-                        std::ref(norm_costs),
                         cost_constant));
 
             results.emplace_back(task.get_future());
