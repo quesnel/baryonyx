@@ -7,17 +7,17 @@ branches:
 
 environment:
   matrix:
-    - COMPILER: mingw-w64
-      GENERATOR: MinGW Makefiles
-      PLATFORM: x64
-      BUILD_TYPE: RelWithDebInfo
-      BINDIR: C:\mingw-w64\x86_64-7.2.0-posix-seh-rt_v5-rev1\mingw64\bin
+#    - COMPILER: mingw-w64
+#      GENERATOR: MinGW Makefiles
+#      PLATFORM: x64
+#      BUILD_TYPE: RelWithDebInfo
+#      BINDIR: C:\mingw-w64\x86_64-7.2.0-posix-seh-rt_v5-rev1\mingw64\bin
 
-    - COMPILER: mingw-w64
-      GENERATOR: MinGW Makefiles
-      PLATFORM: x64
-      BUILD_TYPE: Release
-      BINDIR: C:\mingw-w64\x86_64-7.2.0-posix-seh-rt_v5-rev1\mingw64\bin
+#    - COMPILER: mingw-w64
+#      GENERATOR: MinGW Makefiles
+#      PLATFORM: x64
+#      BUILD_TYPE: Release
+#      BINDIR: C:\mingw-w64\x86_64-7.2.0-posix-seh-rt_v5-rev1\mingw64\bin
 
     - COMPILER: msvc
       GENERATOR: Visual Studio 15 2017 Win64
