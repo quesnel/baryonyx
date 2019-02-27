@@ -25,6 +25,7 @@
 
 #include <baryonyx/core>
 
+#include <optional>
 #include <string>
 
 #include <cerrno>
@@ -47,8 +48,8 @@ benchmark(const baryonyx::context_ptr& ctx,
           std::string filepath,
           std::string name);
 
-inline double
-to_double(std::string s, double bad_value) noexcept
+inline std::optional<double>
+to_double(std::string s) noexcept
 {
     char* c;
     errno = 0;
@@ -56,13 +57,13 @@ to_double(std::string s, double bad_value) noexcept
 
     if ((errno == ERANGE && (value == HUGE_VAL || value == -HUGE_VAL)) ||
         (value == 0.0 && c == s.c_str()))
-        return bad_value;
+        return std::nullopt;
 
-    return value;
+    return { value };
 }
 
-inline double
-to_double(std::string_view s, double bad_value) noexcept
+inline std::optional<double>
+to_double(std::string_view s) noexcept
 {
     // waiting for std::fron_chars or boost::qi dependencies
     // if (auto [p, ec] =
@@ -71,11 +72,11 @@ to_double(std::string_view s, double bad_value) noexcept
     //     return bad_value;
     // return value;
 
-    return to_double(std::string(s), bad_value);
+    return to_double(std::string(s));
 }
 
-inline int
-to_int(std::string s, int bad_value) noexcept
+inline std::optional<int>
+to_int(std::string s) noexcept
 {
     char* c;
     errno = 0;
@@ -83,7 +84,7 @@ to_int(std::string s, int bad_value) noexcept
 
     if ((errno == ERANGE && (value == LONG_MIN || value == LONG_MAX)) ||
         (value == 0 && c == s.c_str()))
-        return bad_value;
+        return std::nullopt;
 
     if (value < INT_MIN)
         return INT_MIN;

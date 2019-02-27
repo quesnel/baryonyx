@@ -495,8 +495,8 @@ struct bench
                         return read_data_error{ line_pos };
 
                     array(array.rows() - 1, i) =
-                      to_double(baryonyx::trim(std::string_view(buffer)),
-                                std::numeric_limits<double>::infinity());
+                      to_double(baryonyx::trim(std::string_view(buffer)))
+                        .value_or(std::numeric_limits<double>::infinity());
                 }
             }
 

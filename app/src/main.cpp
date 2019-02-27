@@ -323,50 +323,141 @@ is_equal(std::string name, const char* longf, char shortf = '\0')
     return false;
 }
 
-static double
-assign_0oo(std::string value, double def)
+static std::optional<double>
+assign_0oo(std::string value)
 {
-    auto ret = ::to_double(value, def);
+    auto ret = ::to_double(value);
 
-    return ret < 0 ? 0 : !std::isnormal(ret) ? 1 : ret;
+    if (!ret)
+        return ret;
+
+    return *ret > 0 ? *ret : ret;
 }
 
-static double
-assign_01(std::string value, double def)
+static std::optional<double>
+assign_01(std::string value)
 {
-    auto ret = ::to_double(value, def);
+    auto ret = ::to_double(value);
 
-    return ret < 0 ? 0 : ret > 1 ? 1 : ret;
+    if (!ret)
+        return ret;
+
+    return *ret >= 0 && *ret <= 1 ? *ret : ret;
 }
 
-static int
-assign(std::string value, int mindef, int maxdef, int def)
+static std::optional<int>
+assign(std::string value, int mindef, int maxdef)
 {
-    auto ret = ::to_int(value, def);
+    auto ret = ::to_int(value);
 
-    return ret < mindef ? mindef : ret > maxdef ? maxdef : ret;
+    if (!ret)
+        return ret;
+
+    return *ret < mindef ? mindef : *ret > maxdef ? maxdef : ret;
 }
 
-static double
-assign_d(std::string value, double mindef, double maxdef, double def)
+static std::optional<double>
+assign_d(std::string value, double mindef, double maxdef)
 {
-    auto ret = ::to_double(value, def);
+    auto ret = ::to_double(value);
 
-    return ret < mindef ? mindef : ret > maxdef ? maxdef : ret;
+    if (!ret)
+        return ret;
+
+    return *ret < mindef ? mindef : *ret > maxdef ? maxdef : ret;
 }
 
-static void
+enum class command_line_status
+{
+    success,
+    unknown,
+    verbose_error,
+    limit_error,
+    time_limit_error,
+    floating_point_type_error,
+    observer_type_error,
+    print_level_error,
+    preprocessing_error,
+    constraint_order_error,
+    storage_type_error,
+    theta_error,
+    delta_error,
+    kappa_min_error,
+    kappa_step_error,
+    kappa_max_error,
+    alpha_error,
+    w_error,
+    norm_error,
+    pushes_limit_error,
+    pushing_objective_amplifier_error,
+    pushing_iteration_limit_error,
+    pushing_k_factor_error,
+    init_policy_error,
+    init_random_error,
+    thread_error,
+    seed_error
+};
+
+constexpr const std::string_view command_line_status_string[] = {
+    "success",
+    "unknown",
+    "verbose_error"
+    "limit",
+    "time_limit",
+    "verbose_error",
+    "floating_point_type",
+    "observer_type",
+    "print_level",
+    "preprocessing",
+    "constraint_order",
+    "storage_type",
+    "theta",
+    "delta",
+    "kappa_min",
+    "kappa_step",
+    "kappa_max",
+    "alpha",
+    "w",
+    "norm",
+    "pushes_limit",
+    "pushing_objective_amplifier",
+    "pushing_iteration_limit",
+    "pushing_k_factor",
+    "init_policy",
+    "init_random",
+    "thread",
+    "seed"
+};
+
+constexpr const std::string_view
+to_string(command_line_status s) noexcept
+{
+    auto x = static_cast<std::underlying_type<command_line_status>::type>(s);
+
+    assert(x < std::size(command_line_status_string));
+
+    return command_line_status_string[x];
+}
+
+static command_line_status
 assign_parameter(baryonyx::solver_parameters& params,
                  std::string name,
                  std::string value)
 {
     if (is_equal(name, "limit", 'l')) {
-        params.limit =
-          assign(value, -1, std::numeric_limits<int>::max(), params.limit);
+        auto v = assign(value, -1, std::numeric_limits<int>::max());
+        if (v)
+            params.limit = *v;
+        else
+            return command_line_status::limit_error;
+
     } else if (is_equal(name, "time-limit")) {
-        params.time_limit = ::to_double(value, 60);
-        if (params.time_limit <= 0)
-            params.time_limit = -1;
+        auto v = to_double(value);
+        if (v)
+            params.limit = *v <= 0 ? -1 : *v;
+        else
+            return command_line_status::time_limit_error;
+
     } else if (is_equal(name, "floating-point-type")) {
         if (value == "float")
             params.float_type =
@@ -378,7 +469,8 @@ assign_parameter(baryonyx::solver_parameters& params,
             params.float_type = baryonyx::solver_parameters::
               floating_point_type::longdouble_type;
         else
-            fmt::print("float-point-type unknown ({})\n", value);
+            return command_line_status::floating_point_type_error;
+
     } else if (is_equal(name, "observer-type")) {
         if (value == "none")
             params.observer = baryonyx::solver_parameters::observer_type::none;
@@ -387,9 +479,16 @@ assign_parameter(baryonyx::solver_parameters& params,
         else if (value == "file")
             params.observer = baryonyx::solver_parameters::observer_type::file;
         else
-            fmt::print("observer-type unknown ({})\n", value);
+            return command_line_status::observer_type_error;
+
     } else if (is_equal(name, "print-level")) {
-        params.print_level = assign(value, 0, 2, params.print_level);
+        auto v = assign(value, 0, 2);
+
+        if (v)
+            params.print_level = *v;
+        else
+            return command_line_status::print_level_error;
+
     } else if (is_equal(name, "preprocessing")) {
         if (value == "none")
             params.pre_order =
@@ -428,7 +527,8 @@ assign_parameter(baryonyx::solver_parameters& params,
             params.pre_order = baryonyx::solver_parameters::
               pre_constraint_order::equal_greater_less;
         else
-            fmt::print("preprocessing unknown ({})\n", value);
+            return command_line_status::preprocessing_error;
+
     } else if (is_equal(name, "constraint-order")) {
         if (value == "none")
             params.order = baryonyx::solver_parameters::constraint_order::none;
@@ -451,28 +551,67 @@ assign_parameter(baryonyx::solver_parameters& params,
             params.order =
               baryonyx::solver_parameters::constraint_order::lagrangian_incr;
         else
-            fmt::print("constraint-order unknown ({})\n", value);
+            return command_line_status::constraint_order_error;
+
     } else if (is_equal(name, "storage-type")) {
         if (value == "five")
             params.storage = baryonyx::solver_parameters::storage_type::five;
         else if (value == "bound")
             params.storage = baryonyx::solver_parameters::storage_type::bound;
-        else
+        else if (value == "one")
             params.storage = baryonyx::solver_parameters::storage_type::one;
+        else
+            return command_line_status::storage_type_error;
+
     } else if (is_equal(name, "theta")) {
-        params.theta = assign_01(value, params.theta);
+        auto v = assign_01(value);
+        if (v)
+            params.theta = *v;
+        else
+            return command_line_status::theta_error;
+
     } else if (is_equal(name, "delta")) {
-        params.delta = assign_0oo(value, params.delta);
+        auto v = assign_0oo(value);
+        if (v)
+            params.delta = *v;
+        else
+            return command_line_status::delta_error;
+
     } else if (is_equal(name, "kappa-min")) {
-        params.kappa_min = assign_01(value, params.kappa_min);
+        auto v = assign_01(value);
+        if (v)
+            params.kappa_min = *v;
+        else
+            return command_line_status::kappa_min_error;
+
     } else if (is_equal(name, "kappa-step")) {
-        params.kappa_step = assign_01(value, params.kappa_step);
+        auto v = assign_01(value);
+        if (v)
+            params.kappa_step = *v;
+        else
+            return command_line_status::kappa_step_error;
+
     } else if (is_equal(name, "kappa-max")) {
-        params.kappa_max = assign_01(value, params.kappa_max);
+        auto v = assign_01(value);
+        if (v)
+            params.kappa_max = *v;
+        else
+            return command_line_status::kappa_max_error;
+
     } else if (is_equal(name, "alpha")) {
-        params.alpha = assign_d(value, 0, 2, params.alpha);
+        auto v = assign_d(value, 0, 2);
+        if (v)
+            params.alpha = *v;
+        else
+            return command_line_status::alpha_error;
+
     } else if (is_equal(name, "w")) {
-        params.w = assign(value, 0, std::numeric_limits<int>::max(), params.w);
+        auto v = assign(value, 0, std::numeric_limits<int>::max());
+        if (v)
+            params.w = *v;
+        else
+            return command_line_status::w_error;
+
     } else if (is_equal(name, "norm")) {
         if (value == "none")
             params.cost_norm =
@@ -488,21 +627,36 @@ assign_parameter(baryonyx::solver_parameters& params,
             params.cost_norm =
               baryonyx::solver_parameters::cost_norm_type::loo;
         else
-            fmt::print("norm unknown ({})\n", value);
+            return command_line_status::norm_error;
+
     } else if (is_equal(name, "pushes-limit")) {
-        params.pushes_limit = assign(
-          value, 0, std::numeric_limits<int>::max(), params.pushes_limit);
+        auto v = assign(value, 0, std::numeric_limits<int>::max());
+        if (v)
+            params.pushes_limit = *v;
+        else
+            return command_line_status::pushes_limit_error;
+
     } else if (is_equal(name, "pushing-objective-amplifier")) {
-        params.pushing_objective_amplifier =
-          assign_0oo(value, params.pushing_objective_amplifier);
+        auto v = assign_0oo(value);
+        if (v)
+            params.pushing_objective_amplifier = *v;
+        else
+            return command_line_status::pushing_objective_amplifier_error;
+
     } else if (is_equal(name, "pushing-iteration-limit")) {
-        params.pushing_iteration_limit =
-          assign(value,
-                 0,
-                 std::numeric_limits<int>::max(),
-                 params.pushing_iteration_limit);
+        auto v = assign(value, 0, std::numeric_limits<int>::max());
+        if (v)
+            params.pushing_iteration_limit = *v;
+        else
+            return command_line_status::pushing_iteration_limit_error;
+
     } else if (is_equal(name, "pushing-k-factor")) {
-        params.pushing_k_factor = assign_0oo(value, params.pushing_k_factor);
+        auto v = assign_0oo(value);
+        if (v)
+            params.pushing_k_factor = *v;
+        else
+            return command_line_status::pushing_k_factor_error;
+
     } else if (is_equal(name, "init-policy")) {
         if (value == "bastert")
             params.init_policy =
@@ -523,16 +677,33 @@ assign_parameter(baryonyx::solver_parameters& params,
             params.init_policy =
               baryonyx::solver_parameters::init_policy_type::best_cycle;
         else
-            fmt::print("init-policy unknown ({})\n", value);
+            return command_line_status::init_policy_error;
+
     } else if (is_equal(name, "init-random")) {
-        params.init_random = assign_01(value, params.init_random);
+        auto v = assign_01(value);
+        if (v)
+            params.init_random = *v;
+        else
+            return command_line_status::init_random_error;
+
     } else if (is_equal(name, "thread")) {
-        params.thread = assign(value, 0, std::numeric_limits<int>::max(), 0);
+        auto v = assign(value, 0, std::numeric_limits<int>::max());
+        if (v)
+            params.thread = *v;
+        else
+            return command_line_status::thread_error;
+
     } else if (is_equal(name, "seed")) {
-        params.seed = assign(value, 0, std::numeric_limits<int>::max(), 0);
+        auto v = assign(value, 0, std::numeric_limits<int>::max());
+        if (v)
+            params.seed = *v;
+        else
+            return command_line_status::seed_error;
+
     } else
-        fmt::print(
-          stderr, "Unknown parameters {} = {}, ignoring.\n", name, value);
+        return command_line_status::unknown;
+
+    return command_line_status::success;
 }
 
 struct main_parameters
@@ -542,10 +713,12 @@ struct main_parameters
     std::string check_filename;
     std::string bench_name;
     int verbose = 6;
+    int parse_arg = 0;
     bool check = false;
     bool optimize = false;
     bool quiet = false;
     bool bench = false;
+    command_line_status parse_status = command_line_status::success;
 };
 
 static main_parameters
@@ -556,6 +729,7 @@ parse(int argc, const char* argv[])
 
     for (int i = 1; i < argc; ++i) {
         std::string arg(argv[i]);
+        ret.parse_arg = i;
         const char* opt;
 
         if (arg == "--help" || arg == "-h") {
@@ -583,12 +757,6 @@ parse(int argc, const char* argv[])
         if (arg == "--disable-preprocessing" || arg == "-np") {
             ret.parameters.preprocessor =
               baryonyx::solver_parameters::preprocessor_options::none;
-            continue;
-        }
-
-        if ((opt = get(i, "--limit", "-l"))) {
-            ret.parameters.limit = ::to_int(opt, ret.parameters.limit);
-            i = get.i;
             continue;
         }
 
@@ -621,9 +789,13 @@ parse(int argc, const char* argv[])
         }
 
         if ((opt = get(i, "--verbose", "-v"))) {
-            ret.verbose = ::to_int(opt, 6);
-            i = get.i;
-            continue;
+            auto v = ::assign(opt, 0, 6);
+            if (v)
+                ret.verbose = *v;
+            else {
+                ret.parse_status = command_line_status::verbose_error;
+                return ret;
+            }
         }
 
         if ((opt = get(i, "--check", "-C"))) {
@@ -635,7 +807,13 @@ parse(int argc, const char* argv[])
         if ((opt = get(i, "--param", "-p"))) {
             std::string name, value;
             std::tie(name, value) = split_argument(opt);
-            assign_parameter(ret.parameters, name, value);
+            if (auto v = assign_parameter(ret.parameters, name, value);
+                v != command_line_status::success) {
+
+                ret.parse_status = v;
+                return ret;
+            }
+
             i = get.i;
             continue;
         }
@@ -804,6 +982,15 @@ main(int argc, const char* argv[])
 {
     auto params = parse(argc, argv);
 
+    if (params.parse_status != command_line_status::success) {
+        fmt::print(stderr,
+                   fmt::emphasis::bold | fmt::fg(fmt::terminal_color::red),
+                   "Parameter `{}` unknown value `{}`\n",
+                   to_string(params.parse_status),
+                   argv[params.parse_arg]);
+        return EXIT_FAILURE;
+    }
+
     if (params.filenames.empty()) {
         fmt::print(stderr,
                    fmt::emphasis::bold | fmt::fg(fmt::terminal_color::red),
@@ -884,10 +1071,10 @@ main(int argc, const char* argv[])
                                ret.solutions.back().value);
                     resume(ret, ofs);
                 } else {
-                    fmt::print(
-                      ofs,
-                      "\\ Solution not found. Missing constraints: {}\n",
-                      ret.remaining_constraints);
+                    fmt::print(ofs,
+                               "\\ Solution not found. Missing "
+                               "constraints: {}\n",
+                               ret.remaining_constraints);
                 }
             } catch (const baryonyx::precondition_failure& e) {
                 fmt::print(stderr, "internal failure: {}\n", e.what());
