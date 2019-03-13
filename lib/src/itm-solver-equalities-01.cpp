@@ -86,6 +86,12 @@ struct solver_equalities_01coeff
         }
     }
 
+    void reset() noexcept
+    {
+        std::fill(P.get(), P.get() + ap.length(), Float{ 0 });
+        std::fill(pi.get(), pi.get() + m, Float{ 0 });
+    }
+
     int factor(int /*value*/) const noexcept
     {
         return 1;

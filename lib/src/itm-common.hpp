@@ -509,8 +509,7 @@ class solver_initializer
     {
         x.clear();
 
-        std::fill(slv.P.get(), slv.P.get() + slv.ap.length(), Float{ 0 });
-        std::fill(slv.pi.get(), slv.pi.get() + slv.m, Float{ 0 });
+        slv.reset();
     }
 
     /**
