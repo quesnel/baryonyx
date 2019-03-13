@@ -328,6 +328,12 @@ struct BX_EXPORT solver_parameters
         file
     };
 
+    enum class solver_type
+    {
+        bastert,
+        random
+    };
+
     /**
      * @brief Solution storage policy for the optimizer mode.
      */
@@ -364,6 +370,7 @@ struct BX_EXPORT solver_parameters
     preprocessor_options preprocessor{ preprocessor_options::all };
     observer_type observer{ observer_type::none };
     storage_type storage{ storage_type::one };
+    solver_type solver{ solver_type::bastert };
 };
 
 /**
