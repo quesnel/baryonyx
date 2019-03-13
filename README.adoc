@@ -201,6 +201,10 @@ some specific for the optimization algorithms.
 |
 | disable the use of preprocessing
 
+| --random
+|
+| use the pure random solver (for benchmark) instead of the Bastert/Wedelin algorithm.
+
 | --auto[:= ]value
 | string
 | Select the type of optimizer meta-heuristic. Values are:
