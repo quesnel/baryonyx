@@ -42,6 +42,7 @@ set(private_baryonyx_source
  src/private.hpp
  src/problem.cpp
  src/problem.hpp
+ src/random-solver.cpp
  src/result.cpp
  src/result.hpp
  src/resume.hpp
