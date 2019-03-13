@@ -80,41 +80,46 @@ solver_started_cb(const baryonyx::solver_parameters& params)
                baryonyx::mode_type_to_string(params.mode),
                baryonyx::observer_type_to_string(params.observer));
 
-    fmt::print(" * In The Middle parameters:\n"
-               "  - preprocessing: {}\n"
-               "  - constraint-order: {}\n"
-               "  - theta: {:.10g}\n"
-               "  - delta: {:.10g}\n"
-               "  - kappa: {:.10g} {:.10g} {:.10g}\n"
-               "  - alpha: {:.10g}\n"
-               "  - w: {}\n"
-               "  - norm: {}\n",
-               baryonyx::pre_constraint_order_to_string(params.pre_order),
-               baryonyx::constraint_order_to_string(params.order),
-               params.theta,
-               params.delta,
-               params.kappa_min,
-               params.kappa_step,
-               params.kappa_max,
-               params.alpha,
-               params.w,
-               baryonyx::cost_norm_type_to_string(params.cost_norm));
+    if (params.solver == baryonyx::solver_parameters::solver_type::bastert) {
+        fmt::print(" * In The Middle parameters:\n"
+                   "  - preprocessing: {}\n"
+                   "  - constraint-order: {}\n"
+                   "  - theta: {:.10g}\n"
+                   "  - delta: {:.10g}\n"
+                   "  - kappa: {:.10g} {:.10g} {:.10g}\n"
+                   "  - alpha: {:.10g}\n"
+                   "  - w: {}\n"
+                   "  - norm: {}\n",
+                   baryonyx::pre_constraint_order_to_string(params.pre_order),
+                   baryonyx::constraint_order_to_string(params.order),
+                   params.theta,
+                   params.delta,
+                   params.kappa_min,
+                   params.kappa_step,
+                   params.kappa_max,
+                   params.alpha,
+                   params.w,
+                   baryonyx::cost_norm_type_to_string(params.cost_norm));
 
-    fmt::print(" * Pushes system parameters:\n"
-               "  - pushes-limit: {}\n"
-               "  - pushing-objective-amplifier: {:.10g}\n"
-               "  - pushing-iteration-limit: {}\n"
-               "  - pushing-k-factor: {:.10g}\n",
-               params.pushes_limit,
-               params.pushing_objective_amplifier,
-               params.pushing_iteration_limit,
-               params.pushing_k_factor);
+        fmt::print(" * Pushes system parameters:\n"
+                   "  - pushes-limit: {}\n"
+                   "  - pushing-objective-amplifier: {:.10g}\n"
+                   "  - pushing-iteration-limit: {}\n"
+                   "  - pushing-k-factor: {:.10g}\n",
+                   params.pushes_limit,
+                   params.pushing_objective_amplifier,
+                   params.pushing_iteration_limit,
+                   params.pushing_k_factor);
 
-    fmt::print(" * Initialization parameters:\n"
-               "  - init-policy: {}\n"
-               "  - init-random: {:.10g}\n",
-               baryonyx::init_policy_type_to_string(params.init_policy),
-               params.init_random);
+        fmt::print(" * Initialization parameters:\n"
+                   "  - init-policy: {}\n"
+                   "  - init-random: {:.10g}\n",
+                   baryonyx::init_policy_type_to_string(params.init_policy),
+                   params.init_random);
+    } else {
+        fmt::print(" * Random solvers:\n"
+                   "  - random: bernouilli with p=0.5\n");
+    }
 }
 
 static void
@@ -274,6 +279,8 @@ help() noexcept
       "feasibility search only)\n"
       "  --auto:[manual,nlopt]|-a      Automatic parameters optimization\n"
       "  --check filename.sol          Check if the solution is correct."
+      "  --random                      Use the random solver instead of "
+      "bastert and wedelin\n"
       "\n"
       "  --quiet                       Remove any verbose message\n"
       "  --verbose|-v int              Set verbose level\n"
@@ -815,6 +822,12 @@ parse(int argc, const char* argv[])
             }
 
             i = get.i;
+            continue;
+        }
+
+        if (arg == "--random") {
+            ret.parameters.solver =
+              baryonyx::solver_parameters::solver_type::random;
             continue;
         }
 
