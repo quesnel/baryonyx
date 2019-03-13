@@ -64,7 +64,7 @@ target_compile_options(libbaryonyx
       -pipe -march=native
       $<$<CONFIG:Debug>:-O0 -Wall -Wextra>>
   $<$<CXX_COMPILER_ID:MSVC>:
-      $<$<CONFIG:Debug>:/Od /Wall /Zi>>
+      $<$<CONFIG:Debug>:/Od /W3 /Zi>>
   $<$<CXX_COMPILER_ID:MSVC>:/bigobj>)
 
 target_include_directories(libbaryonyx PUBLIC
