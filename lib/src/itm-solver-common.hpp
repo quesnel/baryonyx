@@ -281,7 +281,7 @@ solve_problem(const context_ptr& ctx, const problem& pb)
             using obs = pnm_observer<Solver, Float>;
 
             solver_functor<Solver, Float, Mode, Order, Random, obs> slv(
-              ctx, rng, names, affected_vars);
+                ctx, rng, names, affected_vars);
 
             ret = slv(constraints, variables, cost, cost_constant);
         } break;
@@ -289,7 +289,7 @@ solve_problem(const context_ptr& ctx, const problem& pb)
             using obs = file_observer<Solver, Float>;
 
             solver_functor<Solver, Float, Mode, Order, Random, obs> slv(
-              ctx, rng, names, affected_vars);
+                ctx, rng, names, affected_vars);
 
             ret = slv(constraints, variables, cost, cost_constant);
         } break;
@@ -297,7 +297,7 @@ solve_problem(const context_ptr& ctx, const problem& pb)
             using obs = none_observer<Solver, Float>;
 
             solver_functor<Solver, Float, Mode, Order, Random, obs> slv(
-              ctx, rng, names, affected_vars);
+                ctx, rng, names, affected_vars);
 
             ret = slv(constraints, variables, cost, cost_constant);
             break;

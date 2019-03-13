@@ -36,7 +36,6 @@
 #include <utility>
 #include <vector>
 
-#include "observer.hpp"
 #include "private.hpp"
 #include "result.hpp"
 #include "sparse-matrix.hpp"

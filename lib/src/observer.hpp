@@ -35,64 +35,57 @@ namespace baryonyx {
 
 namespace details {
 
-template<typename floatingpointT>
+template<typename Solver, typename floatingpointT>
 class pi_pnm_observer
 {
 private:
-    const std::unique_ptr<floatingpointT[]>& m_pi;
-    int m_m;
+    const Solver& slv;
     int m_loop;
     pnm_vector m_pnm;
 
 public:
     pi_pnm_observer(std::string filename,
-                    const std::unique_ptr<floatingpointT[]>& pi,
-                    int m,
+                    const Solver& slv_,
                     int loop)
-      : m_pi(pi)
-      , m_m(m)
+      : slv(slv_)
       , m_loop(loop)
-      , m_pnm(fmt::format("{}-pi.pnm", filename), m, loop)
+      , m_pnm(fmt::format("{}-pi.pnm", filename), slv_.m, loop)
     {}
 
     void make_observation()
     {
-        std::transform(
-          m_pi.get(), m_pi.get() + m_m, m_pnm.begin(), colormap(-1.0f, +1.0f));
+        auto it = m_pnm.begin();
+        colormap fct(-1.f, +1.f);
+
+        for (int i = 0; i != slv.m; ++i)
+            *it = fct(slv.pi[i]);
+
+        //std::transform(
+        //  slv.pi.get(), slv.pi.get() + slv.m, m_pnm.begin(), colormap(-1.0f, +1.0f));
 
         m_pnm.flush();
     }
 };
 
-template<typename floatingpointT>
+template<typename Solver, typename floatingpointT>
 class ap_pnm_observer
 {
 private:
     std::string m_basename;
-    const sparse_matrix<int> m_ap;
-    const std::unique_ptr<floatingpointT[]>& m_P;
-    int m_m;
-    int m_n;
+    const Solver& slv;
     int m_frame;
 
 public:
-    ap_pnm_observer(std::string basename,
-                    sparse_matrix<int> ap,
-                    const std::unique_ptr<floatingpointT[]>& P,
-                    int m,
-                    int n)
+    ap_pnm_observer(std::string basename, const Solver& slv_)
       : m_basename(std::move(basename))
-      , m_ap(std::move(ap))
-      , m_P(P)
-      , m_m(m)
-      , m_n(n)
+      , slv(slv_)
       , m_frame(0)
     {}
 
     void make_observation()
     {
         colormap cm(-1.0f, 1.0f);
-        pnm_array pnm(m_m, m_n);
+        pnm_array pnm(slv.m, slv.n);
         if (!pnm)
             return;
 
@@ -100,9 +93,9 @@ public:
         // floatingpointT max_val = std::numeric_limits<floatingpointT>::min();
 
         pnm.clear();
-        for (int k = 0; k != m_m; ++k) {
+        for (int k = 0; k != slv.m; ++k) {
             sparse_matrix<int>::const_row_iterator it, et;
-            std::tie(it, et) = m_ap.row(k);
+            std::tie(it, et) = slv.ap.row(k);
 
             for (; it != et; ++it) {
                 std::uint8_t* pointer = pnm(k, it->column);
@@ -110,7 +103,7 @@ public:
                 // min_val = std::min(min_val, m_P[it->value]);
                 // max_val = std::max(max_val, m_P[it->value]);
 
-                auto color_rgb = cm(m_P[it->value]);
+                auto color_rgb = cm(slv.P[it->value]);
 
                 pointer[0] = color_rgb.red;
                 pointer[1] = color_rgb.green;
@@ -124,22 +117,20 @@ public:
     }
 };
 
-template<typename floatingpointT>
+template<typename Solver, typename floatingpointT>
 class pi_file_observer
 {
 private:
-    const std::unique_ptr<floatingpointT[]>& m_pi;
+    const Solver& slv;
     int m_len;
     int m_loop;
     std::ofstream m_ofs;
 
 public:
     pi_file_observer(std::string filename,
-                     const std::unique_ptr<floatingpointT[]>& pi,
-                     int len,
+                     const Solver& slv_,
                      int loop)
-      : m_pi(pi)
-      , m_len(len)
+      : slv(slv_)
       , m_loop(loop)
       , m_ofs(fmt::format("{}-pi.txt", filename))
     {}
@@ -147,53 +138,49 @@ public:
     void make_observation()
     {
         if (m_ofs) {
-            std::copy(m_pi.get(),
-                      m_pi.get() + m_len,
-                      std::ostream_iterator<floatingpointT>(m_ofs, " "));
+            if (m_len > 1) {
+                m_ofs << slv.pi[0];
+
+                for (int i = 1; i != slv.m; ++i)
+                    m_ofs << ' ' << slv.pi[i];
+            
+            } else {
+                m_ofs << slv.pi[0];
+            }
 
             m_ofs << '\n';
         }
     }
 };
 
-template<typename floatingpointT>
+template<typename Solver, typename floatingpointT>
 class ap_file_observer
 {
 private:
     std::string m_basename;
-    const sparse_matrix<int> m_ap;
-    const std::unique_ptr<floatingpointT[]>& m_P;
-    int m_m;
-    int m_n;
+    const Solver& slv;
     int m_frame;
 
 public:
-    ap_file_observer(std::string basename,
-                     sparse_matrix<int> ap,
-                     const std::unique_ptr<floatingpointT[]>& P,
-                     int m,
-                     int n)
+    ap_file_observer(std::string basename, const Solver& slv_)
       : m_basename(std::move(basename))
-      , m_ap(std::move(ap))
-      , m_P(P)
-      , m_m(m)
-      , m_n(n)
+      , slv(slv_)
       , m_frame(0)
     {}
 
     void make_observation()
     {
-        std::vector<floatingpointT> val(m_n);
+        std::vector<floatingpointT> val(slv.n);
         std::ofstream ofs(fmt::format("{}-P-{}.txt", m_basename, m_frame++));
 
-        for (int k = 0; k != m_m; ++k) {
-            val.resize(m_n, static_cast<floatingpointT>(0));
+        for (int k = 0; k != slv.m; ++k) {
+            val.resize(slv.n, static_cast<floatingpointT>(0));
 
             sparse_matrix<int>::const_row_iterator it, et;
-            std::tie(it, et) = m_ap.row(k);
+            std::tie(it, et) = slv.ap.row(k);
 
             for (; it != et; ++it)
-                val[it->column] = m_P[it->value];
+                val[it->column] = slv.P[it->value];
 
             std::copy(val.begin(),
                       val.end(),
@@ -208,13 +195,13 @@ public:
 template<typename solverT, typename floatingpointT>
 class pnm_observer
 {
-    details::pi_pnm_observer<floatingpointT> m_pi_obs;
-    details::ap_pnm_observer<floatingpointT> m_ap_obs;
+    details::pi_pnm_observer<solverT, floatingpointT> m_pi_obs;
+    details::ap_pnm_observer<solverT, floatingpointT> m_ap_obs;
 
 public:
     pnm_observer(const solverT& slv, std::string basename, int loop)
-      : m_pi_obs(basename, slv.pi, slv.m, loop)
-      , m_ap_obs(basename, slv.ap, slv.P, slv.m, slv.n)
+      : m_pi_obs(basename, slv, loop)
+      , m_ap_obs(basename, slv)
     {}
 
     void make_observation()
@@ -227,13 +214,13 @@ public:
 template<typename solverT, typename floatingpointT>
 class file_observer
 {
-    details::pi_file_observer<floatingpointT> m_pi_obs;
-    details::ap_file_observer<floatingpointT> m_ap_obs;
+    details::pi_file_observer<solverT, floatingpointT> m_pi_obs;
+    details::ap_file_observer<solverT, floatingpointT> m_ap_obs;
 
 public:
     file_observer(const solverT& slv, std::string basename, int loop)
-      : m_pi_obs(basename, slv.pi, slv.m, loop)
-      , m_ap_obs(basename, slv.ap, slv.P, slv.m, slv.n)
+      : m_pi_obs(basename, slv, loop)
+      , m_ap_obs(basename, slv)
     {}
 
     void make_observation()
@@ -252,7 +239,8 @@ public:
                   int /*loop*/)
     {}
 
-    void make_observation() {}
+    void make_observation()
+    {}
 };
 
 } // namespace baryonyx
