@@ -113,6 +113,7 @@ context_set_solver_parameters(const context_ptr& ctx,
     ctx->parameters.preprocessor = params.preprocessor;
     ctx->parameters.observer = params.observer;
     ctx->parameters.storage = params.storage;
+    ctx->parameters.solver = params.solver;
 }
 
 solver_parameters
