@@ -35,7 +35,7 @@ struct fake_vector
     template<typename Integer>
     T operator[](Integer /*i*/) const noexcept
     {
-        return T{0};
+        return T{ 0 };
     }
 };
 
@@ -170,38 +170,43 @@ struct solver_random_inequalities_101coeff
             auto [row_begin, row_end] = ap.row(k);
 
             int r_size = 0;
-            for (; row_begin != row_end; ++row_begin, ++r_size) {
+            for (auto it = row_begin; it != row_end; ++it, ++r_size) {
                 R[r_size].id = r_size;
-                R[r_size].value = A[row_begin->value];
+                R[r_size].value = A[it->value];
             }
 
             std::shuffle(R.get(), R.get() + r_size, rng);
 
             int value = 0;
-            int selected = -1;
-            while (value < b[k].min) {
-                ++selected;
+            bool valid = b[k].min <= 0;
+            int i = -1;
 
-                auto var = row_begin + R[selected].id;
-                value += R[selected].value;
-                x.set(var->column, true);
+            if (!valid) {
+                do {
+                    ++i;
+                    value += R[i].value;
+                    valid = b[k].min <= value;
+                    auto var = row_begin + R[i].id;
+                    x.set(var->column, true);
+                } while (!valid && i + 1 < r_size);
             }
 
-            while (value < b[k].max && dist(rng)) {
-                ++selected;
-
-                auto var = row_begin + R[selected].id;
-                value += R[selected].value;
-                x.set(var->column, true);
+            valid = b[k].min <= value && value <= b[k].max;
+            while (i + 1 < r_size && valid) {
+                ++i;
+                value += R[i].value;
+                valid = b[k].min <= value && value <= b[k].max;
+                auto var = row_begin + R[i].id;
+                x.set(var->column, valid);
             }
 
-            while (selected != r_size) {
-                ++selected;
-
-                auto var = row_begin + R[selected].id;
-                value += R[r_size].value;
+            while (i + 1 < r_size) {
+                ++i;
+                auto var = row_begin + R[i].id;
                 x.set(var->column, false);
             }
+
+            bx_expects(is_valid_constraint(*this, k, x));
         }
     }
 };
