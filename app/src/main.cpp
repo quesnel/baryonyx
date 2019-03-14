@@ -461,7 +461,7 @@ assign_parameter(baryonyx::solver_parameters& params,
     } else if (is_equal(name, "time-limit")) {
         auto v = to_double(value);
         if (v)
-            params.limit = *v <= 0 ? -1 : *v;
+            params.time_limit = *v <= 0.0 ? -1.0 : *v;
         else
             return command_line_status::time_limit_error;
 
