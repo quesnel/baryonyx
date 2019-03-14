@@ -385,8 +385,8 @@ struct bench
 
         fmt::print(os, "mean");
         for (size_t j{ 0 }, end_j{ line.size() }; j != end_j; ++j) {
-            stats[j].value =
-              stats[j].rank / static_cast<double>(models.size());
+            stats[j].value = static_cast<double>(stats[j].rank) /
+                             static_cast<double>(models.size());
             stats[j].position = j;
 
             fmt::print(os, ",{}", stats[j].value);
