@@ -49,8 +49,9 @@ struct solver_random_inequalities_101coeff
 
     struct rc_data
     {
+        Float value;
         int id;
-        int value;
+        int a;
 
         constexpr bool is_negative() const
         {
@@ -63,7 +64,7 @@ struct solver_random_inequalities_101coeff
     std::unique_ptr<rc_data[]> R;
     std::unique_ptr<bound[]> b;
     fake_vector<Float> pi;
-    fake_vector<Float> P;
+    std::unique_ptr<Float[]> P;
     const std::unique_ptr<Float[]>& c;
     std::bernoulli_distribution dist;
     int m;
@@ -80,6 +81,7 @@ struct solver_random_inequalities_101coeff
       , A(std::make_unique<int[]>(ap.size()))
       , R(std::make_unique<rc_data[]>(compute_reduced_costs_vector_size(csts)))
       , b(std::make_unique<bound[]>(m_))
+      , P(std::make_unique<Float[]>(ap.size()))
       , c(c_)
       , dist(0.5)
       , m(m_)
@@ -112,7 +114,9 @@ struct solver_random_inequalities_101coeff
     }
 
     void reset() const noexcept
-    {}
+    {
+        std::fill(P.get(), P.get() + ap.length(), Float{ 0 });
+    }
 
     int factor(int value) const noexcept
     {
@@ -144,6 +148,14 @@ struct solver_random_inequalities_101coeff
         return b[constraint].max;
     }
 
+    void decrease_preference(sparse_matrix<int>::row_iterator begin,
+                             sparse_matrix<int>::row_iterator end,
+                             Float theta) noexcept
+    {
+        for (; begin != end; ++begin)
+            P[begin->value] *= theta;
+    }
+
     template<typename Xtype, typename Iterator>
     void push_and_compute_update_row(Xtype& x,
                                      Iterator first,
@@ -161,21 +173,31 @@ struct solver_random_inequalities_101coeff
                             Iterator first,
                             Iterator last,
                             Float /*kappa*/,
-                            Float /*delta*/,
-                            Float /*theta*/)
+                            Float delta,
+                            Float theta)
     {
         for (; first != last; ++first) {
             auto k = constraint(first);
             bx_expects(k < m);
+
             auto [row_begin, row_end] = ap.row(k);
+            decrease_preference(row_begin, row_end, theta);
 
             int r_size = 0;
             for (auto it = row_begin; it != row_end; ++it, ++r_size) {
+                Float sum_a_p = 0;
+
+                auto [col_begin, col_end] = ap.column(it->column);
+                for (; col_begin != col_end; ++col_begin)
+                    sum_a_p += static_cast<Float>(A[col_begin->value]) *
+                               P[col_begin->value];
+
                 R[r_size].id = r_size;
-                R[r_size].value = A[it->value];
+                R[r_size].a = A[it->value];
+                R[r_size].value = c[row_begin->column] - sum_a_p;
             }
 
-            std::shuffle(R.get(), R.get() + r_size, rng);
+            calculator_sort<Mode>(R.get(), R.get() + r_size, rng);
 
             int value = 0;
             bool valid = b[k].min <= 0;
@@ -184,26 +206,35 @@ struct solver_random_inequalities_101coeff
             if (!valid) {
                 do {
                     ++i;
-                    value += R[i].value;
+                    value += R[i].a;
                     valid = b[k].min <= value;
                     auto var = row_begin + R[i].id;
                     x.set(var->column, true);
+                    P[var->value] += R[i].a >= 0 ? delta : -delta;
                 } while (!valid && i + 1 < r_size);
             }
 
             valid = b[k].min <= value && value <= b[k].max;
             while (i + 1 < r_size && valid) {
                 ++i;
-                value += R[i].value;
+                value += R[i].a;
                 valid = b[k].min <= value && value <= b[k].max;
                 auto var = row_begin + R[i].id;
-                x.set(var->column, valid);
+
+                if (valid) {
+                    x.set(var->column, true);
+                    P[var->value] += R[i].a >= 0 ? delta : -delta;
+                } else {
+                    x.set(var->column, false);
+                    P[var->value] -= R[i].a >= 0 ? delta : -delta;
+                }
             }
 
             while (i + 1 < r_size) {
                 ++i;
                 auto var = row_begin + R[i].id;
                 x.set(var->column, false);
+                P[var->value] -= R[i].a >= 0 ? delta : -delta;
             }
 
             bx_expects(is_valid_constraint(*this, k, x));
