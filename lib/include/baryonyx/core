@@ -30,12 +30,17 @@
 #include <string>
 #include <vector>
 
+#include <cstdint>
+
 #include <baryonyx/export>
 
 namespace baryonyx {
 
 /** @c index is used as accessors for all array. */
-using index = int;
+using index = std::int_fast32_t;
+
+/** @c value is used as value for variable. */
+using var_value = std::int_least8_t;
 
 struct precondition_failure : std::logic_error
 {
@@ -546,7 +551,7 @@ struct affected_variables
     }
 
     std::vector<std::string> names;
-    std::vector<bool> values;
+    std::vector<var_value> values;
 };
 
 struct raw_problem
@@ -576,12 +581,12 @@ struct solution
 {
     solution() = default;
 
-    solution(std::vector<bool> variables_, double value_)
+    solution(std::vector<var_value> variables_, double value_)
       : variables(std::move(variables_))
       , value(value_)
     {}
 
-    std::vector<bool> variables;
+    std::vector<var_value> variables;
     double value;
 };
 

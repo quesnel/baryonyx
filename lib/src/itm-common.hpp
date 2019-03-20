@@ -43,7 +43,7 @@ namespace itm {
 
 /**
  * @brief stores vector solution in solver.
- * @details x_type uses a single @c std::vector<bool> instead of a
+ * @details x_type uses a single @c std::vector<int8_t> instead of a
  *     @c baryonyx::fixed_array<bool> to use the specialized version of vector,
  *     which is used for elements of type bool and optimizes for space.
  *
@@ -62,12 +62,12 @@ struct x_type
 
     void invert(index index) noexcept
     {
-        m_data[index] = !m_data[index];
+        m_data[index] = m_data[index] ? 0 : 1;
     }
 
-    void set(index index, bool value) noexcept
+    void set(index index, var_value v) noexcept
     {
-        m_data[index] = value;
+        m_data[index] = v;
     }
 
     bool empty() const noexcept
@@ -83,18 +83,18 @@ struct x_type
     void clear() const noexcept
     {}
 
-    std::vector<bool> data() const noexcept
+    const std::vector<var_value>& data() const noexcept
     {
         return m_data;
     }
 
 private:
-    std::vector<bool> m_data;
+    std::vector<var_value> m_data;
 };
 
 /**
  * @brief stores vector solution in solver and a counter.
- * @details x_type uses a single @c std::vector<bool> instead of a
+ * @details x_type uses a single @c std::vector<int8_t> instead of a
  *     @c baryonyx::fixed_array<bool> to use the specialized version of vector,
  *     which is used for elements of type bool and optimizes for space. The
  *     counter vector is used to store number of change in vector solution
@@ -117,16 +117,16 @@ struct x_counter_type
         // NOTE: only the data vector is updated. Normally, m_data and
         // m_counter have been already updated in the update_row function.
 
-        m_data[index] = !m_data[index];
+        m_data[index] = m_data[index] ? 0 : 1;
     }
 
-    void set(index index, bool value) noexcept
+    void set(index index, var_value v) noexcept
     {
         // TODO: Maybe use integer class members to store upper and lower index
         // and make upper() and lower() function O(1).
 
-        if (m_data[index] != value) {
-            m_data[index] = value;
+        if (m_data[index] != v) {
+            m_data[index] = v;
             ++m_counter[index];
         }
     }
@@ -141,7 +141,7 @@ struct x_counter_type
         std::fill(m_counter.begin(), m_counter.end(), 0);
     }
 
-    std::vector<bool> data() const noexcept
+    const std::vector<var_value>& data() const noexcept
     {
         return m_data;
     }
@@ -157,7 +157,7 @@ struct x_counter_type
     }
 
 private:
-    std::vector<bool> m_data;
+    std::vector<var_value> m_data;
     std::vector<int> m_counter;
 };
 
@@ -410,10 +410,10 @@ affect(Solver& slv,
             auto var = it + slv.R[i].id;
 
             if (slv.R[i].is_negative()) {
-                x.set(var->column, true);
+                x.set(var->column, 1);
                 slv.P[var->value] += d;
             } else {
-                x.set(var->column, false);
+                x.set(var->column, 0);
                 slv.P[var->value] -= d;
             }
         }
@@ -425,10 +425,10 @@ affect(Solver& slv,
             auto var = it + slv.R[i].id;
 
             if (slv.R[i].is_negative()) {
-                x.set(var->column, false);
+                x.set(var->column, 0);
                 slv.P[var->value] -= d;
             } else {
-                x.set(var->column, true);
+                x.set(var->column, 1);
                 slv.P[var->value] += d;
             }
         }
@@ -443,10 +443,10 @@ affect(Solver& slv,
             auto var = it + slv.R[i].id;
 
             if (slv.R[i].is_negative()) {
-                x.set(var->column, false);
+                x.set(var->column, 0);
                 slv.P[var->value] -= d;
             } else {
-                x.set(var->column, true);
+                x.set(var->column, 1);
                 slv.P[var->value] += d;
             }
         }
@@ -455,10 +455,10 @@ affect(Solver& slv,
             auto var = it + slv.R[i].id;
 
             if (slv.R[i].is_negative()) {
-                x.set(var->column, true);
+                x.set(var->column, 1);
                 slv.P[var->value] += d;
             } else {
-                x.set(var->column, false);
+                x.set(var->column, 0);
                 slv.P[var->value] -= d;
             }
         }
@@ -706,7 +706,7 @@ print_solver(const Solver& slv,
               "    - {} {}={}/c_i:{}\n",
               i,
               names[i],
-              (x[i] ? 1 : 0),
+              x[i],
               slv.c[i]);
     debug(ctx, "\n");
 

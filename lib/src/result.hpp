@@ -36,7 +36,7 @@ template<typename Mode>
 inline bool
 store_one_solution(const context_ptr& /*ctx*/,
                    result& res,
-                   const std::vector<bool>& solution,
+                   const std::vector<var_value>& solution,
                    double value)
 {
     if (itm::is_better_solution<Mode>(value, res.solutions.back().value)) {
@@ -51,12 +51,11 @@ template<typename Mode>
 inline bool
 store_bound_solutions(const context_ptr& /*ctx*/,
                       result& res,
-                      const std::vector<bool>& solution,
+                      const std::vector<var_value>& solution,
                       double value)
 {
     if (res.solutions.size() == static_cast<size_t>(1)) {
-        if (itm::is_better_solution<Mode>(
-              value, res.solutions.back().value)) {
+        if (itm::is_better_solution<Mode>(value, res.solutions.back().value)) {
             res.solutions.emplace_back(solution, value);
         } else {
             res.solutions.emplace(res.solutions.begin(), solution, value);
@@ -65,8 +64,8 @@ store_bound_solutions(const context_ptr& /*ctx*/,
 
     if (itm::is_better_solution<Mode>(value, res.solutions.back().value)) {
         res.solutions.back() = { solution, value };
-    } else if (itm::is_better_solution<Mode>(
-                 res.solutions.front().value, value)) {
+    } else if (itm::is_better_solution<Mode>(res.solutions.front().value,
+                                             value)) {
         res.solutions.front() = { solution, value };
     }
 
@@ -77,7 +76,7 @@ template<typename Mode>
 inline bool
 store_five_solutions(const context_ptr& /*ctx*/,
                      result& res,
-                     const std::vector<bool>& solution,
+                     const std::vector<var_value>& solution,
                      double value)
 {
     auto it = res.solutions.rbegin();
@@ -115,7 +114,7 @@ template<typename Mode>
 bool
 store_solution(const context_ptr& ctx,
                result& res,
-               const std::vector<bool>& solution,
+               const std::vector<var_value>& solution,
                double value)
 {
     // If the result solutions vector is empty, the solution and value

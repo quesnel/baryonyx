@@ -76,7 +76,7 @@ struct best_solution_recorder
         }
     }
 
-    void try_update(const std::vector<bool>& solution, double value, int loop)
+    void try_update(const std::vector<var_value>& solution, double value, int loop)
     {
         try {
             std::lock_guard<std::mutex> lock(m_mutex);
