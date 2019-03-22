@@ -172,7 +172,7 @@ struct solver_random_inequalities_101coeff
     void compute_update_row(Xtype& x,
                             Iterator first,
                             Iterator last,
-                            Float /*kappa*/,
+                            Float kappa,
                             Float delta,
                             Float theta)
     {
@@ -203,6 +203,89 @@ struct solver_random_inequalities_101coeff
             bool valid = b[k].min <= 0;
             int i = -1;
 
+            // if (!valid) {
+            //     do {
+            //         ++i;
+            //         value += R[i].a;
+            //         valid = b[k].min <= value;
+            //     } while (!valid && i + 1 < r_size);
+            // }
+
+            // valid = b[k].min <= value && value <= b[k].max;
+            // while (i + 1 < r_size && valid) {
+            //     ++i;
+            //     value += R[i].a;
+            //     valid = b[k].min <= value && value <= b[k].max;
+            // }
+
+            // std::uniform_real_distribution<Float> real_dist(Float{ 0 },
+            //                                                 Float{ 1 });
+
+            // auto selected = i;
+            // auto d = delta;
+
+            // if (selected < 0) {
+            //     d += (kappa / (one - kappa)) * (R[0].value / two);
+            //     d *= real_dist(rng);
+
+            //     for (i = 0; i != r_size; ++i) {
+            //         auto var = row_begin + R[i].id;
+
+            //         if (R[i].is_negative()) {
+            //             x.set(var->column, 1);
+            //             P[var->value] += d;
+            //         } else {
+            //             x.set(var->column, 0);
+            //             P[var->value] -= d;
+            //         }
+            //     }
+            // } else if (selected + 1 >= r_size) {
+            //     d += (kappa / (one - kappa)) * (R[selected].value * middle);
+            //     d *= real_dist(rng);
+
+            //     for (i = 0; i != r_size; ++i) {
+            //         auto var = row_begin + R[i].id;
+
+            //         if (R[i].is_negative()) {
+            //             x.set(var->column, 0);
+            //             P[var->value] -= d;
+            //         } else {
+            //             x.set(var->column, 1);
+            //             P[var->value] += d;
+            //         }
+            //     }
+            // } else {
+            //     d += (kappa / (one - kappa)) *
+            //          (R[selected + 1].value - R[selected].value);
+            //     d *= real_dist(rng);
+
+            //     for (i = 0; i <= selected; ++i) {
+            //         auto var = row_begin + R[i].id;
+
+            //         if (R[i].is_negative()) {
+            //             x.set(var->column, 0);
+            //             P[var->value] -= d;
+            //         } else {
+            //             x.set(var->column, 1);
+            //             P[var->value] += d;
+            //         }
+            //     }
+
+            //     for (; i != r_size; ++i) {
+            //         auto var = row_begin + R[i].id;
+
+            //         if (R[i].is_negative()) {
+            //             x.set(var->column, 1);
+            //             P[var->value] += d;
+            //         } else {
+            //             x.set(var->column, 0);
+            //             P[var->value] -= d;
+            //         }
+            //     }
+
+            constexpr Float one{ 1 };
+            constexpr Float two{ 2 };
+
             if (!valid) {
                 do {
                     ++i;
@@ -210,7 +293,8 @@ struct solver_random_inequalities_101coeff
                     valid = b[k].min <= value;
                     auto var = row_begin + R[i].id;
                     x.set(var->column, true);
-                    P[var->value] += R[i].a >= 0 ? delta : -delta;
+                    P[var->value] +=
+                      delta + (kappa / (one - kappa)) * (R[i].value / two);
                 } while (!valid && i + 1 < r_size);
             }
 
@@ -221,12 +305,17 @@ struct solver_random_inequalities_101coeff
                 valid = b[k].min <= value && value <= b[k].max;
                 auto var = row_begin + R[i].id;
 
+                if (valid)
+                    valid = stop_iterating<Mode>(R[i].value, rng);
+
                 if (valid) {
                     x.set(var->column, true);
-                    P[var->value] += R[i].a >= 0 ? delta : -delta;
+                    P[var->value] +=
+                      delta + (kappa / (one - kappa)) * (R[i].value / two);
                 } else {
                     x.set(var->column, false);
-                    P[var->value] -= R[i].a >= 0 ? delta : -delta;
+                    P[var->value] -=
+                      delta + (kappa / (one - kappa)) * (R[i].value / two);
                 }
             }
 
@@ -234,7 +323,8 @@ struct solver_random_inequalities_101coeff
                 ++i;
                 auto var = row_begin + R[i].id;
                 x.set(var->column, false);
-                P[var->value] -= R[i].a >= 0 ? delta : -delta;
+                P[var->value] -=
+                  delta + (kappa / (one - kappa)) * (R[i].value / two);
             }
 
             bx_expects(is_valid_constraint(*this, k, x));
