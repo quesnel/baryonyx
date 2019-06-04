@@ -37,7 +37,7 @@
 namespace baryonyx {
 
 /** @c index is used as accessors for all array. */
-using index = std::int_fast32_t;
+using index = std::int32_t;
 
 /** @c value is used as value for variable. */
 using var_value = std::int_least8_t;
