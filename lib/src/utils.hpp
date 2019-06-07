@@ -217,10 +217,6 @@ is_time_limit(double limit,
     if (limit <= 0)
         return false;
 
-    fmt::print("is_time_limit limit {} : {}s\n",
-               limit,
-               duration_cast<duration<double>>(end - begin).count());
-
     return duration_cast<duration<double>>(end - begin).count() > limit;
 }
 

@@ -76,7 +76,9 @@ struct best_solution_recorder
         }
     }
 
-    void try_update(const std::vector<var_value>& solution, double value, int loop)
+    void try_update(const std::vector<var_value>& solution,
+                    double value,
+                    int loop)
     {
         try {
             std::lock_guard<std::mutex> lock(m_mutex);
@@ -210,8 +212,16 @@ struct optimize_functor
             else
                 initializer.reinit(slv, x, m_best.solutions.back());
 
-            for (int i = 0; i != p.limit; ++i) {
+            for (int i = 0; !finish && i != p.limit; ++i) {
                 auto remaining = compute.run(slv, x, kappa, delta, theta);
+
+                if (is_timelimit_reached()) {
+                    if (m_best.status == result_status::uninitialized) {
+                        m_best.status = result_status::time_limit_reached;
+                        store_if_better(x, remaining, i, best_recorder);
+                    }
+                    finish = true;
+                }
 
                 if (remaining == 0) {
                     store_if_better(
@@ -236,15 +246,6 @@ struct optimize_functor
 
                 if (kappa > kappa_max)
                     break;
-
-                if (is_timelimit_reached()) {
-                    if (m_best.status == result_status::uninitialized) {
-                        m_best.status = result_status::time_limit_reached;
-                        store_if_better(x, remaining, i, best_recorder);
-                    }
-                    finish = true;
-                    break;
-                }
             }
 
             if (best_remaining > 0)
@@ -266,8 +267,21 @@ struct optimize_functor
                       -push * p.pushing_iteration_limit - 1,
                       best_recorder);
 
-                for (int iter = 0; iter < p.pushing_iteration_limit; ++iter) {
+                for (int iter = 0; !finish && iter < p.pushing_iteration_limit;
+                     ++iter) {
                     remaining = compute.run(slv, x, kappa, delta, theta);
+
+                    if (is_timelimit_reached()) {
+                        if (m_best.status == result_status::uninitialized) {
+                            m_best.status = result_status::time_limit_reached;
+                            store_if_better(x,
+                                            remaining,
+                                            -push * p.pushing_iteration_limit -
+                                              iter - 1,
+                                            best_recorder);
+                        }
+                        finish = true;
+                    }
 
                     if (remaining == 0) {
                         store_if_better(
@@ -286,19 +300,6 @@ struct optimize_functor
 
                     if (kappa > kappa_max)
                         break;
-
-                    if (is_timelimit_reached()) {
-                        if (m_best.status == result_status::uninitialized) {
-                            m_best.status = result_status::time_limit_reached;
-                            store_if_better(x,
-                                            remaining,
-                                            -push * p.pushing_iteration_limit -
-                                              iter - 1,
-                                            best_recorder);
-                        }
-                        finish = true;
-                        break;
-                    }
                 }
             }
         }
