@@ -211,7 +211,7 @@ struct solver_inequalities_101coeff_buffered
     }
 
     template<typename Xtype, typename Iterator>
-    void push_and_compute_update_row(Xtype& /*x*/,
+    bool push_and_compute_update_row(Xtype& /*x*/,
                                      Iterator first,
                                      Iterator last,
                                      Float /*kappa*/,
@@ -252,6 +252,8 @@ struct solver_inequalities_101coeff_buffered
             }
         }
 
+        return false;
+
         // for (auto ct = first; ct != last; ++ct) {
         //    auto k = constraint(ct);
         //    const auto it = ap.row(k);
@@ -282,7 +284,7 @@ struct solver_inequalities_101coeff_buffered
     }
 
     template<typename Xtype, typename Iterator>
-    void compute_update_row(Xtype& /*x*/,
+    bool compute_update_row(Xtype& /*x*/,
                             Iterator first,
                             Iterator last,
                             Float /*kappa*/,
@@ -321,6 +323,8 @@ struct solver_inequalities_101coeff_buffered
                 }
             }
         }
+
+        return false;
 
         // for (auto ct = first; ct != last; ++ct) {
         //    auto k = constraint(ct);

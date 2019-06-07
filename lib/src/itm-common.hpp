@@ -231,12 +231,17 @@ template<typename Solver, typename Xtype>
 int
 compute_violated_constraints(const Solver& slv,
                              const Xtype& x,
-                             std::vector<int>& out)
+                             std::vector<int>& out,
+                             bool at_least_one_pi_changed)
 {
     out.clear();
 
     for (int k = 0; k != slv.m; ++k)
         if (!is_valid_constraint(slv, k, x))
+            out.emplace_back(k);
+
+    if (out.empty() && at_least_one_pi_changed)
+        for (int k = 0; k != slv.m; ++k)
             out.emplace_back(k);
 
     return length(out);
@@ -380,13 +385,22 @@ compute_reduced_costs_vector_size(
     return rsizemax;
 }
 
-/*
- * The bkmin and bkmax constraint bounds are not equal and can be assigned to
- * -infinity or +infinity. We have to scan the r vector and search a value j
- * such as b(0, k) <= Sum A(k, R[j]) < b(1, k).
- */
+/// Test if the bit sign between two reals are differents.
+template<typename Float>
+inline bool
+is_signbit_change(Float lhs, Float rhs) noexcept
+{
+    return std::signbit(lhs) != std::signbit(rhs);
+}
+
+/// The bkmin and bkmax constraint bounds are not equal and can be assigned to
+/// -infinity or +infinity. We have to scan the r vector and search a value j
+/// such as b(0, k) <= Sum A(k, R[j]) < b(1, k).
+///
+/// @return True if the sign of the pi vector change during the affect
+///     operation.
 template<typename Solver, typename Xtype, typename Iterator, typename Float>
-void
+bool
 affect(Solver& slv,
        Xtype& x,
        Iterator it,
@@ -399,6 +413,8 @@ affect(Solver& slv,
     constexpr Float one{ 1 };
     constexpr Float two{ 2 };
     constexpr Float middle{ (two + one) / two };
+
+    const auto old_pi = slv.pi[k];
 
     auto d = delta;
 
@@ -466,6 +482,8 @@ affect(Solver& slv,
 
     // TODO job: develops is_valid_constraint for all the solvers
     bx_expects(is_valid_constraint(slv, k, x));
+
+    return is_signbit_change(old_pi, slv.pi[k]);
 }
 
 namespace detail {
@@ -938,7 +956,7 @@ struct compute_none
     compute_none(const solverT& s, const Xtype& x, randomT&)
       : R(s.m)
     {
-        compute_violated_constraints(s, x, R);
+        compute_violated_constraints(s, x, R, true);
     }
 
     template<typename solverT, typename Xtype>
@@ -949,10 +967,10 @@ struct compute_none
                      floatingpointT theta,
                      floatingpointT objective_amplifier)
     {
-        solver.push_and_compute_update_row(
+        auto pi_changed = solver.push_and_compute_update_row(
           x, R.cbegin(), R.cend(), kappa, delta, theta, objective_amplifier);
 
-        return compute_violated_constraints(solver, x, R);
+        return compute_violated_constraints(solver, x, R, pi_changed);
     }
 
     template<typename solverT, typename Xtype>
@@ -962,9 +980,10 @@ struct compute_none
             floatingpointT delta,
             floatingpointT theta)
     {
-        solver.compute_update_row(x, R.begin(), R.end(), kappa, delta, theta);
+        auto pi_changed = solver.compute_update_row(
+          x, R.begin(), R.end(), kappa, delta, theta);
 
-        return compute_violated_constraints(solver, x, R);
+        return compute_violated_constraints(solver, x, R, pi_changed);
     }
 };
 
@@ -977,7 +996,7 @@ struct compute_reversing
     compute_reversing(solverT& s, const Xtype& x, randomT&)
       : R(s.m)
     {
-        compute_violated_constraints(s, x, R);
+        compute_violated_constraints(s, x, R, true);
     }
 
     template<typename solverT, typename Xtype>
@@ -988,10 +1007,10 @@ struct compute_reversing
                      floatingpointT theta,
                      floatingpointT objective_amplifier)
     {
-        solver.push_and_compute_update_row(
+        auto pi_changed = solver.push_and_compute_update_row(
           x, R.crbegin(), R.crend(), kappa, delta, theta, objective_amplifier);
 
-        return compute_violated_constraints(solver, x, R);
+        return compute_violated_constraints(solver, x, R, pi_changed);
     }
 
     template<typename solverT, typename Xtype>
@@ -1001,10 +1020,10 @@ struct compute_reversing
             floatingpointT delta,
             floatingpointT theta)
     {
-        solver.compute_update_row(
+        auto pi_changed = solver.compute_update_row(
           x, R.crbegin(), R.crend(), kappa, delta, theta);
 
-        return compute_violated_constraints(solver, x, R);
+        return compute_violated_constraints(solver, x, R, pi_changed);
     }
 };
 
@@ -1017,7 +1036,7 @@ struct compute_lagrangian_order
     compute_lagrangian_order(solverT& s, const Xtype& x, Random&)
       : R(s.m)
     {
-        compute_violated_constraints(s, x, R);
+        compute_violated_constraints(s, x, R, true);
     }
 
     template<typename Iterator, typename Solver>
@@ -1041,10 +1060,10 @@ struct compute_lagrangian_order
     {
         local_sort(R.begin(), R.end(), solver);
 
-        solver.push_and_compute_update_row(
+        auto pi_changed = solver.push_and_compute_update_row(
           x, R.cbegin(), R.cend(), kappa, delta, theta, objective_amplifier);
 
-        return compute_violated_constraints(solver, x, R);
+        return compute_violated_constraints(solver, x, R, pi_changed);
     }
 
     template<typename solverT, typename Xtype>
@@ -1052,10 +1071,10 @@ struct compute_lagrangian_order
     {
         local_sort(R.begin(), R.end(), solver);
 
-        solver.compute_update_row(
+        auto pi_changed = solver.compute_update_row(
           x, R.cbegin(), R.cend(), kappa, delta, theta);
 
-        return compute_violated_constraints(solver, x, R);
+        return compute_violated_constraints(solver, x, R, pi_changed);
     }
 };
 
@@ -1072,7 +1091,7 @@ struct compute_random
       : R(s.m)
       , rng(rng_)
     {
-        compute_violated_constraints(s, x, R);
+        compute_violated_constraints(s, x, R, true);
     }
 
     template<typename solverT, typename Xtype>
@@ -1085,10 +1104,10 @@ struct compute_random
     {
         std::shuffle(R.begin(), R.end(), rng);
 
-        solver.push_and_compute_update_row(
+        auto pi_changed = solver.push_and_compute_update_row(
           x, R.begin(), R.end(), kappa, delta, theta, objective_amplifier);
 
-        return compute_violated_constraints(solver, x, R);
+        return compute_violated_constraints(solver, x, R, pi_changed);
     }
 
     template<typename solverT, typename Xtype>
@@ -1100,9 +1119,10 @@ struct compute_random
     {
         std::shuffle(R.begin(), R.end(), rng);
 
-        solver.compute_update_row(x, R.begin(), R.end(), kappa, delta, theta);
+        auto pi_changed = solver.compute_update_row(
+          x, R.begin(), R.end(), kappa, delta, theta);
 
-        return compute_violated_constraints(solver, x, R);
+        return compute_violated_constraints(solver, x, R, pi_changed);
     }
 };
 
@@ -1119,11 +1139,13 @@ struct compute_infeasibility
       : m_order(s.m)
       , rng(rng_)
     {
-        local_compute_violated_constraints(s, x);
+        local_compute_violated_constraints(s, x, true);
     }
 
     template<typename solverT, typename Xtype>
-    int local_compute_violated_constraints(solverT& solver, const Xtype& x)
+    int local_compute_violated_constraints(solverT& solver,
+                                           const Xtype& x,
+                                           bool at_least_one_pi_changed)
     {
         m_order.clear();
 
@@ -1139,6 +1161,26 @@ struct compute_infeasibility
                 m_order.push_back(std::make_pair(k, solver.bound_min(k) - v));
             else if (solver.bound_max(k) < v)
                 m_order.push_back(std::make_pair(k, v - solver.bound_max(k)));
+        }
+
+        if (m_order.empty() && at_least_one_pi_changed) {
+            for (int k = 0, e = solver.m; k != e; ++k) {
+                sparse_matrix<int>::const_row_iterator it, et;
+                std::tie(it, et) = solver.ap.row(k);
+                int v = 0;
+
+                for (; it != et; ++it)
+                    v += solver.factor(it->value) * x[it->column];
+
+                if (solver.bound_min(k) > v)
+                    m_order.push_back(
+                      std::make_pair(k, solver.bound_min(k) - v));
+                else if (solver.bound_max(k) < v)
+                    m_order.push_back(
+                      std::make_pair(k, v - solver.bound_max(k)));
+                else
+                    m_order.push_back(std::make_pair(k, 0));
+            }
         }
 
         return length(m_order);
@@ -1165,15 +1207,16 @@ struct compute_infeasibility
     {
         local_sort(m_order.begin(), m_order.end());
 
-        solver.push_and_compute_update_row(x,
-                                           m_order.cbegin(),
-                                           m_order.cend(),
-                                           kappa,
-                                           delta,
-                                           theta,
-                                           objective_amplifier);
+        auto pi_changed =
+          solver.push_and_compute_update_row(x,
+                                             m_order.cbegin(),
+                                             m_order.cend(),
+                                             kappa,
+                                             delta,
+                                             theta,
+                                             objective_amplifier);
 
-        return local_compute_violated_constraints(solver, x);
+        return local_compute_violated_constraints(solver, x, pi_changed);
     }
 
     template<typename solverT, typename Xtype>
@@ -1185,10 +1228,10 @@ struct compute_infeasibility
     {
         local_sort(m_order.begin(), m_order.end());
 
-        solver.compute_update_row(
+        auto pi_changed = solver.compute_update_row(
           x, m_order.cbegin(), m_order.cend(), kappa, delta, theta);
 
-        return local_compute_violated_constraints(solver, x);
+        return local_compute_violated_constraints(solver, x, pi_changed);
     }
 };
 

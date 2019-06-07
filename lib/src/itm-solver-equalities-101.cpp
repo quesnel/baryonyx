@@ -187,7 +187,7 @@ struct solver_equalities_101coeff
     }
 
     template<typename Xtype, typename Iterator>
-    void push_and_compute_update_row(Xtype& x,
+    bool push_and_compute_update_row(Xtype& x,
                                      Iterator first,
                                      Iterator last,
                                      Float kappa,
@@ -195,6 +195,8 @@ struct solver_equalities_101coeff
                                      Float theta,
                                      Float obj_amp)
     {
+        auto at_least_one_pi_changed{ false };
+
         for (; first != last; ++first) {
             auto k = constraint(first);
 
@@ -204,11 +206,9 @@ struct solver_equalities_101coeff
             const auto sizes =
               compute_reduced_costs(std::get<0>(it), std::get<1>(it));
 
-            //
             // Before sort and select variables, we apply the push method: for
             // each reduces cost, we had the cost multiply with an objective
             // amplifier.
-            //
 
             for (int i = 0; i != sizes.r_size; ++i)
                 R[i].value += obj_amp * c[(std::get<0>(it) + R[i].id)->column];
@@ -216,25 +216,30 @@ struct solver_equalities_101coeff
             calculator_sort<Mode>(R.get(), R.get() + sizes.r_size, rng);
             int selected = select_variables(sizes, b[k]);
 
-            affect(*this,
-                   x,
-                   std::get<0>(it),
-                   k,
-                   selected,
-                   sizes.r_size,
-                   kappa,
-                   delta);
+            auto pi_change = affect(*this,
+                                    x,
+                                    std::get<0>(it),
+                                    k,
+                                    selected,
+                                    sizes.r_size,
+                                    kappa,
+                                    delta);
+            at_least_one_pi_changed = at_least_one_pi_changed || pi_change;
         }
+
+        return at_least_one_pi_changed;
     }
 
     template<typename Xtype, typename Iterator>
-    void compute_update_row(Xtype& x,
+    bool compute_update_row(Xtype& x,
                             Iterator first,
                             Iterator last,
                             Float kappa,
                             Float delta,
                             Float theta)
     {
+        auto at_least_one_pi_changed{ false };
+
         for (; first != last; ++first) {
             auto k = constraint(first);
 
@@ -249,15 +254,18 @@ struct solver_equalities_101coeff
             calculator_sort<Mode>(R.get(), R.get() + sizes.r_size, rng);
             int selected = select_variables(sizes, b[k]);
 
-            affect(*this,
-                   x,
-                   std::get<0>(it),
-                   k,
-                   selected,
-                   sizes.r_size,
-                   kappa,
-                   delta);
+            auto pi_change = affect(*this,
+                                    x,
+                                    std::get<0>(it),
+                                    k,
+                                    selected,
+                                    sizes.r_size,
+                                    kappa,
+                                    delta);
+            at_least_one_pi_changed = at_least_one_pi_changed || pi_change;
         }
+
+        return at_least_one_pi_changed;
     }
 };
 
@@ -349,8 +357,9 @@ select_mode(const context_ptr& ctx, const problem& pb, bool is_optimization)
 {
     const auto m = static_cast<int>(pb.type);
 
-    return m == 0 ? select_random<Float, mode_sel<0>>(ctx, pb, is_optimization)
-                  : select_random<Float, mode_sel<1>>(ctx, pb, is_optimization);
+    return m == 0
+             ? select_random<Float, mode_sel<0>>(ctx, pb, is_optimization)
+             : select_random<Float, mode_sel<1>>(ctx, pb, is_optimization);
 }
 
 static result

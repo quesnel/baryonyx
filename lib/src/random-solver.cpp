@@ -157,7 +157,7 @@ struct solver_random_inequalities_101coeff
     }
 
     template<typename Xtype, typename Iterator>
-    void push_and_compute_update_row(Xtype& x,
+    bool push_and_compute_update_row(Xtype& x,
                                      Iterator first,
                                      Iterator last,
                                      Float kappa,
@@ -165,11 +165,11 @@ struct solver_random_inequalities_101coeff
                                      Float theta,
                                      Float /*obj_amp*/)
     {
-        compute_update_row(x, first, last, kappa, delta, theta);
+        return compute_update_row(x, first, last, kappa, delta, theta);
     }
 
     template<typename Xtype, typename Iterator>
-    void compute_update_row(Xtype& x,
+    bool compute_update_row(Xtype& x,
                             Iterator first,
                             Iterator last,
                             Float kappa,
@@ -329,6 +329,8 @@ struct solver_random_inequalities_101coeff
 
             bx_expects(is_valid_constraint(*this, k, x));
         }
+
+        return false;
     }
 };
 
