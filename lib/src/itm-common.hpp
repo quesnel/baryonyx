@@ -720,12 +720,7 @@ print_solver(const Solver& slv,
 
     debug(ctx, "  - X: {} to {}\n", 0, slv.n);
     for (int i = 0; i != slv.n; ++i)
-        debug(ctx,
-              "    - {} {}={}/c_i:{}\n",
-              i,
-              names[i],
-              x[i],
-              slv.c[i]);
+        debug(ctx, "    - {} {}={}/c_i:{}\n", i, names[i], x[i], slv.c[i]);
     debug(ctx, "\n");
 
     for (int k = 0; k != slv.m; ++k) {
