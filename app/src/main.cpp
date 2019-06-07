@@ -436,12 +436,33 @@ constexpr const std::string_view command_line_status_string[] = {
     "seed"
 };
 
+template<typename Integer>
+constexpr typename std::make_unsigned<Integer>::type
+to_unsigned(Integer value)
+{
+    assert(value >= 0 && "negative value");
+
+    return static_cast<typename std::make_unsigned<Integer>::type>(value);
+}
+
+template<typename Integer>
+constexpr typename std::make_signed<Integer>::type
+to_signed(Integer value)
+{
+    assert(
+      value <
+        std::numeric_limits<typename std::make_signed<Integer>::type>::max() &&
+      "negative value");
+
+    return static_cast<typename std::make_signed<Integer>::type>(value);
+}
+
 constexpr const std::string_view
 to_string(command_line_status s) noexcept
 {
     auto x = static_cast<std::underlying_type<command_line_status>::type>(s);
 
-    assert(x < std::size(command_line_status_string));
+    assert(x < to_signed(std::size(command_line_status_string)));
 
     return command_line_status_string[x];
 }
