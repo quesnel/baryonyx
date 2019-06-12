@@ -119,11 +119,7 @@ sort_on_value(Iterator first,
                     return true;
                 }
             } else {
-                if (is_valid(rhs.value)) {
-                    return false;
-                } else {
-                    return true;
-                }
+                return false;
             }
         });
     else
@@ -135,11 +131,7 @@ sort_on_value(Iterator first,
                     return true;
                 }
             } else {
-                if (is_valid(rhs.value)) {
-                    return false;
-                } else {
-                    return true;
-                }
+                return false;
             }
         });
 }
