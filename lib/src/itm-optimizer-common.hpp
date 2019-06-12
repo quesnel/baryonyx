@@ -27,6 +27,7 @@
 #include <baryonyx/core-utils>
 
 #include <algorithm>
+#include <atomic>
 #include <chrono>
 #include <functional>
 #include <future>
@@ -107,8 +108,6 @@ struct optimize_functor
     const context_ptr& m_ctx;
     Random m_rng;
     int m_thread_id;
-    std::chrono::time_point<std::chrono::steady_clock> m_begin;
-    std::chrono::time_point<std::chrono::steady_clock> m_end;
 
     const std::vector<std::string>& variable_names;
     const affected_variables& affected_vars;
@@ -127,7 +126,8 @@ struct optimize_functor
       , affected_vars(affected_vars_)
     {}
 
-    result operator()(best_solution_recorder<Float, Mode>& best_recorder,
+    result operator()(std::atomic_bool& stop_task,
+                      best_solution_recorder<Float, Mode>& best_recorder,
                       const std::vector<merged_constraint>& constraints,
                       int variables,
                       const std::unique_ptr<Float[]>& original_costs,
@@ -136,12 +136,14 @@ struct optimize_functor
         return ((m_ctx->parameters.mode &
                  solver_parameters::mode_type::branch) ==
                 solver_parameters::mode_type::branch)
-                 ? run<x_counter_type>(best_recorder,
+                 ? run<x_counter_type>(stop_task,
+                                       best_recorder,
                                        constraints,
                                        variables,
                                        original_costs,
                                        cost_constant)
-                 : run<x_type>(best_recorder,
+                 : run<x_type>(stop_task,
+                               best_recorder,
                                constraints,
                                variables,
                                original_costs,
@@ -149,7 +151,8 @@ struct optimize_functor
     }
 
     template<typename Xtype>
-    result run(best_solution_recorder<Float, Mode>& best_recorder,
+    result run(std::atomic_bool& stop_task,
+               best_solution_recorder<Float, Mode>& best_recorder,
                const std::vector<merged_constraint>& constraints,
                int variables,
                const std::unique_ptr<Float[]>& original_costs,
@@ -180,9 +183,6 @@ struct optimize_functor
         if (p.limit <= 0)
             p.limit = std::numeric_limits<int>::max();
 
-        if (p.time_limit <= 0)
-            p.time_limit = std::numeric_limits<double>::infinity();
-
         if (p.pushes_limit <= 0)
             p.pushes_limit = 0;
 
@@ -200,11 +200,7 @@ struct optimize_functor
         m_best.variables = slv.m;
         m_best.constraints = slv.n;
 
-        m_begin = std::chrono::steady_clock::now();
-        m_end = std::chrono::steady_clock::now();
-
-        bool finish = false;
-        while (!finish) {
+        while (!stop_task.load()) {
             auto kappa = static_cast<Float>(p.kappa_min);
 
             if (m_best.solutions.empty())
@@ -212,16 +208,8 @@ struct optimize_functor
             else
                 initializer.reinit(slv, x, m_best.solutions.back());
 
-            for (int i = 0; !finish && i != p.limit; ++i) {
+            for (int i = 0; !stop_task.load() && i != p.limit; ++i) {
                 auto remaining = compute.run(slv, x, kappa, delta, theta);
-
-                if (is_timelimit_reached()) {
-                    if (m_best.status == result_status::uninitialized) {
-                        m_best.status = result_status::time_limit_reached;
-                        store_if_better(x, remaining, i, best_recorder);
-                    }
-                    finish = true;
-                }
 
                 if (remaining == 0) {
                     store_if_better(
@@ -251,7 +239,8 @@ struct optimize_functor
             if (best_remaining > 0)
                 continue;
 
-            for (int push = 0; !finish && push < p.pushes_limit; ++push) {
+            for (int push = 0; !stop_task.load() && push < p.pushes_limit;
+                 ++push) {
                 auto remaining =
                   compute.push_and_run(slv,
                                        x,
@@ -267,21 +256,10 @@ struct optimize_functor
                       -push * p.pushing_iteration_limit - 1,
                       best_recorder);
 
-                for (int iter = 0; !finish && iter < p.pushing_iteration_limit;
+                for (int iter = 0;
+                     !stop_task.load() && iter < p.pushing_iteration_limit;
                      ++iter) {
                     remaining = compute.run(slv, x, kappa, delta, theta);
-
-                    if (is_timelimit_reached()) {
-                        if (m_best.status == result_status::uninitialized) {
-                            m_best.status = result_status::time_limit_reached;
-                            store_if_better(x,
-                                            remaining,
-                                            -push * p.pushing_iteration_limit -
-                                              iter - 1,
-                                            best_recorder);
-                        }
-                        finish = true;
-                    }
 
                     if (remaining == 0) {
                         store_if_better(
@@ -304,17 +282,13 @@ struct optimize_functor
             }
         }
 
+        if (m_best.status == result_status::uninitialized && stop_task.load())
+            m_best.status = result_status::time_limit_reached;
+
         return m_best;
     }
 
 private:
-    bool is_timelimit_reached()
-    {
-        m_end = std::chrono::steady_clock::now();
-
-        return is_time_limit(m_ctx->parameters.time_limit, m_begin, m_end);
-    }
-
     template<typename Xtype>
     void store_if_better(const Xtype& x,
                          int remaining,
@@ -400,10 +374,15 @@ optimize_problem(const context_ptr& ctx, const problem& pb)
 
         auto seeds = generate_seed(rng, thread);
 
+        std::atomic_bool stop_task;
+
+        stop_task.store(false);
+
         for (unsigned i{ 0 }; i != thread; ++i) {
             std::packaged_task<baryonyx::result()> task(
               std::bind(optimize_functor<Solver, Float, Mode, Order, Random>(
                           ctx, i, seeds[i], pb.vars.names, pb.affected_vars),
+                        std::ref(stop_task),
                         std::ref(result),
                         std::ref(constraints),
                         variables,
@@ -413,6 +392,17 @@ optimize_problem(const context_ptr& ctx, const problem& pb)
             results.emplace_back(task.get_future());
 
             pool.emplace_back(std::thread(std::move(task)));
+        }
+
+        // User limits the optimization process. The current thread turns into
+        // sleeping mode for the specified duration time in second.  The
+        // following code takes into account the first three decimals only.
+
+        if (ctx->parameters.time_limit > 0) {
+            const auto duration =
+              static_cast<long>(ctx->parameters.time_limit * 1000.0);
+            std::this_thread::sleep_for(std::chrono::milliseconds{ duration });
+            stop_task.store(true);
         }
 
         for (auto& t : pool)
