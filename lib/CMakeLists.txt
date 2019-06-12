@@ -18,6 +18,7 @@ set(private_baryonyx_source
  src/branch-optimizer.cpp
  src/branch-and-bound-solver.hpp
  src/debug.hpp
+ src/bit-array.hpp
  src/fixed-2darray.hpp
  src/fixed-array.hpp
  src/itm-common.hpp

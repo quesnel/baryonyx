@@ -20,6 +20,7 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+#include "bit-array.hpp"
 #include "branch-and-bound-solver.hpp"
 #include "fixed-2darray.hpp"
 #include "fixed-array.hpp"
@@ -627,6 +628,46 @@ check_trim_functions()
     }
 }
 
+void
+check_bit_array()
+{
+    baryonyx::bit_array a(100);
+
+    Ensures(baryonyx::bit_array::block_t == 4 * 8);
+    Ensures(a.size() == 100);
+    Ensures(a.block_size() == 1 + (100 / (4 * 8)));
+    Ensures(a.block_size() == 4);
+
+    a.zeros();
+    for (auto i = 0; i != a.size(); ++i)
+        Ensures(a.get(i) == 0);
+
+    a.ones();
+    for (auto i = 0; i != a.size(); ++i)
+        Ensures(a.get(i) == 1);
+
+    for (auto i = 0; i != a.size(); ++i)
+        a.unset(i);
+    for (auto i = 0; i != a.size(); ++i)
+        Ensures(a.get(i) == 0);
+
+    for (auto i = 0; i != a.size(); ++i)
+        a.set(i);
+    for (auto i = 0; i != a.size(); ++i)
+        Ensures(a.get(i) == 1);
+
+    for (auto i = 0; i != a.size(); i += 2)
+        a.unset(i);
+    for (auto i = 0; i != a.size(); i += 2)
+        Ensures(a.get(i) == 0 && a.get(i + 1) == 1);
+
+    for (auto i = 0; i != a.size(); ++i)
+        a.invert(i);
+
+    for (auto i = 0; i != a.size(); i += 2)
+        Ensures(a.get(i) == 1 && a.get(i + 1) == 0);
+}
+
 int
 main(int /* argc */, char* /* argv */ [])
 {
@@ -640,6 +681,7 @@ main(int /* argc */, char* /* argv */ [])
     unit_test::checks("check_observer_pnm", check_observer_pnm);
     unit_test::checks("check_show_size", check_show_size);
     unit_test::checks("check_trim_functions", check_trim_functions);
+    unit_test::checks("check_bit_array", check_bit_array);
 
     return unit_test::report_errors();
 }
