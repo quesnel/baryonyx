@@ -292,7 +292,7 @@ struct solver_random_inequalities_101coeff
                     value += R[i].a;
                     valid = b[k].min <= value;
                     auto var = row_begin + R[i].id;
-                    x.set(var->column, true);
+                    x.set(var->column);
                     P[var->value] +=
                       delta + (kappa / (one - kappa)) * (R[i].value / two);
                 } while (!valid && i + 1 < r_size);
@@ -309,11 +309,11 @@ struct solver_random_inequalities_101coeff
                     valid = stop_iterating<Mode>(R[i].value, rng);
 
                 if (valid) {
-                    x.set(var->column, true);
+                    x.set(var->column);
                     P[var->value] +=
                       delta + (kappa / (one - kappa)) * (R[i].value / two);
                 } else {
-                    x.set(var->column, false);
+                    x.unset(var->column);
                     P[var->value] -=
                       delta + (kappa / (one - kappa)) * (R[i].value / two);
                 }
@@ -322,7 +322,7 @@ struct solver_random_inequalities_101coeff
             while (i + 1 < r_size) {
                 ++i;
                 auto var = row_begin + R[i].id;
-                x.set(var->column, false);
+                x.unset(var->column);
                 P[var->value] -=
                   delta + (kappa / (one - kappa)) * (R[i].value / two);
             }

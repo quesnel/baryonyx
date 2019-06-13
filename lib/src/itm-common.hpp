@@ -25,6 +25,7 @@
 
 #include <baryonyx/core>
 
+#include "bit-array.hpp"
 #include "debug.hpp"
 #include "private.hpp"
 #include "problem.hpp"
@@ -57,22 +58,30 @@ struct x_type
 
     bool operator[](int index) const noexcept
     {
-        return m_data[index];
+        return m_data.get(index);
     }
 
     void invert(index index) noexcept
     {
-        m_data[index] = m_data[index] ? 0 : 1;
+        m_data.invert(index);
+    }
+
+    void set(index index)
+    {
+        m_data.set(index);
+    }
+
+    void unset(index index)
+    {
+        m_data.unset(index);
     }
 
     void set(index index, var_value v) noexcept
     {
-        m_data[index] = v;
-    }
-
-    bool empty() const noexcept
-    {
-        return m_data.empty();
+        if (v > 0)
+            m_data.set(index);
+        else
+            m_data.unset(index);
     }
 
     int upper() const noexcept
@@ -83,13 +92,13 @@ struct x_type
     void clear() const noexcept
     {}
 
-    const std::vector<var_value>& data() const noexcept
+    const bit_array& data() const noexcept
     {
         return m_data;
     }
 
 private:
-    std::vector<var_value> m_data;
+    bit_array m_data;
 };
 
 /**
@@ -109,7 +118,7 @@ struct x_counter_type
 
     bool operator[](int index) const noexcept
     {
-        return m_data[index];
+        return m_data.get(index);
     }
 
     void invert(index index) noexcept
@@ -117,7 +126,7 @@ struct x_counter_type
         // NOTE: only the data vector is updated. Normally, m_data and
         // m_counter have been already updated in the update_row function.
 
-        m_data[index] = m_data[index] ? 0 : 1;
+        m_data.invert(index);
     }
 
     void set(index index, var_value v) noexcept
@@ -125,15 +134,38 @@ struct x_counter_type
         // TODO: Maybe use integer class members to store upper and lower index
         // and make upper() and lower() function O(1).
 
-        if (m_data[index] != v) {
-            m_data[index] = v;
+        if (m_data.get(index) != v) {
+            if (v)
+                m_data.set(index);
+            else
+                m_data.unset(index);
+
             ++m_counter[index];
         }
     }
 
-    bool empty() const noexcept
+    void set(index index) noexcept
     {
-        return m_data.empty();
+        // TODO: Maybe use integer class members to store upper and lower index
+        // and make upper() and lower() function O(1).
+
+        if (!m_data.get(index)) {
+            m_data.set(index);
+
+            ++m_counter[index];
+        }
+    }
+
+    void unset(index index) noexcept
+    {
+        // TODO: Maybe use integer class members to store upper and lower index
+        // and make upper() and lower() function O(1).
+
+        if (m_data.get(index)) {
+            m_data.unset(index);
+
+            ++m_counter[index];
+        }
     }
 
     void clear() noexcept
@@ -141,7 +173,7 @@ struct x_counter_type
         std::fill(m_counter.begin(), m_counter.end(), 0);
     }
 
-    const std::vector<var_value>& data() const noexcept
+    const bit_array& data() const noexcept
     {
         return m_data;
     }
@@ -157,7 +189,7 @@ struct x_counter_type
     }
 
 private:
-    std::vector<var_value> m_data;
+    bit_array m_data;
     std::vector<int> m_counter;
 };
 
@@ -426,10 +458,10 @@ affect(Solver& slv,
             auto var = it + slv.R[i].id;
 
             if (slv.R[i].is_negative()) {
-                x.set(var->column, 1);
+                x.set(var->column);
                 slv.P[var->value] += d;
             } else {
-                x.set(var->column, 0);
+                x.unset(var->column);
                 slv.P[var->value] -= d;
             }
         }
@@ -441,10 +473,10 @@ affect(Solver& slv,
             auto var = it + slv.R[i].id;
 
             if (slv.R[i].is_negative()) {
-                x.set(var->column, 0);
+                x.unset(var->column);
                 slv.P[var->value] -= d;
             } else {
-                x.set(var->column, 1);
+                x.set(var->column);
                 slv.P[var->value] += d;
             }
         }
@@ -459,10 +491,10 @@ affect(Solver& slv,
             auto var = it + slv.R[i].id;
 
             if (slv.R[i].is_negative()) {
-                x.set(var->column, 0);
+                x.unset(var->column);
                 slv.P[var->value] -= d;
             } else {
-                x.set(var->column, 1);
+                x.set(var->column);
                 slv.P[var->value] += d;
             }
         }
@@ -471,10 +503,10 @@ affect(Solver& slv,
             auto var = it + slv.R[i].id;
 
             if (slv.R[i].is_negative()) {
-                x.set(var->column, 1);
+                x.set(var->column);
                 slv.P[var->value] += d;
             } else {
-                x.set(var->column, 0);
+                x.unset(var->column);
                 slv.P[var->value] -= d;
             }
         }

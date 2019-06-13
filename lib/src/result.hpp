@@ -32,15 +32,49 @@
 namespace baryonyx {
 namespace detail {
 
+inline void
+convert(const bit_array& solution, std::vector<var_value>& ret)
+{
+    ret.resize(solution.size());
+
+    // TODO unroll the loop: use solution.block_size() and 32-bit unroll to
+    // copy into ret directly. May use vectorization.
+
+    for (int i = 0, e = solution.size(); i != e; ++i)
+        ret[i] = static_cast<var_value>(solution.get(i));
+}
+
+template<typename Iterator>
+void
+assign(Iterator it, const bit_array& solution, double value)
+{
+    convert(solution, it->variables);
+    it->value = value;
+}
+
+inline void
+push_front(result& res, const bit_array& solution, double value)
+{
+    res.solutions.emplace(res.solutions.begin());
+    assign(res.solutions.begin(), solution, value);
+}
+
+inline void
+push_back(result& res, const bit_array& solution, double value)
+{
+    res.solutions.emplace_back();
+    assign(res.solutions.rbegin(), solution, value);
+}
+
 template<typename Mode>
 inline bool
 store_one_solution(const context_ptr& /*ctx*/,
                    result& res,
-                   const std::vector<var_value>& solution,
+                   const bit_array& solution,
                    double value)
 {
     if (itm::is_better_solution<Mode>(value, res.solutions.back().value)) {
-        res.solutions.back() = { solution, value };
+        assign(res.solutions.rbegin(), solution, value);
         return true;
     }
 
@@ -51,32 +85,36 @@ template<typename Mode>
 inline bool
 store_bound_solutions(const context_ptr& /*ctx*/,
                       result& res,
-                      const std::vector<var_value>& solution,
+                      const bit_array& solution,
                       double value)
 {
     if (res.solutions.size() == static_cast<size_t>(1)) {
         if (itm::is_better_solution<Mode>(value, res.solutions.back().value)) {
-            res.solutions.emplace_back(solution, value);
+            push_back(res, solution, value);
+            return true;
         } else {
-            res.solutions.emplace(res.solutions.begin(), solution, value);
+            push_front(res, solution, value);
+            return false;
         }
     }
 
     if (itm::is_better_solution<Mode>(value, res.solutions.back().value)) {
-        res.solutions.back() = { solution, value };
+        assign(res.solutions.rbegin(), solution, value);
+        return true;
     } else if (itm::is_better_solution<Mode>(res.solutions.front().value,
                                              value)) {
-        res.solutions.front() = { solution, value };
+        assign(res.solutions.begin(), solution, value);
+        return false;
     }
 
-    return res.solutions.back().value == value;
+    return false;
 }
 
 template<typename Mode>
 inline bool
 store_five_solutions(const context_ptr& /*ctx*/,
                      result& res,
-                     const std::vector<var_value>& solution,
+                     const bit_array& solution,
                      double value)
 {
     auto it = res.solutions.rbegin();
@@ -85,9 +123,8 @@ store_five_solutions(const context_ptr& /*ctx*/,
     if (res.solutions.size() == static_cast<size_t>(5)) {
         for (; it != et; ++it) {
 
-            // If the current element is better, we need to shift all
-            // previous solutions, drop the worst and replace the
-            // solution.
+            // If the current element is better, we need to shift all previous
+            // solutions, drop the worst and replace the solution.
 
             if (itm::is_better_solution<Mode>(value, it->value)) {
                 auto found = it.base();
@@ -96,13 +133,16 @@ store_five_solutions(const context_ptr& /*ctx*/,
                 for (; first != found; ++first)
                     std::iter_swap(first - 1, first);
 
-                *found = { solution, value };
+                assign(found, solution, value);
             }
         }
     } else {
-        for (; it != et; ++it)
-            if (itm::is_better_solution<Mode>(value, it->value))
-                res.solutions.emplace(it.base(), solution, value);
+        for (; it != et; ++it) {
+            if (itm::is_better_solution<Mode>(value, it->value)) {
+                assign(it, solution, value);
+                break;
+            }
+        }
     }
 
     return res.solutions.back().value == value;
@@ -114,7 +154,7 @@ template<typename Mode>
 bool
 store_solution(const context_ptr& ctx,
                result& res,
-               const std::vector<var_value>& solution,
+               const bit_array& solution,
                double value)
 {
     // If the result solutions vector is empty, the solution and value
@@ -123,7 +163,7 @@ store_solution(const context_ptr& ctx,
     // vector.
 
     if (res.solutions.empty()) {
-        res.solutions.emplace_back(solution, value);
+        detail::push_back(res, solution, value);
         res.remaining_constraints = 0;
         res.status = result_status::success;
         return true;
