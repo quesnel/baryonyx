@@ -115,7 +115,7 @@ struct solver_random_inequalities_101coeff
 
     void reset() const noexcept
     {
-        std::fill(P.get(), P.get() + ap.length(), Float{ 0 });
+        std::fill_n(P.get(), ap.length(), Float{ 0 });
     }
 
     int factor(int value) const noexcept

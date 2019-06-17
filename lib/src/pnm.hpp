@@ -162,6 +162,7 @@ public:
     using difference_type = std::ptrdiff_t;
     using pointer = value_type*;
     using reference = value_type&;
+
 private:
     pnm_iterator_entry m_entry;
 
@@ -298,9 +299,7 @@ public:
 
     void clear() noexcept
     {
-        std::fill(m_buffer.get(),
-                  m_buffer.get() + size(),
-                  static_cast<std::uint8_t>(0));
+        std::fill_n(m_buffer.get(), size(), static_cast<std::uint8_t>(0));
     }
 };
 
@@ -365,9 +364,7 @@ public:
 
     void clear() noexcept
     {
-        std::fill(m_buffer.get(),
-                  m_buffer.get() + size(),
-                  static_cast<std::uint8_t>(0));
+        std::fill_n(m_buffer.get(), size(), static_cast<std::uint8_t>(0));
     }
 
     void flush() noexcept

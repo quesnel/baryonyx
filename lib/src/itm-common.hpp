@@ -1431,7 +1431,7 @@ normalize_costs(const context_ptr& ctx,
                 int n)
 {
     auto ret = std::make_unique<floatingpointT[]>(n);
-    std::copy(c.get(), c.get() + n, ret.get());
+    std::copy_n(c.get(), n, ret.get());
 
     if (ctx->parameters.cost_norm == solver_parameters::cost_norm_type::none) {
         info(ctx, "  - No norm");

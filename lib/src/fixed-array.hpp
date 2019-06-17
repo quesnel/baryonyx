@@ -143,7 +143,7 @@ fixed_array<T>::fixed_array(size_type n, const value_type& def)
   : m_buffer{ std::make_unique<T[]>(n) }
   , m_length{ n }
 {
-    std::fill(begin(), end(), def);
+    std::fill_n(data(), size(), def);
 }
 
 template<typename T>
@@ -151,7 +151,7 @@ fixed_array<T>::fixed_array(const fixed_array& o)
   : m_buffer{ std::make_unique<T[]>(o.m_length) }
   , m_length{ o.m_length }
 {
-    std::copy(o.begin(), o.end(), begin());
+    std::copy_n(o.data(), o.size(), data());
 }
 
 template<typename T>
@@ -160,7 +160,7 @@ fixed_array<T>::operator=(const fixed_array& o)
 {
     auto tmp = std::make_unique<T[]>(o.m_length);
 
-    std::copy(o.begin(), o.end(), tmp.get());
+    std::copy_n(o.data(), o.size(), tmp.get());
 
     m_length = o.m_length;
     m_buffer = std::move(tmp);

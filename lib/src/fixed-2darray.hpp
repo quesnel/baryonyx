@@ -148,7 +148,7 @@ fixed_2darray<T>::fixed_2darray(size_type rows,
   , m_rows{ rows }
   , m_columns{ columns }
 {
-    std::fill(begin(), end(), def);
+    std::fill_n(m_buffer.get(), size(), def);
 }
 
 template<typename T>
@@ -157,7 +157,7 @@ fixed_2darray<T>::fixed_2darray(const fixed_2darray& o)
   , m_rows{ o.m_rows }
   , m_columns{ o.m_columns }
 {
-    std::copy(o.m_buffer.begin(), o.m_buffer.end(), begin());
+    std::copy_n(o.data(), o.size(), m_buffer.data());
 }
 
 template<typename T>
@@ -166,7 +166,7 @@ fixed_2darray<T>::operator=(const fixed_2darray& o)
 {
     auto tmp = std::make_unique<T[]>(o.m_columns * o.m_columns);
 
-    std::copy(o.begin(), o.end(), tmp.get());
+    std::copy_n(o.data(), o.size(), tmp.get());
 
     m_columns = o.m_columns;
     m_rows = o.m_rows;

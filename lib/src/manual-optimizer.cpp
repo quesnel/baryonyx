@@ -74,7 +74,8 @@ struct manual_course
             theta[i] = theta[i - 1] + 1.0 / static_cast<double>(length);
 
         for (int i = 2; i != length; ++i)
-            delta[i] = theta[i - 1] + 0.1 / (5.0 * static_cast<double>(length));
+            delta[i] =
+              theta[i - 1] + 0.1 / (5.0 * static_cast<double>(length));
 
         for (int i = 2; i != length; ++i)
             kappa_min[i] = theta[i - 1] + 1e-2 / static_cast<double>(length);
@@ -91,7 +92,7 @@ struct manual_course
 
     void reset()
     {
-        std::fill(iterators.get(), iterators.get() + length, 0);
+        std::fill_n(iterators.get(), length, 0);
     }
 
     bool next()
@@ -147,9 +148,8 @@ optimize(const baryonyx::context_ptr& ctx, const baryonyx::problem& pb)
             if (best > ret.solutions.back().value) {
                 best = ret.solutions.back().value;
 
-                std::copy(array.iterators.get(),
-                          array.iterators.get() + array.length,
-                          best_params.get());
+                std::copy_n(
+                  array.iterators.get(), array.length, best_params.get());
             }
         } else {
             baryonyx::notice(ctx, "no solution\n");

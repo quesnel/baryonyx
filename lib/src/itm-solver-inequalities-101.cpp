@@ -108,8 +108,8 @@ struct solver_inequalities_101coeff
 
     void reset() noexcept
     {
-        std::fill(P.get(), P.get() + ap.length(), Float{ 0 });
-        std::fill(pi.get(), pi.get() + m, Float{ 0 });
+        std::fill_n(P.get(), ap.length(), Float{ 0 });
+        std::fill_n(pi.get(), m, Float{ 0 });
     }
 
     int factor(int value) const noexcept
