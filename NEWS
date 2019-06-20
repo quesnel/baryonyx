@@ -3,6 +3,48 @@ Gauthier Quesnel <gauthier.quesnel@inra.fr>
 
 == baryonyx v0.5.0 - 2019-??-??
 
+Major changes:
+
+* random-solver: This solver is enabled with the `--random` command line option
+  and in the `solver_parameters::solver_type` and `solver_parameters::solver`
+  options. It provides a pure random solver without any preference and
+  Lagrangian relaxation. It is provided only for benchmark.
+
+* add Lagrangian multipliers sign change detection.
+
+Small changes:
+
+* c++:
+  ** solvers: replace fill and copy with fill_n and copy_n
+  ** solvers: replace `std::vector<T>` with a new `bit_array` to improve cache
+     efficiency
+  ** main: fix signed/unsigned warning
+
+* solver:
+  ** negative coefficient solvers: fix R access
+  ** add pi signed change detection
+  ** improve efficiency of random-solver
+  ** add reset function to reinit solver
+  ** solver: move normalized cost in thread part
+
+
+* optimizer:
+  ** reuse the current x even if it is not a solution
+  ** replace time limit detection algorithm
+  ** add pi signed change detection to build a new constraint remaining list
+
+* benchmark:
+  ** fix sort functor behaviour
+
+* main:
+  ** fix time-limit parameter assignation
+  ** missing or malformed parameters equal error
+  ** fix infinity norm string
+
+* CMake:
+  ** reduce warning level for msvc
+  ** use the BUILD_SHARED_LIBS CMake option to build share library. Default, a
+     static library is build to enable all internal test that use private API.
 
 
 == baryonyx v0.4.0 - 2019-02-19
