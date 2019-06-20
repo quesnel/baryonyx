@@ -298,6 +298,7 @@ struct BX_EXPORT solver_parameters
         infeasibility_incr,
         lagrangian_decr,
         lagrangian_incr,
+        pi_sign_change
     };
 
     enum class cost_norm_type

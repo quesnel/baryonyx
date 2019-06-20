@@ -299,6 +299,7 @@ To assign parameters to solver or optimizer algorithms, use the `-p
 * `infeasibility-incr`: compute infeasibility constraint in incremental order
 * `lagrangian-decr`: sort violated constraints according to the Lagrangian multiplier values in decremental order
 * `lagrangian-incr`: sort violated constraints according to the Lagrangian multiplier values in incremental order
+* `pi-sign-change`: random the remaining constraint list if the lagrangian multipliers signs have changed
 
 | preprocessing
 | string

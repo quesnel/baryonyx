@@ -298,7 +298,8 @@ help() noexcept
       "  - preprocessing: none memory less,greater,equal (or any "
       "combination), p1, p2, p3, p4\n"
       "  - constraint-order: none reversing random-sorting "
-      "infeasibility-decr infeasibility-incr lagrangian-decr lagrangian-incr\n"
+      "infeasibility-decr infeasibility-incr lagrangian-decr lagrangian-incr "
+      "pi_sign_change\n"
       "  - theta: real [0, 1]\n"
       "  - delta: real [0, +oo[\n"
       "  - kappa-min: real [0, 1[\n"
@@ -578,6 +579,9 @@ assign_parameter(baryonyx::solver_parameters& params,
         else if (value == "lagrangian-incr")
             params.order =
               baryonyx::solver_parameters::constraint_order::lagrangian_incr;
+        else if (value == "pi-sign-change")
+            params.order =
+              baryonyx::solver_parameters::constraint_order::pi_sign_change;
         else
             return command_line_status::constraint_order_error;
 

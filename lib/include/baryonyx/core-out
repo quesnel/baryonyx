@@ -138,7 +138,8 @@ constraint_order_to_string(solver_parameters::constraint_order type) noexcept
                                  "infeasibility-decr",
                                  "infeasibility-incr",
                                  "lagrangian-decr",
-                                 "lagrangian-incr" };
+                                 "lagrangian-incr",
+                                 "pi-sign-change" };
 
     return ret[static_cast<underlying_type>(type)];
 }

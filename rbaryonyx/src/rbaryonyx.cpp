@@ -178,6 +178,12 @@ get_constrait_order(int order)
         return bx::solver_parameters::constraint_order::infeasibility_decr;
     case 4:
         return bx::solver_parameters::constraint_order::infeasibility_incr;
+    case 5:
+        return bx::solver_parameters::constraint_order::lagrangian_decr;
+    case 6:
+        return bx::solver_parameters::constraint_order::lagrangian_incr;
+    case 7:
+        return bx::solver_parameters::constraint_order::pi_sign_change;
     default:
         return bx::solver_parameters::constraint_order::none;
     }
@@ -384,6 +390,9 @@ convert_result(const baryonyx::result& res, bool minimize)
 //'    - 2: random-sorting
 //'    - 3: infeasibility-decr
 //'    - 4: infeasibility-incr
+//'    - 5: lagrangian_decr
+//'    - 6: lagrangian_incr
+//'    - 7: pi_sign_change
 //'
 //' @param norm the normalization used to reduces cost dependencies. Default
 //'    is to use the infinity norm. Other values are:
@@ -534,6 +543,9 @@ solve_01lp_problem(std::string file_path,
 //'    - 2: random-sorting
 //'    - 3: infeasibility-decr
 //'    - 4: infeasibility-incr
+//'    - 5: lagrangian_decr
+//'    - 6: lagrangian_incr
+//'    - 7: pi_sign_change
 //'
 //' @param norm the normalization used to reduces cost dependencies. Default
 //'    is to use the infinity norm. Other values are:

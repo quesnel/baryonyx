@@ -263,17 +263,12 @@ template<typename Solver, typename Xtype>
 int
 compute_violated_constraints(const Solver& slv,
                              const Xtype& x,
-                             std::vector<int>& out,
-                             bool at_least_one_pi_changed)
+                             std::vector<int>& out)
 {
     out.clear();
 
     for (int k = 0; k != slv.m; ++k)
         if (!is_valid_constraint(slv, k, x))
-            out.emplace_back(k);
-
-    if (out.empty() && at_least_one_pi_changed)
-        for (int k = 0; k != slv.m; ++k)
             out.emplace_back(k);
 
     return length(out);
@@ -1018,7 +1013,7 @@ struct compute_none
     compute_none(const solverT& s, const Xtype& x, randomT&)
       : R(s.m)
     {
-        compute_violated_constraints(s, x, R, true);
+        compute_violated_constraints(s, x, R);
     }
 
     template<typename solverT, typename Xtype>
@@ -1029,10 +1024,10 @@ struct compute_none
                      floatingpointT theta,
                      floatingpointT objective_amplifier)
     {
-        auto pi_changed = solver.push_and_compute_update_row(
+        solver.push_and_compute_update_row(
           x, R.cbegin(), R.cend(), kappa, delta, theta, objective_amplifier);
 
-        return compute_violated_constraints(solver, x, R, pi_changed);
+        return compute_violated_constraints(solver, x, R);
     }
 
     template<typename solverT, typename Xtype>
@@ -1042,10 +1037,120 @@ struct compute_none
             floatingpointT delta,
             floatingpointT theta)
     {
+        solver.compute_update_row(x, R.begin(), R.end(), kappa, delta, theta);
+
+        return compute_violated_constraints(solver, x, R);
+    }
+};
+
+template<typename Float, typename Random>
+struct compute_pi_sign_change
+{
+#if 0
+    std::vector<int> R;
+    Random& rng;
+
+    template<typename Solver, typename X>
+    compute_pi_sign_change(const Solver& s, const X&, Random& rng_)
+      : R(s.m)
+      , rng(rng_)
+    {
+        std::iota(R.begin(), R.end(), 0);
+    }
+
+    template<typename solverT, typename Xtype>
+    int push_and_run(solverT& solver,
+                     Xtype& x,
+                     Float kappa,
+                     Float delta,
+                     Float theta,
+                     Float objective_amplifier)
+    {
+        std::shuffle(R.begin(), R.end(), rng);
+
+        auto pi_changed = solver.push_and_compute_update_row(
+          x, R.begin(), R.end(), kappa, delta, theta, objective_amplifier);
+
+        auto remaining = compute_violated_constraints(solver, x, R);
+
+        if (!pi_changed && remaining == 0)
+            return 0;
+
+        return compute_violated_constraints(solver, x, R);
+    }
+
+    template<typename Solver, typename X>
+    int run(Solver& solver, X& x, Float kappa, Float delta, Float theta)
+    {
+        std::shuffle(R.begin(), R.end(), rng);
+
         auto pi_changed = solver.compute_update_row(
           x, R.begin(), R.end(), kappa, delta, theta);
 
-        return compute_violated_constraints(solver, x, R, pi_changed);
+        auto remaining = compute_violated_constraints(solver, x, R);
+
+        if (!pi_changed && remaining == 0)
+            return 0;
+
+        return compute_violated_constraints(solver, x, R);
+    }
+#endif
+
+    std::vector<int> R;
+    Random& rng;
+
+    template<typename Solver, typename X>
+    compute_pi_sign_change(const Solver& s, const X&, Random& rng_)
+      : R(s.m)
+      , rng(rng_)
+    {
+        std::iota(R.begin(), R.end(), 0);
+    }
+
+    template<typename solverT, typename Xtype>
+    int push_and_run(solverT& solver,
+                     Xtype& x,
+                     Float kappa,
+                     Float delta,
+                     Float theta,
+                     Float objective_amplifier)
+    {
+        std::shuffle(R.begin(), R.end(), rng);
+
+        auto pi_changed = solver.push_and_compute_update_row(x, R.begin(), R.end(), kappa, delta, theta, objective_amplifier);
+        auto remaining = local_compute_violated_constraints(solver, x);
+
+        if (!pi_changed && remaining == 0)
+            return 0;
+
+        return remaining;
+    }
+
+    template<typename Solver, typename X>
+    int run(Solver& solver, X& x, Float kappa, Float delta, Float theta)
+    {
+        std::shuffle(R.begin(), R.end(), rng);
+
+        auto pi_changed = solver.compute_update_row(x, R.begin(), R.end(), kappa, delta, theta);
+        auto remaining = local_compute_violated_constraints(solver, x);
+
+        if (!pi_changed && remaining == 0)
+            return 0;
+
+        return remaining;
+    }
+
+    template<typename Solver, typename Xtype>
+    int
+    local_compute_violated_constraints(const Solver& slv,
+                                 const Xtype& x)
+    {
+        int remaining = 0;
+        for (int k = 0; k != slv.m; ++k)
+            if (!is_valid_constraint(slv, k, x))
+                ++remaining;
+
+        return remaining;
     }
 };
 
@@ -1058,7 +1163,7 @@ struct compute_reversing
     compute_reversing(solverT& s, const Xtype& x, randomT&)
       : R(s.m)
     {
-        compute_violated_constraints(s, x, R, true);
+        compute_violated_constraints(s, x, R);
     }
 
     template<typename solverT, typename Xtype>
@@ -1069,10 +1174,10 @@ struct compute_reversing
                      floatingpointT theta,
                      floatingpointT objective_amplifier)
     {
-        auto pi_changed = solver.push_and_compute_update_row(
+        solver.push_and_compute_update_row(
           x, R.crbegin(), R.crend(), kappa, delta, theta, objective_amplifier);
 
-        return compute_violated_constraints(solver, x, R, pi_changed);
+        return compute_violated_constraints(solver, x, R);
     }
 
     template<typename solverT, typename Xtype>
@@ -1082,10 +1187,10 @@ struct compute_reversing
             floatingpointT delta,
             floatingpointT theta)
     {
-        auto pi_changed = solver.compute_update_row(
+        solver.compute_update_row(
           x, R.crbegin(), R.crend(), kappa, delta, theta);
 
-        return compute_violated_constraints(solver, x, R, pi_changed);
+        return compute_violated_constraints(solver, x, R);
     }
 };
 
@@ -1098,7 +1203,7 @@ struct compute_lagrangian_order
     compute_lagrangian_order(solverT& s, const Xtype& x, Random&)
       : R(s.m)
     {
-        compute_violated_constraints(s, x, R, true);
+        compute_violated_constraints(s, x, R);
     }
 
     template<typename Iterator, typename Solver>
@@ -1122,10 +1227,10 @@ struct compute_lagrangian_order
     {
         local_sort(R.begin(), R.end(), solver);
 
-        auto pi_changed = solver.push_and_compute_update_row(
+        solver.push_and_compute_update_row(
           x, R.cbegin(), R.cend(), kappa, delta, theta, objective_amplifier);
 
-        return compute_violated_constraints(solver, x, R, pi_changed);
+        return compute_violated_constraints(solver, x, R);
     }
 
     template<typename solverT, typename Xtype>
@@ -1133,10 +1238,10 @@ struct compute_lagrangian_order
     {
         local_sort(R.begin(), R.end(), solver);
 
-        auto pi_changed = solver.compute_update_row(
+        solver.compute_update_row(
           x, R.cbegin(), R.cend(), kappa, delta, theta);
 
-        return compute_violated_constraints(solver, x, R, pi_changed);
+        return compute_violated_constraints(solver, x, R);
     }
 };
 
@@ -1153,7 +1258,7 @@ struct compute_random
       : R(s.m)
       , rng(rng_)
     {
-        compute_violated_constraints(s, x, R, true);
+        compute_violated_constraints(s, x, R);
     }
 
     template<typename solverT, typename Xtype>
@@ -1166,10 +1271,10 @@ struct compute_random
     {
         std::shuffle(R.begin(), R.end(), rng);
 
-        auto pi_changed = solver.push_and_compute_update_row(
+        solver.push_and_compute_update_row(
           x, R.begin(), R.end(), kappa, delta, theta, objective_amplifier);
 
-        return compute_violated_constraints(solver, x, R, pi_changed);
+        return compute_violated_constraints(solver, x, R);
     }
 
     template<typename solverT, typename Xtype>
@@ -1181,10 +1286,9 @@ struct compute_random
     {
         std::shuffle(R.begin(), R.end(), rng);
 
-        auto pi_changed = solver.compute_update_row(
-          x, R.begin(), R.end(), kappa, delta, theta);
+        solver.compute_update_row(x, R.begin(), R.end(), kappa, delta, theta);
 
-        return compute_violated_constraints(solver, x, R, pi_changed);
+        return compute_violated_constraints(solver, x, R);
     }
 };
 
@@ -1201,13 +1305,11 @@ struct compute_infeasibility
       : m_order(s.m)
       , rng(rng_)
     {
-        local_compute_violated_constraints(s, x, true);
+        local_compute_violated_constraints(s, x);
     }
 
     template<typename solverT, typename Xtype>
-    int local_compute_violated_constraints(solverT& solver,
-                                           const Xtype& x,
-                                           bool at_least_one_pi_changed)
+    int local_compute_violated_constraints(solverT& solver, const Xtype& x)
     {
         m_order.clear();
 
@@ -1223,26 +1325,6 @@ struct compute_infeasibility
                 m_order.push_back(std::make_pair(k, solver.bound_min(k) - v));
             else if (solver.bound_max(k) < v)
                 m_order.push_back(std::make_pair(k, v - solver.bound_max(k)));
-        }
-
-        if (m_order.empty() && at_least_one_pi_changed) {
-            for (int k = 0, e = solver.m; k != e; ++k) {
-                sparse_matrix<int>::const_row_iterator it, et;
-                std::tie(it, et) = solver.ap.row(k);
-                int v = 0;
-
-                for (; it != et; ++it)
-                    v += solver.factor(it->value) * x[it->column];
-
-                if (solver.bound_min(k) > v)
-                    m_order.push_back(
-                      std::make_pair(k, solver.bound_min(k) - v));
-                else if (solver.bound_max(k) < v)
-                    m_order.push_back(
-                      std::make_pair(k, v - solver.bound_max(k)));
-                else
-                    m_order.push_back(std::make_pair(k, 0));
-            }
         }
 
         return length(m_order);
@@ -1269,16 +1351,15 @@ struct compute_infeasibility
     {
         local_sort(m_order.begin(), m_order.end());
 
-        auto pi_changed =
-          solver.push_and_compute_update_row(x,
-                                             m_order.cbegin(),
-                                             m_order.cend(),
-                                             kappa,
-                                             delta,
-                                             theta,
-                                             objective_amplifier);
+        solver.push_and_compute_update_row(x,
+                                           m_order.cbegin(),
+                                           m_order.cend(),
+                                           kappa,
+                                           delta,
+                                           theta,
+                                           objective_amplifier);
 
-        return local_compute_violated_constraints(solver, x, pi_changed);
+        return local_compute_violated_constraints(solver, x);
     }
 
     template<typename solverT, typename Xtype>
@@ -1290,10 +1371,10 @@ struct compute_infeasibility
     {
         local_sort(m_order.begin(), m_order.end());
 
-        auto pi_changed = solver.compute_update_row(
+        solver.compute_update_row(
           x, m_order.cbegin(), m_order.cend(), kappa, delta, theta);
 
-        return local_compute_violated_constraints(solver, x, pi_changed);
+        return local_compute_violated_constraints(solver, x);
     }
 };
 
@@ -1546,10 +1627,13 @@ using constraint_sel = typename std::conditional<
           typename std::conditional<
             o == 5,
             compute_lagrangian_order<Float, Random, compute_decremental_order>,
-            compute_lagrangian_order<Float,
-                                     Random,
-                                     compute_incremental_order>>::type>::
-          type>::type>::type>::type>::type;
+            typename std::conditional<
+              o == 6,
+              compute_lagrangian_order<Float,
+                                       Random,
+                                       compute_incremental_order>,
+              compute_pi_sign_change<Float, Random>>::type>::type>::type>::
+        type>::type>::type>::type;
 
 template<int f>
 using float_sel = typename std::conditional<

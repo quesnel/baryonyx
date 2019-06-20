@@ -425,6 +425,13 @@ select_order(const context_ptr& ctx, const problem& pb, bool is_optimization)
           Mode,
           constraint_sel<Float, Random, 6>,
           Random>(ctx, pb, is_optimization);
+    case solver_parameters::constraint_order::pi_sign_change:
+        return solve_or_optimize<
+          solver_inequalities_101coeff_buffered<Float, Mode, Random>,
+          Float,
+          Mode,
+          constraint_sel<Float, Random, 7>,
+          Random>(ctx, pb, is_optimization);
     default:
         bx_reach();
     }
