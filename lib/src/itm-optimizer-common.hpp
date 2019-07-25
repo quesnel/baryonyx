@@ -198,18 +198,18 @@ struct optimize_functor
         m_best.variables = slv.m;
         m_best.constraints = slv.n;
 
+        auto x_is_solution{ false };
+
         while (!stop_task.load()) {
             auto kappa = static_cast<Float>(p.kappa_min);
 
-            if (m_best.solutions.empty())
-                initializer.reinit(slv, x);
-            else
-                initializer.reinit(slv, x, m_best.solutions.back());
+            initializer.reinit(slv, x, x_is_solution, m_best);
 
             for (int i = 0; !stop_task.load() && i != p.limit; ++i) {
                 auto remaining = compute.run(slv, x, kappa, delta, theta);
 
                 if (remaining == 0) {
+                    x_is_solution = true;
                     store_if_better(
                       x,
                       results(x, original_costs, cost_constant, variables),
@@ -218,6 +218,8 @@ struct optimize_functor
                     best_remaining = remaining;
                     break;
                 }
+
+                x_is_solution = false;
 
                 if (remaining < best_remaining) {
                     store_if_better(x, remaining, i, best_recorder);
@@ -239,6 +241,8 @@ struct optimize_functor
 
             for (int push = 0; !stop_task.load() && push < p.pushes_limit;
                  ++push) {
+                x_is_solution = false;
+
                 auto remaining =
                   compute.push_and_run(slv,
                                        x,
@@ -247,12 +251,14 @@ struct optimize_functor
                                        theta,
                                        pushing_objective_amplifier);
 
-                if (remaining == 0)
+                if (remaining == 0) {
+                    x_is_solution = true;
                     store_if_better(
                       x,
                       results(x, original_costs, cost_constant, variables),
                       -push * p.pushing_iteration_limit - 1,
                       best_recorder);
+                }
 
                 for (int iter = 0;
                      !stop_task.load() && iter < p.pushing_iteration_limit;
@@ -260,6 +266,7 @@ struct optimize_functor
                     remaining = compute.run(slv, x, kappa, delta, theta);
 
                     if (remaining == 0) {
+                        x_is_solution = true;
                         store_if_better(
                           x,
                           results(x, original_costs, cost_constant, variables),

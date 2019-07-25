@@ -544,29 +544,75 @@ constraint(Iterator it)
 template<typename Solver, typename Float, typename Mode, typename Xtype>
 class solver_initializer
 {
-    double old_best;
-    const solver_parameters::init_policy_type origin;
-    solver_parameters::init_policy_type current;
     std::bernoulli_distribution dist;
     std::bernoulli_distribution toss_up{ 0.5 };
-    short best_iteration{ 0 };
+    // std::uniform_real_distribution<double> real_distribution{ 0, 1 };
+    double old_best;
 
-    static void init_solver(Solver& slv, Xtype& x) noexcept
+    std::uint8_t iteration{ 0 };
+
+    enum class single_automaton : std::uint8_t
     {
-        x.clear();
+        pre_init,
+        init,
+        improve_x,
+        improve_best
+    };
 
-        slv.reset();
+    enum class cycle_automaton : std::uint8_t
+    {
+        bastert,
+        random,
+        bastert_zero_random_one,
+        zero_random_one_bastert,
+        random_one_bastert_zero,
+        one_bastert_zero_random
+    };
+
+    single_automaton single;
+    cycle_automaton cycle;
+
+    static constexpr short iteration_limit = 3;
+
+    void reinit(Solver& slv, Xtype& x) noexcept
+    {
+        for (int i = 0; i != slv.n; ++i)
+            if (dist(slv.rng))
+                x.set(i, 1 - x[i]);
     }
 
-    void init_solver_random(Solver& slv, Xtype& x) noexcept
+    void reinit(Solver& slv, Xtype& x, const solution& best) noexcept
+    {
+        for (int i = 0; i != slv.n; ++i)
+            if (dist(slv.rng))
+                x.set(i, 1 - best.variables[i]);
+    }
+
+    void init_zeros(Solver& slv, Xtype& x) noexcept
+    {
+        for (int i = 0; i != slv.n; ++i)
+            x.set(i, 0);
+    }
+
+    void init_ones(Solver& slv, Xtype& x) noexcept
+    {
+        for (int i = 0; i != slv.n; ++i)
+            x.set(i, 1);
+    }
+
+    // Fully fill the solution vector X with random values from user's
+    // parameters.
+    void init_random(Solver& slv, Xtype& x) noexcept
     {
         for (int i = 0; i != slv.n; ++i)
             x.set(i, dist(slv.rng));
     }
 
-    void init_solver_bastert(Solver& slv, Xtype& x) noexcept
+    // Fully fill the solution vector X with a mix of values from the bastert
+    // policy and from random value.
+    void init_bastert(Solver& slv, Xtype& x) noexcept
     {
-        const bool value_if_cost_0 = dist.p() == 1.0;
+        const int value_if_cost_0 = 1;
 
         for (int i = 0; i != slv.n; ++i) {
             if (dist(slv.rng))
@@ -576,194 +622,111 @@ class solver_initializer
         }
     }
 
-    // reuse the current x vector to improve the current reseach.
-
-    void reinit_solver_best(Solver& slv, Xtype& x) noexcept
-    {
-        for (int i = 0; i != slv.n; ++i)
-            if (toss_up(slv.rng))
-                x.set(i, toss_up(slv.rng));
-    }
-
-    void reinit_solver_bastert(Solver& slv, Xtype& x) noexcept
-    {
-        const bool value_if_cost_0 = dist.p() == 1.0;
-
-        for (int i = 0; i != slv.n; ++i)
-            if (toss_up(slv.rng))
-                x.set(i, init_x<Mode>(slv.c[i], value_if_cost_0));
-    }
-
-    void reinit_solver_random(Solver& slv, Xtype& x) noexcept
-    {
-        for (int i = 0; i != slv.n; ++i)
-            if (toss_up(slv.rng))
-                x.set(i, toss_up(slv.rng));
-    }
-
-    // reuse the best solution to improve this best solution
-
-    void reinit_solver_best(Solver& slv,
-                            Xtype& x,
-                            const solution& best) noexcept
-    {
-        for (int i = 0; i != slv.n; ++i)
-            if (dist(slv.rng))
-                x.set(i, toss_up(slv.rng));
-            else
-                x.set(i, best.variables[i]);
-    }
-
-    void reinit_solver_bastert(Solver& slv,
-                               Xtype& x,
-                               const solution& best) noexcept
-    {
-        const bool value_if_cost_0 = dist.p() == 1.0;
-
-        for (int i = 0; i != slv.n; ++i)
-            if (dist(slv.rng))
-                x.set(i, init_x<Mode>(slv.c[i], value_if_cost_0));
-            else
-                x.set(i, best.variables[i]);
-    }
-
-    void reinit_solver_random(Solver& slv,
-                              Xtype& x,
-                              const solution& best) noexcept
-    {
-        for (int i = 0; i != slv.n; ++i)
-            if (dist(slv.rng))
-                x.set(i, toss_up(slv.rng));
-            else
-                x.set(i, best.variables[i]);
-    }
-
 public:
     solver_initializer(Solver& slv,
                        Xtype& x,
                        solver_parameters::init_policy_type policy,
                        double init_random)
-      : old_best(bad_value<Mode, double>())
-      , origin(policy)
-      , current(policy)
-      , dist(init_random)
-      , best_iteration(0)
+      : dist(init_random)
+      , old_best(bad_value<Mode, double>())
+      , single(single_automaton::pre_init)
+      , cycle(cycle_automaton::bastert)
     {
-        init_solver(slv, x);
+        x.clear();
+        slv.reset();
 
-        if (current == solver_parameters::init_policy_type::best)
-            current = solver_parameters::init_policy_type::bastert;
-        else if (current == solver_parameters::init_policy_type::best_cycle)
-            current = solver_parameters::init_policy_type::bastert_cycle;
-
-        switch (current) {
+        switch (policy) {
         case solver_parameters::init_policy_type::bastert:
-            init_solver_bastert(slv, x);
+        case solver_parameters::init_policy_type::bastert_cycle:
+            cycle = cycle_automaton::bastert;
             break;
         case solver_parameters::init_policy_type::random:
-            init_solver_random(slv, x);
-            break;
-        case solver_parameters::init_policy_type::bastert_cycle:
-            init_solver_bastert(slv, x);
-            policy = solver_parameters::init_policy_type::random_cycle;
-            break;
         case solver_parameters::init_policy_type::random_cycle:
-            init_solver_random(slv, x);
-            policy = solver_parameters::init_policy_type::best_cycle;
+            cycle = cycle_automaton::random;
             break;
         case solver_parameters::init_policy_type::best:
-            bx_reach();
-            break;
         case solver_parameters::init_policy_type::best_cycle:
-            bx_reach();
+            cycle = cycle_automaton::bastert_zero_random_one;
             break;
         }
     }
 
-    void reinit(Solver& slv, Xtype& x)
+    void next_state(bool is_x_solution, bool is_x_better_solution)
     {
-        init_solver(slv, x);
-
-        switch (current) {
-        case solver_parameters::init_policy_type::bastert:
-            reinit_solver_bastert(slv, x);
+        switch (single) {
+        case single_automaton::pre_init:
+            single = single_automaton::init;
             break;
-        case solver_parameters::init_policy_type::random:
-            reinit_solver_random(slv, x);
+        case single_automaton::init:
+            iteration = 0;
+            single = is_x_solution && is_x_better_solution
+                       ? single_automaton::improve_best
+                       : single_automaton::improve_x;
             break;
-        case solver_parameters::init_policy_type::bastert_cycle:
-            reinit_solver_bastert(slv, x);
-            current = solver_parameters::init_policy_type::random_cycle;
-            break;
-        case solver_parameters::init_policy_type::random_cycle:
-            reinit_solver_random(slv, x);
-            current = solver_parameters::init_policy_type::bastert_cycle;
-            break;
-        case solver_parameters::init_policy_type::best:
-            bx_reach();
-            break;
-        case solver_parameters::init_policy_type::best_cycle:
-            bx_reach();
-            break;
-        }
-    }
-
-    void reinit(Solver& slv, Xtype& x, const solution& best)
-    {
-        init_solver(slv, x);
-
-        if (origin == solver_parameters::init_policy_type::best_cycle ||
-            origin == solver_parameters::init_policy_type::random_cycle ||
-            origin == solver_parameters::init_policy_type::bastert_cycle) {
-            if (is_better_solution<Mode, double>(old_best, best.value)) {
-                current = solver_parameters::init_policy_type::best_cycle;
-                best_iteration = 0;
-                old_best = best.value;
+        case single_automaton::improve_x:
+        case single_automaton::improve_best:
+            if (is_x_better_solution) {
+                iteration = 0;
+                single = single_automaton::improve_best;
             } else {
-                if (current ==
-                    solver_parameters::init_policy_type::best_cycle) {
-                    ++best_iteration;
-
-                    if (best_iteration >= 3) {
-                        current =
-                          solver_parameters::init_policy_type::bastert_cycle;
-                    }
+                ++iteration;
+                if (iteration >= iteration_limit) {
+                    single = single_automaton::pre_init;
+                    if (cycle == cycle_automaton::bastert_zero_random_one)
+                        cycle = cycle_automaton::zero_random_one_bastert;
+                    else if (cycle == cycle_automaton::zero_random_one_bastert)
+                        cycle = cycle_automaton::random_one_bastert_zero;
+                    else if (cycle == cycle_automaton::random_one_bastert_zero)
+                        cycle = cycle_automaton::one_bastert_zero_random;
+                    else if (cycle == cycle_automaton::one_bastert_zero_random)
+                        cycle = cycle_automaton::bastert_zero_random_one;
                 }
             }
+            break;
+        }
+    }
+
+    void reinit(Solver& slv, Xtype& x, bool is_x_solution, const result& best)
+    {
+        x.clear();
+        slv.reset();
+
+        auto is_x_better_solution{ false };
+
+        if (!best.solutions.empty() &&
+            is_better_solution<Mode, double>(old_best,
+                                             best.solutions.back().value)) {
+            old_best = best.solutions.back().value;
+            is_x_better_solution = true;
         }
 
-        if (current == solver_parameters::init_policy_type::bastert &&
-            origin == solver_parameters::init_policy_type::best)
-            current = solver_parameters::init_policy_type::best;
+        next_state(is_x_solution, is_x_better_solution);
 
-        switch (current) {
-        case solver_parameters::init_policy_type::bastert:
-            reinit_solver_bastert(slv, x, best);
+        switch (single) {
+        case single_automaton::pre_init:
+        case single_automaton::init:
+            switch (cycle) {
+            case cycle_automaton::bastert:
+            case cycle_automaton::bastert_zero_random_one:
+                init_bastert(slv, x);
+                return;
+            case cycle_automaton::random:
+            case cycle_automaton::random_one_bastert_zero:
+                init_random(slv, x);
+                break;
+            case cycle_automaton::zero_random_one_bastert:
+                init_zeros(slv, x);
+                break;
+            case cycle_automaton::one_bastert_zero_random:
+                init_ones(slv, x);
+                break;
+            }
             break;
-        case solver_parameters::init_policy_type::random:
-            reinit_solver_random(slv, x, best);
+        case single_automaton::improve_x:
+            reinit(slv, x);
             break;
-        case solver_parameters::init_policy_type::best:
-            reinit_solver_best(slv, x, best);
-            break;
-        case solver_parameters::init_policy_type::bastert_cycle:
-            if (best_iteration > 0) {
-                best_iteration = 0;
-                init_solver_bastert(slv, x);
-            } else
-                reinit_solver_bastert(slv, x);
-            current = solver_parameters::init_policy_type::random_cycle;
-            break;
-        case solver_parameters::init_policy_type::random_cycle:
-            if (best_iteration > 0) {
-                best_iteration = 0;
-                init_solver_bastert(slv, x);
-            } else
-                reinit_solver_bastert(slv, x);
-            current = solver_parameters::init_policy_type::bastert_cycle;
-            break;
-        case solver_parameters::init_policy_type::best_cycle:
-            reinit_solver_best(slv, x, best);
+        case single_automaton::improve_best:
+            reinit(slv, x, best.solutions.back());
             break;
         }
     }
@@ -1117,7 +1080,8 @@ struct compute_pi_sign_change
     {
         std::shuffle(R.begin(), R.end(), rng);
 
-        auto pi_changed = solver.push_and_compute_update_row(x, R.begin(), R.end(), kappa, delta, theta, objective_amplifier);
+        auto pi_changed = solver.push_and_compute_update_row(
+          x, R.begin(), R.end(), kappa, delta, theta, objective_amplifier);
         auto remaining = local_compute_violated_constraints(solver, x);
 
         if (!pi_changed && remaining == 0)
@@ -1131,7 +1095,8 @@ struct compute_pi_sign_change
     {
         std::shuffle(R.begin(), R.end(), rng);
 
-        auto pi_changed = solver.compute_update_row(x, R.begin(), R.end(), kappa, delta, theta);
+        auto pi_changed = solver.compute_update_row(
+          x, R.begin(), R.end(), kappa, delta, theta);
         auto remaining = local_compute_violated_constraints(solver, x);
 
         if (!pi_changed && remaining == 0)
@@ -1141,9 +1106,7 @@ struct compute_pi_sign_change
     }
 
     template<typename Solver, typename Xtype>
-    int
-    local_compute_violated_constraints(const Solver& slv,
-                                 const Xtype& x)
+    int local_compute_violated_constraints(const Solver& slv, const Xtype& x)
     {
         int remaining = 0;
         for (int k = 0; k != slv.m; ++k)
