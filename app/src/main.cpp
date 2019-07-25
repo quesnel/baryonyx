@@ -295,11 +295,11 @@ help() noexcept
       "  - storage-type: one bound five\n"
       "  - print-level: [0, 2]\n"
       " * In The Middle parameters\n"
-      "  - preprocessing: none memory less,greater,equal (or any "
+      "  - preprocessing: none memory less-greater-equal (or any "
       "combination), p1, p2, p3, p4\n"
       "  - constraint-order: none reversing random-sorting "
       "infeasibility-decr infeasibility-incr lagrangian-decr lagrangian-incr "
-      "pi_sign_change\n"
+      "pi-sign-change\n"
       "  - theta: real [0, 1]\n"
       "  - delta: real [0, +oo[\n"
       "  - kappa-min: real [0, 1[\n"
@@ -441,7 +441,7 @@ template<typename Integer>
 constexpr typename std::make_unsigned<Integer>::type
 to_unsigned(Integer value)
 {
-    assert(value >= 0 && "negative value");
+    assert(value >= 0 && "Signed to unsigned error: negative value");
 
     return static_cast<typename std::make_unsigned<Integer>::type>(value);
 }
@@ -451,9 +451,9 @@ constexpr typename std::make_signed<Integer>::type
 to_signed(Integer value)
 {
     assert(
-      value <
-        std::numeric_limits<typename std::make_signed<Integer>::type>::max() &&
-      "negative value");
+      static_cast <std::uintmax_t>(value)<
+        static_cast<std::uintmax_t>(std::numeric_limits<typename std::make_signed<Integer>::type>::max()) &&
+      "Unsigned to signed error: too big unsigned");
 
     return static_cast<typename std::make_signed<Integer>::type>(value);
 }
