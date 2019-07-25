@@ -56,7 +56,7 @@ struct x_type
       : m_data(size)
     {}
 
-    bool operator[](int index) const noexcept
+    int operator[](int index) const noexcept
     {
         return m_data.get(index);
     }
@@ -76,7 +76,7 @@ struct x_type
         m_data.unset(index);
     }
 
-    void set(index index, var_value v) noexcept
+    void set(index index, int v) noexcept
     {
         if (v > 0)
             m_data.set(index);
@@ -116,7 +116,7 @@ struct x_counter_type
       , m_counter(size, 0)
     {}
 
-    bool operator[](int index) const noexcept
+    int operator[](int index) const noexcept
     {
         return m_data.get(index);
     }
@@ -129,7 +129,7 @@ struct x_counter_type
         m_data.invert(index);
     }
 
-    void set(index index, var_value v) noexcept
+    void set(index index, int v) noexcept
     {
         // TODO: Maybe use integer class members to store upper and lower index
         // and make upper() and lower() function O(1).
