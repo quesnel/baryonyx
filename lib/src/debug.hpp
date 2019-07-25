@@ -27,6 +27,10 @@
 
 #include <stdexcept>
 
+#ifndef BARYONYX_FULL_OPTIMIZATION
+#include <iostream>
+#endif
+
 #include <cstdio>
 
 //
@@ -61,6 +65,13 @@ fail_fast(const char* type,
     throw std::logic_error(cond);
 #endif
 }
+
+struct sink
+{
+    template<typename... Args>
+    sink(const Args&...)
+    {}
+};
 
 } // namespace details
 } // namespace baryonyx
@@ -102,6 +113,19 @@ fail_fast(const char* type,
 #define bx_ensures(cond) BX_CONTRACT_CHECK("Postcondition", cond)
 #define bx_assert(cond) BX_CONTRACT_CHECK("Assertion", cond)
 #endif
+
+template<typename Arg, typename... Args>
+inline void
+bx_print(Arg&& arg, Args&&... args) noexcept
+{
+#ifndef BARYONYX_FULL_OPTIMIZATION
+    std::cerr << std::forward<Arg>(arg);
+    ((std::cerr << ',' << std::forward<Args>(args)), ...);
+    std::cerr << '\n';
+#else
+    baryonyx::details::sink(arg, args...);
+#endif
+}
 
 #define bx_reach() BX_CONTRACT_FAIL("Reached")
 
