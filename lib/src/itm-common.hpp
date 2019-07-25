@@ -35,6 +35,7 @@
 #include <algorithm>
 #include <chrono>
 #include <iterator>
+#include <numeric>
 #include <random>
 #include <tuple>
 #include <vector>
@@ -279,7 +280,7 @@ double
 results(const Xtype& x, const Cost& c, double cost_constant, int n)
 {
     for (int i = 0; i != n; ++i)
-        cost_constant += static_cast<double>(c[i] * x[i]);
+        cost_constant += static_cast<double>(c[i]) * static_cast<double>(x[i]);
 
     return cost_constant;
 }
