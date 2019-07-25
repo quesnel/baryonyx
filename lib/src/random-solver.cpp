@@ -59,10 +59,17 @@ struct solver_random_inequalities_101coeff
         }
     };
 
+    struct bound_factor
+    {
+        int min;
+        int max;
+        int negative_factor;
+    };
+
     sparse_matrix<int> ap;
     std::unique_ptr<int[]> A;
     std::unique_ptr<rc_data[]> R;
-    std::unique_ptr<bound[]> b;
+    std::unique_ptr<bound_factor[]> b;
     fake_vector<Float> pi;
     std::unique_ptr<Float[]> P;
     const std::unique_ptr<Float[]>& c;
@@ -80,7 +87,7 @@ struct solver_random_inequalities_101coeff
       , ap(csts, m_, n_)
       , A(std::make_unique<int[]>(ap.size()))
       , R(std::make_unique<rc_data[]>(compute_reduced_costs_vector_size(csts)))
-      , b(std::make_unique<bound[]>(m_))
+      , b(std::make_unique<bound_factor[]>(m_))
       , P(std::make_unique<Float[]>(ap.size()))
       , c(c_)
       , dist(0.5)

@@ -39,11 +39,11 @@ struct solver_inequalities_101coeff_buffered
     {
         Float value;
         int id;
-        bool is_negative_coeff;
+        int factor;
 
-        constexpr bool is_negative() const
+        constexpr bool is_negative_factor() const noexcept
         {
-            return is_negative_coeff;
+            return factor < 0;
         }
     };
 
@@ -53,11 +53,18 @@ struct solver_inequalities_101coeff_buffered
         int c_size;
     };
 
+    struct bound_factor
+    {
+        int min;
+        int max;
+        int negative_factor;
+    };
+
     sparse_matrix<int> ap;
     std::unique_ptr<Float[]> P;
     std::unique_ptr<int[]> A;
     std::unique_ptr<rc_data[]> R;
-    std::unique_ptr<bound[]> b;
+    std::unique_ptr<bound_factor[]> b;
     std::unique_ptr<Float[]> pi;
 
     std::unique_ptr<std::tuple<Float, Float>[]> sum_ap;
@@ -77,7 +84,7 @@ struct solver_inequalities_101coeff_buffered
       , P(std::make_unique<Float[]>(ap.size()))
       , A(std::make_unique<int[]>(ap.size()))
       , R(std::make_unique<rc_data[]>(compute_reduced_costs_vector_size(csts)))
-      , b(std::make_unique<bound[]>(m_))
+      , b(std::make_unique<bound_factor[]>(m_))
       , pi(std::make_unique<Float[]>(m_))
       , sum_ap(std::make_unique<std::tuple<Float, Float>[]>(n_))
       , c(c_)

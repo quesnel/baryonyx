@@ -221,19 +221,6 @@ struct merged_constraint
 std::vector<merged_constraint>
 make_merged_constraints(const context_ptr& ctx, const problem& pb);
 
-struct bound
-{
-    bound() = default;
-
-    bound(int min_, int max_)
-      : min(min_)
-      , max(max_)
-    {}
-
-    int min;
-    int max;
-};
-
 template<typename Solver, typename Xtype>
 bool
 is_valid_constraint(const Solver& slv, int k, const Xtype& x)
@@ -453,7 +440,7 @@ affect(Solver& slv,
         for (int i = 0; i != r_size; ++i) {
             auto var = it + slv.R[i].id;
 
-            if (slv.R[i].is_negative()) {
+            if (slv.R[i].is_negative_factor()) {
                 x.set(var->column);
                 slv.P[var->value] += d;
             } else {
@@ -468,7 +455,7 @@ affect(Solver& slv,
         for (int i = 0; i != r_size; ++i) {
             auto var = it + slv.R[i].id;
 
-            if (slv.R[i].is_negative()) {
+            if (slv.R[i].is_negative_factor()) {
                 x.unset(var->column);
                 slv.P[var->value] -= d;
             } else {
@@ -486,7 +473,7 @@ affect(Solver& slv,
         for (; i <= selected; ++i) {
             auto var = it + slv.R[i].id;
 
-            if (slv.R[i].is_negative()) {
+            if (slv.R[i].is_negative_factor()) {
                 x.unset(var->column);
                 slv.P[var->value] -= d;
             } else {
@@ -498,7 +485,7 @@ affect(Solver& slv,
         for (; i != r_size; ++i) {
             auto var = it + slv.R[i].id;
 
-            if (slv.R[i].is_negative()) {
+            if (slv.R[i].is_negative_factor()) {
                 x.set(var->column);
                 slv.P[var->value] += d;
             } else {

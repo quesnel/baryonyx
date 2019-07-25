@@ -38,12 +38,12 @@ struct solver_equalities_101coeff
     struct rc_data
     {
         Float value;
+        int factor;
         int id;
-        bool is_negative_coeff;
 
-        constexpr bool is_negative() const
+        constexpr bool is_negative_factor() const noexcept
         {
-            return is_negative_coeff;
+            return factor < 0;
         }
     };
 
@@ -53,11 +53,17 @@ struct solver_equalities_101coeff
         int c_size;
     };
 
+    struct bound_factor
+    {
+        int value;
+        int negative_factor;
+    };
+
     sparse_matrix<int> ap;
     std::unique_ptr<Float[]> P;
     std::unique_ptr<int[]> A;
     std::unique_ptr<rc_data[]> R;
-    std::unique_ptr<int[]> b;
+    std::unique_ptr<bound_factor[]> b;
     std::unique_ptr<Float[]> pi;
 
     const std::unique_ptr<Float[]>& c;
@@ -74,7 +80,7 @@ struct solver_equalities_101coeff
       , P(std::make_unique<Float[]>(ap.size()))
       , A(std::make_unique<int[]>(ap.size()))
       , R(std::make_unique<rc_data[]>(compute_reduced_costs_vector_size(csts)))
-      , b(std::make_unique<int[]>(m_))
+      , b(std::make_unique<bound_factor[]>(m_))
       , pi(std::make_unique<Float[]>(m_))
       , c(c_)
       , m(m_)
@@ -82,14 +88,18 @@ struct solver_equalities_101coeff
     {
         int id = 0;
         for (int i = 0; i != m; ++i) {
+            b[i].negative_factor = 0;
+            b[i].value = csts[i].min;
+
             for (const auto& cst : csts[i].elements) {
                 bx_ensures(std::abs(cst.factor) == 1);
                 A[id++] = cst.factor;
+
+                if (cst.factor < 0)
+                    ++b[i].negative_factor;
             }
 
             bx_ensures(csts[i].min == csts[i].max);
-
-            b[i] = csts[i].min;
         }
     }
 
@@ -106,17 +116,17 @@ struct solver_equalities_101coeff
 
     int bound_min(int constraint) const noexcept
     {
-        return b[constraint];
+        return b[constraint].value;
     }
 
     int bound_max(int constraint) const noexcept
     {
-        return b[constraint];
+        return b[constraint].value;
     }
 
     int bound_init(int constraint) const
     {
-        return b[constraint];
+        return b[constraint].value;
     }
 
     Float compute_sum_A_pi(int variable) const
@@ -162,9 +172,9 @@ struct solver_equalities_101coeff
 
             R[r_size].id = r_size;
             R[r_size].value = c[begin->column] - sum_a_pi - sum_a_p;
-            R[r_size].is_negative_coeff = A[begin->value] < 0;
+            R[r_size].factor = A[begin->value];
 
-            if (R[r_size].is_negative()) {
+            if (R[r_size].is_negative_factor()) {
                 R[r_size].value = -R[r_size].value;
                 ++c_size;
             }
@@ -214,7 +224,7 @@ struct solver_equalities_101coeff
                 R[i].value += obj_amp * c[(std::get<0>(it) + R[i].id)->column];
 
             calculator_sort<Mode>(R.get(), R.get() + sizes.r_size, rng);
-            int selected = select_variables(sizes, b[k]);
+            int selected = select_variables(sizes, b[k].value);
 
             auto pi_change = affect(*this,
                                     x,
@@ -252,7 +262,7 @@ struct solver_equalities_101coeff
               compute_reduced_costs(std::get<0>(it), std::get<1>(it));
 
             calculator_sort<Mode>(R.get(), R.get() + sizes.r_size, rng);
-            int selected = select_variables(sizes, b[k]);
+            int selected = select_variables(sizes, b[k].value);
 
             auto pi_change = affect(*this,
                                     x,
