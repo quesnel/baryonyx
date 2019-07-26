@@ -43,7 +43,8 @@ class bit_array
 {
 public:
     // Define the number of bits available in a block
-    constexpr static int block_t = static_cast<int>(sizeof(std::uint32_t) * 8);
+    constexpr static inline int block_t =
+      static_cast<int>(sizeof(std::uint32_t) * 8);
 
     bit_array(int size)
       : m_size(size)
@@ -98,6 +99,116 @@ public:
     int get(int index) const noexcept
     {
         return !!(m_data[b_index(index)] & (1u << b_offset(index)));
+    }
+
+    template<typename Iterator>
+    void assign(Iterator first, Iterator last) noexcept
+    {
+        int i = 0;
+        for (; first != last; ++first)
+            set(i++, *first);
+    }
+
+    void ones() noexcept
+    {
+        std::fill_n(m_data.get(), m_block_size, 0xffffffff);
+    }
+
+    void zeros() noexcept
+    {
+        std::fill_n(m_data.get(), m_block_size, 0u);
+    }
+
+    int size() const noexcept
+    {
+        return m_size;
+    }
+
+    int block_size() const noexcept
+    {
+        return m_block_size;
+    }
+
+private:
+    const int m_size;
+    const int m_block_size;
+    std::unique_ptr<std::uint32_t[]> m_data;
+
+    constexpr static int b_index(int b) noexcept
+    {
+        return b / block_t;
+    }
+
+    constexpr static int b_offset(int b) noexcept
+    {
+        return b % block_t;
+    }
+};
+
+template<int Value1 = 0, int Value2 = 1>
+class value_bit_array
+{
+public:
+    // Define the number of bits available in a block
+    constexpr static inline int block_t =
+      static_cast<int>(sizeof(std::uint32_t) * 8);
+
+    constexpr static inline int return_value[] = { Value1, Value2 };
+
+    value_bit_array(int size)
+      : m_size(size)
+      , m_block_size((m_size / block_t) + 1)
+      , m_data(std::make_unique<std::uint32_t[]>(m_block_size))
+    {}
+
+    value_bit_array(const value_bit_array& other)
+      : m_size(other.m_size)
+      , m_block_size(other.m_block_size)
+      , m_data(std::make_unique<std::uint32_t[]>(m_block_size))
+    {
+        std::copy_n(m_data.get(), m_block_size, other.m_data.get());
+    }
+
+    value_bit_array& operator=(const value_bit_array&) = delete;
+    value_bit_array& operator=(value_bit_array&&) = delete;
+
+    value_bit_array(value_bit_array&& other) noexcept
+      : m_size(other.m_size)
+      , m_block_size(other.m_block_size)
+      , m_data(std::move(other.m_data))
+    {}
+
+    ~value_bit_array() noexcept = default;
+
+    /**
+     * @brief Affect 1 to the bits at @c index.
+     *
+     * @param index
+     */
+    void set(int index) noexcept
+    {
+        m_data[b_index(index)] |= 1u << b_offset(index);
+    }
+
+    /**
+     * @brief Affect 0 to the bits at @c index.
+     *
+     * @param index
+     */
+    void unset(int index) noexcept
+    {
+        m_data[b_index(index)] &= ~(1u << b_offset(index));
+    }
+
+    void invert(int index) noexcept
+    {
+        m_data[b_index(index)] ^= 1u << b_offset(index);
+    }
+
+    int get(int index) const noexcept
+    {
+        return return_value[!!(m_data[b_index(index)] &
+                               (1u << b_offset(index)))];
     }
 
     template<typename Iterator>

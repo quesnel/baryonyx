@@ -20,6 +20,7 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+#include "bit-array.hpp"
 #include "itm-common.hpp"
 #include "itm-optimizer-common.hpp"
 #include "itm-solver-common.hpp"
@@ -62,7 +63,7 @@ struct solver_inequalities_101coeff
 
     sparse_matrix<int> ap;
     std::unique_ptr<Float[]> P;
-    std::unique_ptr<int[]> A;
+    value_bit_array<-1, 1> A;
     std::unique_ptr<rc_data[]> R;
     std::unique_ptr<bound_factor[]> b;
     std::unique_ptr<Float[]> pi;
@@ -79,7 +80,7 @@ struct solver_inequalities_101coeff
       : rng(rng_)
       , ap(csts, m_, n_)
       , P(std::make_unique<Float[]>(ap.size()))
-      , A(std::make_unique<int[]>(ap.size()))
+      , A(static_cast<int>(ap.size()))
       , R(std::make_unique<rc_data[]>(compute_reduced_costs_vector_size(csts)))
       , b(std::make_unique<bound_factor[]>(m_))
       , pi(std::make_unique<Float[]>(m_))
@@ -93,7 +94,11 @@ struct solver_inequalities_101coeff
 
             for (const auto& cst : csts[i].elements) {
                 bx_ensures(std::abs(cst.factor) == 1);
-                A[id++] = cst.factor;
+
+                if (cst.factor > 0)
+                    A.set(id++);
+                else
+                    A.unset(id++);
 
                 if (cst.factor > 0)
                     upper++;
@@ -124,7 +129,7 @@ struct solver_inequalities_101coeff
 
     int factor(int value) const noexcept
     {
-        return A[value];
+        return A.get(value);
     }
 
     int bound_min(int constraint) const noexcept
@@ -195,7 +200,7 @@ struct solver_inequalities_101coeff
             auto ht = ap.column(begin->column);
 
             for (; std::get<0>(ht) != std::get<1>(ht); ++std::get<0>(ht)) {
-                auto a = static_cast<Float>(A[std::get<0>(ht)->value]);
+                auto a = static_cast<Float>(A.get(std::get<0>(ht)->value));
 
                 sum_a_pi += a * pi[std::get<0>(ht)->row];
                 sum_a_p += a * P[std::get<0>(ht)->value];
@@ -203,7 +208,7 @@ struct solver_inequalities_101coeff
 
             R[r_size].id = r_size;
             R[r_size].value = c[begin->column] - sum_a_pi - sum_a_p;
-            R[r_size].factor = A[begin->value];
+            R[r_size].factor = A.get(begin->value);
 
             if (R[r_size].is_negative_factor()) {
                 R[r_size].value = -R[r_size].value;
