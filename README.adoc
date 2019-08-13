@@ -352,16 +352,21 @@ To assign parameters to solver or optimizer algorithms, use the `-p
 | string
 | Change the initialization and reinitialization policy of the solution vector. Values are:
 
-* `bastert` (default): use cost values.
-* `random`: use random value.
-* `best`: use best solution found if available (`bastert` otherwise).
-* `bastert-cycle`: start with bastert policy then start a cycle between random, best and bastert.
-* `random-cycle`: start with random policy then start a cycle between best, bastert and random.
-* `best-cycle`: start with best policy then start a cycle between bastert, random and best.
+* `bastert`: for each variable (or at `init-random` rate) use cost values to
+  set or unset variable.
+* `pessimistic-solve`: found a solution for each (or at `init-random` rate)
+  constraints. For soft constraints, affect one to strict minimum variables.
+* `optimistic-solve`: found a solution for each (or or `init-random` rate)
+  constraints. For soft constraints, affect one to the maximum variables that
+  valid the constraint.
+* `cycle` (default): Only for the optimization mode, start with the
+  `pessimistic-solve` mode and change to `bastert` then `pessimistic-solve`
+  mode. The change between mode is done if and only if three times,
+  optimization fails to improve the current solution.
 
 | init-random
 | real
-| [0-1] p parameter of the bernoulli's law.
+| [0-1] (default, 0.5) p parameter of the bernoulli's law to be used in conjunction with the `init-policy` parameter.
 
 | storage-type
 | string
