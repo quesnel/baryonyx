@@ -38,12 +38,17 @@ struct solver_equalities_101coeff
     struct rc_data
     {
         Float value;
-        int factor;
+        int f;
         int id;
 
         constexpr bool is_negative_factor() const noexcept
         {
-            return factor < 0;
+            return f < 0;
+        }
+
+        int factor() const noexcept
+        {
+            return f;
         }
     };
 
@@ -172,7 +177,7 @@ struct solver_equalities_101coeff
 
             R[r_size].id = r_size;
             R[r_size].value = c[begin->column] - sum_a_pi - sum_a_p;
-            R[r_size].factor = A[begin->value];
+            R[r_size].f = A[begin->value];
 
             if (R[r_size].is_negative_factor()) {
                 R[r_size].value = -R[r_size].value;

@@ -217,17 +217,13 @@ get_init_policy(int type)
     case 0:
         return bx::solver_parameters::init_policy_type::bastert;
     case 1:
-        return bx::solver_parameters::init_policy_type::random;
+        return bx::solver_parameters::init_policy_type::pessimistic_solve;
     case 2:
-        return bx::solver_parameters::init_policy_type::best;
+        return bx::solver_parameters::init_policy_type::optimistic_solve;
     case 3:
-        return bx::solver_parameters::init_policy_type::bastert_cycle;
-    case 4:
-        return bx::solver_parameters::init_policy_type::random_cycle;
-    case 5:
-        return bx::solver_parameters::init_policy_type::best_cycle;
+        return bx::solver_parameters::init_policy_type::cycle;
     default:
-        return bx::solver_parameters::init_policy_type::bastert;
+        return bx::solver_parameters::init_policy_type::pessimistic_solve;
     }
 }
 
@@ -402,11 +398,12 @@ convert_result(const baryonyx::result& res, bool minimize)
 //'    - 3: l2-norm
 //'    - 4: infinity-norm
 //'
-//' @param policy_type the type of (re)initilization used into the solver.
-//'     Default is to use bastert and 0.5 for policy_random.
-//'    - 0: bastert
-//'    - 1: random
-//'    - 2: best
+//' @param init_policy the type of (re)initilization used into the solver.
+//'     Default is to use pessimistic_solve and 0.5 for policy_random.
+//'    - 0: bastert,
+//'    - 1: pessimistic_solve,
+//'    - 2: optimistic_solve,
+//'    - 3: cycle
 //'
 //' @param float_type the type of real used into the solver. Default is to
 //'     use the C/C++ double representation.
@@ -555,11 +552,12 @@ solve_01lp_problem(std::string file_path,
 //'    - 3: l2-norm
 //'    - 4: infinity-norm
 //'
-//' @param policy_type the type of (re)initilization used into the solver.
-//'     Default is to use bastert and 0.5 for policy_random.
-//'    - 0: bastert
-//'    - 1: random
-//'    - 2: best
+//' @param init_policy the type of (re)initilization used into the solver.
+//'     Default is to use pessimistic_solve and 0.5 for policy_random.
+//'    - 0: bastert,
+//'    - 1: pessimistic_solve,
+//'    - 2: optimistic_solve,
+//'    - 3: cycle
 //'
 //' @param float_type the type of real used into the solver. Default is to
 //'     use the C/C++ double representation.

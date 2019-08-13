@@ -167,8 +167,7 @@ init_policy_type_to_string(solver_parameters::init_policy_type type) noexcept
       typename std::underlying_type<solver_parameters::init_policy_type>::type;
 
     static const char* ret[] = {
-        "bastert",       "random",       "best",
-        "bastert_cycle", "random_cycle", "best_cycle"
+        "bastert", "pessimistic-solve", "optimistic-solve", "cycle"
     };
 
     return ret[static_cast<underlying_type>(type)];

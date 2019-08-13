@@ -55,7 +55,12 @@ struct solver_random_inequalities_101coeff
 
         constexpr bool is_negative() const
         {
-            return value < 0;
+            return a < 0;
+        }
+
+        constexpr int factor() const noexcept
+        {
+            return a;
         }
     };
 

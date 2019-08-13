@@ -314,8 +314,7 @@ help() noexcept
       "  - pushing-iteration-limit: integer [0, +oo[\n"
       "  - pushing-k-factor: real [0, +oo[\n"
       " * Initialization parameters\n"
-      "  - init-policy: bastert random best bastert-cycle random-cycle "
-      "best-cycle\n"
+      "  - init-policy: bastert pessimistic-solve optimistic-solve cycle\n"
       "  - init-random: real [0, 1]\n");
 }
 
@@ -450,10 +449,11 @@ template<typename Integer>
 constexpr typename std::make_signed<Integer>::type
 to_signed(Integer value)
 {
-    assert(
-      static_cast <std::uintmax_t>(value)<
-        static_cast<std::uintmax_t>(std::numeric_limits<typename std::make_signed<Integer>::type>::max()) &&
-      "Unsigned to signed error: too big unsigned");
+    assert(static_cast<std::uintmax_t>(value) <
+             static_cast<std::uintmax_t>(
+               std::numeric_limits<
+                 typename std::make_signed<Integer>::type>::max()) &&
+           "Unsigned to signed error: too big unsigned");
 
     return static_cast<typename std::make_signed<Integer>::type>(value);
 }
@@ -693,21 +693,15 @@ assign_parameter(baryonyx::solver_parameters& params,
         if (value == "bastert")
             params.init_policy =
               baryonyx::solver_parameters::init_policy_type::bastert;
-        else if (value == "random")
+        else if (value == "pessimistic-solve")
             params.init_policy =
-              baryonyx::solver_parameters::init_policy_type::random;
-        else if (value == "best")
+              baryonyx::solver_parameters::init_policy_type::pessimistic_solve;
+        else if (value == "optimistic-solve")
             params.init_policy =
-              baryonyx::solver_parameters::init_policy_type::best;
-        else if (value == "bastert-cycle")
+              baryonyx::solver_parameters::init_policy_type::optimistic_solve;
+        else if (value == "cycle")
             params.init_policy =
-              baryonyx::solver_parameters::init_policy_type::bastert_cycle;
-        else if (value == "random-cycle")
-            params.init_policy =
-              baryonyx::solver_parameters::init_policy_type::random_cycle;
-        else if (value == "best-cycle")
-            params.init_policy =
-              baryonyx::solver_parameters::init_policy_type::best_cycle;
+              baryonyx::solver_parameters::init_policy_type::cycle;
         else
             return command_line_status::init_policy_error;
 

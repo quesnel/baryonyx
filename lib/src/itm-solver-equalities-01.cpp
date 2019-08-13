@@ -44,6 +44,11 @@ struct solver_equalities_01coeff
         {
             return false;
         }
+
+        constexpr int factor() const noexcept
+        {
+            return 1;
+        }
     };
 
     using bound_factor = int;

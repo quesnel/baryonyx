@@ -534,9 +534,8 @@ class solver_initializer
 {
     std::bernoulli_distribution dist;
     std::bernoulli_distribution toss_up{ 0.5 };
-    // std::uniform_real_distribution<double> real_distribution{ 0, 1 };
     double old_best;
-
+    bool use_cycle{ true };
     std::uint8_t iteration{ 0 };
 
     enum class single_automaton : std::uint8_t
@@ -550,15 +549,21 @@ class solver_initializer
     enum class cycle_automaton : std::uint8_t
     {
         bastert,
-        random,
-        bastert_zero_random_one,
-        zero_random_one_bastert,
-        random_one_bastert_zero,
-        one_bastert_zero_random
+        pessimistic_solve,
+        optimistic_solve,
     };
 
-    single_automaton single;
-    cycle_automaton cycle;
+    static inline const std::string_view single_automaton_string[] =
+      { "pre_init", "init", "improve_x", "improve_best" };
+
+    static inline const std::string_view cycle_automaton_string[] = {
+        "bastert",
+        "pessimistic_solve",
+        "optimistic_solve",
+    };
+
+    single_automaton single{ single_automaton::pre_init };
+    cycle_automaton cycle{ cycle_automaton::pessimistic_solve };
 
     static constexpr short iteration_limit = 3;
 
@@ -576,26 +581,6 @@ class solver_initializer
                 x.set(i, 1 - best.variables[i]);
     }
 
-    void init_zeros(Solver& slv, Xtype& x) noexcept
-    {
-        for (int i = 0; i != slv.n; ++i)
-            x.set(i, 0);
-    }
-
-    void init_ones(Solver& slv, Xtype& x) noexcept
-    {
-        for (int i = 0; i != slv.n; ++i)
-            x.set(i, 1);
-    }
-
-    // Fully fill the solution vector X with random values from user's
-    // parameters.
-    void init_random(Solver& slv, Xtype& x) noexcept
-    {
-        for (int i = 0; i != slv.n; ++i)
-            x.set(i, dist(slv.rng));
-    }
-
     // Fully fill the solution vector X with a mix of values from the bastert
     // policy and from random value.
     void init_bastert(Solver& slv, Xtype& x) noexcept
@@ -610,6 +595,104 @@ class solver_initializer
         }
     }
 
+    void init_pessimistic_solve(Solver& slv, Xtype& x) noexcept
+    {
+        for (int k = 0; k != slv.m; ++k) {
+            if (!dist(slv.rng))
+                continue;
+
+            auto [begin, end] = slv.ap.row(k);
+            int r_size = 0;
+
+            for (auto it = begin; it != end; ++it, ++r_size) {
+                slv.R[r_size].value = slv.c[it->column];
+                slv.R[r_size].id = r_size;
+            }
+
+            std::sort(slv.R.get(),
+                      slv.R.get() + r_size,
+                      [](const auto& lhs, const auto& rhs) {
+                          if constexpr (std::is_same_v<Mode, minimize_tag>)
+                              return lhs.value < rhs.value;
+                          else
+                              return rhs.value < lhs.value;
+                      });
+
+            int sum = 0;
+            int best = -2;
+
+            for (int i = -1; i < r_size; ++i) {
+                if (slv.bound_min(k) <= sum && sum <= slv.bound_max(k)) {
+                    best = i;
+                    break;
+                }
+
+                sum += slv.R[i + 1].factor();
+            }
+
+            int i = 0;
+            for (; i <= best; ++i) {
+                auto var = begin + slv.R[i].id;
+                x.set(var->column);
+            }
+
+            for (; i != r_size; ++i) {
+                auto var = begin + slv.R[i].id;
+                x.unset(var->column);
+            }
+        }
+    }
+
+    void init_optimistic_solve(Solver& slv, Xtype& x) noexcept
+    {
+        for (int k = 0; k != slv.m; ++k) {
+            if (!dist(slv.rng))
+                continue;
+
+            auto [begin, end] = slv.ap.row(k);
+            int r_size = 0;
+
+            for (auto it = begin; it != end; ++it, ++r_size) {
+                slv.R[r_size].value = slv.c[it->column];
+                slv.R[r_size].id = r_size;
+            }
+
+            std::sort(slv.R.get(),
+                      slv.R.get() + r_size,
+                      [](const auto& lhs, const auto& rhs) {
+                          if constexpr (std::is_same_v<Mode, minimize_tag>)
+                              return lhs.value < rhs.value;
+                          else
+                              return rhs.value < lhs.value;
+                      });
+
+            int sum = 0;
+            int best = -2;
+
+            for (int i = -1; i < r_size; ++i) {
+                if (slv.bound_min(k) <= sum && sum <= slv.bound_max(k))
+                    best = i;
+
+                if (best != -2 && i + 1 < r_size &&
+                    stop_iterating<Mode>(slv.R[i + 1].value))
+                    break;
+
+                sum += slv.R[i + 1].factor();
+            }
+
+            int i = 0;
+            for (; i <= best; ++i) {
+                auto var = begin + slv.R[i].id;
+                x.set(var->column);
+            }
+
+            for (; i != r_size; ++i) {
+                auto var = begin + slv.R[i].id;
+                x.unset(var->column);
+            }
+        }
+    }
+
 public:
     solver_initializer(Solver& slv,
                        Xtype& x,
@@ -617,24 +700,26 @@ public:
                        double init_random)
       : dist(init_random)
       , old_best(bad_value<Mode, double>())
-      , single(single_automaton::pre_init)
-      , cycle(cycle_automaton::bastert)
     {
         x.clear();
         slv.reset();
 
         switch (policy) {
         case solver_parameters::init_policy_type::bastert:
-        case solver_parameters::init_policy_type::bastert_cycle:
             cycle = cycle_automaton::bastert;
+            use_cycle = false;
             break;
-        case solver_parameters::init_policy_type::random:
-        case solver_parameters::init_policy_type::random_cycle:
-            cycle = cycle_automaton::random;
+        case solver_parameters::init_policy_type::pessimistic_solve:
+            cycle = cycle_automaton::pessimistic_solve;
+            use_cycle = false;
             break;
-        case solver_parameters::init_policy_type::best:
-        case solver_parameters::init_policy_type::best_cycle:
-            cycle = cycle_automaton::bastert_zero_random_one;
+        case solver_parameters::init_policy_type::optimistic_solve:
+            cycle = cycle_automaton::optimistic_solve;
+            use_cycle = false;
+            break;
+        case solver_parameters::init_policy_type::cycle:
+            cycle = cycle_automaton::pessimistic_solve;
+            use_cycle = true;
             break;
         }
     }
@@ -660,14 +745,15 @@ public:
                 ++iteration;
                 if (iteration >= iteration_limit) {
                     single = single_automaton::pre_init;
-                    if (cycle == cycle_automaton::bastert_zero_random_one)
-                        cycle = cycle_automaton::zero_random_one_bastert;
-                    else if (cycle == cycle_automaton::zero_random_one_bastert)
-                        cycle = cycle_automaton::random_one_bastert_zero;
-                    else if (cycle == cycle_automaton::random_one_bastert_zero)
-                        cycle = cycle_automaton::one_bastert_zero_random;
-                    else if (cycle == cycle_automaton::one_bastert_zero_random)
-                        cycle = cycle_automaton::bastert_zero_random_one;
+
+                    if (use_cycle == true) {
+                        if (cycle == cycle_automaton::bastert)
+                            cycle = cycle_automaton::optimistic_solve;
+                        else if (cycle == cycle_automaton::pessimistic_solve)
+                            cycle = cycle_automaton::bastert;
+                        else if (cycle == cycle_automaton::optimistic_solve)
+                            cycle = cycle_automaton::pessimistic_solve;
+                    }
                 }
             }
             break;
@@ -690,23 +776,24 @@ public:
 
         next_state(is_x_solution, is_x_better_solution);
 
+        bx_print("  solver re-initialization: ",
+                 single_automaton_string[static_cast<int>(single)],
+                 " in ",
+                 cycle_automaton_string[static_cast<int>(cycle)],
+                 "\n");
+
         switch (single) {
         case single_automaton::pre_init:
         case single_automaton::init:
             switch (cycle) {
             case cycle_automaton::bastert:
-            case cycle_automaton::bastert_zero_random_one:
                 init_bastert(slv, x);
                 return;
-            case cycle_automaton::random:
-            case cycle_automaton::random_one_bastert_zero:
-                init_random(slv, x);
+            case cycle_automaton::pessimistic_solve:
+                init_pessimistic_solve(slv, x);
                 break;
-            case cycle_automaton::zero_random_one_bastert:
-                init_zeros(slv, x);
-                break;
-            case cycle_automaton::one_bastert_zero_random:
-                init_ones(slv, x);
+            case cycle_automaton::optimistic_solve:
+                init_optimistic_solve(slv, x);
                 break;
             }
             break;

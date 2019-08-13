@@ -39,11 +39,16 @@ struct solver_inequalities_101coeff_buffered
     {
         Float value;
         int id;
-        int factor;
+        int f;
 
         constexpr bool is_negative_factor() const noexcept
         {
-            return factor < 0;
+            return f < 0;
+        }
+
+        int factor() const noexcept
+        {
+            return f;
         }
     };
 
@@ -189,7 +194,7 @@ struct solver_inequalities_101coeff_buffered
 
             R[r_size].id = r_size;
             R[r_size].value = c[begin->column] - sum_a_pi - sum_a_p;
-            R[r_size].is_negative_coeff = A[begin->value] < 0;
+            R[r_size].f = A[begin->value];
 
             if (R[r_size].is_negative()) {
                 R[r_size].value = -R[r_size].value;

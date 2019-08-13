@@ -274,12 +274,10 @@ struct BX_EXPORT solver_parameters
 
     enum class init_policy_type
     {
-        bastert = 0,
-        random,
-        best,
-        bastert_cycle,
-        random_cycle,
-        best_cycle
+        bastert,
+        pessimistic_solve,
+        optimistic_solve,
+        cycle
     };
 
     enum class floating_point_type
