@@ -26,7 +26,7 @@ matrix:
 
   include:
     - os: linux
-      dist: trusty
+      dist: xenial
       env: CXX_COMPILER=g++-7 CXXSTD=c++17
       addons:
         apt:
@@ -36,7 +36,7 @@ matrix:
             - *common_packages
             - g++-7
     - os: linux
-      dist: trusty
+      dist: xenial
       env: CXX_COMPILER=g++-8 CXXSTD=c++17
       addons:
         apt:
@@ -46,23 +46,12 @@ matrix:
             - *common_packages
             - g++-8
     - os: linux
-      env: CXX_COMPILER=clang++-5.0 CXXSTD=c++17
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-            - llvm-toolchain-trusty-5.0
-          packages:
-            - *common_packages
-            - clang-5.0
-            - g++-7
-    - os: linux
       env: CXX_COMPILER=clang++-6.0 CXXSTD=c++17
       addons:
         apt:
           sources:
             - ubuntu-toolchain-r-test
-            - llvm-toolchain-trusty-6.0
+            - llvm-toolchain-xenial-6.0
           packages:
             - *common_packages
             - clang-6.0
@@ -73,10 +62,21 @@ matrix:
         apt:
           sources:
             - ubuntu-toolchain-r-test
-            - llvm-toolchain-trusty-7
+            - llvm-toolchain-xenial-7
           packages:
             - *common_packages
             - clang-7
+            - g++-7
+    - os: linux
+      env: CXX_COMPILER=clang++-8 CXXSTD=c++17
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+            - llvm-toolchain-xenial-8
+          packages:
+            - *common_packages
+            - clang-8
             - g++-7
     # osx is disabled. We are waiting for a 10.14:
     # /benchmark.cpp:607:12:
