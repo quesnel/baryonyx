@@ -757,7 +757,7 @@ read_objective_function(parser_stack& stack, baryonyx::raw_problem& p)
             // the factor is non-zero and does not already exist in the
             // objective function.
 
-            if (std::get<1>(elem)) {
+            if (std::get<1>(elem) != 0.0) {
                 auto index =
                   get_variable(stack.cache(), p.vars, std::get<0>(elem));
 
@@ -792,8 +792,8 @@ read_constraint(parser_stack& stack, baryonyx::raw_problem& p)
             label = tmp;
             stack.substr_front(1);
         } else {
-            cst.elements.emplace_back(1,
-                                      get_variable(stack.cache(), p.vars, tmp));
+            cst.elements.emplace_back(
+              1, get_variable(stack.cache(), p.vars, tmp));
         }
     }
 
