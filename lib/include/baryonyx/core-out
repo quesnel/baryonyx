@@ -103,55 +103,55 @@ operator<<(OuputStream& os, const result& result)
     return os;
 }
 
-inline const char*
+inline std::string_view
 pre_constraint_order_to_string(
   solver_parameters::pre_constraint_order type) noexcept
 {
     using underlying_type = typename std::underlying_type<
       solver_parameters::pre_constraint_order>::type;
 
-    static const char* ret[] = { "none",
-                                 "memory",
-                                 "less-greater-equal",
-                                 "less-equal-greater",
-                                 "greater-less-equal",
-                                 "greater-equal-less",
-                                 "equal-less-greater",
-                                 "equal-greater-less",
-                                 "p1",
-                                 "p2",
-                                 "p3",
-                                 "p4" };
+    static std::string_view ret[] = { "none",
+                                      "memory",
+                                      "less-greater-equal",
+                                      "less-equal-greater",
+                                      "greater-less-equal",
+                                      "greater-equal-less",
+                                      "equal-less-greater",
+                                      "equal-greater-less",
+                                      "p1",
+                                      "p2",
+                                      "p3",
+                                      "p4" };
 
     return ret[static_cast<underlying_type>(type)];
 }
 
-inline const char*
+inline std::string_view
 constraint_order_to_string(solver_parameters::constraint_order type) noexcept
 {
     using underlying_type =
       typename std::underlying_type<solver_parameters::constraint_order>::type;
 
-    static const char* ret[] = { "none",
-                                 "reversing",
-                                 "random-sorting",
-                                 "infeasibility-decr",
-                                 "infeasibility-incr",
-                                 "lagrangian-decr",
-                                 "lagrangian-incr",
-                                 "pi-sign-change" };
+    static std::string_view ret[] = { "none",
+                                      "reversing",
+                                      "random-sorting",
+                                      "infeasibility-decr",
+                                      "infeasibility-incr",
+                                      "lagrangian-decr",
+                                      "lagrangian-incr",
+                                      "pi-sign-change" };
 
     return ret[static_cast<underlying_type>(type)];
 }
 
-inline const char*
+inline std::string_view
 floating_point_type_to_string(
   solver_parameters::floating_point_type type) noexcept
 {
     using underlying_type = typename std::underlying_type<
       solver_parameters::floating_point_type>::type;
 
-    static const char* ret[] = {
+    static std::string_view ret[] = {
         "float",
         "double",
         "longdouble",
@@ -160,37 +160,37 @@ floating_point_type_to_string(
     return ret[static_cast<underlying_type>(type)];
 }
 
-inline const char*
+inline std::string_view
 init_policy_type_to_string(solver_parameters::init_policy_type type) noexcept
 {
     using underlying_type =
       typename std::underlying_type<solver_parameters::init_policy_type>::type;
 
-    static const char* ret[] = {
+    static std::string_view ret[] = {
         "bastert", "pessimistic-solve", "optimistic-solve", "cycle"
     };
 
     return ret[static_cast<underlying_type>(type)];
 }
 
-inline const char*
+inline std::string_view
 cost_norm_type_to_string(solver_parameters::cost_norm_type type) noexcept
 {
     using underlying_type =
       typename std::underlying_type<solver_parameters::cost_norm_type>::type;
 
-    static const char* ret[] = { "none", "random", "l1", "l2", "loo" };
+    static std::string_view ret[] = { "none", "random", "l1", "l2", "loo" };
 
     return ret[static_cast<underlying_type>(type)];
 }
 
-inline const char*
+inline std::string_view
 mode_type_to_string(solver_parameters::mode_type type) noexcept
 {
     using underlying_type =
       typename std::underlying_type<solver_parameters::mode_type>::type;
 
-    static const char* ret[] = {
+    static std::string_view ret[] = {
         "disabled", "manual",           "nlopt",
         "branch",   "manul-and-branch", "nlopt-and-branch"
     };
@@ -218,24 +218,24 @@ mode_type_to_string(solver_parameters::mode_type type) noexcept
     return ret[0];
 }
 
-inline const char*
+inline std::string_view
 observer_type_to_string(solver_parameters::observer_type type) noexcept
 {
     using underlying_type =
       typename std::underlying_type<solver_parameters::observer_type>::type;
 
-    static const char* ret[] = { "none", "pnm", "file" };
+    static std::string_view ret[] = { "none", "pnm", "file" };
 
     return ret[static_cast<underlying_type>(type)];
 }
 
-inline const char*
+inline std::string_view
 storage_type_to_string(solver_parameters::storage_type type) noexcept
 {
     using underlying_type = typename std::underlying_type<
       solver_parameters::solver_parameters::storage_type>::type;
 
-    static const char* ret[] = { "one", "bound", "five" };
+    static std::string_view ret[] = { "one", "bound", "five" };
 
     return ret[static_cast<underlying_type>(type)];
 }

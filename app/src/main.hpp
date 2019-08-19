@@ -25,6 +25,7 @@
 
 #include <baryonyx/core>
 
+#include <algorithm>
 #include <optional>
 #include <string>
 
@@ -48,51 +49,64 @@ benchmark(const baryonyx::context_ptr& ctx,
           std::string filepath,
           std::string name);
 
-inline std::optional<double>
-to_double(std::string s) noexcept
-{
-    char* c;
-    errno = 0;
-    double value = std::strtod(s.c_str(), &c);
-
-    if ((errno == ERANGE && (value == HUGE_VAL || value == -HUGE_VAL)) ||
-        (value == 0.0 && c == s.c_str()))
-        return std::nullopt;
-
-    return { value };
-}
-
-inline std::optional<double>
+/**
+ * @brief Convert a string_view into a double.
+ *
+ * @note waiting for std::fron_chars or boost::qi dependencies
+ */
+constexpr inline std::optional<double>
 to_double(std::string_view s) noexcept
 {
-    // waiting for std::fron_chars or boost::qi dependencies
     // if (auto [p, ec] =
     //       std::from_chars(s.data(), s.data() + s.size(), value, 10);
     //     ec != std::errc())
     //     return bad_value;
     // return value;
 
-    return to_double(std::string(s));
-}
+    constexpr std::size_t size_limit = 512;
 
-inline std::optional<int>
-to_int(std::string s) noexcept
-{
-    char* c;
-    errno = 0;
-    long value = std::strtol(s.c_str(), &c, 10);
-
-    if ((errno == ERANGE && (value == LONG_MIN || value == LONG_MAX)) ||
-        (value == 0 && c == s.c_str()))
+    if (s.size() > size_limit)
         return std::nullopt;
 
-    if (value < INT_MIN)
-        return INT_MIN;
+    char buffer[size_limit + 1] = { '\0' };
+    std::size_t i = 0;
+    std::size_t e = std::min(s.size(), size_limit);
 
-    if (value > INT_MAX)
-        return INT_MAX;
+    for (i = 0; i != e; ++i)
+        buffer[i] = s[i];
 
-    return static_cast<int>(value);
+    double result = 0;
+    if (auto read = std::sscanf(buffer, "%lf", &result); read)
+        return result;
+    else
+        return std::nullopt;
+}
+
+/**
+ * @brief Convert a string_view into a integer.
+ *
+ * @note waiting for std::fron_chars or boost::qi dependencies
+ */
+constexpr inline std::optional<int>
+to_int(std::string_view s) noexcept
+{
+    constexpr std::size_t size_limit = 512;
+
+    if (s.size() > size_limit)
+        return std::nullopt;
+
+    char buffer[size_limit + 1] = { '\0' };
+    std::size_t i = 0;
+    std::size_t e = std::min(s.size(), size_limit);
+
+    for (i = 0; i != e; ++i)
+        buffer[i] = s[i];
+
+    int result = 0;
+    if (auto read = std::sscanf(buffer, "%d", &result); read)
+        return result;
+    else
+        return std::nullopt;
 }
 
 constexpr const char*

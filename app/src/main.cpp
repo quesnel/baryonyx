@@ -190,71 +190,74 @@ solver_finished_cb(const baryonyx::result& r)
     }
 }
 
-static std::tuple<std::string, std::string>
-split_argument(const char* param)
+/**
+ * @brief Tries to split the argument between name and value.
+ * @details The split consists to return left and right part arround the
+ *     characters `=' or `:'.
+ *
+ * @param param String to split.
+ * @return Return left and right part in success, otherwise only the left part
+ *     if the splitting characters are not found or an empty tuple if all is
+ *     empty.
+ */
+constexpr static std::tuple<std::string_view, std::string_view>
+split_argument(const std::string_view param)
 {
-    std::string name, value;
+    auto position = param.find_first_of(":=");
 
-    while (*param) {
-        if (isalpha(*param) || *param == '_' || *param == '-')
-            name += *param;
-        else
-            break;
+    if (position == std::string_view::npos) /* If nothing is found, return an
+                                               empty tuple.*/
+        return {};
 
-        param++;
-    }
+    if (position + 1 >= param.size())
+        return std::make_tuple(param, std::string_view{});
 
-    if (*param && (*param == ':' || *param == '=')) {
-        param++;
+    return std::make_tuple(param.substr(0, position),
+                           param.substr(position + 1));
+}
 
-        while (*param)
-            value += *param++;
-    }
-
-    return std::make_tuple(name, value);
+constexpr static bool
+starts_with(std::string_view str, std::string_view to_found) noexcept
+{
+    return !(str.find(to_found));
 }
 
 struct get_param
 {
-    get_param(int argc_, const char** argv_)
+    constexpr get_param(int argc_, const char** argv_)
       : argv(argv_)
       , argc(argc_)
       , i(0)
     {}
 
-    const char* operator()(int arg,
-                           const char* longp,
-                           const char* shortp) noexcept
+    constexpr std::optional<std::string_view> operator()(
+      int arg_position,
+      const std::string_view longp,
+      const std::string_view shortp) noexcept
     {
-        i = arg;
+        std::string_view arg(argv[arg_position]);
+        i = arg_position;
 
-        auto longp_length = strlen(longp);
-        if (!strncmp(argv[arg], longp, longp_length) &&
-            strlen(argv[arg]) + 1 > longp_length &&
-            (argv[arg][longp_length] == '=' ||
-             argv[arg][longp_length] == ':')) {
-            return argv[arg] + longp_length + 1;
-        }
+        if (starts_with(arg, longp) && arg.size() > longp.size() &&
+            (arg[longp.size()] == '=' || arg[longp.size()] == ':'))
+            return arg.substr(longp.size() + 1);
 
-        auto shortp_length = strlen(shortp);
-        if (!strncmp(argv[arg], shortp, shortp_length) &&
-            strlen(argv[arg]) > shortp_length) {
-            return argv[arg] + shortp_length;
-        }
+        if (starts_with(arg, shortp) && arg.size() > shortp.size())
+            return arg.substr(shortp.size());
 
-        if (arg + 1 < argc) {
-            if (longp && strcmp(argv[arg], longp) == 0) {
-                i = arg + 1;
+        if (arg_position + 1 < argc) {
+            if (arg == longp) {
+                i = arg_position + 1;
                 return argv[i];
             }
 
-            if (shortp && strcmp(argv[i], shortp) == 0) {
-                i = arg + 1;
+            if (arg == shortp) {
+                i = arg_position + 1;
                 return argv[i];
             }
         }
 
-        return nullptr;
+        return std::nullopt;
     }
 
     const char** argv;
@@ -318,8 +321,8 @@ help() noexcept
       "  - init-random: real [0, 1]\n");
 }
 
-static bool
-is_equal(std::string name, const char* longf, char shortf = '\0')
+constexpr static bool
+is_equal(std::string_view name, const char* longf, char shortf = '\0')
 {
     if (name.compare(0, std::string::npos, longf) == 0)
         return true;
@@ -330,54 +333,55 @@ is_equal(std::string name, const char* longf, char shortf = '\0')
     return false;
 }
 
-static std::optional<double>
-assign_0oo(std::string value)
+constexpr static std::optional<double>
+assign_0oo(std::string_view value)
 {
-    auto ret = ::to_double(value);
+    auto result = ::to_double(value);
 
-    if (!ret)
-        return ret;
-
-    return *ret > 0 ? *ret : ret;
+    if (result.has_value() && *result > 0)
+        return *result;
+    else
+        return std::nullopt;
 }
 
-static std::optional<double>
-assign_01(std::string value)
+constexpr static std::optional<double>
+assign_01(std::string_view value)
 {
-    auto ret = ::to_double(value);
+    auto result = ::to_double(value);
 
-    if (!ret)
-        return ret;
-
-    return *ret >= 0 && *ret <= 1 ? *ret : ret;
+    if (result.has_value() && *result >= 0 && *result <= 1)
+        return *result;
+    else
+        return std::nullopt;
 }
 
-static std::optional<int>
-assign(std::string value, int mindef, int maxdef)
+constexpr static std::optional<int>
+assign(std::string_view value, int mindef, int maxdef)
 {
-    auto ret = ::to_int(value);
+    auto result = ::to_int(value);
 
-    if (!ret)
-        return ret;
-
-    return *ret < mindef ? mindef : *ret > maxdef ? maxdef : ret;
+    if (result.has_value() && *result >= mindef && *result <= maxdef)
+        return result;
+    else
+        return std::nullopt;
 }
 
-static std::optional<double>
-assign_d(std::string value, double mindef, double maxdef)
+constexpr static std::optional<double>
+assign_d(std::string_view value, double mindef, double maxdef)
 {
-    auto ret = ::to_double(value);
+    auto result = ::to_double(value);
 
-    if (!ret)
-        return ret;
-
-    return *ret < mindef ? mindef : *ret > maxdef ? maxdef : ret;
+    if (result.has_value() && *result >= mindef && *result <= maxdef)
+        return *result;
+    else
+        return std::nullopt;
 }
 
 enum class command_line_status
 {
     success,
     unknown,
+    parameter_missing,
     verbose_error,
     limit_error,
     time_limit_error,
@@ -408,6 +412,7 @@ enum class command_line_status
 constexpr const std::string_view command_line_status_string[] = {
     "success",
     "unknown",
+    "parameter_missing",
     "verbose_error"
     "limit",
     "time_limit",
@@ -468,24 +473,22 @@ to_string(command_line_status s) noexcept
     return command_line_status_string[x];
 }
 
-static command_line_status
+constexpr static command_line_status
 assign_parameter(baryonyx::solver_parameters& params,
-                 std::string name,
-                 std::string value)
+                 std::string_view name,
+                 std::string_view value)
 {
     if (is_equal(name, "limit", 'l')) {
-        auto v = assign(value, -1, std::numeric_limits<int>::max());
-        if (v)
-            params.limit = *v;
-        else
+        if (auto v = assign(value, -1, std::numeric_limits<int>::max()); !v)
             return command_line_status::limit_error;
+        else
+            params.limit = *v;
 
     } else if (is_equal(name, "time-limit")) {
-        auto v = to_double(value);
-        if (v)
-            params.time_limit = *v <= 0.0 ? -1.0 : *v;
-        else
+        if (auto v = to_double(value); !v)
             return command_line_status::time_limit_error;
+        else
+            params.time_limit = *v <= 0.0 ? -1.0 : *v;
 
     } else if (is_equal(name, "floating-point-type")) {
         if (value == "float")
@@ -511,12 +514,10 @@ assign_parameter(baryonyx::solver_parameters& params,
             return command_line_status::observer_type_error;
 
     } else if (is_equal(name, "print-level")) {
-        auto v = assign(value, 0, 2);
-
-        if (v)
-            params.print_level = *v;
-        else
+        if (auto v = assign(value, 0, 2); !v)
             return command_line_status::print_level_error;
+        else
+            params.print_level = *v;
 
     } else if (is_equal(name, "preprocessing")) {
         if (value == "none")
@@ -596,53 +597,46 @@ assign_parameter(baryonyx::solver_parameters& params,
             return command_line_status::storage_type_error;
 
     } else if (is_equal(name, "theta")) {
-        auto v = assign_01(value);
-        if (v)
-            params.theta = *v;
-        else
+        if (auto v = assign_01(value); !v)
             return command_line_status::theta_error;
+        else
+            params.theta = *v;
 
     } else if (is_equal(name, "delta")) {
-        auto v = assign_0oo(value);
-        if (v)
-            params.delta = *v;
-        else
+        if (auto v = assign_0oo(value); !v)
             return command_line_status::delta_error;
+        else
+            params.delta = *v;
 
     } else if (is_equal(name, "kappa-min")) {
-        auto v = assign_01(value);
-        if (v)
-            params.kappa_min = *v;
-        else
+        if (auto v = assign_01(value); !v)
             return command_line_status::kappa_min_error;
+        else
+            params.kappa_min = *v;
 
     } else if (is_equal(name, "kappa-step")) {
-        auto v = assign_01(value);
-        if (v)
-            params.kappa_step = *v;
-        else
+        if (auto v = assign_01(value); !v)
             return command_line_status::kappa_step_error;
+        else
+            params.kappa_step = *v;
 
     } else if (is_equal(name, "kappa-max")) {
-        auto v = assign_01(value);
-        if (v)
-            params.kappa_max = *v;
-        else
+        if (auto v = assign_01(value); !v)
             return command_line_status::kappa_max_error;
+        else
+            params.kappa_max = *v;
 
     } else if (is_equal(name, "alpha")) {
-        auto v = assign_d(value, 0, 2);
-        if (v)
-            params.alpha = *v;
-        else
+        if (auto v = assign_d(value, 0, 2); !v)
             return command_line_status::alpha_error;
+        else
+            params.alpha = *v;
 
     } else if (is_equal(name, "w")) {
-        auto v = assign(value, 0, std::numeric_limits<int>::max());
-        if (v)
-            params.w = *v;
-        else
+        if (auto v = assign(value, 0, std::numeric_limits<int>::max()); !v)
             return command_line_status::w_error;
+        else
+            params.w = *v;
 
     } else if (is_equal(name, "norm")) {
         if (value == "none")
@@ -662,32 +656,28 @@ assign_parameter(baryonyx::solver_parameters& params,
             return command_line_status::norm_error;
 
     } else if (is_equal(name, "pushes-limit")) {
-        auto v = assign(value, 0, std::numeric_limits<int>::max());
-        if (v)
-            params.pushes_limit = *v;
-        else
+        if (auto v = assign(value, 0, std::numeric_limits<int>::max()); !v)
             return command_line_status::pushes_limit_error;
+        else
+            params.pushes_limit = *v;
 
     } else if (is_equal(name, "pushing-objective-amplifier")) {
-        auto v = assign_0oo(value);
-        if (v)
-            params.pushing_objective_amplifier = *v;
-        else
+        if (auto v = assign_0oo(value); !v)
             return command_line_status::pushing_objective_amplifier_error;
+        else
+            params.pushing_objective_amplifier = *v;
 
     } else if (is_equal(name, "pushing-iteration-limit")) {
-        auto v = assign(value, 0, std::numeric_limits<int>::max());
-        if (v)
-            params.pushing_iteration_limit = *v;
-        else
+        if (auto v = assign(value, 0, std::numeric_limits<int>::max()); !v)
             return command_line_status::pushing_iteration_limit_error;
+        else
+            params.pushing_iteration_limit = *v;
 
     } else if (is_equal(name, "pushing-k-factor")) {
-        auto v = assign_0oo(value);
-        if (v)
-            params.pushing_k_factor = *v;
-        else
+        if (auto v = assign_0oo(value); !v)
             return command_line_status::pushing_k_factor_error;
+        else
+            params.pushing_k_factor = *v;
 
     } else if (is_equal(name, "init-policy")) {
         if (value == "bastert")
@@ -706,25 +696,22 @@ assign_parameter(baryonyx::solver_parameters& params,
             return command_line_status::init_policy_error;
 
     } else if (is_equal(name, "init-random")) {
-        auto v = assign_01(value);
-        if (v)
-            params.init_random = *v;
-        else
+        if (auto v = assign_01(value); !v)
             return command_line_status::init_random_error;
+        else
+            params.init_random = *v;
 
     } else if (is_equal(name, "thread")) {
-        auto v = assign(value, 0, std::numeric_limits<int>::max());
-        if (v)
-            params.thread = *v;
-        else
+        if (auto v = assign(value, 0, std::numeric_limits<int>::max()); !v)
             return command_line_status::thread_error;
+        else
+            params.thread = *v;
 
     } else if (is_equal(name, "seed")) {
-        auto v = assign(value, 0, std::numeric_limits<int>::max());
-        if (v)
-            params.seed = *v;
-        else
+        if (auto v = assign(value, 0, std::numeric_limits<int>::max()); !v)
             return command_line_status::seed_error;
+        else
+            params.seed = *v;
 
     } else
         return command_line_status::unknown;
@@ -754,9 +741,9 @@ parse(int argc, const char* argv[])
     get_param get(argc, argv);
 
     for (int i = 1; i < argc; ++i) {
-        std::string arg(argv[i]);
+        std::string_view arg(argv[i]);
+
         ret.parse_arg = i;
-        const char* opt;
 
         if (arg == "--help" || arg == "-h") {
             ::help();
@@ -773,9 +760,9 @@ parse(int argc, const char* argv[])
             continue;
         }
 
-        if ((opt = get(i, "--bench", "-b"))) {
+        if (auto opt = get(i, "--bench", "-b"); opt) {
             ret.bench = true;
-            ret.bench_name = opt;
+            ret.bench_name = *opt;
             i = get.i;
             continue;
         }
@@ -786,23 +773,21 @@ parse(int argc, const char* argv[])
             continue;
         }
 
-        if ((opt = get(i, "--auto", "-a"))) {
-            std::string str(opt);
-
-            if (str == "manual")
+        if (auto opt = get(i, "--auto", "-a"); opt) {
+            if (*opt == "manual")
                 ret.parameters.mode =
                   baryonyx::solver_parameters::mode_type::manual;
-            else if (str == "nlopt")
+            else if (*opt == "nlopt")
                 ret.parameters.mode =
                   baryonyx::solver_parameters::mode_type::nlopt;
-            else if (str == "branch")
+            else if (*opt == "branch")
                 ret.parameters.mode =
                   baryonyx::solver_parameters::mode_type::branch;
-            else if (str == "branch-manual")
+            else if (*opt == "branch-manual")
                 ret.parameters.mode =
                   baryonyx::solver_parameters::mode_type::manual |
                   baryonyx::solver_parameters::mode_type::branch;
-            else if (str == "branch-nlopt")
+            else if (*opt == "branch-nlopt")
                 ret.parameters.mode =
                   baryonyx::solver_parameters::mode_type::nlopt |
                   baryonyx::solver_parameters::mode_type::branch;
@@ -814,28 +799,31 @@ parse(int argc, const char* argv[])
             continue;
         }
 
-        if ((opt = get(i, "--verbose", "-v"))) {
-            auto v = ::assign(opt, 0, 6);
-            if (v)
+        if (auto opt = get(i, "--verbose", "-v"); opt) {
+            if (auto v = ::assign(*opt, 0, 6); v) {
                 ret.verbose = *v;
-            else {
+            } else {
                 ret.parse_status = command_line_status::verbose_error;
                 return ret;
             }
         }
 
-        if ((opt = get(i, "--check", "-C"))) {
-            ret.check_filename = opt;
+        if (auto opt = get(i, "--check", "-C"); opt) {
+            ret.check_filename = *opt;
             i = get.i;
             continue;
         }
 
-        if ((opt = get(i, "--param", "-p"))) {
-            std::string name, value;
-            std::tie(name, value) = split_argument(opt);
+        if (auto opt = get(i, "--param", "-p"); opt) {
+            auto [name, value] = split_argument(*opt);
+
+            if (name.empty() || value.empty()) {
+                ret.parse_status = command_line_status::parameter_missing;
+                return ret;
+            }
+
             if (auto v = assign_parameter(ret.parameters, name, value);
                 v != command_line_status::success) {
-
                 ret.parse_status = v;
                 return ret;
             }
