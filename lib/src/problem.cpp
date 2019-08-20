@@ -34,14 +34,15 @@
 namespace {
 
 static inline bool
-iequals(const std::string& lhs, const std::string& rhs) noexcept
+iequals(const std::string_view lhs, const std::string_view rhs) noexcept
 {
-    auto sz = lhs.size();
-
-    if (rhs.size() != sz)
+    if (rhs.size() != lhs.size())
         return false;
 
-    for (std::string::size_type i = 0; i < sz; ++i)
+    std::string_view::size_type i = 0;
+    std::string_view::size_type e = lhs.size();
+
+    for (; i != e; ++i)
         if (std::tolower(lhs[i]) != std::tolower(rhs[i]))
             return false;
 
@@ -330,7 +331,7 @@ struct parser_stack
         return m_column;
     }
 
-    std::unordered_map<std::string, int>& cache()
+    std::unordered_map<std::string_view, int>& cache()
     {
         return m_variable_cache;
     }
@@ -368,7 +369,8 @@ struct parser_stack
 private:
     std::deque<std::tuple<std::string::size_type, std::string::size_type>>
       m_position_stack;
-    std::unordered_map<std::string, int> m_variable_cache;
+
+    std::unordered_map<std::string_view, int> m_variable_cache;
 
     std::istream& m_is;
     std::string::size_type m_line;
@@ -427,9 +429,9 @@ private:
 
 static int
 get_variable(baryonyx::string_buffer& strings,
-             std::unordered_map<std::string, int>& cache,
+             std::unordered_map<std::string_view, int>& cache,
              baryonyx::variables& vars,
-             const std::string& name)
+             const std::string_view name)
 {
     auto it = cache.find(name);
     if (it != cache.end())
@@ -443,14 +445,14 @@ get_variable(baryonyx::string_buffer& strings,
     vars.names.emplace_back(strings.append(name));
     vars.values.emplace_back();
 
-    cache[name] = static_cast<int>(id);
+    cache[vars.names.back()] = static_cast<int>(id);
 
     return static_cast<int>(id);
 }
 
 static inline int
-get_variable_only(std::unordered_map<std::string, int>& cache,
-                  const std::string& name) noexcept
+get_variable_only(std::unordered_map<std::string_view, int>& cache,
+                  const std::string_view name) noexcept
 {
     auto it = cache.find(name);
     if (it != cache.end())
