@@ -26,6 +26,7 @@
 #include <baryonyx/core-utils>
 
 #include <fstream>
+#include <optional>
 #include <string>
 
 #include <cctype>
