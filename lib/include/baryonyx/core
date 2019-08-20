@@ -23,6 +23,8 @@
 #ifndef ORG_VLEPROJECT_BARYONYX_SOLVER_CORE
 #define ORG_VLEPROJECT_BARYONYX_SOLVER_CORE
 
+#include <array>
+#include <forward_list>
 #include <functional>
 #include <limits>
 #include <memory>
@@ -41,6 +43,50 @@ using index = std::int32_t;
 
 /** @c value is used as value for variable. */
 using var_value = std::int_least8_t;
+
+struct string_buffer
+{
+    constexpr static std::size_t string_buffer_node_length = 1024 * 1024;
+
+    using value_type = std::array<char, string_buffer_node_length>;
+    using container_type = std::forward_list<value_type>;
+
+    string_buffer() noexcept = default;
+    ~string_buffer() noexcept = default;
+
+    string_buffer(const string_buffer&) = delete;
+    string_buffer(string_buffer&&) = delete;
+    string_buffer& operator=(const string_buffer&) = delete;
+    string_buffer& operator=(string_buffer&&) = delete;
+
+    std::string_view append(std::string_view str)
+    {
+        if (m_container.empty() ||
+            str.size() + m_position > string_buffer_node_length)
+            do_alloc();
+
+        std::size_t position = m_position;
+        m_position += str.size();
+
+        char* buffer = m_container.front().data() + position;
+
+        std::copy_n(str.data(), str.size(), buffer);
+
+        return std::string_view(buffer, str.size());
+    }
+
+private:
+    void do_alloc()
+    {
+        m_container.emplace_front();
+        m_position = 0;
+    }
+
+    container_type m_container;
+    std::size_t m_position = { 0 };
+};
+
+using string_buffer_ptr = std::shared_ptr<string_buffer>;
 
 struct precondition_failure : std::logic_error
 {
@@ -555,6 +601,8 @@ struct affected_variables
 
 struct raw_problem
 {
+    string_buffer_ptr strings;
+
     objective_function objective;
 
     std::vector<constraint> equal_constraints;
@@ -591,11 +639,9 @@ struct solution
 
 struct result
 {
+    string_buffer_ptr strings;
+
     result() = default;
-    result(const result& other) = default;
-    result(result&& other) = default;
-    result& operator=(const result& other) = default;
-    result& operator=(result&& other) = default;
 
     result(result_status status_)
       : status(status_)
