@@ -45,9 +45,38 @@ make_result(const baryonyx::context_ptr& ctx, const std::string& filename)
     return ret;
 }
 
+/**
+ * @brief Convert a string_view into a integer.
+ *
+ * @note waiting for std::fron_chars or boost::qi dependencies
+ */
+constexpr inline std::optional<int>
+to_int(std::string_view s) noexcept
+{
+    constexpr std::size_t size_limit = 512;
+
+    if (s.size() > size_limit)
+        return std::nullopt;
+
+    char buffer[size_limit + 1] = { '\0' };
+    std::size_t i = 0;
+    std::size_t e = std::min(s.size(), size_limit);
+
+    for (i = 0; i != e; ++i)
+        buffer[i] = s[i];
+
+    int result = 0;
+    if (auto read = std::sscanf(buffer, "%d", &result); read)
+        return result;
+    else
+        return std::nullopt;
+}
+
 std::istream&
 operator>>(std::istream& is, result& ret)
 {
+    ret.strings = std::make_shared<baryonyx::string_buffer>();
+
     ret.status = result_status::success;
     ret.solutions.emplace_back();
     int line{ 0 };
@@ -69,21 +98,22 @@ operator>>(std::istream& is, result& ret)
         if (i != e && buffer[i] == '\\')
             continue;
 
-        auto it = buffer.find('=', 0);
-        if (it == std::string::npos)
-            throw file_format_failure(file_format_error_tag::bad_name, line, 0);
+        auto found = buffer.find('=', 0);
+        if (found == std::string::npos)
+            throw file_format_failure(
+              file_format_error_tag::bad_name, line, 0);
 
-        std::string name = buffer.substr(0, it);
-        int value;
+        std::string_view left(buffer.data(), found);
+        std::string_view right(buffer.data() + found + 1,
+                               buffer.size() - found);
 
-        try {
-            value = std::stoi(buffer.substr(it + 1));
-        } catch (...) {
-            throw file_format_failure(file_format_error_tag::bad_name, line, 0);
+        if (auto value = to_int(right); value.has_value()) {
+            ret.variable_name.emplace_back(ret.strings->append(left));
+            ret.solutions.back().variables.emplace_back(!!(*value));
+        } else {
+            throw file_format_failure(
+              file_format_error_tag::bad_name, line, 0);
         }
-
-        ret.variable_name.emplace_back(name);
-        ret.solutions.back().variables.emplace_back(!!value);
         ++line;
     }
 

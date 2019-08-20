@@ -28,6 +28,7 @@
 #include <functional>
 #include <limits>
 #include <memory>
+#include <numeric>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -73,6 +74,15 @@ struct string_buffer
         std::copy_n(str.data(), str.size(), buffer);
 
         return std::string_view(buffer, str.size());
+    }
+
+    std::size_t size() const noexcept
+    {
+        return std::accumulate(
+          m_container.cbegin(),
+          m_container.cend(),
+          0,
+          [](int cumul, const auto& /*elem*/) { return cumul + 1; });
     }
 
 private:
@@ -545,7 +555,7 @@ struct variable_value
 
 struct variables
 {
-    std::vector<std::string> names;
+    std::vector<std::string_view> names;
     std::vector<variable_value> values;
 };
 
@@ -575,7 +585,7 @@ struct objective_function_element
 
 struct constraint
 {
-    std::string label;
+    std::string_view label;
     std::vector<function_element> elements;
     int value = { 0 };
     int id;
@@ -589,13 +599,13 @@ struct objective_function
 
 struct affected_variables
 {
-    void push_back(std::string name, bool value)
+    void push_back(std::string_view name, bool value)
     {
         names.emplace_back(name);
         values.emplace_back(value);
     }
 
-    std::vector<std::string> names;
+    std::vector<std::string_view> names;
     std::vector<var_value> values;
 };
 
@@ -647,10 +657,10 @@ struct result
       : status(status_)
     {}
 
-    std::string method;
+    std::string_view method;
     affected_variables affected_vars;
 
-    std::vector<std::string> variable_name;
+    std::vector<std::string_view> variable_name;
     std::vector<solution> solutions;
 
     double duration = 0.0;

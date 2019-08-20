@@ -56,15 +56,13 @@ struct solver_functor
 
     result m_best;
 
-    solver_functor(const context_ptr& ctx,
-                   Random& rng,
-                   const std::vector<std::string>& variable_names,
-                   const affected_variables& affected_vars)
+    solver_functor(const context_ptr& ctx, Random& rng, const problem& problem)
       : m_ctx(ctx)
       , m_rng(rng)
     {
-        m_best.affected_vars = affected_vars;
-        m_best.variable_name = variable_names;
+        m_best.strings = problem.strings;
+        m_best.affected_vars = problem.affected_vars;
+        m_best.variable_name = problem.vars.names;
     }
 
     result operator()(const std::vector<merged_constraint>& constraints,
@@ -265,7 +263,6 @@ solve_problem(const context_ptr& ctx, const problem& pb)
         ctx->start(ctx->parameters);
 
     result ret;
-    auto affected_vars = std::move(pb.affected_vars);
 
     auto constraints{ make_merged_constraints(ctx, pb) };
     if (!constraints.empty() && !pb.vars.values.empty()) {
@@ -274,14 +271,13 @@ solve_problem(const context_ptr& ctx, const problem& pb)
         auto variables = numeric_cast<int>(pb.vars.values.size());
         auto cost = make_objective_function<Float>(pb.objective, variables);
         auto cost_constant = pb.objective.value;
-        auto names = std::move(pb.vars.names);
 
         switch (ctx->parameters.observer) {
         case solver_parameters::observer_type::pnm: {
             using obs = pnm_observer<Solver, Float>;
 
             solver_functor<Solver, Float, Mode, Order, Random, obs> slv(
-                ctx, rng, names, affected_vars);
+              ctx, rng, pb);
 
             ret = slv(constraints, variables, cost, cost_constant);
         } break;
@@ -289,7 +285,7 @@ solve_problem(const context_ptr& ctx, const problem& pb)
             using obs = file_observer<Solver, Float>;
 
             solver_functor<Solver, Float, Mode, Order, Random, obs> slv(
-                ctx, rng, names, affected_vars);
+              ctx, rng, pb);
 
             ret = slv(constraints, variables, cost, cost_constant);
         } break;
@@ -297,18 +293,20 @@ solve_problem(const context_ptr& ctx, const problem& pb)
             using obs = none_observer<Solver, Float>;
 
             solver_functor<Solver, Float, Mode, Order, Random, obs> slv(
-                ctx, rng, names, affected_vars);
+              ctx, rng, pb);
 
             ret = slv(constraints, variables, cost, cost_constant);
             break;
         }
         }
 
-        ret.variable_name = std::move(names);
     } else {
         ret.status = result_status::success;
     }
-    ret.affected_vars = std::move(affected_vars);
+
+    ret.strings = pb.strings;
+    ret.variable_name = std::move(pb.vars.names);
+    ret.affected_vars = std::move(pb.affected_vars);
 
     if (ctx->finish)
         ctx->finish(ret);

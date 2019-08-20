@@ -587,6 +587,7 @@ private:
     {
         bx::problem copy;
 
+        copy.strings = pb.strings;
         copy.type = pb.type;
 
         // Build the mapping structure between origin variable index and newly

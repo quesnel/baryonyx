@@ -27,7 +27,8 @@
 #include <baryonyx/core>
 
 int
-get_variable(const std::vector<std::string>& variable_names, std::string name)
+get_variable(const std::vector<std::string_view>& variable_names,
+             std::string_view name)
 {
     for (int i = 0, e = baryonyx::length(variable_names); i != e; ++i)
         if (variable_names[i] == name)
@@ -169,7 +170,7 @@ test_split()
 }
 
 int
-main(int /*argc*/, char* /* argv */[])
+main(int /*argc*/, char* /* argv */ [])
 {
     unit_test::checks("bound_affectation", test_bound_affectation);
     unit_test::checks("cleaning_affected_variables",

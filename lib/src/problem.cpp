@@ -425,8 +425,9 @@ private:
     }
 };
 
-static inline int
-get_variable(std::unordered_map<std::string, int>& cache,
+static int
+get_variable(baryonyx::string_buffer& strings,
+             std::unordered_map<std::string, int>& cache,
              baryonyx::variables& vars,
              const std::string& name)
 {
@@ -439,7 +440,7 @@ get_variable(std::unordered_map<std::string, int>& cache,
         throw baryonyx::file_format_failure(
           baryonyx::file_format_error_tag::too_many_variables);
 
-    vars.names.emplace_back(name);
+    vars.names.emplace_back(strings.append(name));
     vars.values.emplace_back();
 
     cache[name] = static_cast<int>(id);
@@ -758,8 +759,8 @@ read_objective_function(parser_stack& stack, baryonyx::raw_problem& p)
             // objective function.
 
             if (std::get<1>(elem) != 0.0) {
-                auto index =
-                  get_variable(stack.cache(), p.vars, std::get<0>(elem));
+                auto index = get_variable(
+                  *p.strings, stack.cache(), p.vars, std::get<0>(elem));
 
                 auto it = std::find_if(ret.elements.begin(),
                                        ret.elements.end(),
@@ -793,7 +794,7 @@ read_constraint(parser_stack& stack, baryonyx::raw_problem& p)
             stack.substr_front(1);
         } else {
             cst.elements.emplace_back(
-              1, get_variable(stack.cache(), p.vars, tmp));
+              1, get_variable(*p.strings, stack.cache(), p.vars, tmp));
         }
     }
 
@@ -813,8 +814,8 @@ read_constraint(parser_stack& stack, baryonyx::raw_problem& p)
             // does not already exists in the function element.
 
             if (std::get<1>(elem)) {
-                int index =
-                  get_variable(stack.cache(), p.vars, std::get<0>(elem));
+                int index = get_variable(
+                  *p.strings, stack.cache(), p.vars, std::get<0>(elem));
 
                 auto it = std::find_if(cst.elements.begin(),
                                        cst.elements.end(),
@@ -830,7 +831,7 @@ read_constraint(parser_stack& stack, baryonyx::raw_problem& p)
         }
 
         baryonyx::operator_type type = read_operator(stack);
-        cst.label = label;
+        cst.label = p.strings->append(label);
         cst.value = read_integer(stack);
 
         return std::make_tuple(cst, type);
@@ -859,8 +860,8 @@ read_constraints(parser_stack& stack, baryonyx::raw_problem& p)
 
         if (!std::get<0>(cst).elements.empty()) {
             if (std::get<0>(cst).label.empty())
-                std::get<0>(cst).label =
-                  fmt::format("ct{}", stack.current_constraint_id());
+                std::get<0>(cst).label = p.strings->append(
+                  fmt::format("ct{}", stack.current_constraint_id()));
 
             switch (std::get<1>(cst)) {
             case baryonyx::operator_type::equal:
@@ -935,7 +936,7 @@ read_bound(parser_stack& stack, baryonyx::raw_problem& p)
         auto value_first = read_integer(stack);
         auto operator_type_first = read_operator(stack);
         auto variable = read_name(stack);
-        auto id = get_variable(stack.cache(), p.vars, variable);
+        auto id = get_variable(*p.strings, stack.cache(), p.vars, variable);
 
         apply_bound(value_first, operator_type_first, p.vars.values[id]);
 
@@ -954,7 +955,7 @@ read_bound(parser_stack& stack, baryonyx::raw_problem& p)
         auto variable = read_name(stack);
         auto operator_type = read_operator(stack);
         auto value = read_integer(stack);
-        auto id = get_variable(stack.cache(), p.vars, variable);
+        auto id = get_variable(*p.strings, stack.cache(), p.vars, variable);
         apply_bound(p.vars.values[id], operator_type, value);
     }
 }
@@ -1173,7 +1174,7 @@ clear(raw_problem& pb)
     std::vector<constraint>().swap(pb.greater_constraints);
     std::vector<constraint>().swap(pb.less_constraints);
 
-    std::vector<std::string>().swap(pb.vars.names);
+    std::vector<std::string_view>().swap(pb.vars.names);
     std::vector<variable_value>().swap(pb.vars.values);
 
     pb.type = objective_function_type::maximize;
@@ -1183,6 +1184,8 @@ std::istream&
 operator>>(std::istream& is, raw_problem& p)
 {
     clear(p);
+
+    p.strings = std::make_shared<baryonyx::string_buffer>();
 
     parser_stack stack(is);
     std::string toek;

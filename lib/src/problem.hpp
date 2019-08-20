@@ -41,13 +41,10 @@ namespace baryonyx {
 struct problem
 {
     problem() = default;
-    problem(const problem& other) = default;
-    problem(problem&& other) = default;
-    problem& operator=(const problem& other) = default;
-    problem& operator=(problem&& other) = default;
 
     problem(const raw_problem& pb)
-      : objective(pb.objective)
+      : strings(pb.strings)
+      , objective(pb.objective)
       , equal_constraints(pb.equal_constraints)
       , greater_constraints(pb.greater_constraints)
       , less_constraints(pb.less_constraints)
@@ -58,7 +55,8 @@ struct problem
     }
 
     problem(raw_problem&& pb)
-      : objective(pb.objective)
+      : strings(pb.strings)
+      , objective(pb.objective)
       , equal_constraints(pb.equal_constraints)
       , greater_constraints(pb.greater_constraints)
       , less_constraints(pb.less_constraints)
@@ -121,6 +119,8 @@ struct problem
         return problem_solver_type::inequalities_Z;
     }
 
+    string_buffer_ptr strings;
+
     objective_function objective;
 
     std::vector<constraint> equal_constraints;
@@ -167,10 +167,12 @@ void
 clear(raw_problem& pb);
 
 bool
-is_valid_solution(const problem& pb, const std::vector<var_value>& variable_value);
+is_valid_solution(const problem& pb,
+                  const std::vector<var_value>& variable_value);
 
 double
-compute_solution(const problem& pb, const std::vector<var_value>& variable_value);
+compute_solution(const problem& pb,
+                 const std::vector<var_value>& variable_value);
 
 problem
 unpreprocess(const context_ptr& ctx, const raw_problem& pb_);

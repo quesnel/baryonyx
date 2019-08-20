@@ -32,12 +32,8 @@ namespace {
 static std::size_t
 memory_consumed(const baryonyx::variables& vv) noexcept
 {
-    auto ret = sizeof(baryonyx::variables);
-
-    for (const auto& str : vv.names)
-        ret += str.capacity();
-
-    return ret + vv.values.capacity() * sizeof(baryonyx::variable_value);
+    return sizeof(baryonyx::variables) +
+           vv.values.capacity() * sizeof(baryonyx::variable_value);
 }
 
 static std::size_t
@@ -60,16 +56,7 @@ memory_consumed(const baryonyx::objective_function& obj) noexcept
 static std::size_t
 memory_consumed(const baryonyx::affected_variables& av) noexcept
 {
-    auto ret = sizeof(baryonyx::affected_variables);
-
-    ret = std::accumulate(av.names.cbegin(),
-                          av.names.cend(),
-                          ret,
-                          [](std::size_t size, const std::string& str) {
-                              return str.capacity() + size;
-                          });
-
-    return ret + av.values.capacity();
+    return sizeof(baryonyx::affected_variables) + av.values.capacity();
 }
 
 static std::size_t
@@ -107,6 +94,7 @@ memory_consumed(const raw_problem& pb) noexcept
 {
     auto ret = sizeof(problem);
 
+    ret += pb.strings->size() * string_buffer::string_buffer_node_length;
     ret += ::memory_consumed(pb.objective);
     ret += ::memory_consumed(pb.equal_constraints);
     ret += ::memory_consumed(pb.greater_constraints);
@@ -121,6 +109,7 @@ memory_consumed(const problem& pb) noexcept
 {
     auto ret = sizeof(problem);
 
+    ret += pb.strings->size() * string_buffer::string_buffer_node_length;
     ret += ::memory_consumed(pb.objective);
     ret += ::memory_consumed(pb.equal_constraints);
     ret += ::memory_consumed(pb.greater_constraints);

@@ -107,7 +107,7 @@ struct optimize_functor
     Random m_rng;
     int m_thread_id;
 
-    const std::vector<std::string>& variable_names;
+    const std::vector<std::string_view>& variable_names;
     const affected_variables& affected_vars;
 
     result m_best;
@@ -115,7 +115,7 @@ struct optimize_functor
     optimize_functor(const context_ptr& ctx,
                      unsigned thread_id,
                      typename Random::result_type seed,
-                     const std::vector<std::string>& variable_names_,
+                     const std::vector<std::string_view>& variable_names_,
                      const affected_variables& affected_vars_)
       : m_ctx(ctx)
       , m_rng(seed)

@@ -137,13 +137,13 @@ compute_function(const functionT& fct, const variablesT& vars) noexcept
     for (auto& f : fct)
         v += vars[f.variable_index] * f.factor;
 
-        /* Check if this is more efficient to remove the condition branch and replace
-           with the 0-1 mult f.factor.
+    /* Check if this is more efficient to remove the condition branch and
+       replace with the 0-1 mult f.factor.
 
-           if (vars[f.variable_index])
-            v += f.factor;
+       if (vars[f.variable_index])
+        v += f.factor;
 
-         */
+     */
 
     return v;
 }
@@ -200,7 +200,7 @@ make_variable_value(const Problem& pb, const result& r)
     if (!r || r.solutions.empty())
         return {};
 
-    std::unordered_map<std::string, bool> cache;
+    std::unordered_map<std::string_view, bool> cache;
 
     bx_ensures(r.affected_vars.names.size() == r.affected_vars.values.size());
 
