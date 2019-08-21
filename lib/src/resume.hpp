@@ -72,35 +72,46 @@ struct resume
         problem_type = get_problem_type(pb);
     }
 
-    std::string get_problem_type(const problem& pb) const
+    std::string_view get_problem_type(const problem& pb) const
     {
-        switch (pb.problem_type) {
+        static std::string_view ret[] = {
+            "undefined",     "equalities-01",   "equalities-101",
+            "equalities-Z",  "inequalities-01", "inequalities-101",
+            "inequalities-Z"
+        };
+
+        switch (pb.problem_type)
+        {
         case baryonyx::problem_solver_type::equalities_01:
-            return "equalities-01";
+            return ret[1];
         case baryonyx::problem_solver_type::equalities_101:
-            return "equalities-101";
+            return ret[2];
         case baryonyx::problem_solver_type::equalities_Z:
-            return "equalities-Z";
+            return ret[3];
         case baryonyx::problem_solver_type::inequalities_01:
-            return "inequalities-01";
+            return ret[4];
         case baryonyx::problem_solver_type::inequalities_101:
-            return "inequalities-101";
+            return ret[5];
         case baryonyx::problem_solver_type::inequalities_Z:
-            return "inequalities-Z";
+            return ret[6];
         default:
-            return {};
+            return ret[0];
         }
     }
 
-    std::string get_problem_type(const raw_problem&) const
+    std::string_view get_problem_type(const raw_problem&) const
     {
-        return {};
+        static std::string_view ret[] = {
+            "undefined",
+        };
+
+        return ret[0];
     }
 
     std::array<int, 3> variables;
     std::array<int, 3> constraints;
     std::tuple<double, double> minmax;
-    std::string problem_type;
+    std::string_view problem_type;
     bool use_lp_format;
 };
 
