@@ -29,6 +29,7 @@
 #include <iterator>
 #include <numeric>
 #include <ostream>
+#include <string_view>
 
 #include <baryonyx/core-utils>
 #include <baryonyx/core>
@@ -39,8 +40,7 @@ namespace baryonyx {
 
 struct resume
 {
-    template<typename Problem>
-    resume(const Problem& pb, bool use_lp_format_ = true)
+    resume(const raw_problem& pb, bool use_lp_format_ = true)
       : variables({})
       , constraints({})
       , minmax(compute_min_max_objective_function(pb.objective))
@@ -68,95 +68,56 @@ struct resume
         constraints[0] = static_cast<int>(pb.equal_constraints.size());
         constraints[1] = static_cast<int>(pb.greater_constraints.size());
         constraints[2] = static_cast<int>(pb.less_constraints.size());
-
-        problem_type = get_problem_type(pb);
-    }
-
-    std::string_view get_problem_type(const problem& pb) const
-    {
-        static std::string_view ret[] = {
-            "undefined",     "equalities-01",   "equalities-101",
-            "equalities-Z",  "inequalities-01", "inequalities-101",
-            "inequalities-Z"
-        };
-
-        switch (pb.problem_type)
-        {
-        case baryonyx::problem_solver_type::equalities_01:
-            return ret[1];
-        case baryonyx::problem_solver_type::equalities_101:
-            return ret[2];
-        case baryonyx::problem_solver_type::equalities_Z:
-            return ret[3];
-        case baryonyx::problem_solver_type::inequalities_01:
-            return ret[4];
-        case baryonyx::problem_solver_type::inequalities_101:
-            return ret[5];
-        case baryonyx::problem_solver_type::inequalities_Z:
-            return ret[6];
-        default:
-            return ret[0];
-        }
-    }
-
-    std::string_view get_problem_type(const raw_problem&) const
-    {
-        static std::string_view ret[] = {
-            "undefined",
-        };
-
-        return ret[0];
     }
 
     std::array<int, 3> variables;
     std::array<int, 3> constraints;
     std::tuple<double, double> minmax;
-    std::string_view problem_type;
     bool use_lp_format;
 };
 
 inline std::ostream&
-operator<<(std::ostream& os, const resume& pb)
+operator<<(std::ostream& os, const resume& res)
 {
     auto store = os.flags();
 
     os << std::setprecision(std::numeric_limits<double>::digits10 + 1);
 
-    if (pb.use_lp_format) {
+    if (res.use_lp_format) {
         os << "\\ Problem statistics:\n"
-           << R"(\  type: )" << pb.problem_type << '\n'
+           << R"(\  type: ) undefined\n'
            << R"(\  nb variables: )"
-           << std::accumulate(pb.variables.begin(), pb.variables.end(), 0)
+           << std::accumulate(res.variables.begin(), res.variables.end(), 0)
            << '\n'
-           << R"(\   ..... real: )" << pb.variables[0] << '\n'
-           << R"(\   ... binary: )" << pb.variables[1] << '\n'
-           << R"(\   .. general: )" << pb.variables[2] << '\n'
+           << R"(\   ..... real: )" << res.variables[0] << '\n'
+           << R"(\   ... binary: )" << res.variables[1] << '\n'
+           << R"(\   .. general: )" << res.variables[2] << '\n'
            << R"(\  nb constraints: )"
-           << std::accumulate(pb.constraints.begin(), pb.constraints.end(), 0)
+           << std::accumulate(res.constraints.begin(), res.constraints.end(), 0)
            << '\n'
-           << R"(\   ........ =  : )" << pb.constraints[0] << '\n'
-           << R"(\   ........ >= : )" << pb.constraints[1] << '\n'
-           << R"(\   ........ <= : )" << pb.constraints[2] << '\n'
-           << R"(\  minimal value.: )" << std::get<0>(pb.minmax) << '\n'
-           << R"(\  maximal value.: )" << std::get<1>(pb.minmax) << '\n';
+           << R"(\   ........ =  : )" << res.constraints[0] << '\n'
+           << R"(\   ........ >= : )" << res.constraints[1] << '\n'
+           << R"(\   ........ <= : )" << res.constraints[2] << '\n'
+           << R"(\  minimal value.: )" << std::get<0>(res.minmax) << '\n'
+           << R"(\  maximal value.: )" << std::get<1>(res.minmax) << '\n';
     } else {
         os << "Problem statistics:\n"
-           << "  * type: " << pb.problem_type << '\n'
+           << "  * type: undefined\n"
            << "  * variables: "
-           << std::accumulate(pb.variables.begin(), pb.variables.end(), 0)
+           << std::accumulate(res.variables.begin(), res.variables.end(), 0)
            << '\n'
-           << "    - real: " << pb.variables[0] << '\n'
-           << "    - binary: " << pb.variables[1] << '\n'
-           << "    - general: " << pb.variables[2] << '\n'
+           << "    - real: " << res.variables[0] << '\n'
+           << "    - binary: " << res.variables[1] << '\n'
+           << "    - general: " << res.variables[2] << '\n'
            << "  * constraints: "
-           << std::accumulate(pb.constraints.begin(), pb.constraints.end(), 0)
+           << std::accumulate(res.constraints.begin(), res.constraints.end(), 0)
            << '\n'
-           << "    - constraint =  : " << pb.constraints[0] << '\n'
-           << "    - constraint >= : " << pb.constraints[1] << '\n'
-           << "    - constraint <= : " << pb.constraints[2] << '\n'
+           << "    - constraint =  : " << res.constraints[0] << '\n'
+           << "    - constraint >= : " << res.constraints[1] << '\n'
+           << "    - constraint <= : " << res.constraints[2] << '\n'
            << "  * objective:\n"
-           << "    - minimal value.: " << std::get<0>(pb.minmax) << '\n'
-           << "    - maximal value.: " << std::get<1>(pb.minmax) << '\n';
+           << "    - minimal value.: " << std::get<0>(res.minmax) << '\n'
+           << "    - maximal value.: " << std::get<1>(res.minmax) << '\n';
     }
 
     os.flags(store);
