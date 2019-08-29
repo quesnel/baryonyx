@@ -1182,41 +1182,4 @@ clear(raw_problem& pb)
     pb.type = objective_function_type::maximize;
 }
 
-std::istream&
-operator>>(std::istream& is, raw_problem& p)
-{
-    clear(p);
-
-    p.strings = std::make_shared<baryonyx::string_buffer>();
-
-    parser_stack stack(is);
-    std::string toek;
-
-    p.type = ::read_objective_function_type(stack);
-    p.objective = ::read_objective_function(stack, p);
-
-    if (stack.is_subject_to())
-        ::read_constraints(stack, p);
-
-    if (stack.is_bounds())
-        ::read_bounds(stack, p);
-
-    if (stack.is_binary())
-        ::read_binary(stack, p);
-
-    if (stack.is_general())
-        ::read_general(stack, p);
-
-    if (stack.is_end()) {
-        if (stack.empty()) {
-            return is;
-        }
-    }
-
-    throw file_format_failure("end",
-                              file_format_error_tag::incomplete,
-                              static_cast<int>(stack.line()),
-                              static_cast<int>(stack.column()));
-}
-
 } // baryonyx namespace

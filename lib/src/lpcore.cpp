@@ -79,14 +79,11 @@ make_problem(const baryonyx::context_ptr& ctx, const std::string& filename)
 {
     info(ctx, "problem reads from file `{}'\n", filename);
 
-    raw_problem pb;
+    std::ifstream ifs(filename);
+    if (!ifs.is_open())
+        return raw_problem(baryonyx::file_format_error_tag::file_not_found);
 
-    std::ifstream ifs;
-    ifs.open(filename);
-
-    ifs >> pb;
-
-    return pb;
+    return make_problem(ctx, ifs);
 }
 
 result

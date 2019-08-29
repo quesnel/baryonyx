@@ -180,8 +180,8 @@ unpreprocess(const context_ptr& ctx, const raw_problem& pb_);
 problem
 preprocess(const context_ptr& ctx, const raw_problem& pb_);
 
-std::istream&
-operator>>(std::istream& is, raw_problem& pb);
+raw_problem
+make_problem(const context_ptr& ctx, std::istream& is) noexcept;
 
 std::ostream&
 operator<<(std::ostream& os, const problem& p);

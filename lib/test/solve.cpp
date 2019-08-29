@@ -256,9 +256,7 @@ test_real_cost()
 
     std::istringstream iss(str_pb);
 
-    baryonyx::raw_problem pb;
-    iss >> pb;
-
+    auto pb = baryonyx::make_problem(ctx, iss);
     auto result = baryonyx::solve(ctx, pb);
 
     Ensures(result);
@@ -409,8 +407,7 @@ test_negative_coeff5()
 
     std::istringstream iss(str_pb);
 
-    baryonyx::raw_problem pb;
-    iss >> pb;
+    auto pb = baryonyx::make_problem(ctx, iss);
     auto result = baryonyx::solve(ctx, pb);
 
     Ensures(result.status == baryonyx::result_status::success);

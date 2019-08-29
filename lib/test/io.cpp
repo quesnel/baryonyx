@@ -47,11 +47,12 @@ test_examples_1()
                             "x1 <= 40\n"
                             "end\n";
 
+    auto ctx = baryonyx::make_context();
     std::istringstream iss(example_1);
 
-    baryonyx::raw_problem pb;
-    iss >> pb;
+    auto pb = baryonyx::make_problem(ctx, iss);
 
+    Ensures(pb);
     Ensures(pb.type == baryonyx::objective_function_type::maximize);
     Ensures(pb.objective.elements.size() == 3);
     Ensures(pb.objective.elements[0].factor == 1);
@@ -125,14 +126,15 @@ test_examples_2()
 
         auto pb = baryonyx::make_problem(ctx, filepath);
 
+        Ensures(pb);
+        Ensures(pb.status == baryonyx::file_format_error_tag::success);
         Ensures(pb.vars.names.size() == 16);
         Ensures(pb.vars.values.size() == 16);
 
         std::stringstream ss;
         ss << pb;
 
-        baryonyx::raw_problem pb2;
-        ss >> pb2;
+        auto pb2 = baryonyx::make_problem(ctx, ss);
 
         Ensures(pb == pb2);
     }
@@ -232,7 +234,7 @@ test_verger_5_5()
 }
 
 int
-main(int /* argc */, char* /* argv */[])
+main(int /* argc */, char* /* argv */ [])
 {
     unit_test::checks("examples_1", test_examples_1);
     unit_test::checks("examples_2", test_examples_2);

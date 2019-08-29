@@ -148,7 +148,10 @@ private:
 
 enum class file_format_error_tag
 {
-    end_of_file = 1,
+    success,
+    file_not_found,
+    malformed,
+    end_of_file,
     unknown,
     already_defined,
     incomplete,
@@ -156,6 +159,7 @@ enum class file_format_error_tag
     bad_operator,
     bad_integer,
     bad_objective_function_type,
+    bad_objective,
     bad_bound,
     bad_function_element,
     bad_constraint,
@@ -549,7 +553,7 @@ struct variable_value
     {}
 
     int min{ 0 };
-    int max{ std::numeric_limits<int>::max() };
+    int max{ std::numeric_limits<int>::infinity() };
     variable_type type{ variable_type::real };
 };
 
@@ -585,6 +589,18 @@ struct objective_function_element
 
 struct constraint
 {
+    constraint() = default;
+
+    constraint(std::string_view label_,
+               std::vector<function_element>&& elements_,
+               int value_,
+               int id_)
+      : label(label_)
+      , elements(elements_)
+      , value(value_)
+      , id(id_)
+    {}
+
     std::string_view label;
     std::vector<function_element> elements;
     int value = { 0 };
@@ -611,6 +627,11 @@ struct affected_variables
 
 struct raw_problem
 {
+    raw_problem() = default;
+    raw_problem(file_format_error_tag status_)
+      : status(status_)
+    {}
+
     string_buffer_ptr strings;
 
     objective_function objective;
@@ -619,9 +640,15 @@ struct raw_problem
     std::vector<constraint> greater_constraints;
     std::vector<constraint> less_constraints;
 
+    constexpr operator bool() const noexcept
+    {
+        return status == file_format_error_tag::success;
+    }
+
     variables vars;
 
     objective_function_type type = { objective_function_type::maximize };
+    file_format_error_tag status = { file_format_error_tag::success };
 };
 
 enum class result_status
