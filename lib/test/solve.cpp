@@ -213,7 +213,7 @@ test_preprocessor_2()
                    result.solutions.back().value);
 
         r = result.solutions.back().value;
-        Ensures(result.solutions.back().value >= 1.1569080000e+06);
+        Ensures(result.solutions.back().value < 1156908);
 
         ss << result;
         if (!ss.good())
