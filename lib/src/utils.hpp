@@ -145,33 +145,6 @@ length(const T (&array)[N]) noexcept
     return static_cast<int>(N);
 }
 
-/**
- * @details Reference to @c lo if @c v is less than @c lo, reference to @c
- * hi if @c hi is less than @c v, otherwise reference to @c v.
- *
- * @code
- * assert(baryonyx::clamp(0.0, 0.0, 1.0) == 0.0);
- * assert(baryonyx::clamp(1.0, 0.0, 1.0) == 1.0);
- * assert(baryonyx::clamp(-0.5, 0.0, 1.0) == 0.0);
- * assert(baryonyx::clamp(1.5, 0.0, 1.0) == 1.0);
- * assert(baryonyx::clamp(168, -128, +127) == 127);
- * assert(baryonyx::clamp(168, 0, +255) == 168);
- * assert(baryonyx::clamp(128, -128, +127) == 127);
- * assert(baryonyx::clamp(128, 0, +255) == 128);
- * @endcode
- *
- * @param v The value to clamp.
- * @param lo The low value to compare.
- * @param hi The high value to compare.
- * @return value, low or high.
- */
-template<class T>
-constexpr const T&
-clamp(const T& v, const T& lo, const T& hi)
-{
-    return v < lo ? lo : v > hi ? hi : v;
-}
-
 template<typename Xtype, typename Ytype>
 constexpr Ytype
 linearize(Xtype p1x, Ytype p1y, Xtype p2x, Ytype p2y, Xtype value) noexcept

@@ -37,17 +37,8 @@
 #include <numeric>
 
 static void
-check_clamp()
+check_print_api()
 {
-    Ensures(baryonyx::clamp(0.0, 0.0, 1.0) == 0.0);
-    Ensures(baryonyx::clamp(1.0, 0.0, 1.0) == 1.0);
-    Ensures(baryonyx::clamp(-0.5, 0.0, 1.0) == 0.0);
-    Ensures(baryonyx::clamp(1.5, 0.0, 1.0) == 1.0);
-    Ensures(baryonyx::clamp(168, -128, +127) == 127);
-    Ensures(baryonyx::clamp(168, 0, +255) == 168);
-    Ensures(baryonyx::clamp(128, -128, +127) == 127);
-    Ensures(baryonyx::clamp(128, 0, +255) == 128);
-
     fmt::print("\n\nOnly 16 colors:\n");
     fmt::print(fg(fmt::terminal_color::black), "A test of the color black\n");
     fmt::print(fg(fmt::terminal_color::red), "A test of the color red\n");
@@ -671,7 +662,7 @@ check_bit_array()
 int
 main(int /* argc */, char* /* argv */ [])
 {
-    unit_test::checks("check_clamp", check_clamp);
+    unit_test::checks("check_print_api", check_print_api);
     unit_test::checks("check_numeric_cast", check_numeric_cast);
     unit_test::checks("check_fixed_array", check_fixed_array);
     unit_test::checks("check_fixed_2darray", check_fixed_2darray);
