@@ -31,6 +31,7 @@
 
 #include "debug.hpp"
 #include "private.hpp"
+#include "utils.hpp"
 
 #include <climits>
 #include <cstring>
@@ -459,8 +460,8 @@ struct problem_parser
             it != m_cache_variable.end())
             return it->second;
 
-        if (m_cache_variable.size() > INT_MAX)
-            throw;
+        if (m_cache_variable.size() > baryonyx::to_unsigned(INT_MAX))
+            return -1;
 
         auto size = static_cast<int>(m_cache_variable.size());
         auto string = m_problem.strings->append(value);
@@ -483,17 +484,21 @@ struct problem_parser
         return -1;
     }
 
-    void append_to_objective(const function_element_token& elem)
-    {
-        if (elem.name.empty())
+    [[nodiscard]] bool append_to_objective(
+      const function_element_token& elem) {
+        if (elem.name.empty()) {
             m_problem.objective.value += elem.factor;
-        else
+            return true;
+        } else {
             m_problem.objective.elements.emplace_back(
               elem.factor, get_or_assign_variable(elem.name));
+
+            return m_problem.objective.elements.back().variable_index >= 0;
+        }
     }
 
-    [[nodiscard]] bool set_boolean_variable(
-      const std::string_view value) noexcept
+      [[nodiscard]] bool set_boolean_variable(
+        const std::string_view value) noexcept
     {
         auto id = get_variable(value);
         if (id < 0)
@@ -918,14 +923,19 @@ raw_problem_status parse([[maybe_unused]] const baryonyx::context_ptr& ctx,
         if (auto elem =
               read_function_element(buf.first(), buf.second(), buf.third());
             elem) {
-            p.append_to_objective(*elem);
+            if (!p.append_to_objective(*elem))
+                return baryonyx::file_format_error_tag::too_many_variables;
+
             buf.pop_front(elem->read);
 
             while (!is_keyword(buf.first())) {
                 if (auto elem = read_function_element(
                       buf.first(), buf.second(), buf.third());
                     elem) {
-                    p.append_to_objective(*elem);
+                    if (!p.append_to_objective(*elem))
+                        return baryonyx::file_format_error_tag::
+                          too_many_variables;
+
                     buf.pop_front(elem->read);
                 } else {
                     return baryonyx::file_format_error_tag::bad_objective;
@@ -958,6 +968,10 @@ raw_problem_status parse([[maybe_unused]] const baryonyx::context_ptr& ctx,
 
             elements.emplace_back(static_cast<int>(elem->factor),
                                   p.get_or_assign_variable(elem->name));
+
+            if (elements.back().variable_index == -1)
+                return baryonyx::file_format_error_tag::too_many_variables;
+
             buf.pop_front(elem->read);
 
             while (!buf.first().empty() &&
@@ -969,6 +983,10 @@ raw_problem_status parse([[maybe_unused]] const baryonyx::context_ptr& ctx,
 
                 elements.emplace_back(static_cast<int>(elem->factor),
                                       p.get_or_assign_variable(elem->name));
+
+                if (elements.back().variable_index == -1)
+                    return baryonyx::file_format_error_tag::too_many_variables;
+
                 buf.pop_front(elem->read);
             }
 
@@ -998,6 +1016,12 @@ raw_problem_status parse([[maybe_unused]] const baryonyx::context_ptr& ctx,
                 break;
             }
         }
+
+        if (p.m_problem.equal_constraints.size() +
+              p.m_problem.greater_constraints.size() +
+              p.m_problem.less_constraints.size() >
+            baryonyx::to_unsigned(INT_MAX))
+            return baryonyx::file_format_error_tag::too_many_constraints;
     }
 
     if (auto read = read_bounds(buf.first(), buf.second()); read) {
