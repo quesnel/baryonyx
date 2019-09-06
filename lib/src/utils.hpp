@@ -36,6 +36,17 @@
 
 namespace baryonyx {
 
+/** Casts nonnegative integer to unsigned.
+ */
+template<typename Integer>
+constexpr typename std::make_unsigned<Integer>::type
+to_unsigned(Integer value)
+{
+    bx_expects(value >= 0);
+
+    return static_cast<typename std::make_unsigned<Integer>::type>(value);
+}
+
 /**
  * @brief Get a sub-string without any @c std::isspace characters at left.
  *
