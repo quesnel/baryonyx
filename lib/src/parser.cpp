@@ -388,9 +388,11 @@ private:
 
             token[current_token_buffer].buffer[0] = '\0';
             while (is >> token[current_token_buffer].buffer) {
-                if (token[current_token_buffer].buffer[0] == '\\')
+                if (token[current_token_buffer].buffer[0] == '\\') {
                     is.ignore(std::numeric_limits<std::streamsize>::max(),
                               '\n');
+                    continue;
+                }
 
                 if (token[current_token_buffer].buffer[0] == '\0')
                     continue;
