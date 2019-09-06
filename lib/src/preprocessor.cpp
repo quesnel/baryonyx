@@ -659,12 +659,13 @@ private:
         ret.value = pb.objective.value;
 
         for (int i = 0, e = bx::length(pb.objective.elements); i != e; ++i) {
-            if (mapping[i].first == -1) {
-                if (mapping[i].second)
+            if (mapping[pb.objective.elements[i].variable_index].first == -1) {
+                if (mapping[pb.objective.elements[i].variable_index].second)
                     ret.value += pb.objective.elements[i].factor;
             } else {
-                ret.elements.emplace_back(pb.objective.elements[i].factor,
-                                          mapping[i].first);
+                ret.elements.emplace_back(
+                  pb.objective.elements[i].factor,
+                  mapping[pb.objective.elements[i].variable_index].first);
             }
         }
 
