@@ -109,19 +109,19 @@ to_int(std::string_view s) noexcept
         return std::nullopt;
 }
 
-constexpr const char*
+constexpr std::string_view file_format_error_string[] = {
+    "success",        "file_not_found",     "bad_end_of_file",
+    "bad_general",    "bad_binary",         "bad_objective_function_type",
+    "bad_objective",  "bad_bound",          "bad_end",
+    "bad_constraint", "too_many_variables", "too_many_constraints",
+    "bad_name"
+};
+
+constexpr std::string_view
 file_format_error_format(baryonyx::file_format_error_tag failure) noexcept
 {
-    constexpr const char* const tag[] = {
-        "end of file",     "unknown",
-        "already defined", "incomplete",
-        "bad name",        "bad operator",
-        "bad integer",     "bad objective function type",
-        "bad bound",       "bad function element",
-        "bad constraint"
-    };
-
-    return tag[static_cast<int>(failure)];
+    return file_format_error_string[static_cast<
+      std::underlying_type<baryonyx::file_format_error_tag>::type>(failure)];
 }
 
 constexpr const char*

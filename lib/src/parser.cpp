@@ -946,7 +946,9 @@ parse(const baryonyx::context_ptr& ctx,
       problem_parser& p) noexcept
 {
     if (auto obj_type = read_objective_type(buf.first()); !obj_type)
-        return { ctx, baryonyx::file_format_error_tag::bad_objective };
+        return {
+            ctx, baryonyx::file_format_error_tag::bad_objective_function_type
+        };
     else
         p.m_problem.type = *obj_type;
 
@@ -969,11 +971,12 @@ parse(const baryonyx::context_ptr& ctx,
                     p.append_to_objective(*elem);
                     buf.pop_front(elem->read);
                 } else {
-                    return { ctx, baryonyx::file_format_error_tag::malformed };
+                    return { ctx,
+                             baryonyx::file_format_error_tag::bad_objective };
                 }
             }
         } else {
-            return { ctx, baryonyx::file_format_error_tag::malformed };
+            return { ctx, baryonyx::file_format_error_tag::bad_objective };
         }
     }
 
@@ -995,7 +998,8 @@ parse(const baryonyx::context_ptr& ctx,
             auto elem =
               read_function_element(buf.first(), buf.second(), buf.third());
             if (!elem)
-                return { ctx, baryonyx::file_format_error_tag::malformed };
+                return { ctx,
+                         baryonyx::file_format_error_tag::bad_constraint };
 
             elements.emplace_back(static_cast<int>(elem->factor),
                                   p.get_or_assign_variable(elem->name));
@@ -1006,7 +1010,8 @@ parse(const baryonyx::context_ptr& ctx,
                 elem = read_function_element(
                   buf.first(), buf.second(), buf.third());
                 if (!elem)
-                    return { ctx, baryonyx::file_format_error_tag::malformed };
+                    return { ctx,
+                             baryonyx::file_format_error_tag::bad_constraint };
 
                 elements.emplace_back(static_cast<int>(elem->factor),
                                       p.get_or_assign_variable(elem->name));
@@ -1015,12 +1020,14 @@ parse(const baryonyx::context_ptr& ctx,
 
             auto operator_opt = read_operator(buf.first(), buf.second());
             if (!operator_opt)
-                return { ctx, baryonyx::file_format_error_tag::malformed };
+                return { ctx,
+                         baryonyx::file_format_error_tag::bad_constraint };
             buf.pop_front(operator_opt->read);
 
             auto value_opt = read_real(buf.first(), buf.second());
             if (!value_opt)
-                return { ctx, baryonyx::file_format_error_tag::malformed };
+                return { ctx,
+                         baryonyx::file_format_error_tag::bad_constraint };
             value = static_cast<int>(value_opt->value);
             buf.pop_front(value_opt->read);
 
@@ -1047,10 +1054,10 @@ parse(const baryonyx::context_ptr& ctx,
         while (!is_keyword(buf.first())) {
             auto bound_opt = read_bound(buf.array());
             if (!bound_opt)
-                return { ctx, baryonyx::file_format_error_tag::malformed };
+                return { ctx, baryonyx::file_format_error_tag::bad_bound };
 
             if (!p.set_bound_variable(*bound_opt))
-                return { ctx, baryonyx::file_format_error_tag::malformed };
+                return { ctx, baryonyx::file_format_error_tag::bad_bound };
 
             buf.pop_front(bound_opt->read);
         }
@@ -1061,7 +1068,7 @@ parse(const baryonyx::context_ptr& ctx,
 
         while (!is_keyword(buf.first()))
             if (!p.set_boolean_variable(buf.first()))
-                return { ctx, baryonyx::file_format_error_tag::malformed };
+                return { ctx, baryonyx::file_format_error_tag::bad_binary };
             else
                 buf.pop_front();
     }
@@ -1071,7 +1078,7 @@ parse(const baryonyx::context_ptr& ctx,
 
         while (!is_keyword(buf.first()))
             if (!p.set_integer_variable(buf.first()))
-                return { ctx, baryonyx::file_format_error_tag::malformed };
+                return { ctx, baryonyx::file_format_error_tag::bad_general };
             else
                 buf.pop_front();
     }
@@ -1082,10 +1089,10 @@ parse(const baryonyx::context_ptr& ctx,
         return { ctx,
                  buf.first().empty()
                    ? baryonyx::file_format_error_tag::success
-                   : baryonyx::file_format_error_tag::malformed };
+                   : baryonyx::file_format_error_tag::bad_end_of_file };
     }
 
-    return { ctx, baryonyx::file_format_error_tag::malformed };
+    return { ctx, baryonyx::file_format_error_tag::bad_end };
 }
 
 namespace baryonyx {

@@ -1044,98 +1044,111 @@ main(int argc, const char* argv[])
         }
     } else {
         if (params.filenames.size() == 1) {
-            try {
-                auto pb =
-                  baryonyx::make_problem(ctx, params.filenames.front());
+            auto pb = baryonyx::make_problem(ctx, params.filenames.front());
+            if (!pb) {
+                fmt::print(stderr,
+                           "Fail to read file: {} ({})\n",
+                           file_format_error_format(pb.status),
+                           static_cast<int>(pb.status));
+            } else {
+                try {
+                    auto filename = fmt::format(
+                      "{}-{}.sol", params.filenames.front(), get_pid());
+                    fmt::print("  - output file: {}\n", filename);
 
-                auto filename = fmt::format(
-                  "{}-{}.sol", params.filenames.front(), get_pid());
-                fmt::print("  - output file: {}\n", filename);
+                    if (params.check) {
+                        auto result =
+                          baryonyx::make_result(ctx, params.check_filename);
 
-                if (params.check) {
-                    auto result =
-                      baryonyx::make_result(ctx, params.check_filename);
-
-                    if (result) {
-                        auto valid = baryonyx::is_valid_solution(pb, result);
-                        fmt::print("Check {} with {}: {}",
-                                   params.filenames.front(),
-                                   params.check_filename,
-                                   (valid ? "success" : "failure"));
+                        if (result) {
+                            auto valid =
+                              baryonyx::is_valid_solution(pb, result);
+                            fmt::print("Check {} with {}: {}",
+                                       params.filenames.front(),
+                                       params.check_filename,
+                                       (valid ? "success" : "failure"));
+                        }
                     }
-                }
 
-                resume(pb);
-                std::ofstream ofs(filename);
+                    resume(pb);
+                    std::ofstream ofs(filename);
 
-                auto now = std::chrono::system_clock::now();
-                auto in_time_t = std::chrono::system_clock::to_time_t(now);
-                resume(pb, ofs);
+                    auto now = std::chrono::system_clock::now();
+                    auto in_time_t = std::chrono::system_clock::to_time_t(now);
+                    resume(pb, ofs);
 
-                fmt::print(
-                  ofs,
-                  "\\ solver starts: \n",
-                  std::put_time(std::localtime(&in_time_t), "%Y-%m-%d %X"));
-
-                auto ret = solve_or_optimize(ctx, pb, params.optimize);
-                in_time_t = std::chrono::system_clock::to_time_t(now);
-
-                fmt::print(
-                  ofs,
-                  "\\ solver finishes: {}\n",
-                  std::put_time(std::localtime(&in_time_t), "%Y-%m-%d %X"));
-
-                if (ret.status == baryonyx::result_status::success) {
                     fmt::print(ofs,
-                               "\\ Solution found: {:f}\n",
-                               ret.solutions.back().value);
-                    resume(ret, ofs);
-                } else {
+                               "\\ solver starts: \n",
+                               std::put_time(std::localtime(&in_time_t),
+                                             "%Y-%m-%d %X"));
+
+                    auto ret = solve_or_optimize(ctx, pb, params.optimize);
+                    in_time_t = std::chrono::system_clock::to_time_t(now);
+
                     fmt::print(ofs,
-                               "\\ Solution not found. Missing "
-                               "constraints: {}\n",
-                               ret.remaining_constraints);
+                               "\\ solver finishes: {}\n",
+                               std::put_time(std::localtime(&in_time_t),
+                                             "%Y-%m-%d %X"));
+
+                    if (ret.status == baryonyx::result_status::success) {
+                        fmt::print(ofs,
+                                   "\\ Solution found: {:f}\n",
+                                   ret.solutions.back().value);
+                        resume(ret, ofs);
+                    } else {
+                        fmt::print(ofs,
+                                   "\\ Solution not found. Missing "
+                                   "constraints: {}\n",
+                                   ret.remaining_constraints);
+                    }
+                } catch (const baryonyx::precondition_failure& e) {
+                    fmt::print(stderr, "internal failure: {}\n", e.what());
+                } catch (const baryonyx::postcondition_failure& e) {
+                    fmt::print(stderr, "internal failure: {}\n", e.what());
+                } catch (const baryonyx::numeric_cast_failure& e) {
+                    fmt::print(
+                      stderr, "numeric cast internal failure: {}\n", e.what());
+                } catch (const baryonyx::file_access_failure& e) {
+                    fmt::print(stderr,
+                               "file `{}' fail {}: {}\n",
+                               e.file(),
+                               e.error(),
+                               std::strerror(e.error()));
+                } catch (const baryonyx::file_format_failure& e) {
+                    fmt::print(stderr,
+                               "file format error at line {} column {} "
+                               "{}\n",
+                               e.line(),
+                               e.column(),
+                               file_format_error_format(e.failure()));
+                } catch (const baryonyx::problem_definition_failure& e) {
+                    fmt::print(stderr,
+                               "definition problem error at {}: {}\n",
+                               e.element(),
+                               problem_definition_error_format(e.failure()));
+                } catch (const baryonyx::solver_failure& e) {
+                    fmt::print(stderr,
+                               "solver error: {}\n",
+                               solver_error_format(e.failure()));
+                } catch (const std::exception& e) {
+                    fmt::print(stderr, "failure: {}.\n", e.what());
                 }
-            } catch (const baryonyx::precondition_failure& e) {
-                fmt::print(stderr, "internal failure: {}\n", e.what());
-            } catch (const baryonyx::postcondition_failure& e) {
-                fmt::print(stderr, "internal failure: {}\n", e.what());
-            } catch (const baryonyx::numeric_cast_failure& e) {
-                fmt::print(
-                  stderr, "numeric cast internal failure: {}\n", e.what());
-            } catch (const baryonyx::file_access_failure& e) {
-                fmt::print(stderr,
-                           "file `{}' fail {}: {}\n",
-                           e.file(),
-                           e.error(),
-                           std::strerror(e.error()));
-            } catch (const baryonyx::file_format_failure& e) {
-                fmt::print(stderr,
-                           "file format error at line {} column {} "
-                           "{}\n",
-                           e.line(),
-                           e.column(),
-                           file_format_error_format(e.failure()));
-            } catch (const baryonyx::problem_definition_failure& e) {
-                fmt::print(stderr,
-                           "definition problem error at {}: {}\n",
-                           e.element(),
-                           problem_definition_error_format(e.failure()));
-            } catch (const baryonyx::solver_failure& e) {
-                fmt::print(stderr,
-                           "solver error: {}\n",
-                           solver_error_format(e.failure()));
-            } catch (const std::exception& e) {
-                fmt::print(stderr, "failure: {}.\n", e.what());
             }
         } else {
             auto filename = fmt::format("baryonyx-{}.res", get_pid());
             std::ofstream ofs(filename);
 
             for (auto& elem : params.filenames) {
-                try {
-                    auto pb = baryonyx::make_problem(ctx, elem);
+                auto pb = baryonyx::make_problem(ctx, elem);
+                if (!pb) {
+                    fmt::print(stderr,
+                               "Fail to read file: {} ({})\n",
+                               file_format_error_format(pb.status),
+                               static_cast<int>(pb.status));
+                    continue;
+                }
 
+                try {
                     fmt::print(ofs, "{} ", elem);
 
                     auto ret = solve_or_optimize(ctx, pb, params.optimize);

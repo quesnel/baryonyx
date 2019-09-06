@@ -150,21 +150,17 @@ enum class file_format_error_tag
 {
     success,
     file_not_found,
-    malformed,
-    end_of_file,
-    unknown,
-    already_defined,
-    incomplete,
-    bad_name,
-    bad_operator,
-    bad_integer,
+    bad_end_of_file,
+    bad_general,
+    bad_binary,
     bad_objective_function_type,
     bad_objective,
     bad_bound,
-    bad_function_element,
+    bad_end,
     bad_constraint,
     too_many_variables,
-    too_many_constraints
+    too_many_constraints,
+    bad_name // Mainly use when read result file and report unknown variable.
 };
 
 struct file_format_error
