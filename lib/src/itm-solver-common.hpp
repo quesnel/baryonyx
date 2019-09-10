@@ -45,6 +45,7 @@ template<typename Solver,
          typename Mode,
          typename Order,
          typename Random,
+         typename Cost,
          typename Observer>
 struct solver_functor
 {
@@ -67,7 +68,7 @@ struct solver_functor
 
     result operator()(const std::vector<merged_constraint>& constraints,
                       int variables,
-                      const std::unique_ptr<Float[]>& original_costs,
+                      const Cost& original_costs,
                       double cost_constant)
     {
         x_type x(variables);
@@ -76,7 +77,7 @@ struct solver_functor
 
         auto& p = m_ctx->parameters;
 
-        auto norm_costs = normalize_costs<Float, Random>(
+        auto norm_costs = normalize_costs<Float, Cost, Random>(
           m_ctx, original_costs, m_rng, variables);
 
         const auto kappa_step = static_cast<Float>(p.kappa_step);
@@ -85,7 +86,7 @@ struct solver_functor
         const auto theta = static_cast<Float>(p.theta);
         const auto delta =
           p.delta < 0
-            ? compute_delta<Float>(m_ctx, norm_costs, theta, variables)
+            ? compute_delta<Float, Cost>(m_ctx, norm_costs, theta, variables)
             : static_cast<Float>(p.delta);
 
         const auto pushing_k_factor = static_cast<Float>(p.pushing_k_factor);
@@ -117,8 +118,6 @@ struct solver_functor
         bool start_push = false;
         auto kappa = static_cast<Float>(p.kappa_min);
 
-        auto max_cost = max_cost_init(original_costs, variables, Mode());
-        bounds_printer<Float, Mode> bound_print(max_cost);
         Observer obs(slv, "img", p.limit);
 
         m_begin = std::chrono::steady_clock::now();
@@ -130,7 +129,7 @@ struct solver_functor
 
             if (remaining == 0) {
                 store_if_better(
-                  x, results(x, original_costs, cost_constant, variables), i);
+                  x, original_costs.results(x, cost_constant), i);
                 best_remaining = remaining;
                 start_push = true;
                 break;
@@ -172,7 +171,7 @@ struct solver_functor
                 if (remaining == 0)
                     store_if_better(
                       x,
-                      results(x, original_costs, cost_constant, variables),
+                      original_costs.results(x, cost_constant),
                       -push * p.pushing_iteration_limit - 1);
 
                 if (is_timelimit_reached())
@@ -184,7 +183,7 @@ struct solver_functor
                     if (remaining == 0) {
                         store_if_better(
                           x,
-                          results(x, original_costs, cost_constant, variables),
+                          original_costs.results(x, cost_constant),
                           -push * p.pushing_iteration_limit - iter - 1);
                         break;
                     }
@@ -255,7 +254,8 @@ template<typename Solver,
          typename Float,
          typename Mode,
          typename Order,
-         typename Random>
+         typename Random,
+         typename Cost>
 inline result
 solve_problem(const context_ptr& ctx, const problem& pb)
 {
@@ -269,14 +269,14 @@ solve_problem(const context_ptr& ctx, const problem& pb)
         Random rng(init_random_generator_seed<Random>(ctx));
 
         auto variables = numeric_cast<int>(pb.vars.values.size());
-        auto cost = make_objective_function<Float>(pb.objective, variables);
+        auto cost = Cost(pb.objective, variables);
         auto cost_constant = pb.objective.value;
 
         switch (ctx->parameters.observer) {
         case solver_parameters::observer_type::pnm: {
             using obs = pnm_observer<Solver, Float>;
 
-            solver_functor<Solver, Float, Mode, Order, Random, obs> slv(
+            solver_functor<Solver, Float, Mode, Order, Random, Cost, obs> slv(
               ctx, rng, pb);
 
             ret = slv(constraints, variables, cost, cost_constant);
@@ -284,7 +284,7 @@ solve_problem(const context_ptr& ctx, const problem& pb)
         case solver_parameters::observer_type::file: {
             using obs = file_observer<Solver, Float>;
 
-            solver_functor<Solver, Float, Mode, Order, Random, obs> slv(
+            solver_functor<Solver, Float, Mode, Order, Random, Cost, obs> slv(
               ctx, rng, pb);
 
             ret = slv(constraints, variables, cost, cost_constant);
@@ -292,7 +292,7 @@ solve_problem(const context_ptr& ctx, const problem& pb)
         default: {
             using obs = none_observer<Solver, Float>;
 
-            solver_functor<Solver, Float, Mode, Order, Random, obs> slv(
+            solver_functor<Solver, Float, Mode, Order, Random, Cost, obs> slv(
               ctx, rng, pb);
 
             ret = slv(constraints, variables, cost, cost_constant);

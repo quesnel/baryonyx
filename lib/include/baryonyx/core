@@ -155,6 +155,7 @@ enum class file_format_error_tag
     bad_binary,
     bad_objective_function_type,
     bad_objective,
+    bad_objective_quadratic,
     bad_bound,
     bad_end,
     bad_constraint,
@@ -583,6 +584,23 @@ struct objective_function_element
     index variable_index{ -1 };
 };
 
+struct objective_quadratic_element
+{
+    objective_quadratic_element() noexcept = default;
+
+    constexpr objective_quadratic_element(double factor_,
+                                          index variable_index_a_,
+                                          index variable_index_b_) noexcept
+      : factor(factor_)
+      , variable_index_a(variable_index_a_)
+      , variable_index_b(variable_index_b_)
+    {}
+
+    double factor = 0;
+    index variable_index_a = -1;
+    index variable_index_b = -1;
+};
+
 struct constraint
 {
     constraint() = default;
@@ -606,6 +624,7 @@ struct constraint
 struct objective_function
 {
     std::vector<objective_function_element> elements;
+    std::vector<objective_quadratic_element> qelements;
     double value = { 0 };
 };
 

@@ -110,10 +110,19 @@ to_int(std::string_view s) noexcept
 }
 
 constexpr std::string_view file_format_error_string[] = {
-    "success",        "file_not_found",     "bad_end_of_file",
-    "bad_general",    "bad_binary",         "bad_objective_function_type",
-    "bad_objective",  "bad_bound",          "bad_end",
-    "bad_constraint", "too_many_variables", "too_many_constraints",
+    "success",
+    "file_not_found",
+    "bad_end_of_file",
+    "bad_general",
+    "bad_binary",
+    "bad_objective_function_type",
+    "bad_objective",
+    "bad_objective_quadratic",
+    "bad_bound",
+    "bad_end",
+    "bad_constraint",
+    "too_many_variables",
+    "too_many_constraints",
     "bad_name"
 };
 

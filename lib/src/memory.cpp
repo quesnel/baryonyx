@@ -49,8 +49,11 @@ memory_consumed(const baryonyx::objective_function& obj) noexcept
 {
     auto ret = sizeof(baryonyx::objective_function);
 
-    return ret + obj.elements.capacity() *
-                   sizeof(baryonyx::objective_function_element);
+    return ret +
+           obj.elements.capacity() *
+             sizeof(baryonyx::objective_function_element) +
+           obj.qelements.capacity() *
+             sizeof(baryonyx::objective_quadratic_element);
 }
 
 static std::size_t

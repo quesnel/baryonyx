@@ -34,23 +34,29 @@ namespace baryonyx {
  * @details For each negative factor, add factor to the minimal value, for each
  *     positive factor, add factor to the maximal value.
  *
- * @param obj [description]
- * @param j [description]
+ * @param obj The @c objective_function to compute.
  *
- * @return [description]
+ * @return The mininal and maximal values in a tuple.
  */
 inline std::tuple<double, double>
 compute_min_max_objective_function(const objective_function& obj) noexcept
 {
-    auto ret = std::make_tuple(obj.value, obj.value);
+    double min = obj.value;
+    double max = obj.value;
 
     for (const auto& elem : obj.elements)
         if (elem.factor < 0)
-            std::get<0>(ret) += elem.factor;
-        else if (elem.factor > 0)
-            std::get<1>(ret) += elem.factor;
+            min += elem.factor;
+        else
+            max += elem.factor;
 
-    return ret;
+    for (const auto& elem : obj.qelements)
+        if (elem.factor < 0)
+            min += elem.factor;
+        else
+            max += elem.factor;
+
+    return std::make_tuple(min, max);
 }
 
 inline constexpr solver_parameters::mode_type operator&(

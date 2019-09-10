@@ -187,6 +187,10 @@ compute_solution_impl(const raw_problem& pb,
     for (auto& elem : pb.objective.elements)
         ret += elem.factor * variable_value[elem.variable_index];
 
+    for (auto& elem : pb.objective.qelements)
+        ret += elem.factor * variable_value[elem.variable_index_a] *
+               variable_value[elem.variable_index_b];
+
     return ret;
 }
 

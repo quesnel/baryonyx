@@ -100,7 +100,8 @@ template<typename Solver,
          typename Float,
          typename Mode,
          typename Order,
-         typename Random>
+         typename Random,
+         typename Cost>
 struct optimize_functor
 {
     const context_ptr& m_ctx;
@@ -128,7 +129,7 @@ struct optimize_functor
                       best_solution_recorder<Float, Mode>& best_recorder,
                       const std::vector<merged_constraint>& constraints,
                       int variables,
-                      const std::unique_ptr<Float[]>& original_costs,
+                      const Cost& original_costs,
                       double cost_constant)
     {
         return ((m_ctx->parameters.mode &
@@ -153,7 +154,7 @@ struct optimize_functor
                best_solution_recorder<Float, Mode>& best_recorder,
                const std::vector<merged_constraint>& constraints,
                int variables,
-               const std::unique_ptr<Float[]>& original_costs,
+               const Cost& original_costs,
                double cost_constant)
     {
         Xtype x(variables);
@@ -162,7 +163,7 @@ struct optimize_functor
 
         auto& p = m_ctx->parameters;
 
-        auto norm_costs = normalize_costs<Float, Random>(
+        auto norm_costs = normalize_costs<Float, Cost, Random>(
           m_ctx, original_costs, m_rng, variables);
 
         const auto kappa_step = static_cast<Float>(p.kappa_step);
@@ -171,7 +172,7 @@ struct optimize_functor
         const auto theta = static_cast<Float>(p.theta);
         const auto delta =
           p.delta < 0
-            ? compute_delta<Float>(m_ctx, norm_costs, theta, variables)
+            ? compute_delta<Float, Cost>(m_ctx, norm_costs, theta, variables)
             : static_cast<Float>(p.delta);
 
         const auto pushing_k_factor = static_cast<Float>(p.pushing_k_factor);
@@ -212,7 +213,7 @@ struct optimize_functor
                     x_is_solution = true;
                     store_if_better(
                       x,
-                      results(x, original_costs, cost_constant, variables),
+                      original_costs.results(x, cost_constant),
                       i,
                       best_recorder);
                     best_remaining = remaining;
@@ -255,7 +256,7 @@ struct optimize_functor
                     x_is_solution = true;
                     store_if_better(
                       x,
-                      results(x, original_costs, cost_constant, variables),
+                      original_costs.results(x, cost_constant),
                       -push * p.pushing_iteration_limit - 1,
                       best_recorder);
                 }
@@ -269,7 +270,7 @@ struct optimize_functor
                         x_is_solution = true;
                         store_if_better(
                           x,
-                          results(x, original_costs, cost_constant, variables),
+                          original_costs.results(x, cost_constant),
                           -push * p.pushing_iteration_limit - iter - 1,
                           best_recorder);
                         break;
@@ -351,7 +352,8 @@ template<typename Solver,
          typename Float,
          typename Mode,
          typename Order,
-         typename Random>
+         typename Random,
+         typename Cost>
 inline result
 optimize_problem(const context_ptr& ctx, const problem& pb)
 {
@@ -365,7 +367,7 @@ optimize_problem(const context_ptr& ctx, const problem& pb)
         Random rng(init_random_generator_seed<Random>(ctx));
 
         auto variables = numeric_cast<int>(pb.vars.values.size());
-        auto cost = make_objective_function<Float>(pb.objective, variables);
+        auto cost = Cost(pb.objective, variables);
         auto cost_constant = pb.objective.value;
 
         const auto thread = get_thread_number(ctx);
@@ -384,15 +386,15 @@ optimize_problem(const context_ptr& ctx, const problem& pb)
         stop_task.store(false);
 
         for (unsigned i{ 0 }; i != thread; ++i) {
-            std::packaged_task<baryonyx::result()> task(
-              std::bind(optimize_functor<Solver, Float, Mode, Order, Random>(
-                          ctx, i, seeds[i], pb.vars.names, pb.affected_vars),
-                        std::ref(stop_task),
-                        std::ref(result),
-                        std::ref(constraints),
-                        variables,
-                        std::ref(cost),
-                        cost_constant));
+            std::packaged_task<baryonyx::result()> task(std::bind(
+              optimize_functor<Solver, Float, Mode, Order, Random, Cost>(
+                ctx, i, seeds[i], pb.vars.names, pb.affected_vars),
+              std::ref(stop_task),
+              std::ref(result),
+              std::ref(constraints),
+              variables,
+              std::ref(cost),
+              cost_constant));
 
             results.emplace_back(task.get_future());
 

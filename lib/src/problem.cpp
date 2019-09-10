@@ -50,6 +50,28 @@ write_function_element(std::ostream& os, const Problem& p, const Function& f)
     }
 }
 
+template<typename Problem, typename Function>
+void
+write_quadratic_element(std::ostream& os, const Problem& p, const Function& f)
+{
+    if (f.empty())
+        return;
+
+    os << "+ [";
+
+    for (auto& elem : f) {
+        if (elem.variable_index_a == elem.variable_index_b)
+            os << ' ' << (2.0 * elem.factor) << ' '
+               << p.vars.names[elem.variable_index_a] << " ^2";
+        else
+            os << ' ' << (2.0 * elem.factor) << ' '
+               << p.vars.names[elem.variable_index_a] << " * "
+               << p.vars.names[elem.variable_index_b];
+    }
+
+    os << " ] /2";
+}
+
 template<typename Problem, typename Constraint>
 void
 write_constraint(std::ostream& os,
@@ -104,6 +126,7 @@ write_problem(std::ostream& os, const Problem& p)
         os << "minimize\n";
 
     ::write_function_element(os, p, p.objective.elements);
+    ::write_quadratic_element(os, p, p.objective.qelements);
 
     if (p.objective.value < 0)
         os << p.objective.value;
@@ -182,6 +205,7 @@ void
 clear(raw_problem& pb)
 {
     std::vector<objective_function_element>().swap(pb.objective.elements);
+    std::vector<objective_quadratic_element>().swap(pb.objective.qelements);
 
     std::vector<constraint>().swap(pb.equal_constraints);
     std::vector<constraint>().swap(pb.greater_constraints);

@@ -139,6 +139,10 @@ is_separator(const int c) noexcept
     case ':':
     case '-':
     case '+':
+    case '[':
+    case ']':
+    case '*':
+    case '^':
         return true;
     default:
         return false;
@@ -641,6 +645,106 @@ is_objective_function(const std::string_view buf) noexcept
 }
 
 constexpr std::optional<function_element_token>
+read_quadratic_element(const std::string_view buf_1,
+                       const std::string_view buf_2,
+                       const std::string_view buf_3) noexcept
+{
+    auto value_opt = read_real(buf_1, buf_2);
+    if (!value_opt)
+        return std::nullopt;
+
+    std::string_view to_read;
+    switch (value_opt->read) {
+    case 0:
+        to_read = buf_1;
+        break;
+    case 1:
+        to_read = buf_2;
+        break;
+    default:
+        to_read = buf_3;
+        break;
+    }
+
+    if (is_keyword(to_read) || !starts_with_name(to_read))
+        return std::nullopt;
+
+    auto name_opt = read_name(to_read);
+    if (!name_opt.has_value())
+        return std::nullopt;
+
+    return function_element_token(
+      value_opt->value, *name_opt, value_opt->read + 1);
+}
+
+raw_problem_status
+read_quadratic_element(stream_buffer& buf,
+                       problem_parser& p,
+                       double sign_factor) noexcept
+{
+    if (buf.first() != "[")
+        return baryonyx::file_format_error_tag::bad_objective_quadratic;
+
+    buf.pop_front();
+
+    while (!buf.first().empty() && buf.first() != "]") {
+        auto& ret = p.m_problem.objective.qelements.emplace_back();
+        function_element_token fct;
+
+        if (auto fct_opt =
+              read_quadratic_element(buf.first(), buf.second(), buf.third());
+            !fct_opt)
+            return baryonyx::file_format_error_tag::bad_objective_quadratic;
+        else
+            fct = *fct_opt;
+
+        buf.pop_front(fct.read);
+
+        if (buf.first() == "*") {
+            auto name_opt = read_name(buf.second());
+            if (!name_opt.has_value())
+                return baryonyx::file_format_error_tag::
+                  bad_objective_quadratic;
+
+            auto id1 = p.get_or_assign_variable(fct.name);
+            auto id2 = p.get_or_assign_variable(*name_opt);
+
+            if (id1 == -1 || id2 == -1)
+                return baryonyx::file_format_error_tag::too_many_variables;
+
+            ret.factor = fct.factor * sign_factor / 2.0;
+            ret.variable_index_a = id1;
+            ret.variable_index_b = id2;
+            buf.pop_front(2);
+        } else if (buf.first() == "^" || buf.first() == "^2") {
+            if (buf.first() == "^" && buf.second() == "2")
+                buf.pop_front(2);
+            else
+                buf.pop_front(1);
+
+            auto id = p.get_or_assign_variable(fct.name);
+            if (id == -1)
+                return baryonyx::file_format_error_tag::too_many_variables;
+
+            ret.factor = fct.factor * sign_factor / 2.0;
+            ret.variable_index_a = id;
+            ret.variable_index_b = id;
+        }
+    }
+
+    buf.pop_front();
+
+    if (buf.first() == "/" && buf.second() == "2")
+        buf.pop_front(2);
+    else if (buf.first() == "/2")
+        buf.pop_front(1);
+    else
+        return baryonyx::file_format_error_tag::bad_objective_quadratic;
+
+    return baryonyx::file_format_error_tag::success;
+}
+
+constexpr std::optional<function_element_token>
 read_function_element(const std::string_view buf_1,
                       const std::string_view buf_2,
                       const std::string_view buf_3) noexcept
@@ -905,6 +1009,14 @@ read_end(const std::string_view buf_1, const std::string_view buf_2) noexcept
     return 0;
 }
 
+bool
+starts_with_quadratic(const std::string_view buf_1,
+                      const std::string_view buf_2) noexcept
+{
+    return buf_1 == "[" || (buf_1 == "+" && buf_2 == "[") ||
+           (buf_1 == "-" && buf_2 == "[");
+}
+
 raw_problem_status parse([[maybe_unused]] const baryonyx::context_ptr& ctx,
                          stream_buffer& buf,
                          problem_parser& p) noexcept
@@ -919,7 +1031,22 @@ raw_problem_status parse([[maybe_unused]] const baryonyx::context_ptr& ctx,
     if (auto read = try_read_objective_label(buf.first(), buf.second()); read)
         buf.pop_front(read);
 
-    if (!is_keyword(buf.first())) {
+    while (!is_keyword(buf.first())) {
+        if (starts_with_quadratic(buf.first(), buf.second())) {
+            double factor = 1.0;
+
+            if (buf.first() == "-") {
+                factor = -1.0;
+                buf.pop_front();
+            } else if (buf.first() == "+") {
+                buf.pop_front();
+            }
+
+            if (auto ret = read_quadratic_element(buf, p, factor); !ret)
+                return ret;
+            continue;
+        }
+
         if (auto elem =
               read_function_element(buf.first(), buf.second(), buf.third());
             elem) {
@@ -927,23 +1054,10 @@ raw_problem_status parse([[maybe_unused]] const baryonyx::context_ptr& ctx,
                 return baryonyx::file_format_error_tag::too_many_variables;
 
             buf.pop_front(elem->read);
-
-            while (!is_keyword(buf.first())) {
-                if (auto elem = read_function_element(
-                      buf.first(), buf.second(), buf.third());
-                    elem) {
-                    if (!p.append_to_objective(*elem))
-                        return baryonyx::file_format_error_tag::
-                          too_many_variables;
-
-                    buf.pop_front(elem->read);
-                } else {
-                    return baryonyx::file_format_error_tag::bad_objective;
-                }
-            }
-        } else {
-            return baryonyx::file_format_error_tag::bad_objective;
+            continue;
         }
+
+        return baryonyx::file_format_error_tag::bad_objective;
     }
 
     if (auto read = read_subject_to(buf.first(), buf.second(), buf.third());

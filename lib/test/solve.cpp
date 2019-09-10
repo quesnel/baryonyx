@@ -237,6 +237,28 @@ test_preprocessor_2()
 }
 
 void
+test_quadratic_preprocessor()
+{
+    auto ctx = baryonyx::make_context(stdout, 7);
+
+    const char *str_pb = "minimize\n"
+                                    "-5a + [ 2a * b + 3c * d ] /2 + 10b\n"
+                                    "Subject to:\n"
+                                    "a + b >= 0\n"
+                                    "b + c + d >= 0\n"
+                                    "Binaries\n"
+                                    "a b c d\n"
+                                    "End\n";
+
+    std::istringstream iss(str_pb);
+    auto pb = baryonyx::make_problem(ctx, iss);
+    Ensures(pb);
+
+    auto result = baryonyx::solve(ctx, pb);
+    Ensures(result);
+}
+
+void
 test_real_cost()
 {
     auto ctx = baryonyx::make_context(stdout, 7);
@@ -359,6 +381,7 @@ test_negative_coeff3()
     auto ctx = baryonyx::make_context(stdout, 7);
 
     auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/negative-coeff3.lp");
+    Ensures(pb);
 
     baryonyx::solver_parameters params;
     params.limit = 10000;
@@ -676,6 +699,7 @@ main(int /*argc*/, char* /* argv */ [])
 {
     unit_test::checks("preprocessor", test_preprocessor);
     unit_test::checks("preprocessor_2", test_preprocessor_2);
+    unit_test::checks("preprocessor_quadratic", test_quadratic_preprocessor);
     unit_test::checks("real_cost", test_real_cost);
     unit_test::checks("assignment_problem", test_assignment_problem);
     unit_test::checks("assignment_problem_random_coast",

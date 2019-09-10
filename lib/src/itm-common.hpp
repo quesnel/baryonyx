@@ -262,16 +262,6 @@ compute_violated_constraints(const Solver& slv,
     return length(out);
 }
 
-template<typename Xtype, typename Cost>
-double
-results(const Xtype& x, const Cost& c, double cost_constant, int n)
-{
-    for (int i = 0; i != n; ++i)
-        cost_constant += static_cast<double>(c[i]) * static_cast<double>(x[i]);
-
-    return cost_constant;
-}
-
 template<typename iteratorT, typename randomT>
 inline void
 random_shuffle_unique(iteratorT begin, iteratorT end, randomT& rng) noexcept
@@ -589,7 +579,7 @@ class solver_initializer
 
         for (int i = 0; i != slv.n; ++i) {
             if (dist(slv.rng))
-                x.set(i, init_x<Mode>(slv.c[i], value_if_cost_0));
+                x.set(i, init_x<Mode>(slv.c(i, x), value_if_cost_0));
             else
                 x.set(i, toss_up(slv.rng));
         }
@@ -605,7 +595,7 @@ class solver_initializer
             int r_size = 0;
 
             for (auto it = begin; it != end; ++it, ++r_size) {
-                slv.R[r_size].value = slv.c[it->column];
+                slv.R[r_size].value = slv.c(it->column, x);
                 slv.R[r_size].id = r_size;
             }
 
@@ -653,7 +643,7 @@ class solver_initializer
             int r_size = 0;
 
             for (auto it = begin; it != end; ++it, ++r_size) {
-                slv.R[r_size].value = slv.c[it->column];
+                slv.R[r_size].value = slv.c(it->column, x);
                 slv.R[r_size].id = r_size;
             }
 
@@ -874,32 +864,6 @@ print_missing_constraint(const context_ptr& ctx,
 
         info(ctx, " <= {} | value: {}\n", slv.bound_max(k));
     }
-}
-
-template<typename floatingpointT>
-floatingpointT
-max_cost_init(const std::unique_ptr<floatingpointT[]>& c,
-              int n,
-              minimize_tag) noexcept
-{
-    auto it = std::max_element(c.get(), c.get() + n);
-    if (it == c.get() + n)
-        return *it;
-
-    return std::numeric_limits<floatingpointT>::max();
-}
-
-template<typename floatingpointT>
-floatingpointT
-max_cost_init(const std::unique_ptr<floatingpointT[]>& c,
-              int n,
-              maximize_tag) noexcept
-{
-    auto it = std::min_element(c.get(), c.get() + n);
-    if (it == c.get() + n)
-        return *it;
-
-    return std::numeric_limits<floatingpointT>::lowest();
 }
 
 /**
@@ -1416,25 +1380,13 @@ struct compute_infeasibility
     }
 };
 
-template<typename floatingpointT>
-inline floatingpointT
-compute_delta(const context_ptr& ctx,
-              const std::unique_ptr<floatingpointT[]>& c,
-              floatingpointT theta,
-              int n)
+template<typename Float, typename Cost>
+inline Float
+compute_delta(const context_ptr& ctx, const Cost& c, Float theta, int n)
 {
     info(ctx, "  - delta not defined, compute it:\n");
 
-    auto mini{ std::numeric_limits<floatingpointT>::max() };
-    for (int i = 0; i != n; ++i)
-        if (c[i] != 0 && std::abs(c[i]) < mini)
-            mini = std::abs(c[i]);
-
-    if (mini == std::numeric_limits<floatingpointT>::max()) {
-        info(ctx, "    - All costs equal 0. Default value is used.\n");
-        mini = static_cast<floatingpointT>(0.01);
-    }
-
+    const auto mini = c.min(n);
     const auto ret = mini - theta * mini;
 
     info(ctx,
@@ -1473,132 +1425,467 @@ random_epsilon_unique(iteratorT begin,
         begin->first = distribution(rng);
 }
 
-template<typename floatingpointT, typename randomT>
-inline std::unique_ptr<floatingpointT[]>
-rng_normalize_costs(const std::unique_ptr<floatingpointT[]>& c,
-                    randomT& rng,
-                    int n)
-{
-    std::vector<std::pair<floatingpointT, int>> r(n);
-
-    for (int i = 0; i != n; ++i)
-        r[i] = { c[i], i };
-
-    std::sort(r.begin(), r.end(), [](const auto& lhs, const auto& rhs) {
-        return lhs.first < rhs.first;
-    });
-
-    auto begin = r.begin();
-    auto end = r.end();
-    auto next = r.begin()++;
-    for (; next != end; ++next) {
-        if (next->first != begin->first) {
-            if (std::distance(begin, next) > 1)
-                random_epsilon_unique(
-                  begin, next, rng, begin->first, next->first);
-
-            begin = next;
-        }
-    }
-
-    if (std::distance(begin, end) > 1) {
-        if (begin == r.begin()) {
-            random_epsilon_unique(
-              begin, end, rng, begin->first, begin->first + 1);
-        } else {
-            auto value = linearize(std::ptrdiff_t(0),
-                                   r.front().first,
-                                   std::distance(r.begin(), begin),
-                                   begin->first,
-                                   std::distance(r.begin(), r.end()));
-
-            random_epsilon_unique(begin, end, rng, begin->first, value);
-        }
-    }
-
-    // Reorder the vector according to the variable index, so, it restores
-    // the initial order.
-
-    std::sort(r.begin(), r.end(), [](const auto& lhs, const auto& rhs) {
-        return lhs.second < rhs.second;
-    });
-
-    auto ret = std::make_unique<floatingpointT[]>(n);
-    for (int i = 0; i != n; ++i)
-        ret[i] = r[i].first;
-
-    // Finally we compute the l+oo norm.
-
-    floatingpointT div = *std::max_element(c.get(), c.get() + n);
-    if (std::isnormal(div))
-        for (int i = 0; i != n; ++i)
-            ret[i] /= div;
-
-    return ret;
-}
-
 /**
  * Normalizes the cost vector, i.e. divides it by its l{1,2, +oo}norm. If
  * the input vector is too small or with infinity value, the c is
  * unchanged.
  */
-template<typename floatingpointT, typename randomT>
-inline std::unique_ptr<floatingpointT[]>
-normalize_costs(const context_ptr& ctx,
-                const std::unique_ptr<floatingpointT[]>& c,
-                randomT& rng,
-                int n)
+template<typename floatingpointT, typename Cost, typename randomT>
+inline Cost
+normalize_costs(const context_ptr& ctx, const Cost& c, randomT& rng, int n)
 {
-    auto ret = std::make_unique<floatingpointT[]>(n);
-    std::copy_n(c.get(), n, ret.get());
+    Cost ret(c, n);
 
-    if (ctx->parameters.cost_norm == solver_parameters::cost_norm_type::none) {
+    switch (ctx->parameters.cost_norm) {
+    case solver_parameters::cost_norm_type::none:
         info(ctx, "  - No norm");
+        return ret;
+
+    case solver_parameters::cost_norm_type::random:
+        info(ctx, "  - Compute random norm\n");
+        ret.make_random_norm(n, rng);
+        return ret;
+
+    case solver_parameters::cost_norm_type::l1:
+        info(ctx, "  - Compute l1 norm\n");
+        ret.make_l1_norm(n);
+        return ret;
+
+    case solver_parameters::cost_norm_type::l2:
+        info(ctx, "  - Compute l2 norm\n");
+        ret.make_l2_norm(n);
+        return ret;
+
+    default:
+        info(ctx, "  - Compute infinity-norm (default)\n");
+        ret.make_loo_norm(n);
+        return ret;
+    }
+}
+
+template<typename Float>
+struct default_cost_type
+{
+    const baryonyx::objective_function& obj;
+    std::unique_ptr<Float[]> linear_elements;
+
+    default_cost_type(const objective_function& obj_, int n)
+      : obj(obj_)
+      , linear_elements(std::make_unique<Float[]>(n))
+    {
+        for (const auto& elem : obj.elements) {
+            bx_ensures(0 <= elem.variable_index && elem.variable_index < n);
+
+            linear_elements[elem.variable_index] +=
+              static_cast<Float>(elem.factor);
+        }
+    }
+
+    default_cost_type(const default_cost_type& other, int n)
+      : obj(other.obj)
+      , linear_elements(std::make_unique<Float[]>(n))
+    {
+        std::copy_n(other.linear_elements.get(), n, linear_elements.get());
+    }
+
+    template<typename Random>
+    void make_random_norm(int n, Random& rng)
+    {
+        std::vector<std::pair<Float, int>> r(n);
+
+        for (int i = 0; i != n; ++i)
+            r[i] = { linear_elements[i], i };
+
+        std::sort(r.begin(), r.end(), [](const auto& lhs, const auto& rhs) {
+            return lhs.first < rhs.first;
+        });
+
+        auto begin = r.begin();
+        auto end = r.end();
+        auto next = r.begin()++;
+        for (; next != end; ++next) {
+            if (next->first != begin->first) {
+                if (std::distance(begin, next) > 1)
+                    random_epsilon_unique(
+                      begin, next, rng, begin->first, next->first);
+
+                begin = next;
+            }
+        }
+
+        if (std::distance(begin, end) > 1) {
+            if (begin == r.begin()) {
+                random_epsilon_unique(
+                  begin, end, rng, begin->first, begin->first + 1);
+            } else {
+                auto value = linearize(std::ptrdiff_t(0),
+                                       r.front().first,
+                                       std::distance(r.begin(), begin),
+                                       begin->first,
+                                       std::distance(r.begin(), r.end()));
+
+                random_epsilon_unique(begin, end, rng, begin->first, value);
+            }
+        }
+
+        // Reorder the vector according to the variable index, so, it restores
+        // the initial order.
+
+        std::sort(r.begin(), r.end(), [](const auto& lhs, const auto& rhs) {
+            return lhs.second < rhs.second;
+        });
+
+        for (int i = 0; i != n; ++i)
+            linear_elements[i] = r[i].first;
+
+        // Finally we compute the l+oo norm.
+
+        Float div =
+          *std::max_element(linear_elements.get(), linear_elements.get() + n);
+        if (std::isnormal(div))
+            for (int i = 0; i != n; ++i)
+                linear_elements[i] /= div;
+    }
+
+    Float min(int n) const noexcept
+    {
+        Float min = std::numeric_limits<Float>::max();
+
+        for (int i = 0; i != n; ++i)
+            if (linear_elements[i])
+                min = std::min(min, std::abs(linear_elements[i]));
+
+        return min;
+    }
+
+    void make_l1_norm(int n)
+    {
+        Float div = { 0 };
+
+        for (int i = 0; i != n; ++i)
+            div += std::abs(linear_elements[i]);
+
+        if (std::isnormal(div))
+            for (int i = 0; i != n; ++i)
+                linear_elements[i] /= div;
+    }
+
+    void make_l2_norm(int n)
+    {
+        Float div = { 0 };
+
+        for (int i = 0; i != n; ++i)
+            div += linear_elements[i] * linear_elements[i];
+
+        if (std::isnormal(div))
+            for (int i = 0; i != n; ++i)
+                linear_elements[i] /= div;
+    }
+
+    void make_loo_norm(int n)
+    {
+        Float div =
+          *std::max_element(linear_elements.get(), linear_elements.get() + n);
+
+        if (std::isnormal(div))
+            for (int i = 0; i != n; ++i)
+                linear_elements[i] /= div;
+    }
+
+    template<typename X>
+    Float operator()(int index, [[maybe_unused]] const X& x) const noexcept
+    {
+        return linear_elements[index];
+    }
+
+    template<typename Xtype>
+    double results(const Xtype& x, double cost_constant) const noexcept
+    {
+        for (int i = 0, e = length(obj.elements); i != e; ++i)
+            if (x[obj.elements[i].variable_index])
+                cost_constant += obj.elements[i].factor;
+
+        return cost_constant;
+    }
+};
+
+template<typename Float>
+struct quadratic_cost_type
+{
+    struct quad
+    {
+        Float factor;
+        int id;
+    };
+
+    const baryonyx::objective_function& obj;
+    std::unique_ptr<Float[]> linear_elements;
+    std::unique_ptr<quad[]> quadratic_elements;
+    std::unique_ptr<int[]> indices;
+
+    quadratic_cost_type(const objective_function& obj_, int n)
+      : obj(obj_)
+      , linear_elements(std::make_unique<Float[]>(n))
+      , quadratic_elements(
+          std::make_unique<quad[]>(2 * obj.qelements.size() + 1))
+      , indices(std::make_unique<int[]>(n + 1))
+    {
+        for (int i = 0, e = length(obj.elements); i != e; ++i) {
+            bx_ensures(0 <= obj.elements[i].variable_index &&
+                       obj.elements[i].variable_index < n);
+
+            linear_elements[obj.elements[i].variable_index] +=
+              static_cast<Float>(obj.elements[i].factor);
+        }
+
+        indices[0] = 0;
+        for (int var = 0; var != n; ++var) {
+            indices[var + 1] = indices[var];
+
+            for (int i = 0, e = length(obj.qelements); i != e; ++i) {
+                bx_ensures(0 <= obj.qelements[i].variable_index_a &&
+                           obj.qelements[i].variable_index_a < n);
+                bx_ensures(0 <= obj.qelements[i].variable_index_b &&
+                           obj.qelements[i].variable_index_b < n);
+
+                if (var == obj.qelements[i].variable_index_a ||
+                    var == obj.qelements[i].variable_index_b)
+                    ++indices[var + 1];
+            }
+        }
+
+        for (int id = 0, var = 0; var != n; ++var) {
+            for (int i = 0, e = length(obj.qelements); i != e; ++i) {
+                const bool is_a = obj.qelements[i].variable_index_a == var;
+                const bool is_b = obj.qelements[i].variable_index_b == var;
+
+                if (is_a || is_b) {
+                    quadratic_elements[id].factor =
+                      static_cast<Float>(obj.qelements[i].factor);
+                    quadratic_elements[id].id =
+                      is_a ? obj.qelements[i].variable_index_b
+                           : obj.qelements[i].variable_index_a;
+                    ++id;
+                }
+            }
+        }
+    }
+
+    quadratic_cost_type(const quadratic_cost_type& other, int n)
+      : obj(other.obj)
+      , linear_elements(std::make_unique<Float[]>(n))
+      , quadratic_elements(std::make_unique<quad[]>(other.indices[n]))
+      , indices(std::make_unique<int[]>(n + 1))
+    {
+        std::copy_n(other.linear_elements.get(), n, linear_elements.get());
+        std::copy_n(other.indices.get(), n + 1, indices.get());
+        std::copy_n(other.quadratic_elements.get(),
+                    other.indices[n],
+                    quadratic_elements.get());
+    }
+
+    template<typename Random>
+    void make_random_norm(int n, Random& rng)
+    {
+        std::vector<std::pair<Float, int>> r(n);
+        std::vector<std::pair<quad, int>> q(indices[n]);
+
+        for (int i = 0; i != n; ++i)
+            r[i] = { linear_elements[i], i };
+
+        std::sort(r.begin(), r.end(), [](const auto& lhs, const auto& rhs) {
+            return lhs.first < rhs.first;
+        });
+
+        {
+            auto begin = r.begin();
+            auto end = r.end();
+            auto next = r.begin()++;
+            for (; next != end; ++next) {
+                if (next->first != begin->first) {
+                    if (std::distance(begin, next) > 1)
+                        random_epsilon_unique(
+                          begin, next, rng, begin->first, next->first);
+
+                    begin = next;
+                }
+            }
+
+            if (std::distance(begin, end) > 1) {
+                if (begin == r.begin()) {
+                    random_epsilon_unique(
+                      begin, end, rng, begin->first, begin->first + 1);
+                } else {
+                    auto value = linearize(std::ptrdiff_t(0),
+                                           r.front().first,
+                                           std::distance(r.begin(), begin),
+                                           begin->first,
+                                           std::distance(r.begin(), r.end()));
+
+                    random_epsilon_unique(
+                      begin, end, rng, begin->first, value);
+                }
+            }
+
+            // Reorder the vector according to the variable index, so, it
+            // restores the initial order.
+
+            std::sort(
+              r.begin(), r.end(), [](const auto& lhs, const auto& rhs) {
+                  return lhs.second < rhs.second;
+              });
+        }
+
+        {
+            // auto begin = q.begin();
+            // auto end = q.end();
+            // auto next = q.begin()++;
+            // for (; next != end; ++next) {
+            //     if (next->first != begin->first) {
+            //         if (std::distance(begin, next) > 1)
+            //             random_epsilon_unique(
+            //               begin, next, rng, begin->first, next->first);
+
+            //         begin = next;
+            //     }
+            // }
+
+            // if (std::distance(begin, end) > 1) {
+            //     if (begin == q.begin()) {
+            //         random_epsilon_unique(
+            //           begin, end, rng, begin->first, begin->first + 1);
+            //     } else {
+            //         auto value = linearize(std::ptrdiff_t(0),
+            //                                q.front().first,
+            //                                std::distance(q.begin(), begin),
+            //                                begin->first,
+            //                                std::distance(q.begin(),
+            //                                q.end()));
+
+            //         random_epsilon_unique(
+            //           begin, end, rng, begin->first, value);
+            //     }
+            // }
+
+            // Reorder the vector according to the variable index, so, it
+            // restores the initial order.
+
+            // std::sort(
+            //   q.begin(), q.end(), [](const auto& lhs, const auto& rhs) {
+            //       return lhs.second < rhs.second;
+            //   });
+        }
+
+        for (int i = 0; i != n; ++i)
+            linear_elements[i] = r[i].first;
+        // for (int i = 0; i != n; ++i) {
+        //     quadratic_elements[i].factor = r[i].first.factor;
+
+        // Finally we compute the l+oo norm.
+        make_loo_norm(n);
+    }
+
+    Float min(int n) const noexcept
+    {
+        Float min = std::numeric_limits<Float>::max();
+
+        for (int i = 0; i != n; ++i)
+            if (linear_elements[i])
+                min = std::min(min, std::abs(linear_elements[i]));
+
+        for (int i = 0, e = indices[n]; i != e; ++i)
+            if (quadratic_elements[i].factor)
+                min = std::min(min, std::abs(quadratic_elements[i].factor));
+
+        return min;
+    }
+
+    void make_l1_norm(int n)
+    {
+        Float div = { 0 };
+
+        for (int i = 0; i != n; ++i)
+            div += std::abs(linear_elements[i]);
+
+        for (int i = 0, e = indices[n]; i != e; ++i)
+            div += std::abs(quadratic_elements[i].factor);
+
+        if (std::isnormal(div)) {
+            for (int i = 0; i != n; ++i)
+                linear_elements[i] /= div;
+
+            for (int i = 0, e = indices[n]; i != e; ++i)
+                quadratic_elements[i].factor /= div;
+        }
+    }
+
+    void make_l2_norm(int n)
+    {
+        Float div = { 0 };
+
+        for (int i = 0; i != n; ++i)
+            div += linear_elements[i] * linear_elements[i];
+        ;
+
+        for (int i = 0, e = indices[n]; i != e; ++i)
+            div += quadratic_elements[i].factor * quadratic_elements[i].factor;
+
+        if (std::isnormal(div)) {
+            for (int i = 0; i != n; ++i)
+                linear_elements[i] /= div;
+
+            for (int i = 0, e = indices[n]; i != e; ++i)
+                quadratic_elements[i].factor /= div;
+        }
+    }
+
+    void make_loo_norm(int n)
+    {
+        Float div =
+          *std::max_element(linear_elements.get(), linear_elements.get() + n);
+
+        for (int i = 0, e = indices[n]; i != e; ++i)
+            div = std::max(quadratic_elements[i].factor, div);
+
+        if (std::isnormal(div)) {
+            for (int i = 0; i != n; ++i)
+                linear_elements[i] /= div;
+
+            for (int i = 0, e = indices[n]; i != e; ++i)
+                quadratic_elements[i].factor /= div;
+        }
+    }
+
+    template<typename X>
+    Float operator()(int index, const X& x) const noexcept
+    {
+        Float ret = linear_elements[index];
+
+        auto first = indices[index];
+        auto last = indices[index + 1];
+
+        for (; first != last; ++first)
+            if (x[quadratic_elements[first].id])
+                ret += quadratic_elements[first].factor;
+
         return ret;
     }
 
-    if (ctx->parameters.cost_norm ==
-        solver_parameters::cost_norm_type::random) {
-        info(ctx, "  - Compute random norm\n");
-        return rng_normalize_costs<floatingpointT, randomT>(c, rng, n);
+    template<typename Xtype>
+    double results(const Xtype& x, double cost_constant) const noexcept
+    {
+        for (int i = 0, e = length(obj.elements); i != e; ++i)
+            if (x[obj.elements[i].variable_index])
+                cost_constant += obj.elements[i].factor;
+
+        for (int i = 0, e = length(obj.qelements); i != e; ++i)
+            if (x[obj.qelements[i].variable_index_a] &&
+                x[obj.qelements[i].variable_index_b])
+                cost_constant += obj.qelements[i].factor;
+
+        return cost_constant;
     }
-
-    floatingpointT div{ 0 };
-
-    if (ctx->parameters.cost_norm == solver_parameters::cost_norm_type::l1) {
-        info(ctx, "  - Compute l1 norm\n");
-        for (int i = 0; i != n; ++i)
-            div += std::abs(ret[i]);
-    } else if (ctx->parameters.cost_norm ==
-               solver_parameters::cost_norm_type::l2) {
-        info(ctx, "  - Compute l2 norm\n");
-        for (int i = 0; i != n; ++i)
-            div += ret[i] * ret[i];
-    } else {
-        info(ctx, "  - Compute infinity-norm (default)\n");
-        div = *std::max_element(c.get(), c.get() + n);
-    }
-
-    if (std::isnormal(div))
-        for (int i = 0; i != n; ++i)
-            ret[i] /= div;
-
-    return ret;
-}
-
-template<typename floatingpointT>
-inline std::unique_ptr<floatingpointT[]>
-make_objective_function(const objective_function& obj, int n)
-{
-    auto ret = std::make_unique<floatingpointT[]>(n);
-
-    for (const auto& elem : obj.elements) {
-        bx_ensures(0 <= n && elem.variable_index < n);
-        ret[elem.variable_index] += static_cast<floatingpointT>(elem.factor);
-    }
-
-    return ret;
-}
+};
 
 template<typename randomT>
 typename randomT::result_type

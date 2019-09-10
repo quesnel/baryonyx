@@ -290,6 +290,21 @@ private:
                     } else {
                         value = it->factor < 0;
                     }
+                } else {
+                    auto it =
+                      std::find_if(pb.objective.qelements.cbegin(),
+                                   pb.objective.qelements.cend(),
+                                   [i](const auto& e) {
+                                       return i == e.variable_index_a ||
+                                              i == e.variable_index_b;
+                                   });
+                    if (it != pb.objective.qelements.cend()) {
+                        if (pb.type == bx::objective_function_type::maximize) {
+                            value = it->factor > 0;
+                        } else {
+                            value = it->factor < 0;
+                        }
+                    }
                 }
 
                 vars[i] = value;
@@ -666,6 +681,29 @@ private:
                 ret.elements.emplace_back(
                   pb.objective.elements[i].factor,
                   mapping[pb.objective.elements[i].variable_index].first);
+            }
+        }
+
+        for (int i = 0, e = bx::length(pb.objective.qelements); i != e; ++i) {
+            auto va = mapping[pb.objective.qelements[i].variable_index_a];
+            auto vb = mapping[pb.objective.qelements[i].variable_index_b];
+
+            if (va.first == -1) {
+                if (vb.first == -1) {
+                    if (va.second && vb.second)
+                        ret.value += pb.objective.qelements[i].factor;
+                } else {
+                    ret.elements.emplace_back(pb.objective.qelements[i].factor,
+                                              vb.first);
+                }
+            } else {
+                if (vb.first == -1) {
+                    ret.elements.emplace_back(pb.objective.qelements[i].factor,
+                                              va.first);
+                } else {
+                    ret.qelements.emplace_back(
+                      pb.objective.qelements[i].factor, va.first, vb.first);
+                }
             }
         }
 
