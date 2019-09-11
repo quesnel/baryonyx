@@ -103,7 +103,7 @@ to_int(std::string_view s) noexcept
         buffer[i] = s[i];
 
     int result = 0;
-    if (auto read = std::sscanf(buffer, "%d", &result); read)
+    if (auto read = std::sscanf(buffer, "%d", &result); read > 0)
         return result;
     else
         return std::nullopt;

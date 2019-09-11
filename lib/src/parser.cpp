@@ -561,7 +561,7 @@ read_real(const std::string_view buf) noexcept
     buffer[buf.size()] = '\0';
 
     double result = 0;
-    if (auto read = std::sscanf(buffer, "%lf", &result); read)
+    if (auto read = std::sscanf(buffer, "%lf", &result); read > 0)
         return result;
     else
         return std::nullopt;
