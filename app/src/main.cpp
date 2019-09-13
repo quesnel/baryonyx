@@ -863,12 +863,14 @@ resume(const baryonyx::raw_problem& pb) noexcept
         }
     }
 
-    fmt::print("  - objective : {}\n"
+    fmt::print("  - objective: {}\n"
+               "  - mode: {}\n"
                "  - variables: {}/{}/{} (real/general/binary)\n"
                "  - constraints: {}/{}/{} (equal/greater/less)\n",
                (pb.type == baryonyx::objective_function_type::maximize
                   ? "maximize"
                   : "minimize"),
+               (pb.objective.qelements.empty() ? "linear" : "quadratic"),
                real,
                general,
                binary,
@@ -898,11 +900,13 @@ resume(const baryonyx::raw_problem& pb, std::ostream& os) noexcept
 
     fmt::print(os,
                "\\ objective : {}\n"
+               "\\ mode: {}\n"
                "\\ variables: {}/{}/{} (real/general/binary)\n"
                "\\ constraints: {}/{}/{} (equal/greater/less)\n",
                (pb.type == baryonyx::objective_function_type::maximize
                   ? "maximize"
                   : "minimize"),
+               (pb.objective.qelements.empty() ? "linear" : "quadratic"),
                real,
                general,
                binary,
