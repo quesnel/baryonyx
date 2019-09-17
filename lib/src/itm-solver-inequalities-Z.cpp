@@ -20,10 +20,10 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+#include "branch-and-bound-solver.hpp"
 #include "itm-common.hpp"
 #include "itm-optimizer-common.hpp"
 #include "itm-solver-common.hpp"
-#include "knapsack-dp-solver.hpp"
 
 namespace baryonyx {
 namespace itm {
@@ -75,6 +75,8 @@ struct solver_inequalities_Zcoeff
     std::unique_ptr<bound_factor[]> b;
     std::unique_ptr<Float[]> pi;
 
+    branch_and_bound_solver<Mode, Float> bb;
+
     const cost_type& c;
     int m;
     int n;
@@ -96,33 +98,42 @@ struct solver_inequalities_Zcoeff
       , m(m_)
       , n(n_)
     {
+        std::size_t z_variables_max = 0;
+
         int id = 0;
         for (int i = 0, e = length(csts); i != e; ++i) {
             int lower = 0, upper = 0;
+            std::size_t local_z_variables_max = 0;
 
             for (const auto& cst : csts[i].elements) {
                 bx_ensures(cst.factor);
                 A[id++] = cst.factor;
+                ++local_z_variables_max;
 
                 if (cst.factor > 0)
                     upper += cst.factor;
                 else
                     lower += cst.factor;
 
-                if (std::abs(cst.factor) > 1)
-                    Z[i] = true;
+                Z[i] = cst.factor < -1 || cst.factor > 1;
             }
+
+            if (Z[i])
+                z_variables_max =
+                  std::max(z_variables_max, local_z_variables_max);
 
             if (csts[i].min == csts[i].max) {
                 b[i].min = csts[i].min;
                 b[i].max = csts[i].max;
             } else {
-                b[i].min = std::max(-lower, csts[i].min);
+                b[i].min = std::max(lower, csts[i].min);
                 b[i].max = std::min(upper, csts[i].max);
             }
 
             bx_ensures(b[i].min <= b[i].max);
         }
+
+        bb.reserve(z_variables_max);
     }
 
     void reset() noexcept
@@ -200,14 +211,16 @@ struct solver_inequalities_Zcoeff
             auto ht = ap.column(begin->column);
 
             for (; std::get<0>(ht) != std::get<1>(ht); ++std::get<0>(ht)) {
-                sum_a_pi += pi[std::get<0>(ht)->row];
-                sum_a_p += P[std::get<0>(ht)->value];
+                auto a = static_cast<Float>(A[std::get<0>(ht)->value]);
+
+                sum_a_pi += a * pi[std::get<0>(ht)->row];
+                sum_a_p += a * P[std::get<0>(ht)->value];
             }
             R[r_size].id = r_size;
             R[r_size].value = c(begin->column, x) - sum_a_pi - sum_a_p;
-            R[r_size].f = A[begin->value] < 0;
+            R[r_size].f = A[begin->value];
 
-            if (R[r_size].is_negative_factor()) {
+            if (R[r_size].f < 0) {
                 R[r_size].value = -R[r_size].value;
                 ++c_size;
             }
@@ -218,50 +231,19 @@ struct solver_inequalities_Zcoeff
         return { r_size, c_size };
     }
 
-    int select_variables_equality(const int r_size, int bk)
+    int select_variables(const rc_size& sizes, int bkmin, int bkmax)
     {
-        bk = std::min(bk, r_size);
+        if (bkmin == bkmax)
+            return std::min(bkmin + sizes.c_size, sizes.r_size) - 1;
 
-        return bk - 1;
-    }
+        bkmin = std::min(bkmin, sizes.r_size);
+        bkmax = std::min(bkmax, sizes.r_size);
 
-    int select_variables(const rc_size& sizes, int bkmin, int bkmax, int k)
-    {
-        if (Z[k]) {
-            // If the previous selection failed or the constraint is a equal
-            // constraint, we try the dynamic programming to solve this
-            // knapsack 01 problem.
+        for (int i = bkmin; i <= bkmax; ++i)
+            if (stop_iterating<Mode>(R[i].value, rng))
+                return i - 1;
 
-            return knapsack_dp_solver<Mode, Float>(
-              A, R, std::get<0>(ap.row(k)), sizes.r_size, bkmax);
-        } else {
-            if (bkmin == bkmax)
-                return std::min(bkmin + sizes.c_size, sizes.r_size) - 1;
-
-            bkmin = std::min(bkmin, sizes.r_size);
-            bkmax = std::min(bkmax, sizes.r_size);
-
-            for (int i = bkmin; i <= bkmax; ++i)
-                if (stop_iterating<Mode>(R[i].value, rng))
-                    return i - 1;
-
-            return bkmax - 1;
-        }
-        if (!Z[k]) {
-            if (bkmin == bkmax)
-                return std::min(bkmin + sizes.c_size, sizes.r_size) - 1;
-
-            bkmin = std::min(bkmin, sizes.r_size);
-            bkmax = std::min(bkmax, sizes.r_size);
-
-            for (int i = bkmin; i <= bkmax; ++i)
-                if (stop_iterating<Mode>(R[i].value, rng))
-                    return i - 1;
-
-            return bkmax - 1;
-        }
-
-        return false;
+        return bkmax - 1;
     }
 
     template<typename Xtype, typename Iterator>
@@ -293,7 +275,7 @@ struct solver_inequalities_Zcoeff
                   obj_amp * c((std::get<0>(it) + R[i].id)->column, x);
             calculator_sort<Mode>(R.get(), R.get() + sizes.r_size, rng);
 
-            int selected = select_variables(sizes, b[k].min, b[k].max, k);
+            int selected = select_variables(sizes, b[k].min, b[k].max);
 
             auto pi_change = affect(*this,
                                     x,
@@ -322,15 +304,16 @@ struct solver_inequalities_Zcoeff
 
         for (; first != last; ++first) {
             auto k = constraint(first);
-
             const auto it = ap.row(k);
             decrease_preference(std::get<0>(it), std::get<1>(it), theta);
-
             const auto sizes =
               compute_reduced_costs(std::get<0>(it), std::get<1>(it), x);
 
             calculator_sort<Mode>(R.get(), R.get() + sizes.r_size, rng);
-            int selected = select_variables(sizes, b[k].min, b[k].max, k);
+
+            int selected = (Z[k])
+                             ? bb.solve(R, sizes.r_size, b[k].min, b[k].max)
+                             : select_variables(sizes, b[k].min, b[k].max);
 
             auto pi_change = affect(*this,
                                     x,

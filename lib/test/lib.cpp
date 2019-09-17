@@ -337,20 +337,144 @@ check_fixed_2darray()
     Ensures(a.data()[10] == 200);
 }
 
-struct rc
+void
+test_subvector_api()
 {
-    double value;
-    int id;
-};
+    baryonyx::itm::shared_subvector s;
+    s.reserve(128);
 
-struct ap
+    assert(s.size() == 0);
+
+    bool is_initialized = s.init(4);
+    assert(is_initialized);
+
+    auto id = s.emplace();
+    assert(s.size() == 4);
+    assert(id == 0);
+
+    for (baryonyx::itm::shared_subvector::size_type i = id,
+                                                    e = id + s.element_size();
+         i != e;
+         ++i)
+        s[i] = static_cast<std::int8_t>(i);
+
+    auto id2 = s.emplace();
+    assert(s.size() == 8);
+    assert(id2 == 4);
+
+    for (baryonyx::itm::shared_subvector::size_type i = id2,
+                                                    e = id2 + s.element_size();
+         i != e;
+         ++i)
+        s[i] = static_cast<std::int8_t>(i);
+
+    for (baryonyx::itm::shared_subvector::size_type i = 0, e = s.size();
+         i != e;
+         ++i)
+        assert(s[i] == static_cast<int8_t>(i));
+
+    s.remove(id);
+
+    assert(s.size() == 8);
+
+    auto id3 = s.emplace();
+    assert(s.size() == 8);
+    assert(id3 == 0);
+
+    is_initialized = s.init(5);
+    assert(is_initialized);
+    assert(s.size() == 0);
+
+    id = s.emplace();
+    id2 = s.emplace();
+    id3 = s.emplace();
+
+    assert(s.size() == 3u * 5u);
+
+    for (unsigned int i = 0, e = s.size(); i != e; ++i)
+        s[i] = static_cast<std::int8_t>(i);
+
+    std::int8_t cmp = 0;
+    for (auto [i, e] = s.element(id); i != e; ++i, ++cmp)
+        assert(cmp == s[i]);
+    for (auto [i, e] = s.element(id2); i != e; ++i, ++cmp)
+        assert(cmp == s[i]);
+    for (auto [i, e] = s.element(id3); i != e; ++i, ++cmp)
+        assert(cmp == s[i]);
+
+    s.remove(id3);
+    s.remove(id2);
+    s.remove(id);
+}
+
+void
+test_size_type_greater_than_int8_subvector_impl(const unsigned size,
+                                                const unsigned element_size)
 {
-    int value;
-};
+    baryonyx::itm::shared_subvector s;
+    s.reserve(size);
+
+    assert(s.size() == 0);
+
+    bool is_initialized = s.init(element_size);
+    assert(is_initialized);
+
+    unsigned element_total = size / element_size;
+
+    for (unsigned int i = 0; i != element_total; ++i) {
+        auto id = s.emplace();
+
+        assert(id < size);
+        for (auto [si, se] = s.element(id); si != se; ++si)
+            s[si] = 99;
+    }
+
+    unsigned element_removed = 0;
+    for (unsigned int i = 0; i != element_total / 2; ++i) {
+        for (auto [si, se] = s.element(i * element_size); si != se; ++si) {
+            assert(s[si] == 99);
+            s[si] = 77;
+        }
+
+        s.remove(i * element_size);
+        ++element_removed;
+    }
+
+    assert(element_removed == element_total / 2);
+
+    for (unsigned int i = 0; i != element_removed; ++i) {
+        auto id = s.emplace();
+
+        assert(id < size);
+        for (auto [si, se] = s.element(id); si != se; ++si)
+            s[si] = 0;
+    }
+
+    for (unsigned int i = 0, e = s.size(); i != e; ++i)
+        assert(s[i] == 99 || s[i] == 0);
+}
+
+void
+test_size_type_greater_than_int8_subvector()
+{
+    test_size_type_greater_than_int8_subvector_impl(4096u, 16u);
+    test_size_type_greater_than_int8_subvector_impl(8192u, 512u);
+}
 
 static void
 check_knapsack_solver()
 {
+    struct rc
+    {
+        double value;
+        int id;
+    };
+
+    struct ap
+    {
+        int value;
+    };
+
     {
         // An example:
         // maximize: 16x1 + 19x2 + 23x3 + 26x4
@@ -385,117 +509,75 @@ check_knapsack_solver()
 static void
 check_branch_and_bound_solver()
 {
+    struct rc
     {
-        // An example:
-        // maximize: 16x1 + 19x2 + 23x3 + 26x4
-        // st: 2x1 + 3x2 +4x3 + 5x4 <= 7
+        double value;
+        int id;
+        int f;
+    };
 
-        auto R = std::make_unique<rc[]>(4);
-        R[0] = { 16, 0 };
-        R[1] = { 19, 1 };
-        R[2] = { 23, 2 };
-        R[3] = { 26, 3 };
+    baryonyx::itm::branch_and_bound_solver<baryonyx::itm::maximize_tag, double>
+      bb;
+    bb.reserve(10u);
 
-        std::vector<ap> v{ { 0 }, { 1 }, { 2 }, { 3 } };
+    {
+        std::vector<rc> R = {
+            { 7.0, 0, 13 }, { 4.0, 1, 12 }, { 3.0, 2, 8 }, { 3.0, 3, 10 }
+        };
+        const int nb = 4;
+        const int b_min = 0;
+        const int b_max = 30;
 
-        std::vector<int> factors{ 2, 3, 4, 5 };
-        int selected =
-          baryonyx::itm::branch_and_bound_solver<baryonyx::itm::maximize_tag,
-                                                 double>(
-            factors, R, v.begin(), 4, 7);
+        auto result = bb.solve(R, nb, b_min, b_max);
+        Ensures(result >= 0 && result < static_cast<int>(R.size()));
 
-        Ensures(selected == 2);
-        Ensures(R[0].id == 1 || R[1].id == 1);
-        Ensures(R[0].id == 2 || R[1].id == 2);
+        int ret = 0;
+        for (int i = 0; i < result; ++i)
+            ret += R[i].f;
 
-        Ensures(
-          std::accumulate(
-            R.get(), R.get() + selected, 0.0, [](double init, const rc& elem) {
-                return init + elem.value;
-            }) == 42.0);
+        Ensures(b_min <= ret && ret <= b_max);
+        Ensures(ret == 25);
     }
 
-    // {
-    //     std::vector<rc> R{ { 15, 0 }, { 19, 1 }, { 13, 2 }, { 12, 3 } };
-    //     std::vector<int> factors{ 2, 1, 3, 2 };
+    {
+        std::vector<rc> R = {
+            { 16.0, 0, 2 }, { 19, 1, 3 }, { 23, 2, 4 }, { 26, 3, 5 }
+        };
 
-    //     int selected =
-    //       baryonyx::itm::branch_and_bound_solver<baryonyx::itm::minimize_tag,
-    //                                              double>(
-    //         R, factors.begin(), factors.end(), 3);
+        const int nb = 4;
+        const int b_min = 0;
+        const int b_max = 7;
 
-    //     Ensures(selected == 1);
-    //     Ensures(R[0].id == 2 || R[1].id == 2);
-    //     Ensures(std::accumulate(R.begin(),
-    //                             R.begin() + selected,
-    //                             0.0,
-    //                             [](double init, const rc& elem) {
-    //                                 return init + elem.value;
-    //                             }) == 13.0);
-    // }
+        auto result = bb.solve(R, nb, b_min, b_max);
+        Ensures(result >= 0 && result < static_cast<int>(R.size()));
 
-    // {
-    //     std::vector<rc> R{
-    //         { 16, 0 }, { 19, 1 }, { 23, 2 }, { 28, 3 }, { 5, 4 }
-    //     };
-    //     std::vector<int> factors{ 2, 3, 4, 5, 7 };
+        int ret = 0;
+        for (int i = 0; i < result; ++i)
+            ret += R[i].f;
 
-    //     int selected =
-    //       baryonyx::itm::branch_and_bound_solver<baryonyx::itm::maximize_tag,
-    //                                              double>(
-    //         R, factors.begin(), factors.end(), 7);
+        Ensures(b_min <= ret && ret <= b_max);
+        Ensures(ret == 7);
+    }
 
-    //     Ensures(selected == 2);
-    //     Ensures(std::accumulate(R.begin(),
-    //                             R.begin() + selected,
-    //                             0.0,
-    //                             [](double init, const rc& elem) {
-    //                                 return init + elem.value;
-    //                             }) == 44.0);
-    // }
+    {
+        std::vector<rc> R = {
+            { 1.0, 0, -1 }, { 1.0, 1, -1 }, { 1.0, 2, -1 }, { 1.0, 3, 1 }
+        };
 
-    // {
-    //     std::vector<rc> R{ { 1000, 0 }, { 16, 1 }, { 19, 2 },
-    //                        { 23, 3 },   { 28, 4 }, { 1, 5 } };
-    //     std::vector<int> factors{ 1, 2, 3, 4, 5, 6 };
+        const int nb = 4;
+        const int b_min = -2;
+        const int b_max = -2;
 
-    //     auto selected =
-    //       baryonyx::itm::branch_and_bound_solver<baryonyx::itm::maximize_tag,
-    //                                              double>(
-    //         R, factors.begin(), factors.end(), 7);
+        auto result = bb.solve(R, nb, b_min, b_max);
+        Ensures(result >= 0 && result < static_cast<int>(R.size()));
 
-    //     Ensures(selected == 3);
-    //     Ensures(R[0].id == 0 || R[1].id == 0 || R[2].id == 0);
-    //     Ensures(R[0].id == 1 || R[1].id == 1 || R[2].id == 1);
-    //     Ensures(R[0].id == 3 || R[1].id == 3 || R[2].id == 3);
-    // }
+        int ret = 0;
+        for (int i = 0; i < result; ++i)
+            ret += R[i].f;
 
-    // {
-    //     std::vector<rc> R{ { 1000, 0 }, { 16, 1 }, { 19, 2 },
-    //                        { 23, 3 },   { 28, 4 }, { 1, 5 } };
-    //     std::vector<int> factors{ 1, 2, 3, 4, 5, 6 };
-
-    //     auto selected =
-    //       baryonyx::itm::branch_and_bound_solver<baryonyx::itm::minimize_tag,
-    //                                              double>(
-    //         R, factors.begin(), factors.end(), 7);
-
-    //     Ensures(selected == 1);
-    //     Ensures(R[0].id == 5);
-    // }
-
-    // {
-    //     std::vector<rc> R{ { 1e-7, 0 }, { 1e-9, 1 }, { .5e-4, 2 },
-    //                        { 1e-7, 3 }, { 1e-3, 4 }, { 1e-9, 5 } };
-    //     std::vector<int> factors{ 1, 1, 6, 1, 1, 1 };
-
-    //     auto selected =
-    //       baryonyx::itm::branch_and_bound_solver<baryonyx::itm::minimize_tag,
-    //                                              double>(
-    //         R, factors.begin(), factors.end(), 7);
-
-    //     Ensures(selected == 1);
-    // }
+        Ensures(b_min <= ret && ret <= b_max);
+        Ensures(ret == -2);
+    }
 }
 
 void
@@ -667,8 +749,15 @@ main(int /* argc */, char* /* argv */ [])
     unit_test::checks("check_fixed_array", check_fixed_array);
     unit_test::checks("check_fixed_2darray", check_fixed_2darray);
     unit_test::checks("check_knapsack_solver", check_knapsack_solver);
+
+    unit_test::checks("branch_and_bound::subvector api", test_subvector_api);
+    unit_test::checks("branch_and_bound::subvector size",
+                      test_size_type_greater_than_int8_subvector);
+    unit_test::checks("branch_and_bound::subvector size",
+                      test_size_type_greater_than_int8_subvector);
     unit_test::checks("check_branch_and_bound_solver",
                       check_branch_and_bound_solver);
+
     unit_test::checks("check_observer_pnm", check_observer_pnm);
     unit_test::checks("check_show_size", check_show_size);
     unit_test::checks("check_trim_functions", check_trim_functions);

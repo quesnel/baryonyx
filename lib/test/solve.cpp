@@ -241,14 +241,14 @@ test_quadratic_preprocessor()
 {
     auto ctx = baryonyx::make_context(stdout, 7);
 
-    const char *str_pb = "minimize\n"
-                                    "-5a + [ 2a * b + 3c * d ] /2 + 10b\n"
-                                    "Subject to:\n"
-                                    "a + b >= 0\n"
-                                    "b + c + d >= 0\n"
-                                    "Binaries\n"
-                                    "a b c d\n"
-                                    "End\n";
+    const char* str_pb = "minimize\n"
+                         "-5a + [ 2a * b + 3c * d ] /2 + 10b\n"
+                         "Subject to:\n"
+                         "a + b >= 0\n"
+                         "b + c + d >= 0\n"
+                         "Binaries\n"
+                         "a b c d\n"
+                         "End\n";
 
     std::istringstream iss(str_pb);
     auto pb = baryonyx::make_problem(ctx, iss);
@@ -613,7 +613,6 @@ test_aim_50_1_6_yes1_2()
     Ensures(baryonyx::is_valid_solution(pb, result) == true);
 }
 
-#if 0
 void
 test_Z_coefficient_1()
 {
@@ -631,14 +630,12 @@ test_Z_coefficient_1()
         std::istringstream iss(str_pb);
 
         auto pb = baryonyx::make_problem(ctx, iss);
-        pb = baryonyx::preprocess(ctx, pb);
         auto result = baryonyx::solve(ctx, pb);
 
         Ensures(result.status == baryonyx::result_status::success);
 
         if (result)
-            Ensures(baryonyx::is_valid_solution(pb, result) ==
-                    true);
+            Ensures(baryonyx::is_valid_solution(pb, result) == true);
     }
 
     {
@@ -646,6 +643,7 @@ test_Z_coefficient_1()
                              "Subject to:\n"
                              "2a + 3b -5c + 7d <= 0\n"
                              "-2b + 2c >= 1\n"
+                             "7a + 7d <= 7\n"
                              "Binaries\n"
                              "a b c d\n"
                              "End\n";
@@ -653,14 +651,12 @@ test_Z_coefficient_1()
         std::istringstream iss(str_pb);
 
         auto pb = baryonyx::make_problem(ctx, iss);
-        pb = baryonyx::preprocess(ctx, pb);
         auto result = baryonyx::solve(ctx, pb);
 
         Ensures(result.status == baryonyx::result_status::success);
 
         if (result)
-            Ensures(baryonyx::is_valid_solution(pb, result) ==
-                    true);
+            Ensures(baryonyx::is_valid_solution(pb, result) == true);
     }
 }
 
@@ -669,30 +665,24 @@ test_bibd1n()
 {
     auto ctx = baryonyx::make_context(stdout, 7);
 
-
     auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/bibd1n.lp");
-        pb = baryonyx::preprocess(ctx, pb);
 
-    context_set_parameter(ctx, "limit", -1);
-    context_set_parameter(ctx, "theta", 0.5);
-    context_set_parameter(ctx, "delta", 1e-7);
-    context_set_parameter(ctx, "kappa-min", 0.05);
-    context_set_parameter(ctx, "kappa-step", 1e-17);
-    context_set_parameter(ctx, "kappa-max", 1.0);
-    context_set_parameter(ctx, "alpha", 1.0);
-    context_set_parameter(ctx, "w", 60);
-    context_set_parameter(ctx, "print-level", 1);
-    context_set_parameter(ctx, "constraint-order", std::string("random-sorting"));
-    context_set_parameter(ctx, "time-limit", -1.0);
-    context_set_parameter(ctx, "preprocessing", std::string("none"));
-    context_set_parameter(ctx, "floating-point-type", std::string("float"));
+    baryonyx::solver_parameters params;
+    params.limit = -1;
+    params.theta = 0.6;
+    params.delta = 1e-7;
+    params.kappa_step = 1e-17;
+    params.kappa_max = 0.05;
+    params.kappa_max = 1.0;
+    params.alpha = 1.0;
+    params.w = 60;
+    baryonyx::context_set_solver_parameters(ctx, params);
 
     auto result = baryonyx::solve(ctx, pb);
 
     Ensures(result.status == baryonyx::result_status::success);
     Ensures(baryonyx::is_valid_solution(pb, result) == true);
 }
-#endif
 
 int
 main(int /*argc*/, char* /* argv */ [])
@@ -718,10 +708,8 @@ main(int /*argc*/, char* /* argv */ [])
     unit_test::checks("flat30_7", test_flat30_7);
     unit_test::checks("aim_50_1_6_yes1_2", test_aim_50_1_6_yes1_2);
 
-#if 0
     test_Z_coefficient_1();
     test_bibd1n();
-#endif
 
     return unit_test::report_errors();
 }
