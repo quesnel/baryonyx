@@ -66,15 +66,21 @@ struct exhaustive_solver
 
         constraint(const int k_,
                    const int start_,
-                   const int solutions_) noexcept
+                   const int solutions_,
+                   const int bk_min_,
+                   const int bk_max_) noexcept
           : k(k_)
           , start(start_)
           , solutions(solutions_)
+          , bk_min(bk_min_)
+          , bk_max(bk_max_)
         {}
 
         int k;
         int start;
         int solutions;
+        int bk_min = 0;
+        int bk_max = 0;
 
         bool operator==(const constraint& other) const noexcept
         {
@@ -120,7 +126,7 @@ struct exhaustive_solver
         bool end = false;
 
         do {
-            auto i = length(walkers);
+            auto i = length(walkers) - 1;
 
             do {
                 int sum = 0;
@@ -130,9 +136,10 @@ struct exhaustive_solver
 
                 if (bk_min <= sum && sum <= bk_max) {
                     ++nb_solution;
-                    for (int j = 0; j != constraint_size; ++j)
+                    for (int j = 0; j != constraint_size; ++j) {
                         flat_constraints.emplace_back(
-                          constraint_elements[j].factor);
+                          walkers[j] ? constraint_elements[j].factor : 0);
+                    }
                 }
 
                 ++walkers[i];
@@ -155,7 +162,8 @@ struct exhaustive_solver
         bx_expects(start_it_flat_constraints >= 0);
         bx_expects(nb_solution > 0);
 
-        constraints.emplace(k, start_it_flat_constraints, nb_solution);
+        constraints.emplace(
+          k, start_it_flat_constraints, nb_solution, bk_min, bk_max);
     }
 
     static Float init_z() noexcept
@@ -175,11 +183,8 @@ struct exhaustive_solver
     }
 
     template<typename R>
-    int solve(int k, R& reduced_cost, int r_size, int bk_min, int bk_max)
+    int solve(int k, R& reduced_cost, int r_size)
     {
-        bx_assert(r_size >= 4);
-        bx_assert(bk_min <= bk_max);
-
         const auto it_constraint = constraints.find(k);
         bx_expects(it_constraint != constraints.end());
 
@@ -204,17 +209,26 @@ struct exhaustive_solver
 
             if (is_best_solution(z, z_best)) {
                 z_best = z;
+                best = i;
             }
         }
 
+        bx_ensures(best >= 0);
+
         const auto start_solution = it_constraint->start + (best * r_size);
         for (int i = 0; i != r_size; ++i)
-            items[i].result = flat_constraints[start_solution + i];
+            items[i].result = flat_constraints[start_solution + i] ? 1 : 0;
 
         std::sort(std::begin(items),
                   std::end(items),
                   [](const auto& lhs, const auto& rhs) {
-                      return lhs.result > rhs.result;
+                      if (lhs.result == rhs.result) {
+                          if constexpr (std::is_same_v<Mode, minimize_tag>)
+                              return lhs.r < rhs.r;
+                          else
+                              return lhs.r > rhs.r;
+                      } else
+                          return lhs.result > rhs.result;
                   });
 
         auto middle =
@@ -228,7 +242,10 @@ struct exhaustive_solver
             reduced_cost[i].f = items[i].factor;
         }
 
-        return static_cast<int>(std::distance(std::begin(items), middle));
+        if (middle == std::end(items))
+            return items[0].result == 0 ? -1 : r_size;
+
+        return static_cast<int>(std::distance(std::begin(items), middle) - 1);
     }
 };
 

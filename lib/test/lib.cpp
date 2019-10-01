@@ -22,6 +22,7 @@
 
 #include "bit-array.hpp"
 #include "branch-and-bound-solver.hpp"
+#include "exhaustive-solver.hpp"
 #include "fixed-2darray.hpp"
 #include "fixed-array.hpp"
 #include "knapsack-dp-solver.hpp"
@@ -343,14 +344,14 @@ test_subvector_api()
     baryonyx::itm::shared_subvector s;
     s.reserve(128);
 
-    assert(s.size() == 0);
+    Ensures(s.size() == 0);
 
     bool is_initialized = s.init(4);
-    assert(is_initialized);
+    Ensures(is_initialized);
 
     auto id = s.emplace();
-    assert(s.size() == 4);
-    assert(id == 0);
+    Ensures(s.size() == 4);
+    Ensures(id == 0);
 
     for (baryonyx::itm::shared_subvector::size_type i = id,
                                                     e = id + s.element_size();
@@ -359,8 +360,8 @@ test_subvector_api()
         s[i] = static_cast<std::int8_t>(i);
 
     auto id2 = s.emplace();
-    assert(s.size() == 8);
-    assert(id2 == 4);
+    Ensures(s.size() == 8);
+    Ensures(id2 == 4);
 
     for (baryonyx::itm::shared_subvector::size_type i = id2,
                                                     e = id2 + s.element_size();
@@ -371,36 +372,36 @@ test_subvector_api()
     for (baryonyx::itm::shared_subvector::size_type i = 0, e = s.size();
          i != e;
          ++i)
-        assert(s[i] == static_cast<int8_t>(i));
+        Ensures(s[i] == static_cast<int8_t>(i));
 
     s.remove(id);
 
-    assert(s.size() == 8);
+    Ensures(s.size() == 8);
 
     auto id3 = s.emplace();
-    assert(s.size() == 8);
-    assert(id3 == 0);
+    Ensures(s.size() == 8);
+    Ensures(id3 == 0);
 
     is_initialized = s.init(5);
-    assert(is_initialized);
-    assert(s.size() == 0);
+    Ensures(is_initialized);
+    Ensures(s.size() == 0);
 
     id = s.emplace();
     id2 = s.emplace();
     id3 = s.emplace();
 
-    assert(s.size() == 3u * 5u);
+    Ensures(s.size() == 3u * 5u);
 
     for (unsigned int i = 0, e = s.size(); i != e; ++i)
         s[i] = static_cast<std::int8_t>(i);
 
     std::int8_t cmp = 0;
     for (auto [i, e] = s.element(id); i != e; ++i, ++cmp)
-        assert(cmp == s[i]);
+        Ensures(cmp == s[i]);
     for (auto [i, e] = s.element(id2); i != e; ++i, ++cmp)
-        assert(cmp == s[i]);
+        Ensures(cmp == s[i]);
     for (auto [i, e] = s.element(id3); i != e; ++i, ++cmp)
-        assert(cmp == s[i]);
+        Ensures(cmp == s[i]);
 
     s.remove(id3);
     s.remove(id2);
@@ -506,6 +507,21 @@ check_knapsack_solver()
     }
 }
 
+template<typename R>
+std::tuple<double, int>
+sum(const R& r, int r_size, int result)
+{
+    double sumr{ 0 };
+    int sumf{ 0 };
+
+    for (int i = 0, e = std::min(r_size - 1, result); i <= e; ++i) {
+        sumr += r[i].value;
+        sumf += r[i].f;
+    }
+
+    return std::make_tuple(sumr, sumf);
+}
+
 static void
 check_branch_and_bound_solver()
 {
@@ -529,14 +545,11 @@ check_branch_and_bound_solver()
         const int b_max = 30;
 
         auto result = bb.solve(R, nb, b_min, b_max);
-        Ensures(result >= 0 && result < static_cast<int>(R.size()));
+        Ensures(result >= -1 && result <= static_cast<int>(R.size()));
 
-        int ret = 0;
-        for (int i = 0; i < result; ++i)
-            ret += R[i].f;
-
-        Ensures(b_min <= ret && ret <= b_max);
-        Ensures(ret == 25);
+        auto [r, f] = sum(R, nb, result);
+        Ensures(f == 25);
+        Ensures(r == 11.0);
     }
 
     {
@@ -549,14 +562,11 @@ check_branch_and_bound_solver()
         const int b_max = 7;
 
         auto result = bb.solve(R, nb, b_min, b_max);
-        Ensures(result >= 0 && result < static_cast<int>(R.size()));
+        Ensures(result >= -1 && result <= static_cast<int>(R.size()));
 
-        int ret = 0;
-        for (int i = 0; i < result; ++i)
-            ret += R[i].f;
-
-        Ensures(b_min <= ret && ret <= b_max);
-        Ensures(ret == 7);
+        auto [r, f] = sum(R, nb, result);
+        Ensures(f == 7);
+        Ensures(r == 42.0);
     }
 
     {
@@ -569,14 +579,134 @@ check_branch_and_bound_solver()
         const int b_max = -2;
 
         auto result = bb.solve(R, nb, b_min, b_max);
-        Ensures(result >= 0 && result < static_cast<int>(R.size()));
+        Ensures(result >= -1 && result <= static_cast<int>(R.size()));
 
-        int ret = 0;
-        for (int i = 0; i < result; ++i)
-            ret += R[i].f;
+        auto [r, f] = sum(R, nb, result);
+        Ensures(f == -2);
+        Ensures(r == 2.0); // Strange ?!?
+    }
+}
 
-        Ensures(b_min <= ret && ret <= b_max);
-        Ensures(ret == -2);
+static void
+check_exhaustive_solver()
+{
+    struct rc
+    {
+        double value;
+        int id;
+        int f;
+    };
+
+    struct cst
+    {
+        int factor;
+    };
+
+    {
+        baryonyx::itm::exhaustive_solver<baryonyx::itm::maximize_tag, double>
+          ex;
+        ex.reserve(10u, 1u);
+
+        std::vector<rc> R = {
+            { 7.0, 0, 13 }, { 4.0, 1, 12 }, { 3.0, 2, 8 }, { 3.0, 3, 10 }
+        };
+
+        std::vector<cst> C = { { 13 }, { 12 }, { 8 }, { 10 } };
+
+        const int nb = 4;
+        const int b_min = 0;
+        const int b_max = 30;
+
+        ex.build_constraints(0, C, b_min, b_max);
+        auto result = ex.solve(0, R, nb);
+        Ensures(result >= -1 && result <= static_cast<int>(R.size()));
+
+        auto [r, f] = sum(R, nb, result);
+        Ensures(f == 25);
+        Ensures(r == 11.0);
+    }
+
+    {
+        baryonyx::itm::exhaustive_solver<baryonyx::itm::maximize_tag, double>
+          ex;
+        ex.reserve(10u, 1u);
+
+        std::vector<rc> R = {
+            { 16.0, 0, 2 }, { 19, 1, 3 }, { 23, 2, 4 }, { 26, 3, 5 }
+        };
+
+        std::vector<cst> C = { { 2 }, { 3 }, { 4 }, { 5 } };
+
+        const int nb = 4;
+        const int b_min = 0;
+        const int b_max = 7;
+
+        ex.build_constraints(0, C, b_min, b_max);
+        auto result = ex.solve(0, R, nb);
+        Ensures(result >= -1 && result <= static_cast<int>(R.size()));
+
+        auto [r, f] = sum(R, nb, result);
+        Ensures(f == 7);
+        Ensures(r == 42.0);
+    }
+
+    {
+        baryonyx::itm::exhaustive_solver<baryonyx::itm::maximize_tag, double>
+          ex;
+        ex.reserve(10u, 1u);
+
+        std::vector<rc> R = {
+            { 1.0, 0, -1 }, { 1.0, 1, -1 }, { 1.0, 2, -1 }, { 1.0, 3, 1 }
+        };
+
+        std::vector<cst> C = { { -1 }, { -1 }, { -1 }, { 1 } };
+
+        const int nb = 4;
+        const int b_min = -2;
+        const int b_max = -2;
+
+        ex.build_constraints(0, C, b_min, b_max);
+        auto result = ex.solve(0, R, nb);
+        Ensures(result >= -1 && result <= static_cast<int>(R.size()));
+
+        auto [r, f] = sum(R, nb, result);
+        Ensures(f == -2);
+        Ensures(r == 4.0);
+    }
+
+    {
+        baryonyx::itm::exhaustive_solver<baryonyx::itm::maximize_tag, double>
+          ex;
+        ex.reserve(10u, 2u);
+
+        std::vector<rc> R1 = {
+            { 1.0, 0, -1 }, { 1.0, 1, -1 }, { 1.0, 2, -1 }, { 1.0, 3, 1 }
+        };
+        std::vector<rc> R2 = { { 1.0, 0, -1 }, { -0.5, 1, -1 } };
+
+        std::vector<cst> C1 = { { -1 }, { -1 }, { -1 }, { 1 } };
+        std::vector<cst> C2 = { { -1 }, { -1 } };
+
+        ex.build_constraints(0, C1, -2, -2);
+        ex.build_constraints(1, C2, -2, -1);
+
+        {
+            auto result = ex.solve(0, R1, 4);
+            Ensures(result >= -1 && result <= static_cast<int>(R1.size()));
+
+            auto [r, f] = sum(R1, 4, result);
+            Ensures(f == -2);
+            Ensures(r == 4.0);
+        }
+
+        {
+            auto result = ex.solve(1, R2, 2);
+            Ensures(result >= -1 && result <= static_cast<int>(R2.size()));
+
+            auto [r, f] = sum(R2, 2, result);
+            Ensures(f == -1);
+            Ensures(r == 1.0);
+        }
     }
 }
 
@@ -757,6 +887,7 @@ main(int /* argc */, char* /* argv */ [])
                       test_size_type_greater_than_int8_subvector);
     unit_test::checks("check_branch_and_bound_solver",
                       check_branch_and_bound_solver);
+    unit_test::checks("check_exhaustive_solver", check_exhaustive_solver);
 
     unit_test::checks("check_observer_pnm", check_observer_pnm);
     unit_test::checks("check_show_size", check_show_size);

@@ -21,6 +21,7 @@
  */
 
 #include "branch-and-bound-solver.hpp"
+#include "exhaustive-solver.hpp"
 #include "itm-common.hpp"
 #include "itm-optimizer-common.hpp"
 #include "itm-solver-common.hpp"
@@ -34,6 +35,8 @@ struct solver_inequalities_Zcoeff
     using mode_type = Mode;
     using float_type = Float;
     using cost_type = Cost;
+
+    static inline const int maximum_factor_exhaustive_solver = 32;
 
     Random& rng;
 
@@ -76,6 +79,7 @@ struct solver_inequalities_Zcoeff
     std::unique_ptr<Float[]> pi;
 
     branch_and_bound_solver<Mode, Float> bb;
+    exhaustive_solver<Mode, Float> ex;
 
     const cost_type& c;
     int m;
@@ -98,7 +102,14 @@ struct solver_inequalities_Zcoeff
       , m(m_)
       , n(n_)
     {
+        // Count the maximum function elements in the constraint where a least
+        // one coefficient is in Z. To be use with the branch-and-bound and
+        // exhaustive solvers.
         std::size_t z_variables_max = 0;
+
+        // Count the maximum constraint number where at leat one coefficient is
+        // in Z. To be used with the exhaustive solver.
+        std::size_t z_constraint_exhaustive = 0;
 
         int id = 0;
         for (int i = 0, e = length(csts); i != e; ++i) {
@@ -115,12 +126,9 @@ struct solver_inequalities_Zcoeff
                 else
                     lower += cst.factor;
 
-                Z[i] = cst.factor < -1 || cst.factor > 1;
+                if (!Z[i] && (cst.factor < -1 || cst.factor > 1))
+                    Z[i] = true;
             }
-
-            if (Z[i])
-                z_variables_max =
-                  std::max(z_variables_max, local_z_variables_max);
 
             if (csts[i].min == csts[i].max) {
                 b[i].min = csts[i].min;
@@ -130,8 +138,23 @@ struct solver_inequalities_Zcoeff
                 b[i].max = std::min(upper, csts[i].max);
             }
 
+            if (Z[i]) {
+                z_variables_max =
+                  std::max(z_variables_max, local_z_variables_max);
+
+                if (local_z_variables_max <=
+                    maximum_factor_exhaustive_solver) {
+                    ++z_constraint_exhaustive;
+                    ex.build_constraints(
+                      i, csts[i].elements, b[i].min, b[i].max);
+                }
+            }
+
             bx_ensures(b[i].min <= b[i].max);
         }
+
+        if (z_constraint_exhaustive > 0)
+            ex.reserve(z_variables_max, z_constraint_exhaustive);
 
         bb.reserve(z_variables_max);
     }
@@ -236,14 +259,78 @@ struct solver_inequalities_Zcoeff
         if (bkmin == bkmax)
             return std::min(bkmin + sizes.c_size, sizes.r_size) - 1;
 
-        bkmin = std::min(bkmin, sizes.r_size);
-        bkmax = std::min(bkmax, sizes.r_size);
+        bkmin += sizes.c_size;
+        bkmax = std::min(bkmax + sizes.c_size, sizes.r_size);
 
         for (int i = bkmin; i <= bkmax; ++i)
             if (stop_iterating<Mode>(R[i].value, rng))
                 return i - 1;
 
         return bkmax - 1;
+    }
+
+    template<typename Xtype, typename Iterator>
+    bool local_affect(Xtype& x,
+                      Iterator it,
+                      int k,
+                      int selected,
+                      int r_size,
+                      const Float kappa,
+                      const Float delta)
+    {
+        constexpr Float one{ 1 };
+        constexpr Float two{ 2 };
+        constexpr Float middle{ (two + one) / two };
+
+        const auto old_pi = pi[k];
+
+        auto d = delta;
+
+        if (selected < 0) {
+            pi[k] += R[0].value / two;
+            d += (kappa / (one - kappa)) * (R[0].value / two);
+
+            for (int i = 0; i != r_size; ++i) {
+                auto var = it + R[i].id;
+
+                x.unset(var->column);
+                P[var->value] -= d;
+            }
+        } else if (selected + 1 >= r_size) {
+            pi[k] += R[selected].value * middle;
+            d += (kappa / (one - kappa)) * (R[selected].value * middle);
+
+            for (int i = 0; i != r_size; ++i) {
+                auto var = it + R[i].id;
+
+                x.set(var->column);
+                P[var->value] += d;
+            }
+        } else {
+            pi[k] += ((R[selected].value + R[selected + 1].value) / two);
+            d += (kappa / (one - kappa)) *
+                 (R[selected + 1].value - R[selected].value);
+
+            int i = 0;
+            for (; i <= selected; ++i) {
+                auto var = it + R[i].id;
+
+                x.set(var->column);
+                P[var->value] += d;
+            }
+
+            for (; i != r_size; ++i) {
+                auto var = it + R[i].id;
+
+                x.unset(var->column);
+                P[var->value] -= d;
+            }
+        }
+
+        // TODO job: develops is_valid_constraint for all the solvers
+        bx_expects(is_valid_constraint(*this, k, x));
+
+        return is_signbit_change(old_pi, pi[k]);
     }
 
     template<typename Xtype, typename Iterator>
@@ -273,18 +360,48 @@ struct solver_inequalities_Zcoeff
             for (int i = 0; i != sizes.r_size; ++i)
                 R[i].value +=
                   obj_amp * c((std::get<0>(it) + R[i].id)->column, x);
-            calculator_sort<Mode>(R.get(), R.get() + sizes.r_size, rng);
 
-            int selected = select_variables(sizes, b[k].min, b[k].max);
+            int selected;
+            Float pi_change;
 
-            auto pi_change = affect(*this,
-                                    x,
-                                    std::get<0>(it),
-                                    k,
-                                    selected,
-                                    sizes.r_size,
-                                    kappa,
-                                    delta);
+            if (Z[k]) {
+                if (sizes.r_size <= maximum_factor_exhaustive_solver) {
+                    selected = ex.solve(k, R, sizes.r_size);
+
+                    pi_change = local_affect(x,
+                                             std::get<0>(it),
+                                             k,
+                                             selected,
+                                             sizes.r_size,
+                                             kappa,
+                                             delta);
+                } else {
+                    calculator_sort<Mode>(
+                      R.get(), R.get() + sizes.r_size, rng);
+                    selected = bb.solve(R, sizes.r_size, b[k].min, b[k].max);
+
+                    pi_change = affect(*this,
+                                       x,
+                                       std::get<0>(it),
+                                       k,
+                                       selected,
+                                       sizes.r_size,
+                                       kappa,
+                                       delta);
+                }
+            } else {
+                calculator_sort<Mode>(R.get(), R.get() + sizes.r_size, rng);
+                selected = select_variables(sizes, b[k].min, b[k].max);
+
+                pi_change = affect(*this,
+                                   x,
+                                   std::get<0>(it),
+                                   k,
+                                   selected,
+                                   sizes.r_size,
+                                   kappa,
+                                   delta);
+            }
 
             at_least_one_pi_changed = at_least_one_pi_changed || pi_change;
         }
@@ -309,20 +426,46 @@ struct solver_inequalities_Zcoeff
             const auto sizes =
               compute_reduced_costs(std::get<0>(it), std::get<1>(it), x);
 
-            calculator_sort<Mode>(R.get(), R.get() + sizes.r_size, rng);
+            int selected;
+            Float pi_change;
 
-            int selected = (Z[k])
-                             ? bb.solve(R, sizes.r_size, b[k].min, b[k].max)
-                             : select_variables(sizes, b[k].min, b[k].max);
+            if (Z[k]) {
+                if (sizes.r_size <= maximum_factor_exhaustive_solver) {
+                    selected = ex.solve(k, R, sizes.r_size);
+                    pi_change = local_affect(x,
+                                             std::get<0>(it),
+                                             k,
+                                             selected,
+                                             sizes.r_size,
+                                             kappa,
+                                             delta);
+                } else {
+                    calculator_sort<Mode>(
+                      R.get(), R.get() + sizes.r_size, rng);
+                    selected = bb.solve(R, sizes.r_size, b[k].min, b[k].max);
 
-            auto pi_change = affect(*this,
-                                    x,
-                                    std::get<0>(it),
-                                    k,
-                                    selected,
-                                    sizes.r_size,
-                                    kappa,
-                                    delta);
+                    pi_change = affect(*this,
+                                       x,
+                                       std::get<0>(it),
+                                       k,
+                                       selected,
+                                       sizes.r_size,
+                                       kappa,
+                                       delta);
+                }
+            } else {
+                calculator_sort<Mode>(R.get(), R.get() + sizes.r_size, rng);
+                selected = select_variables(sizes, b[k].min, b[k].max);
+
+                pi_change = affect(*this,
+                                   x,
+                                   std::get<0>(it),
+                                   k,
+                                   selected,
+                                   sizes.r_size,
+                                   kappa,
+                                   delta);
+            }
 
             at_least_one_pi_changed = at_least_one_pi_changed || pi_change;
         }

@@ -23,7 +23,6 @@
 #ifndef ORG_VLEPROJECT_BARYONYX_BRANCH_AND_BOUND_HPP
 #define ORG_VLEPROJECT_BARYONYX_BRANCH_AND_BOUND_HPP
 
-#include <iostream>
 #include <limits>
 #include <tuple>
 #include <vector>
@@ -472,6 +471,7 @@ struct branch_and_bound_solver
             items[i].variable = reduced_cost[i].id;
             items[i].original_factor = reduced_cost[i].f;
             items[i].factor = std::abs(reduced_cost[i].f);
+            items[i].result = 0;
         }
 
         std::fill_n(
@@ -506,7 +506,13 @@ struct branch_and_bound_solver
         std::sort(std::begin(items),
                   std::end(items),
                   [](const auto& lhs, const auto& rhs) {
-                      return lhs.result > rhs.result;
+                      if (lhs.result == rhs.result) {
+                          if constexpr (std::is_same_v<Mode, minimize_tag>)
+                              return lhs.r < rhs.r;
+                          else
+                              return lhs.r > rhs.r;
+                      } else
+                          return lhs.result > rhs.result;
                   });
 
         auto middle =
@@ -520,7 +526,10 @@ struct branch_and_bound_solver
             reduced_cost[i].f = items[i].original_factor;
         }
 
-        return static_cast<int>(std::distance(std::begin(items), middle));
+        if (middle == std::end(items))
+            return items[0].result == 0 ? -1 : r_size;
+
+        return static_cast<int>(std::distance(std::begin(items), middle) - 1);
     }
 };
 
