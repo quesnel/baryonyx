@@ -488,8 +488,8 @@ struct problem_parser
         return -1;
     }
 
-    [[nodiscard]] bool append_to_objective(
-      const function_element_token& elem) {
+    [[nodiscard]] bool append_to_objective(const function_element_token& elem)
+    {
         if (elem.name.empty()) {
             m_problem.objective.value += elem.factor;
             return true;
@@ -501,8 +501,8 @@ struct problem_parser
         }
     }
 
-      [[nodiscard]] bool set_boolean_variable(
-        const std::string_view value) noexcept
+    [[nodiscard]] bool set_boolean_variable(
+      const std::string_view value) noexcept
     {
         auto id = get_variable(value);
         if (id < 0)
@@ -527,7 +527,8 @@ struct problem_parser
         return true;
     }
 
-    [[nodiscard]] bool set_bound_variable(bound_token bound) {
+    [[nodiscard]] bool set_bound_variable(bound_token bound)
+    {
         auto id = get_variable(bound.name);
         if (id < 0)
             return false;
@@ -703,8 +704,7 @@ read_quadratic_element(stream_buffer& buf,
         if (buf.first() == "*") {
             auto name_opt = read_name(buf.second());
             if (!name_opt.has_value())
-                return baryonyx::file_format_error_tag::
-                  bad_objective_quadratic;
+                return baryonyx::file_format_error_tag::bad_objective_quadratic;
 
             auto id1 = p.get_or_assign_variable(fct.name);
             auto id2 = p.get_or_assign_variable(*name_opt);
@@ -894,10 +894,8 @@ read_bound(const stream_buffer::string_view_array& tokens) noexcept
         if (left_opt->value > right_opt->value)
             return std::nullopt;
 
-        return bound_token(left_opt->value,
-                           right_opt->value,
-                           *name_opt,
-                           read + right_opt->read);
+        return bound_token(
+          left_opt->value, right_opt->value, *name_opt, read + right_opt->read);
     }
 
     if (starts_with_name(tokens[0])) {
@@ -969,8 +967,7 @@ read_subject_to(const std::string_view buf_1,
 }
 
 constexpr int
-read_bounds(const std::string_view buf_1,
-            const std::string_view buf_2) noexcept
+read_bounds(const std::string_view buf_1, const std::string_view buf_2) noexcept
 {
     if (are_equal(buf_1, "bounds") || are_equal(buf_1, "bound"))
         return are_equal(buf_2, ":") ? 2 : 1;
@@ -979,8 +976,7 @@ read_bounds(const std::string_view buf_1,
 }
 
 constexpr int
-read_binary(const std::string_view buf_1,
-            const std::string_view buf_2) noexcept
+read_binary(const std::string_view buf_1, const std::string_view buf_2) noexcept
 {
     if (are_equal(buf_1, "binary") || are_equal(buf_1, "binaries") ||
         are_equal(buf_1, "bin"))
@@ -1017,9 +1013,10 @@ starts_with_quadratic(const std::string_view buf_1,
            (buf_1 == "-" && buf_2 == "[");
 }
 
-raw_problem_status parse([[maybe_unused]] const baryonyx::context_ptr& ctx,
-                         stream_buffer& buf,
-                         problem_parser& p) noexcept
+raw_problem_status
+parse([[maybe_unused]] const baryonyx::context_ptr& ctx,
+      stream_buffer& buf,
+      problem_parser& p) noexcept
 {
     if (auto obj_type = read_objective_type(buf.first()); !obj_type)
         return baryonyx::file_format_error_tag::bad_objective_function_type;
@@ -1088,10 +1085,9 @@ raw_problem_status parse([[maybe_unused]] const baryonyx::context_ptr& ctx,
 
             buf.pop_front(elem->read);
 
-            while (!buf.first().empty() &&
-                   !starts_with_operator(buf.first())) {
-                elem = read_function_element(
-                  buf.first(), buf.second(), buf.third());
+            while (!buf.first().empty() && !starts_with_operator(buf.first())) {
+                elem =
+                  read_function_element(buf.first(), buf.second(), buf.third());
                 if (!elem)
                     return baryonyx::file_format_error_tag::bad_constraint;
 

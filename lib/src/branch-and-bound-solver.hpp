@@ -86,7 +86,8 @@ public:
         return true;
     }
 
-    [[nodiscard]] size_type emplace() {
+    [[nodiscard]] size_type emplace()
+    {
         size_type new_position = 0;
 
         if (m_free_list_head != npos) {
@@ -105,8 +106,7 @@ public:
         return new_position;
     }
 
-      [[nodiscard]] value_type
-      operator[](size_type i) const noexcept
+    [[nodiscard]] value_type operator[](size_type i) const noexcept
     {
         check_access(i);
 
@@ -171,7 +171,7 @@ public:
           &m_container[source], m_element_size, &m_container[destination]);
     }
 
-    void invert(size_type i, int element)
+    void invert(size_type i, unsigned int element)
     {
         m_container[i + element] = m_container[i + element] ? 0 : 1;
     }
