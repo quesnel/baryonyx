@@ -131,6 +131,12 @@ public:
     }
 };
 
+struct to_merge_with_objective_function
+{
+    std::vector<bx::objective_function_element> elements;
+    double value = 0;
+};
+
 template<typename Problem>
 class preprocessor
 {
@@ -142,6 +148,9 @@ private:
     std::vector<int> greater_constraints;
     std::vector<int> less_constraints;
     std::vector<pp_variable_access> cache;
+
+    to_merge_with_objective_function merge_obj;
+
     pp_lifo lifo;
 
     auto reduce(const bx::constraint& constraint) -> std::tuple<int, int, int>
@@ -269,12 +278,6 @@ private:
         return true;
     }
 
-    struct to_merge_with_objective_function
-    {
-        std::vector<bx::objective_function_element> elements;
-        double value = 0;
-    };
-
     // For each variable that appear in the quadratic elements of the
     // objective function and not used in any equal, greater or less
     // constraints, and not already in affected list, this function tries to
@@ -282,9 +285,10 @@ private:
     // mode). If value equals 0, do nothing otherwise, we must add the factor
     // / 2 to the linear quadratic element if the second variable exists or to
     // the constant part of the objective function if we have a square.
-    to_merge_with_objective_function make_lp_from_bqp_objective()
+    void make_lp_from_bqp_objective()
     {
-        to_merge_with_objective_function ret;
+        merge_obj.elements.clear();
+        merge_obj.value = 0;
 
         for (int i = 0, e = bx::length(cache); i != e; ++i) {
             if (vars.find(i) == vars.end() && is_unused_variable(i)) {
@@ -304,15 +308,15 @@ private:
                         value = it->factor < 0;
 
                     if (value) {
-                        if (e.variable_index_a == e.variable_index_b) {
-                            ret.value += it->factor / 2;
+                        if (it->variable_index_a == it->variable_index_b) {
+                            merge_obj.value += it->factor / 2;
                         } else {
                             const auto index_to_affect =
                               it->variable_index_a == i ? it->variable_index_b
                                                         : it->variable_index_a;
 
-                            ret.elements.emplace_back(it->factor / 2,
-                                                      it->index_to_affect);
+                            merge_obj.elements.emplace_back(it->factor / 2,
+                                                            index_to_affect);
                         }
                     }
 
@@ -323,8 +327,6 @@ private:
                 }
             }
         }
-
-        return ret;
     }
 
     // For each variable not used in any equal, greater or less constraints,
@@ -377,7 +379,8 @@ private:
                           "      - equal constraint {} will be removed.\n",
                           pb.equal_constraints[cst].label);
 
-                    auto v = reduce_equal_constraint(pb.equal_constraints[cst]);
+                    auto v =
+                      reduce_equal_constraint(pb.equal_constraints[cst]);
                     equal_constraints[cst] = 0;
 
                     if (std::get<0>(v) >= 0)
@@ -540,7 +543,8 @@ private:
 
                         less_constraints[i] = 0;
 
-                        for (const auto& elem : pb.less_constraints[i].elements)
+                        for (const auto& elem :
+                             pb.less_constraints[i].elements)
                             lifo.emplace(elem.variable_index, false);
                     } else if (sum_factor(pb.less_constraints[i]) ==
                                pb.less_constraints[i].value) {
@@ -586,7 +590,8 @@ public:
 
         for (int i = 0, e = bx::length(pb.equal_constraints); i != e; ++i)
             for (const auto& elem : pb.equal_constraints[i].elements)
-                cache[elem.variable_index].in_equal_constraints.emplace_back(i);
+                cache[elem.variable_index].in_equal_constraints.emplace_back(
+                  i);
 
         for (int i = 0, e = bx::length(pb.greater_constraints); i != e; ++i)
             for (const auto& elem : pb.greater_constraints[i].elements)
@@ -606,6 +611,8 @@ public:
 
         affect_variable(variable_index, variable_value);
         affects();
+
+        make_lp_from_bqp_objective();
         try_remove_unused_variable();
         affects();
 
@@ -626,6 +633,8 @@ public:
         try_affect_bounded_variable();
         try_affect_variable();
         affects();
+
+        make_lp_from_bqp_objective();
         try_remove_unused_variable();
         affects();
 
@@ -711,7 +720,7 @@ private:
     {
         bx::objective_function ret;
 
-        ret.value = pb.objective.value;
+        ret.value = pb.objective.value + merge_obj.value;
 
         for (int i = 0, e = bx::length(pb.objective.elements); i != e; ++i) {
             if (mapping[pb.objective.elements[i].variable_index].first == -1) {
@@ -745,6 +754,18 @@ private:
                       pb.objective.qelements[i].factor, va.first, vb.first);
                 }
             }
+        }
+
+        for (int i = 0, e = length(merge_obj.elements); i != e; ++i) {
+            auto it = std::find_if(
+              std::begin(ret.elements),
+              std::end(ret.elements),
+              [i](const auto& elem) { return i == elem.variable_index; });
+
+            if (it != std::end(ret.elements))
+                it->factor += merge_obj.elements[i].factor;
+            else
+                ret.elements.emplace_back(it->factor, it->variable_index);
         }
 
         return ret;
