@@ -488,21 +488,32 @@ struct problem_parser
         return -1;
     }
 
-    [[nodiscard]] bool append_to_objective(const function_element_token& elem)
-    {
+    [[nodiscard]] bool append_to_objective(
+      const function_element_token& elem) {
         if (elem.name.empty()) {
             m_problem.objective.value += elem.factor;
             return true;
         } else {
-            m_problem.objective.elements.emplace_back(
-              elem.factor, get_or_assign_variable(elem.name));
+            auto id = get_or_assign_variable(elem.name);
+            if (id == -1)
+                return false;
 
-            return m_problem.objective.elements.back().variable_index >= 0;
+            auto it = std::find_if(
+              std::begin(m_problem.objective.elements),
+              std::end(m_problem.objective.elements),
+              [id](const auto& elem) { return elem.variable_index == id; });
+
+            if (it == std::end(m_problem.objective.elements))
+                m_problem.objective.elements.emplace_back(elem.factor, id);
+            else
+                it->factor += elem.factor;
+
+            return true;
         }
     }
 
-    [[nodiscard]] bool set_boolean_variable(
-      const std::string_view value) noexcept
+      [[nodiscard]] bool set_boolean_variable(
+        const std::string_view value) noexcept
     {
         auto id = get_variable(value);
         if (id < 0)
@@ -527,8 +538,7 @@ struct problem_parser
         return true;
     }
 
-    [[nodiscard]] bool set_bound_variable(bound_token bound)
-    {
+    [[nodiscard]] bool set_bound_variable(bound_token bound) {
         auto id = get_variable(bound.name);
         if (id < 0)
             return false;
@@ -689,7 +699,6 @@ read_quadratic_element(stream_buffer& buf,
     buf.pop_front();
 
     while (!buf.first().empty() && buf.first() != "]") {
-        auto& ret = p.m_problem.objective.qelements.emplace_back();
         function_element_token fct;
 
         if (auto fct_opt =
@@ -704,7 +713,8 @@ read_quadratic_element(stream_buffer& buf,
         if (buf.first() == "*") {
             auto name_opt = read_name(buf.second());
             if (!name_opt.has_value())
-                return baryonyx::file_format_error_tag::bad_objective_quadratic;
+                return baryonyx::file_format_error_tag::
+                  bad_objective_quadratic;
 
             auto id1 = p.get_or_assign_variable(fct.name);
             auto id2 = p.get_or_assign_variable(*name_opt);
@@ -712,9 +722,23 @@ read_quadratic_element(stream_buffer& buf,
             if (id1 == -1 || id2 == -1)
                 return baryonyx::file_format_error_tag::too_many_variables;
 
-            ret.factor = fct.factor * sign_factor / 2.0;
-            ret.variable_index_a = id1;
-            ret.variable_index_b = id2;
+            auto it = std::find_if(p.m_problem.objective.qelements.begin(),
+                                   p.m_problem.objective.qelements.end(),
+                                   [id1, id2](const auto& elem) {
+                                       return (elem.variable_index_a == id1 &&
+                                               elem.variable_index_b == id2) ||
+                                              (elem.variable_index_a == id2 &&
+                                               elem.variable_index_b == id1);
+                                   });
+            if (it == p.m_problem.objective.qelements.end()) {
+                auto& ret = p.m_problem.objective.qelements.emplace_back();
+                ret.factor = fct.factor * sign_factor / 2.0;
+                ret.variable_index_a = id1;
+                ret.variable_index_b = id2;
+            } else {
+                it->factor += fct.factor * sign_factor / 2.0;
+            }
+
             buf.pop_front(2);
         } else if (buf.first() == "^" || buf.first() == "^2") {
             if (buf.first() == "^" && buf.second() == "2")
@@ -726,9 +750,21 @@ read_quadratic_element(stream_buffer& buf,
             if (id == -1)
                 return baryonyx::file_format_error_tag::too_many_variables;
 
-            ret.factor = fct.factor * sign_factor / 2.0;
-            ret.variable_index_a = id;
-            ret.variable_index_b = id;
+            auto it = std::find_if(p.m_problem.objective.qelements.begin(),
+                                   p.m_problem.objective.qelements.end(),
+                                   [id](const auto& elem) {
+                                       return elem.variable_index_a == id &&
+                                              elem.variable_index_b == id;
+                                   });
+
+            if (it == p.m_problem.objective.qelements.end()) {
+                auto& ret = p.m_problem.objective.qelements.emplace_back();
+                ret.factor = fct.factor * sign_factor / 2.0;
+                ret.variable_index_a = id;
+                ret.variable_index_b = id;
+            } else {
+                it->factor += fct.factor * sign_factor / 2.0;
+            }
         }
     }
 
@@ -894,8 +930,10 @@ read_bound(const stream_buffer::string_view_array& tokens) noexcept
         if (left_opt->value > right_opt->value)
             return std::nullopt;
 
-        return bound_token(
-          left_opt->value, right_opt->value, *name_opt, read + right_opt->read);
+        return bound_token(left_opt->value,
+                           right_opt->value,
+                           *name_opt,
+                           read + right_opt->read);
     }
 
     if (starts_with_name(tokens[0])) {
@@ -967,7 +1005,8 @@ read_subject_to(const std::string_view buf_1,
 }
 
 constexpr int
-read_bounds(const std::string_view buf_1, const std::string_view buf_2) noexcept
+read_bounds(const std::string_view buf_1,
+            const std::string_view buf_2) noexcept
 {
     if (are_equal(buf_1, "bounds") || are_equal(buf_1, "bound"))
         return are_equal(buf_2, ":") ? 2 : 1;
@@ -976,7 +1015,8 @@ read_bounds(const std::string_view buf_1, const std::string_view buf_2) noexcept
 }
 
 constexpr int
-read_binary(const std::string_view buf_1, const std::string_view buf_2) noexcept
+read_binary(const std::string_view buf_1,
+            const std::string_view buf_2) noexcept
 {
     if (are_equal(buf_1, "binary") || are_equal(buf_1, "binaries") ||
         are_equal(buf_1, "bin"))
@@ -1013,10 +1053,9 @@ starts_with_quadratic(const std::string_view buf_1,
            (buf_1 == "-" && buf_2 == "[");
 }
 
-raw_problem_status
-parse([[maybe_unused]] const baryonyx::context_ptr& ctx,
-      stream_buffer& buf,
-      problem_parser& p) noexcept
+raw_problem_status parse([[maybe_unused]] const baryonyx::context_ptr& ctx,
+                         stream_buffer& buf,
+                         problem_parser& p) noexcept
 {
     if (auto obj_type = read_objective_type(buf.first()); !obj_type)
         return baryonyx::file_format_error_tag::bad_objective_function_type;
@@ -1077,22 +1116,50 @@ parse([[maybe_unused]] const baryonyx::context_ptr& ctx,
             if (!elem)
                 return baryonyx::file_format_error_tag::bad_constraint;
 
-            elements.emplace_back(static_cast<int>(elem->factor),
-                                  p.get_or_assign_variable(elem->name));
+            {
+                auto id = p.get_or_assign_variable(elem->name);
+                if (id == -1)
+                    return baryonyx::file_format_error_tag::too_many_variables;
 
-            if (elements.back().variable_index == -1)
-                return baryonyx::file_format_error_tag::too_many_variables;
+                auto it = std::find_if(
+                  elements.begin(), elements.end(), [id](const auto& elem) {
+                      return elem.variable_index == id;
+                  });
+
+                if (it == elements.end())
+                    elements.emplace_back(static_cast<int>(elem->factor), id);
+                else
+                    it->factor += elem->factor;
+            }
 
             buf.pop_front(elem->read);
 
-            while (!buf.first().empty() && !starts_with_operator(buf.first())) {
-                elem =
-                  read_function_element(buf.first(), buf.second(), buf.third());
+            while (!buf.first().empty() &&
+                   !starts_with_operator(buf.first())) {
+                elem = read_function_element(
+                  buf.first(), buf.second(), buf.third());
                 if (!elem)
                     return baryonyx::file_format_error_tag::bad_constraint;
 
-                elements.emplace_back(static_cast<int>(elem->factor),
-                                      p.get_or_assign_variable(elem->name));
+                {
+                    auto id = p.get_or_assign_variable(elem->name);
+                    if (id == -1)
+                        return baryonyx::file_format_error_tag::
+                          too_many_variables;
+
+                    auto it =
+                      std::find_if(elements.begin(),
+                                   elements.end(),
+                                   [id](const auto& elem) {
+                                       return elem.variable_index == id;
+                                   });
+
+                    if (it == elements.end())
+                        elements.emplace_back(static_cast<int>(elem->factor),
+                                              id);
+                    else
+                        it->factor += elem->factor;
+                }
 
                 if (elements.back().variable_index == -1)
                     return baryonyx::file_format_error_tag::too_many_variables;

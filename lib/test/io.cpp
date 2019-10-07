@@ -299,17 +299,11 @@ test_examples_quadratic_5()
     Ensures(pb.objective.elements[2].factor == 3);
     Ensures(pb.objective.elements[2].variable_index == 2);
 
-    Ensures(pb.objective.qelements.size() == 3);
+    Ensures(pb.objective.qelements.size() == 1);
 
-    Ensures(pb.objective.qelements[0].factor == 1.0 / 2.0);
+    Ensures(pb.objective.qelements[0].factor == 13.0 / 2.0);
     Ensures(pb.objective.qelements[0].variable_index_a == 0);
     Ensures(pb.objective.qelements[0].variable_index_b == 1);
-    Ensures(pb.objective.qelements[1].factor == 17.0 / 2.0);
-    Ensures(pb.objective.qelements[1].variable_index_a == 0);
-    Ensures(pb.objective.qelements[1].variable_index_b == 1);
-    Ensures(pb.objective.qelements[2].factor == -5.0 / 2.0);
-    Ensures(pb.objective.qelements[2].variable_index_a == 0);
-    Ensures(pb.objective.qelements[2].variable_index_b == 1);
 
     Ensures(pb.objective.value == -100);
 
@@ -549,17 +543,11 @@ test_examples_quadratic_2()
     Ensures(pb.objective.elements[2].factor == 3);
     Ensures(pb.objective.elements[2].variable_index == 2);
 
-    Ensures(pb.objective.qelements.size() == 3);
+    Ensures(pb.objective.qelements.size() == 1);
 
-    Ensures(pb.objective.qelements[0].factor == -1.0 / 2.0);
+    Ensures(pb.objective.qelements[0].factor == -13.0 / 2.0);
     Ensures(pb.objective.qelements[0].variable_index_a == 0);
     Ensures(pb.objective.qelements[0].variable_index_b == 1);
-    Ensures(pb.objective.qelements[1].factor == -17.0 / 2.0);
-    Ensures(pb.objective.qelements[1].variable_index_a == 0);
-    Ensures(pb.objective.qelements[1].variable_index_b == 1);
-    Ensures(pb.objective.qelements[2].factor == 5.0 / 2.0);
-    Ensures(pb.objective.qelements[2].variable_index_a == 0);
-    Ensures(pb.objective.qelements[2].variable_index_b == 1);
 
     Ensures(pb.objective.value == -100);
 
