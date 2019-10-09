@@ -36,7 +36,8 @@ struct solver_inequalities_Zcoeff
     using float_type = Float;
     using cost_type = Cost;
 
-    static inline const int maximum_factor_exhaustive_solver = 32;
+    static inline const int maximum_factor_exhaustive_solver =
+      std::numeric_limits<int>::max();
 
     Random& rng;
 
@@ -81,6 +82,8 @@ struct solver_inequalities_Zcoeff
     branch_and_bound_solver<Mode, Float> bb;
     exhaustive_solver<Mode, Float> ex;
 
+    std::FILE* debug_os = nullptr;
+
     const cost_type& c;
     int m;
     int n;
@@ -102,6 +105,8 @@ struct solver_inequalities_Zcoeff
       , m(m_)
       , n(n_)
     {
+        debug_os = std::fopen("debug.txt", "w");
+
         // Count the maximum function elements in the constraint where a least
         // one coefficient is in Z. To be use with the branch-and-bound and
         // exhaustive solvers.
@@ -149,6 +154,13 @@ struct solver_inequalities_Zcoeff
                       i, csts[i].elements, b[i].min, b[i].max);
                 }
             }
+
+            to_log(debug_os,
+                   "Is Z: {} ({}) with {} <= {}\n",
+                   Z[i],
+                   local_z_variables_max,
+                   b[i].min,
+                   b[i].max);
 
             bx_ensures(b[i].min <= b[i].max);
         }
@@ -220,54 +232,99 @@ struct solver_inequalities_Zcoeff
     // Compute the reduced costs and return the size of the newly R vector.
     //
     template<typename Xtype>
-    rc_size compute_reduced_costs(sparse_matrix<int>::row_iterator begin,
-                                  sparse_matrix<int>::row_iterator end,
-                                  const Xtype& x) noexcept
+    int compute_reduced_costs(sparse_matrix<int>::row_iterator begin,
+                              sparse_matrix<int>::row_iterator end,
+                              const Xtype& x) noexcept
     {
+        to_log(
+          debug_os, "  compute-reduced-cost {}\n", std::distance(begin, end));
+
         int r_size = 0;
-        int c_size = 0;
 
         for (; begin != end; ++begin) {
-            Float sum_a_pi = 0;
-            Float sum_a_p = 0;
+            Float sum_a_pi_p = 0;
 
-            auto ht = ap.column(begin->column);
+            Float sum_p = 0, sum_pi = 0;
 
-            for (; std::get<0>(ht) != std::get<1>(ht); ++std::get<0>(ht)) {
-                auto a = static_cast<Float>(A[std::get<0>(ht)->value]);
-
-                sum_a_pi += a * pi[std::get<0>(ht)->row];
-                sum_a_p += a * P[std::get<0>(ht)->value];
+            for (auto [first, last] = ap.column(begin->column); first != last;
+                 ++first) {
+                auto a = std::abs(static_cast<Float>(A[first->value]));
+                sum_a_pi_p += a * (pi[first->row] + P[first->value]);
+                sum_p = a * P[first->value];
+                sum_pi = a * pi[first->row];
             }
+
             R[r_size].id = r_size;
-            R[r_size].value = c(begin->column, x) - sum_a_pi - sum_a_p;
             R[r_size].f = A[begin->value];
+            R[r_size].value = c(begin->column, x) - sum_a_pi_p;
 
-            if (R[r_size].f < 0) {
-                R[r_size].value = -R[r_size].value;
-                ++c_size;
-            }
+            to_log(debug_os,
+                   4u,
+                   "Compute: {} = {} - {} - {}\n",
+                   r_size,
+                   c(begin->column, x),
+                   sum_pi,
+                   sum_p);
+
+            to_log(debug_os, 4u, "{}x{}\n", R[r_size].f, R[r_size].value);
 
             ++r_size;
         }
 
-        return { r_size, c_size };
+        to_log(debug_os, "\n");
+
+        return r_size;
     }
 
-    int select_variables(const rc_size& sizes, int bkmin, int bkmax)
+    template<typename Xtype>
+    Float local_compute_reduced_cost(int variable, const Xtype& x) noexcept
     {
-        if (bkmin == bkmax)
-            return std::min(bkmin + sizes.c_size, sizes.r_size) - 1;
+        Float sum_a_pi = 0;
+        Float sum_a_p = 0;
 
-        bkmin += sizes.c_size;
-        bkmax = std::min(bkmax + sizes.c_size, sizes.r_size);
+        for (auto [ht, hte] = ap.column(variable); ht != hte; ++ht) {
+            auto a = std::abs(static_cast<Float>(A[ht->value]));
 
-        for (int i = bkmin; i <= bkmax; ++i)
-            if (stop_iterating<Mode>(R[i].value, rng))
-                return i - 1;
+            sum_a_pi += a * pi[ht->row];
+            sum_a_p += a * P[ht->value];
+        }
 
-        return bkmax - 1;
+        return c(variable, x) - sum_a_pi - sum_a_p;
     }
+
+    int select_variables_101(const int r_size, int bkmin, int bkmax)
+    {
+        int sum = 0;
+        int best = -2;
+
+        for (int i = -1; i < r_size; ++i) {
+            if (bkmin <= sum && sum <= bkmax)
+                best = i;
+
+            if (best != -2 && i - 1 < r_size &&
+                stop_iterating<Mode>(R[i + 1].value))
+                break;
+
+            sum += R[i + 1].f;
+        }
+
+        return best;
+    }
+
+    // int select_variables(const rc_size& sizes, int bkmin, int bkmax)
+    //{
+    //    if (bkmin == bkmax)
+    //        return std::min(bkmin + sizes.c_size, sizes.r_size) - 1;
+
+    //    bkmin += sizes.c_size;
+    //    bkmax = std::min(bkmax + sizes.c_size, sizes.r_size);
+
+    //    for (int i = bkmin; i <= bkmax; ++i)
+    //        if (stop_iterating<Mode>(R[i].value, rng))
+    //            return i - 1;
+
+    //    return bkmax - 1;
+    //}
 
     template<typename Xtype, typename Iterator>
     bool local_affect(Xtype& x,
@@ -284,32 +341,58 @@ struct solver_inequalities_Zcoeff
 
         const auto old_pi = pi[k];
 
-        auto d = delta;
+        auto d = (kappa / (one - kappa)) + delta;
 
         if (selected < 0) {
             pi[k] += R[0].value / two;
-            d += (kappa / (one - kappa)) * (R[0].value / two);
+
+            to_log(debug_os,
+                   "    selected: {}/{} ({})/2 = pi {}\n",
+                   selected,
+                   r_size,
+                   R[0].value,
+                   pi[k]);
 
             for (int i = 0; i != r_size; ++i) {
                 auto var = it + R[i].id;
 
                 x.unset(var->column);
                 P[var->value] -= d;
+
+                auto repair = local_compute_reduced_cost(var->column, x);
+                if (repair <= 0)
+                    P[var->value] = P[var->value] + repair - d;
             }
         } else if (selected + 1 >= r_size) {
             pi[k] += R[selected].value * middle;
-            d += (kappa / (one - kappa)) * (R[selected].value * middle);
+
+            to_log(debug_os,
+                   "    selected: {}/{} ({})/2 = pi {}\n",
+                   selected,
+                   r_size,
+                   R[selected].value,
+                   pi[k]);
 
             for (int i = 0; i != r_size; ++i) {
                 auto var = it + R[i].id;
 
                 x.set(var->column);
                 P[var->value] += d;
+
+                auto repair = local_compute_reduced_cost(var->column, x);
+                if (repair >= 0)
+                    P[var->value] = P[var->value] - repair + d;
             }
         } else {
             pi[k] += ((R[selected].value + R[selected + 1].value) / two);
-            d += (kappa / (one - kappa)) *
-                 (R[selected + 1].value - R[selected].value);
+
+            to_log(debug_os,
+                   "    selected: {}/{} ({}x{})/2 = pi {}\n",
+                   selected,
+                   r_size,
+                   R[selected].value,
+                   R[selected + 1].value,
+                   pi[k]);
 
             int i = 0;
             for (; i <= selected; ++i) {
@@ -317,6 +400,10 @@ struct solver_inequalities_Zcoeff
 
                 x.set(var->column);
                 P[var->value] += d;
+
+                auto repair = local_compute_reduced_cost(var->column, x);
+                if (repair >= 0)
+                    P[var->value] = P[var->value] - repair + d;
             }
 
             for (; i != r_size; ++i) {
@@ -324,6 +411,10 @@ struct solver_inequalities_Zcoeff
 
                 x.unset(var->column);
                 P[var->value] -= d;
+
+                auto repair = local_compute_reduced_cost(var->column, x);
+                if (repair <= 0)
+                    P[var->value] = P[var->value] + repair - d;
             }
         }
 
@@ -350,57 +441,46 @@ struct solver_inequalities_Zcoeff
             const auto it = ap.row(k);
             decrease_preference(std::get<0>(it), std::get<1>(it), theta);
 
-            const auto sizes =
+            const auto r_size =
               compute_reduced_costs(std::get<0>(it), std::get<1>(it), x);
 
             // Before sort and select variables, we apply the push method: for
             // each reduces cost, we had the cost multiply with an objective
             // amplifier.
 
-            for (int i = 0; i != sizes.r_size; ++i)
+            for (int i = 0; i != r_size; ++i)
                 R[i].value +=
                   obj_amp * c((std::get<0>(it) + R[i].id)->column, x);
 
-            int selected;
             Float pi_change;
 
             if (Z[k]) {
-                if (sizes.r_size <= maximum_factor_exhaustive_solver) {
-                    selected = ex.solve(k, R, sizes.r_size);
+                // if (r_size <= maximum_factor_exhaustive_solver) {
+                const auto selected = ex.solve(k, R, r_size);
 
-                    pi_change = local_affect(x,
-                                             std::get<0>(it),
-                                             k,
-                                             selected,
-                                             sizes.r_size,
-                                             kappa,
-                                             delta);
-                } else {
-                    calculator_sort<Mode>(
-                      R.get(), R.get() + sizes.r_size, rng);
-                    selected = bb.solve(R, sizes.r_size, b[k].min, b[k].max);
+                pi_change = local_affect(
+                  x, std::get<0>(it), k, selected, r_size, kappa, delta);
+                //} else {
+                //    calculator_sort<Mode>(
+                //      R.get(), R.get() + r_size, rng);
+                //    const auto selected =
+                //      bb.solve(R, r_size, b[k].min, b[k].max);
 
-                    pi_change = affect(*this,
-                                       x,
-                                       std::get<0>(it),
-                                       k,
-                                       selected,
-                                       sizes.r_size,
-                                       kappa,
-                                       delta);
-                }
+                //    pi_change = local_affect(x,
+                //                             std::get<0>(it),
+                //                             k,
+                //                             selected,
+                //                             r_size,
+                //                             kappa,
+                //                             delta);
+                // }
             } else {
-                calculator_sort<Mode>(R.get(), R.get() + sizes.r_size, rng);
-                selected = select_variables(sizes, b[k].min, b[k].max);
+                calculator_sort<Mode>(R.get(), R.get() + r_size, rng);
+                const auto selected =
+                  select_variables_101(r_size, b[k].min, b[k].max);
 
-                pi_change = affect(*this,
-                                   x,
-                                   std::get<0>(it),
-                                   k,
-                                   selected,
-                                   sizes.r_size,
-                                   kappa,
-                                   delta);
+                pi_change = local_affect(
+                  x, std::get<0>(it), k, selected, r_size, kappa, delta);
             }
 
             at_least_one_pi_changed = at_least_one_pi_changed || pi_change;
@@ -419,52 +499,42 @@ struct solver_inequalities_Zcoeff
     {
         auto at_least_one_pi_changed{ false };
 
+        to_log(debug_os,
+               "push_and_compute_update_row {}\n",
+               std::distance(first, last));
+
         for (; first != last; ++first) {
             auto k = constraint(first);
+
+            to_log(debug_os, " solve constraint {}\n", k);
+
             const auto it = ap.row(k);
             decrease_preference(std::get<0>(it), std::get<1>(it), theta);
-            const auto sizes =
+            const auto r_size =
               compute_reduced_costs(std::get<0>(it), std::get<1>(it), x);
 
-            int selected;
             Float pi_change;
 
             if (Z[k]) {
-                if (sizes.r_size <= maximum_factor_exhaustive_solver) {
-                    selected = ex.solve(k, R, sizes.r_size);
-                    pi_change = local_affect(x,
-                                             std::get<0>(it),
-                                             k,
-                                             selected,
-                                             sizes.r_size,
-                                             kappa,
-                                             delta);
+                if (r_size <= maximum_factor_exhaustive_solver) {
+                    const auto selected = ex.solve(k, R, r_size);
+                    pi_change = local_affect(
+                      x, std::get<0>(it), k, selected, r_size, kappa, delta);
                 } else {
-                    calculator_sort<Mode>(
-                      R.get(), R.get() + sizes.r_size, rng);
-                    selected = bb.solve(R, sizes.r_size, b[k].min, b[k].max);
+                    calculator_sort<Mode>(R.get(), R.get() + r_size, rng);
+                    const auto selected =
+                      bb.solve(R, r_size, b[k].min, b[k].max);
 
-                    pi_change = affect(*this,
-                                       x,
-                                       std::get<0>(it),
-                                       k,
-                                       selected,
-                                       sizes.r_size,
-                                       kappa,
-                                       delta);
+                    pi_change = local_affect(
+                      x, std::get<0>(it), k, selected, r_size, kappa, delta);
                 }
             } else {
-                calculator_sort<Mode>(R.get(), R.get() + sizes.r_size, rng);
-                selected = select_variables(sizes, b[k].min, b[k].max);
+                calculator_sort<Mode>(R.get(), R.get() + r_size, rng);
+                const auto selected =
+                  select_variables_101(r_size, b[k].min, b[k].max);
 
-                pi_change = affect(*this,
-                                   x,
-                                   std::get<0>(it),
-                                   k,
-                                   selected,
-                                   sizes.r_size,
-                                   kappa,
-                                   delta);
+                pi_change = local_affect(
+                  x, std::get<0>(it), k, selected, r_size, kappa, delta);
             }
 
             at_least_one_pi_changed = at_least_one_pi_changed || pi_change;

@@ -706,10 +706,10 @@ private:
              "- Preprocessing finishes (size: {})\n",
              to_string(bx::memory_consumed_size(memory_consumed(copy))));
 
-#ifdef BARYONYX_ENABLE_DEBUG
+        // #ifdef BARYONYX_ENABLE_DEBUG
         std::ofstream ofs("preprocessed.lp");
         ofs << copy;
-#endif
+        // #endif
 
         return copy;
     }

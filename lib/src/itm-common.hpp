@@ -424,7 +424,7 @@ affect(Solver& slv,
     auto d = delta;
 
     if (selected < 0) {
-        slv.pi[k] += slv.R[0].value / two;
+        // slv.pi[k] += slv.R[0].value / two;
         d += (kappa / (one - kappa)) * (slv.R[0].value / two);
 
         for (int i = 0; i != r_size; ++i) {
@@ -439,7 +439,7 @@ affect(Solver& slv,
             }
         }
     } else if (selected + 1 >= r_size) {
-        slv.pi[k] += slv.R[selected].value * middle;
+        // slv.pi[k] += slv.R[selected].value * middle;
         d += (kappa / (one - kappa)) * (slv.R[selected].value * middle);
 
         for (int i = 0; i != r_size; ++i) {

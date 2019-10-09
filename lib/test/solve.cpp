@@ -246,6 +246,7 @@ test_quadratic_preprocessor()
                          "Subject to:\n"
                          "a + b >= 0\n"
                          "b + c + d >= 0\n"
+
                          "Binaries\n"
                          "a b c d\n"
                          "End\n";
