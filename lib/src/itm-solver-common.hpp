@@ -42,7 +42,6 @@ namespace itm {
 template<typename Solver,
          typename Float,
          typename Mode,
-         typename Order,
          typename Cost,
          typename Observer>
 struct solver_functor
@@ -110,7 +109,8 @@ struct solver_functor
 
         solver_initializer<Solver, Float, Mode, x_type> initializer(
           slv, x, p.init_policy, p.init_random);
-        Order compute(slv, x, m_rng);
+        compute_order compute(p.order, variables);
+        compute.init(slv, x);
 
         m_best.variables = slv.m;
         m_best.constraints = slv.n;
@@ -124,7 +124,7 @@ struct solver_functor
         m_end = std::chrono::steady_clock::now();
 
         for (int i = 0; i != p.limit; ++i) {
-            auto remaining = compute.run(slv, x, kappa, delta, theta);
+            auto remaining = compute.run(slv, x, m_rng, kappa, delta, theta);
             obs.make_observation();
 
             if (remaining == 0) {
@@ -163,6 +163,7 @@ struct solver_functor
                 auto remaining =
                   compute.push_and_run(slv,
                                        x,
+                                       m_rng,
                                        pushing_k_factor * kappa,
                                        delta,
                                        theta,
@@ -177,7 +178,7 @@ struct solver_functor
                     break;
 
                 for (int iter = 0; iter < p.pushing_iteration_limit; ++iter) {
-                    remaining = compute.run(slv, x, kappa, delta, theta);
+                    remaining = compute.run(slv, x, m_rng, kappa, delta, theta);
 
                     if (remaining == 0) {
                         store_if_better(
@@ -252,7 +253,6 @@ private:
 template<typename Solver,
          typename Float,
          typename Mode,
-         typename Order,
          typename Cost>
 inline result
 solve_problem(const context_ptr& ctx, const problem& pb)
@@ -274,7 +274,7 @@ solve_problem(const context_ptr& ctx, const problem& pb)
         case solver_parameters::observer_type::pnm: {
             using obs = pnm_observer<Solver, Float>;
 
-            solver_functor<Solver, Float, Mode, Order, Cost, obs> slv(
+            solver_functor<Solver, Float, Mode, Cost, obs> slv(
               ctx, rng, pb);
 
             ret = slv(constraints, variables, cost, cost_constant);
@@ -282,7 +282,7 @@ solve_problem(const context_ptr& ctx, const problem& pb)
         case solver_parameters::observer_type::file: {
             using obs = file_observer<Solver, Float>;
 
-            solver_functor<Solver, Float, Mode, Order, Cost, obs> slv(
+            solver_functor<Solver, Float, Mode, Cost, obs> slv(
               ctx, rng, pb);
 
             ret = slv(constraints, variables, cost, cost_constant);
@@ -290,7 +290,7 @@ solve_problem(const context_ptr& ctx, const problem& pb)
         default: {
             using obs = none_observer<Solver, Float>;
 
-            solver_functor<Solver, Float, Mode, Order, Cost, obs> slv(
+            solver_functor<Solver, Float, Mode, Cost, obs> slv(
               ctx, rng, pb);
 
             ret = slv(constraints, variables, cost, cost_constant);

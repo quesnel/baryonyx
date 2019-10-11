@@ -236,8 +236,9 @@ struct solver_inequalities_Zcoeff
                               sparse_matrix<int>::row_iterator end,
                               const Xtype& x) noexcept
     {
-        //to_log(
-        //  debug_os, "  compute-reduced-cost {}\n", std::distance(begin, end));
+        // to_log(
+        //  debug_os, "  compute-reduced-cost {}\n", std::distance(begin,
+        //  end));
 
         int r_size = 0;
 
@@ -258,7 +259,7 @@ struct solver_inequalities_Zcoeff
             R[r_size].f = A[begin->value];
             R[r_size].value = c(begin->column, x) - sum_a_pi_p;
 
-            //to_log(debug_os,
+            // to_log(debug_os,
             //       4u,
             //       "Compute: {} = {} - {} - {}\n",
             //       r_size,
@@ -266,12 +267,12 @@ struct solver_inequalities_Zcoeff
             //       sum_pi,
             //       sum_p);
 
-            //to_log(debug_os, 4u, "{}x{}\n", R[r_size].f, R[r_size].value);
+            // to_log(debug_os, 4u, "{}x{}\n", R[r_size].f, R[r_size].value);
 
             ++r_size;
         }
 
-        //to_log(debug_os, "\n");
+        // to_log(debug_os, "\n");
 
         return r_size;
     }
@@ -544,77 +545,17 @@ struct solver_inequalities_Zcoeff
     }
 };
 
-template<typename Solver,
-         typename Float,
-         typename Mode,
-         typename Order,
-         typename Cost>
+template<typename Float, typename Mode, typename Cost>
 static result
 solve_or_optimize(const context_ptr& ctx,
                   const problem& pb,
                   bool is_optimization)
 {
-    return is_optimization
-             ? optimize_problem<Solver, Float, Mode, Order, Cost>(ctx, pb)
-             : solve_problem<Solver, Float, Mode, Order, Cost>(ctx, pb);
-}
+    using Solver = solver_inequalities_Zcoeff<Float, Mode, Cost>;
 
-template<typename Float, typename Mode, typename Cost>
-static result
-select_order(const context_ptr& ctx, const problem& pb, bool is_optimization)
-{
-    switch (ctx->parameters.order) {
-    case solver_parameters::constraint_order::none:
-        return solve_or_optimize<solver_inequalities_Zcoeff<Float, Mode, Cost>,
-                                 Float,
-                                 Mode,
-                                 constraint_sel<Float, 0>,
-                                 Cost>(ctx, pb, is_optimization);
-    case solver_parameters::constraint_order::reversing:
-        return solve_or_optimize<solver_inequalities_Zcoeff<Float, Mode, Cost>,
-                                 Float,
-                                 Mode,
-                                 constraint_sel<Float, 1>,
-                                 Cost>(ctx, pb, is_optimization);
-    case solver_parameters::constraint_order::random_sorting:
-        return solve_or_optimize<solver_inequalities_Zcoeff<Float, Mode, Cost>,
-                                 Float,
-                                 Mode,
-                                 constraint_sel<Float, 2>,
-                                 Cost>(ctx, pb, is_optimization);
-    case solver_parameters::constraint_order::infeasibility_decr:
-        return solve_or_optimize<solver_inequalities_Zcoeff<Float, Mode, Cost>,
-                                 Float,
-                                 Mode,
-                                 constraint_sel<Float, 3>,
-                                 Cost>(ctx, pb, is_optimization);
-    case solver_parameters::constraint_order::infeasibility_incr:
-        return solve_or_optimize<solver_inequalities_Zcoeff<Float, Mode, Cost>,
-                                 Float,
-                                 Mode,
-                                 constraint_sel<Float, 4>,
-                                 Cost>(ctx, pb, is_optimization);
-    case solver_parameters::constraint_order::lagrangian_decr:
-        return solve_or_optimize<solver_inequalities_Zcoeff<Float, Mode, Cost>,
-                                 Float,
-                                 Mode,
-                                 constraint_sel<Float, 5>,
-                                 Cost>(ctx, pb, is_optimization);
-    case solver_parameters::constraint_order::lagrangian_incr:
-        return solve_or_optimize<solver_inequalities_Zcoeff<Float, Mode, Cost>,
-                                 Float,
-                                 Mode,
-                                 constraint_sel<Float, 6>,
-                                 Cost>(ctx, pb, is_optimization);
-    case solver_parameters::constraint_order::pi_sign_change:
-        return solve_or_optimize<solver_inequalities_Zcoeff<Float, Mode, Cost>,
-                                 Float,
-                                 Mode,
-                                 constraint_sel<Float, 7>,
-                                 Cost>(ctx, pb, is_optimization);
-    default:
-        bx_reach();
-    }
+    return is_optimization
+             ? optimize_problem<Solver, Float, Mode, Cost>(ctx, pb)
+             : solve_problem<Solver, Float, Mode, Cost>(ctx, pb);
 }
 
 template<typename Float, typename Mode>
@@ -622,13 +563,13 @@ static result
 select_cost(const context_ptr& ctx, const problem& pb, bool is_optimization)
 {
     return pb.objective.qelements.empty()
-             ? select_order<Float,
-                            Mode,
-                            baryonyx::itm::default_cost_type<Float>>(
+             ? solve_or_optimize<Float,
+                                 Mode,
+                                 baryonyx::itm::default_cost_type<Float>>(
                  ctx, pb, is_optimization)
-             : select_order<Float,
-                            Mode,
-                            baryonyx::itm::quadratic_cost_type<Float>>(
+             : solve_or_optimize<Float,
+                                 Mode,
+                                 baryonyx::itm::quadratic_cost_type<Float>>(
                  ctx, pb, is_optimization);
 }
 

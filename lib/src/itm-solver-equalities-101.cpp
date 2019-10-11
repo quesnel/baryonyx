@@ -287,89 +287,32 @@ struct solver_equalities_101coeff
     }
 };
 
-template<typename Solver,
-         typename Float,
+template<typename Float,
          typename Mode,
-         typename Order,
          typename Cost>
 static result
 solve_or_optimize(const context_ptr& ctx,
                   const problem& pb,
                   bool is_optimization)
 {
+    using Solver = solver_equalities_101coeff<Float, Mode, Cost>;
+
     return is_optimization
-             ? optimize_problem<Solver, Float, Mode, Order, Cost>(ctx, pb)
-             : solve_problem<Solver, Float, Mode, Order, Cost>(ctx, pb);
+             ? optimize_problem<Solver, Float, Mode, Cost>(ctx, pb)
+             : solve_problem<Solver, Float, Mode, Cost>(ctx, pb);
 }
 
-template<typename Float, typename Mode, typename Cost>
-static result
-select_order(const context_ptr& ctx, const problem& pb, bool is_optimization)
-{
-    switch (ctx->parameters.order) {
-    case solver_parameters::constraint_order::none:
-        return solve_or_optimize<solver_equalities_101coeff<Float, Mode, Cost>,
-                                 Float,
-                                 Mode,
-                                 constraint_sel<Float, 0>,
-                                 Cost>(ctx, pb, is_optimization);
-    case solver_parameters::constraint_order::reversing:
-        return solve_or_optimize<solver_equalities_101coeff<Float, Mode, Cost>,
-                                 Float,
-                                 Mode,
-                                 constraint_sel<Float, 1>,
-                                 Cost>(ctx, pb, is_optimization);
-    case solver_parameters::constraint_order::random_sorting:
-        return solve_or_optimize<solver_equalities_101coeff<Float, Mode, Cost>,
-                                 Float,
-                                 Mode,
-                                 constraint_sel<Float, 2>,
-                                 Cost>(ctx, pb, is_optimization);
-    case solver_parameters::constraint_order::infeasibility_decr:
-        return solve_or_optimize<solver_equalities_101coeff<Float, Mode, Cost>,
-                                 Float,
-                                 Mode,
-                                 constraint_sel<Float, 3>,
-                                 Cost>(ctx, pb, is_optimization);
-    case solver_parameters::constraint_order::infeasibility_incr:
-        return solve_or_optimize<solver_equalities_101coeff<Float, Mode, Cost>,
-                                 Float,
-                                 Mode,
-                                 constraint_sel<Float, 4>,
-                                 Cost>(ctx, pb, is_optimization);
-    case solver_parameters::constraint_order::lagrangian_decr:
-        return solve_or_optimize<solver_equalities_101coeff<Float, Mode, Cost>,
-                                 Float,
-                                 Mode,
-                                 constraint_sel<Float, 5>,
-                                 Cost>(ctx, pb, is_optimization);
-    case solver_parameters::constraint_order::lagrangian_incr:
-        return solve_or_optimize<solver_equalities_101coeff<Float, Mode, Cost>,
-                                 Float,
-                                 Mode,
-                                 constraint_sel<Float, 6>,
-                                 Cost>(ctx, pb, is_optimization);
-    case solver_parameters::constraint_order::pi_sign_change:
-        return solve_or_optimize<solver_equalities_101coeff<Float, Mode, Cost>,
-                                 Float,
-                                 Mode,
-                                 constraint_sel<Float, 7>,
-                                 Cost>(ctx, pb, is_optimization);
-    default:
-        bx_reach();
-    }
-}
 
 template<typename Float, typename Mode>
 static result
 select_cost(const context_ptr& ctx, const problem& pb, bool is_optimization)
 {
     return pb.objective.qelements.empty()
-             ? select_order<Float,
+             ? solve_or_optimize<Float,
                             Mode,
                             baryonyx::itm::default_cost_type<Float>>(
                  ctx, pb, is_optimization)
-             : select_order<Float,
+             : solve_or_optimize<Float,
                             Mode,
                             baryonyx::itm::quadratic_cost_type<Float>>(
                  ctx, pb, is_optimization);
