@@ -27,14 +27,14 @@
 namespace baryonyx {
 namespace itm {
 
-template<typename Float, typename Mode, typename Random, typename Cost>
+template<typename Float, typename Mode, typename Cost>
 struct solver_inequalities_01coeff
 {
     using mode_type = Mode;
     using float_type = Float;
     using cost_type = Cost;
 
-    Random& rng;
+    random_engine& rng;
 
     struct rc_data
     {
@@ -68,7 +68,7 @@ struct solver_inequalities_01coeff
     int m;
     int n;
 
-    solver_inequalities_01coeff(Random& rng_,
+    solver_inequalities_01coeff(random_engine& rng_,
                                 int m_,
                                 int n_,
                                 const cost_type& c_,
@@ -280,7 +280,6 @@ template<typename Solver,
          typename Float,
          typename Mode,
          typename Order,
-         typename Random,
          typename Cost>
 static result
 solve_or_optimize(const context_ptr& ctx,
@@ -288,109 +287,89 @@ solve_or_optimize(const context_ptr& ctx,
                   bool is_optimization)
 {
     return is_optimization
-             ? optimize_problem<Solver, Float, Mode, Order, Random, Cost>(ctx,
-                                                                          pb)
-             : solve_problem<Solver, Float, Mode, Order, Random, Cost>(ctx,
-                                                                       pb);
+             ? optimize_problem<Solver, Float, Mode, Order, Cost>(ctx, pb)
+             : solve_problem<Solver, Float, Mode, Order, Cost>(ctx, pb);
 }
 
-template<typename Float, typename Mode, typename Random, typename Cost>
+template<typename Float, typename Mode, typename Cost>
 static result
 select_order(const context_ptr& ctx, const problem& pb, bool is_optimization)
 {
     switch (ctx->parameters.order) {
     case solver_parameters::constraint_order::none:
         return solve_or_optimize<
-          solver_inequalities_01coeff<Float, Mode, Random, Cost>,
+          solver_inequalities_01coeff<Float, Mode, Cost>,
           Float,
           Mode,
-          constraint_sel<Float, Random, 0>,
-          Random,
+          constraint_sel<Float, 0>,
           Cost>(ctx, pb, is_optimization);
     case solver_parameters::constraint_order::reversing:
         return solve_or_optimize<
-          solver_inequalities_01coeff<Float, Mode, Random, Cost>,
+          solver_inequalities_01coeff<Float, Mode, Cost>,
           Float,
           Mode,
-          constraint_sel<Float, Random, 1>,
-          Random,
+          constraint_sel<Float, 1>,
           Cost>(ctx, pb, is_optimization);
     case solver_parameters::constraint_order::random_sorting:
         return solve_or_optimize<
-          solver_inequalities_01coeff<Float, Mode, Random, Cost>,
+          solver_inequalities_01coeff<Float, Mode, Cost>,
           Float,
           Mode,
-          constraint_sel<Float, Random, 2>,
-          Random,
+          constraint_sel<Float, 2>,
           Cost>(ctx, pb, is_optimization);
     case solver_parameters::constraint_order::infeasibility_decr:
         return solve_or_optimize<
-          solver_inequalities_01coeff<Float, Mode, Random, Cost>,
+          solver_inequalities_01coeff<Float, Mode, Cost>,
           Float,
           Mode,
-          constraint_sel<Float, Random, 3>,
-          Random,
+          constraint_sel<Float, 3>,
           Cost>(ctx, pb, is_optimization);
     case solver_parameters::constraint_order::infeasibility_incr:
         return solve_or_optimize<
-          solver_inequalities_01coeff<Float, Mode, Random, Cost>,
+          solver_inequalities_01coeff<Float, Mode, Cost>,
           Float,
           Mode,
-          constraint_sel<Float, Random, 4>,
-          Random,
+          constraint_sel<Float, 4>,
           Cost>(ctx, pb, is_optimization);
     case solver_parameters::constraint_order::lagrangian_decr:
         return solve_or_optimize<
-          solver_inequalities_01coeff<Float, Mode, Random, Cost>,
+          solver_inequalities_01coeff<Float, Mode, Cost>,
           Float,
           Mode,
-          constraint_sel<Float, Random, 5>,
-          Random,
+          constraint_sel<Float, 5>,
           Cost>(ctx, pb, is_optimization);
     case solver_parameters::constraint_order::lagrangian_incr:
         return solve_or_optimize<
-          solver_inequalities_01coeff<Float, Mode, Random, Cost>,
+          solver_inequalities_01coeff<Float, Mode, Cost>,
           Float,
           Mode,
-          constraint_sel<Float, Random, 6>,
-          Random,
+          constraint_sel<Float, 6>,
           Cost>(ctx, pb, is_optimization);
     case solver_parameters::constraint_order::pi_sign_change:
         return solve_or_optimize<
-          solver_inequalities_01coeff<Float, Mode, Random, Cost>,
+          solver_inequalities_01coeff<Float, Mode, Cost>,
           Float,
           Mode,
-          constraint_sel<Float, Random, 7>,
-          Random,
+          constraint_sel<Float, 7>,
           Cost>(ctx, pb, is_optimization);
     default:
         bx_reach();
     }
 }
 
-template<typename Float, typename Mode, typename Random>
+template<typename Float, typename Mode>
 static result
 select_cost(const context_ptr& ctx, const problem& pb, bool is_optimization)
 {
     return pb.objective.qelements.empty()
              ? select_order<Float,
                             Mode,
-                            Random,
                             baryonyx::itm::default_cost_type<Float>>(
                  ctx, pb, is_optimization)
              : select_order<Float,
                             Mode,
-                            Random,
                             baryonyx::itm::quadratic_cost_type<Float>>(
                  ctx, pb, is_optimization);
-}
-
-template<typename Float, typename Mode>
-static result
-select_random(const context_ptr& ctx, const problem& pb, bool is_optimization)
-{
-    return select_cost<Float, Mode, std::default_random_engine>(
-      ctx, pb, is_optimization);
 }
 
 template<typename Float>
@@ -399,9 +378,8 @@ select_mode(const context_ptr& ctx, const problem& pb, bool is_optimization)
 {
     const auto m = static_cast<int>(pb.type);
 
-    return m == 0
-             ? select_random<Float, mode_sel<0>>(ctx, pb, is_optimization)
-             : select_random<Float, mode_sel<1>>(ctx, pb, is_optimization);
+    return m == 0 ? select_cost<Float, mode_sel<0>>(ctx, pb, is_optimization)
+                  : select_cost<Float, mode_sel<1>>(ctx, pb, is_optimization);
 }
 
 static result

@@ -28,7 +28,6 @@
 #include <algorithm>
 #include <chrono>
 #include <functional>
-#include <random>
 #include <utility>
 #include <vector>
 
@@ -44,7 +43,6 @@ template<typename Solver,
          typename Float,
          typename Mode,
          typename Order,
-         typename Random,
          typename Cost,
          typename Observer>
 struct solver_functor
@@ -53,11 +51,13 @@ struct solver_functor
     std::chrono::time_point<std::chrono::steady_clock> m_end;
 
     const context_ptr& m_ctx;
-    Random& m_rng;
+    random_engine& m_rng;
 
     result m_best;
 
-    solver_functor(const context_ptr& ctx, Random& rng, const problem& problem)
+    solver_functor(const context_ptr& ctx,
+                   random_engine& rng,
+                   const problem& problem)
       : m_ctx(ctx)
       , m_rng(rng)
     {
@@ -77,7 +77,7 @@ struct solver_functor
 
         auto& p = m_ctx->parameters;
 
-        auto norm_costs = normalize_costs<Float, Cost, Random>(
+        auto norm_costs = normalize_costs<Float, Cost>(
           m_ctx, original_costs, m_rng, variables);
 
         const auto kappa_step = static_cast<Float>(p.kappa_step);
@@ -169,10 +169,9 @@ struct solver_functor
                                        pushing_objective_amplifier);
 
                 if (remaining == 0)
-                    store_if_better(
-                      x,
-                      original_costs.results(x, cost_constant),
-                      -push * p.pushing_iteration_limit - 1);
+                    store_if_better(x,
+                                    original_costs.results(x, cost_constant),
+                                    -push * p.pushing_iteration_limit - 1);
 
                 if (is_timelimit_reached())
                     break;
@@ -254,7 +253,6 @@ template<typename Solver,
          typename Float,
          typename Mode,
          typename Order,
-         typename Random,
          typename Cost>
 inline result
 solve_problem(const context_ptr& ctx, const problem& pb)
@@ -266,7 +264,7 @@ solve_problem(const context_ptr& ctx, const problem& pb)
 
     auto constraints{ make_merged_constraints(ctx, pb) };
     if (!constraints.empty() && !pb.vars.values.empty()) {
-        Random rng(init_random_generator_seed<Random>(ctx));
+        random_engine rng(init_random_generator_seed<random_engine>(ctx));
 
         auto variables = numeric_cast<int>(pb.vars.values.size());
         auto cost = Cost(pb.objective, variables);
@@ -276,7 +274,7 @@ solve_problem(const context_ptr& ctx, const problem& pb)
         case solver_parameters::observer_type::pnm: {
             using obs = pnm_observer<Solver, Float>;
 
-            solver_functor<Solver, Float, Mode, Order, Random, Cost, obs> slv(
+            solver_functor<Solver, Float, Mode, Order, Cost, obs> slv(
               ctx, rng, pb);
 
             ret = slv(constraints, variables, cost, cost_constant);
@@ -284,7 +282,7 @@ solve_problem(const context_ptr& ctx, const problem& pb)
         case solver_parameters::observer_type::file: {
             using obs = file_observer<Solver, Float>;
 
-            solver_functor<Solver, Float, Mode, Order, Random, Cost, obs> slv(
+            solver_functor<Solver, Float, Mode, Order, Cost, obs> slv(
               ctx, rng, pb);
 
             ret = slv(constraints, variables, cost, cost_constant);
@@ -292,7 +290,7 @@ solve_problem(const context_ptr& ctx, const problem& pb)
         default: {
             using obs = none_observer<Solver, Float>;
 
-            solver_functor<Solver, Float, Mode, Order, Random, Cost, obs> slv(
+            solver_functor<Solver, Float, Mode, Order, Cost, obs> slv(
               ctx, rng, pb);
 
             ret = slv(constraints, variables, cost, cost_constant);

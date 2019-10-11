@@ -31,7 +31,6 @@
 #include <chrono>
 #include <functional>
 #include <future>
-#include <random>
 #include <set>
 #include <thread>
 #include <utility>
@@ -100,12 +99,11 @@ template<typename Solver,
          typename Float,
          typename Mode,
          typename Order,
-         typename Random,
          typename Cost>
 struct optimize_functor
 {
     const context_ptr& m_ctx;
-    Random m_rng;
+    random_engine m_rng;
     int m_thread_id;
 
     const std::vector<std::string_view>& variable_names;
@@ -115,7 +113,7 @@ struct optimize_functor
 
     optimize_functor(const context_ptr& ctx,
                      unsigned thread_id,
-                     typename Random::result_type seed,
+                     typename random_engine::result_type seed,
                      const std::vector<std::string_view>& variable_names_,
                      const affected_variables& affected_vars_)
       : m_ctx(ctx)
@@ -163,7 +161,7 @@ struct optimize_functor
 
         auto& p = m_ctx->parameters;
 
-        auto norm_costs = normalize_costs<Float, Cost, Random>(
+        auto norm_costs = normalize_costs<Float, Cost>(
           m_ctx, original_costs, m_rng, variables);
 
         const auto kappa_step = static_cast<Float>(p.kappa_step);
@@ -211,11 +209,10 @@ struct optimize_functor
 
                 if (remaining == 0) {
                     x_is_solution = true;
-                    store_if_better(
-                      x,
-                      original_costs.results(x, cost_constant),
-                      i,
-                      best_recorder);
+                    store_if_better(x,
+                                    original_costs.results(x, cost_constant),
+                                    i,
+                                    best_recorder);
                     best_remaining = remaining;
                     break;
                 }
@@ -254,11 +251,10 @@ struct optimize_functor
 
                 if (remaining == 0) {
                     x_is_solution = true;
-                    store_if_better(
-                      x,
-                      original_costs.results(x, cost_constant),
-                      -push * p.pushing_iteration_limit - 1,
-                      best_recorder);
+                    store_if_better(x,
+                                    original_costs.results(x, cost_constant),
+                                    -push * p.pushing_iteration_limit - 1,
+                                    best_recorder);
                 }
 
                 for (int iter = 0;
@@ -352,7 +348,6 @@ template<typename Solver,
          typename Float,
          typename Mode,
          typename Order,
-         typename Random,
          typename Cost>
 inline result
 optimize_problem(const context_ptr& ctx, const problem& pb)
@@ -364,7 +359,7 @@ optimize_problem(const context_ptr& ctx, const problem& pb)
 
     auto constraints{ make_merged_constraints(ctx, pb) };
     if (!constraints.empty() && !pb.vars.values.empty()) {
-        Random rng(init_random_generator_seed<Random>(ctx));
+        random_engine rng(init_random_generator_seed<random_engine>(ctx));
 
         auto variables = numeric_cast<int>(pb.vars.values.size());
         auto cost = Cost(pb.objective, variables);
@@ -386,15 +381,15 @@ optimize_problem(const context_ptr& ctx, const problem& pb)
         stop_task.store(false);
 
         for (unsigned i{ 0 }; i != thread; ++i) {
-            std::packaged_task<baryonyx::result()> task(std::bind(
-              optimize_functor<Solver, Float, Mode, Order, Random, Cost>(
-                ctx, i, seeds[i], pb.vars.names, pb.affected_vars),
-              std::ref(stop_task),
-              std::ref(result),
-              std::ref(constraints),
-              variables,
-              std::ref(cost),
-              cost_constant));
+            std::packaged_task<baryonyx::result()> task(
+              std::bind(optimize_functor<Solver, Float, Mode, Order, Cost>(
+                          ctx, i, seeds[i], pb.vars.names, pb.affected_vars),
+                        std::ref(stop_task),
+                        std::ref(result),
+                        std::ref(constraints),
+                        variables,
+                        std::ref(cost),
+                        cost_constant));
 
             results.emplace_back(task.get_future());
 

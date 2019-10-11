@@ -43,6 +43,8 @@
 namespace baryonyx {
 namespace itm {
 
+using random_engine = std::default_random_engine;
+
 /**
  * @brief stores vector solution in solver.
  * @details x_type uses a single @c std::vector<int8_t> instead of a
@@ -262,7 +264,7 @@ compute_violated_constraints(const Solver& slv,
     return length(out);
 }
 
-template<typename iteratorT, typename randomT>
+template<typename iteratorT>
 inline void
 random_shuffle_unique(iteratorT begin, iteratorT end, randomT& rng) noexcept
 {
@@ -277,7 +279,7 @@ random_shuffle_unique(iteratorT begin, iteratorT end, randomT& rng) noexcept
     std::shuffle(ret, begin, rng);
 }
 
-template<typename Mode, typename Iterator, typename Random>
+template<typename Mode, typename Iterator>
 inline void
 calculator_sort(Iterator begin, Iterator end, Random& rng)
 {
@@ -293,7 +295,7 @@ calculator_sort(Iterator begin, Iterator end, Random& rng)
     }
 }
 
-template<typename Mode, typename Float, typename Random>
+template<typename Mode, typename Float>
 inline bool
 stop_iterating(Float value, Random& rng) noexcept
 {
@@ -1004,15 +1006,13 @@ struct compute_incremental_order
 struct compute_decremental_order
 {};
 
-template<typename floatingpointT, typename randomT>
+template<typename floatingpointT>
 struct compute_none
 {
-    using random_type = randomT;
-
     std::vector<int> R;
 
     template<typename solverT, typename Xtype>
-    compute_none(const solverT& s, const Xtype& x, randomT&)
+    compute_none(const solverT& s, const Xtype& x, random_engine&)
       : R(s.m)
     {
         compute_violated_constraints(s, x, R);
@@ -1045,7 +1045,7 @@ struct compute_none
     }
 };
 
-template<typename Float, typename Random>
+template<typename Float>
 struct compute_pi_sign_change
 {
 #if 0
@@ -1099,10 +1099,10 @@ struct compute_pi_sign_change
 #endif
 
     std::vector<int> R;
-    Random& rng;
+    random_engine& rng;
 
     template<typename Solver, typename X>
-    compute_pi_sign_change(const Solver& s, const X&, Random& rng_)
+    compute_pi_sign_change(const Solver& s, const X&, random_engine& rng_)
       : R(s.m)
       , rng(rng_)
     {
@@ -1156,13 +1156,13 @@ struct compute_pi_sign_change
     }
 };
 
-template<typename floatingpointT, typename randomT>
+template<typename floatingpointT>
 struct compute_reversing
 {
     std::vector<int> R;
 
     template<typename solverT, typename Xtype>
-    compute_reversing(solverT& s, const Xtype& x, randomT&)
+    compute_reversing(solverT& s, const Xtype& x, random_engine&)
       : R(s.m)
     {
         compute_violated_constraints(s, x, R);
@@ -1196,7 +1196,7 @@ struct compute_reversing
     }
 };
 
-template<typename Float, typename Random, typename Order>
+template<typename Float, typename Order>
 struct compute_lagrangian_order
 {
     std::vector<int> R;
@@ -1247,11 +1247,9 @@ struct compute_lagrangian_order
     }
 };
 
-template<typename floatingpointT, typename randomT>
+template<typename floatingpointT>
 struct compute_random
 {
-    using random_type = randomT;
-
     std::vector<int> R;
     random_type& rng;
 
@@ -1294,11 +1292,9 @@ struct compute_random
     }
 };
 
-template<typename floatingpointT, typename randomT, typename Order>
+template<typename floatingpointT, typename Order>
 struct compute_infeasibility
 {
-    using random_type = randomT;
-
     std::vector<std::pair<int, int>> m_order;
     random_type& rng;
 
@@ -1409,11 +1405,11 @@ element_number(const std::vector<merged_constraint>& csts)
     return numeric_cast<int>(ret);
 }
 
-template<typename floatingpointT, typename iteratorT, typename randomT>
+template<typename floatingpointT, typename iteratorT>
 inline void
 random_epsilon_unique(iteratorT begin,
                       iteratorT end,
-                      randomT& rng,
+                      random_engine& rng,
                       floatingpointT min,
                       floatingpointT max)
 {
@@ -1430,9 +1426,12 @@ random_epsilon_unique(iteratorT begin,
  * the input vector is too small or with infinity value, the c is
  * unchanged.
  */
-template<typename floatingpointT, typename Cost, typename randomT>
+template<typename floatingpointT, typename Cost>
 inline Cost
-normalize_costs(const context_ptr& ctx, const Cost& c, randomT& rng, int n)
+normalize_costs(const context_ptr& ctx,
+                const Cost& c,
+                random_engine& rng,
+                int n)
 {
     Cost ret(c, n);
 
@@ -1887,27 +1886,25 @@ struct quadratic_cost_type
     }
 };
 
-template<typename randomT>
-typename randomT::result_type
+random_engine::result_type
 init_random_generator_seed(const context_ptr& ctx)
 {
     auto epoch = std::chrono::system_clock::now().time_since_epoch().count();
     auto param = ctx->parameters.seed;
 
     if (param <= 0)
-        return static_cast<typename randomT::result_type>(epoch);
+        return static_cast<random_engine::result_type>(epoch);
 
-    return static_cast<typename randomT::result_type>(param);
+    return static_cast<random_engine::result_type>(param);
 }
 
 /**
  * Generates an array with unique seed value.
  */
-template<typename randomT>
-inline std::unique_ptr<typename randomT::result_type[]>
-generate_seed(randomT& rng, unsigned thread_id)
+inline std::unique_ptr<random_engine::result_type[]>
+generate_seed(random_engine& rng, unsigned thread_id)
 {
-    using type = typename randomT::result_type;
+    using type = random_engine::result_type;
 
     auto ret = std::make_unique<type[]>(thread_id);
 
@@ -1933,32 +1930,30 @@ generate_seed(randomT& rng, unsigned thread_id)
     return ret;
 }
 
-template<typename Float, typename Random, int o>
+template<typename Float, int o>
 using constraint_sel = typename std::conditional<
   o == 0,
-  compute_none<Float, Random>,
+  compute_none<Float>,
   typename std::conditional<
     o == 1,
-    compute_reversing<Float, Random>,
+    compute_reversing<Float>,
     typename std::conditional<
       o == 2,
-      compute_random<Float, Random>,
+      compute_random<Float>,
       typename std::conditional<
         o == 3,
-        compute_infeasibility<Float, Random, compute_decremental_order>,
+        compute_infeasibility<Float, compute_decremental_order>,
         typename std::conditional<
           o == 4,
-          compute_infeasibility<Float, Random, compute_incremental_order>,
+          compute_infeasibility<Float, compute_incremental_order>,
           typename std::conditional<
             o == 5,
-            compute_lagrangian_order<Float, Random, compute_decremental_order>,
+            compute_lagrangian_order<Float, compute_decremental_order>,
             typename std::conditional<
               o == 6,
-              compute_lagrangian_order<Float,
-                                       Random,
-                                       compute_incremental_order>,
-              compute_pi_sign_change<Float, Random>>::type>::type>::type>::
-        type>::type>::type>::type;
+              compute_lagrangian_order<Float, compute_incremental_order>,
+              compute_pi_sign_change<Float>>::type>::type>::type>::type>::
+      type>::type>::type;
 
 template<int f>
 using float_sel = typename std::conditional<
