@@ -1129,7 +1129,7 @@ raw_problem_status parse([[maybe_unused]] const baryonyx::context_ptr& ctx,
                 if (it == elements.end())
                     elements.emplace_back(static_cast<int>(elem->factor), id);
                 else
-                    it->factor += elem->factor;
+                    it->factor += static_cast<int>(elem->factor);
             }
 
             buf.pop_front(elem->read);
@@ -1158,7 +1158,7 @@ raw_problem_status parse([[maybe_unused]] const baryonyx::context_ptr& ctx,
                         elements.emplace_back(static_cast<int>(elem->factor),
                                               id);
                     else
-                        it->factor += elem->factor;
+                        it->factor += static_cast<int>(elem->factor);
                 }
 
                 if (elements.back().variable_index == -1)
