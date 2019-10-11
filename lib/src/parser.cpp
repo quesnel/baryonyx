@@ -318,7 +318,7 @@ public:
         do_push_back(size);
     }
 
-    void print(const std::string_view msg) const noexcept
+    void print(const std::string_view msg) const
     {
         fmt::print(msg);
         for (int i = 0; i < stream_buffer_size; ++i)
@@ -561,7 +561,8 @@ struct problem_parser
     }
 };
 
-constexpr std::optional<double>
+// constexpr copy_n problem
+std::optional<double>
 read_real(const std::string_view buf) noexcept
 {
     if (buf.size() >= 3 && are_equal(buf, "inf"))
@@ -582,7 +583,8 @@ read_real(const std::string_view buf) noexcept
         return std::nullopt;
 }
 
-constexpr std::optional<real_token>
+// constexpr 
+std::optional<real_token>
 read_real(const std::string_view buf_1, const std::string_view buf_2) noexcept
 {
     std::optional<double> value_opt;
@@ -610,6 +612,7 @@ read_real(const std::string_view buf_1, const std::string_view buf_2) noexcept
     return real_token(*value_opt, 1);
 }
 
+// constexpr
 std::optional<std::string_view>
 read_name(const std::string_view buf) noexcept
 {
@@ -619,7 +622,8 @@ read_name(const std::string_view buf) noexcept
              : std::nullopt;
 }
 
-constexpr std::optional<operator_token>
+// constexpr
+std::optional<operator_token>
 read_operator(const std::string_view buf_1,
               const std::string_view buf_2) noexcept
 {
@@ -655,7 +659,7 @@ is_objective_function(const std::string_view buf) noexcept
             is_char_name(buf[0]));
 }
 
-constexpr std::optional<function_element_token>
+std::optional<function_element_token>
 read_quadratic_element(const std::string_view buf_1,
                        const std::string_view buf_2,
                        const std::string_view buf_3) noexcept
@@ -780,7 +784,8 @@ read_quadratic_element(stream_buffer& buf,
     return baryonyx::file_format_error_tag::success;
 }
 
-constexpr std::optional<function_element_token>
+// constexpr
+std::optional<function_element_token>
 read_function_element(const std::string_view buf_1,
                       const std::string_view buf_2,
                       const std::string_view buf_3) noexcept
