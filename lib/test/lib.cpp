@@ -415,17 +415,17 @@ test_size_type_greater_than_int8_subvector_impl(const unsigned size,
     baryonyx::itm::shared_subvector s;
     s.reserve(size);
 
-    assert(s.size() == 0);
+    Ensures(s.size() == 0);
 
     bool is_initialized = s.init(element_size);
-    assert(is_initialized);
+    Ensures(is_initialized);
 
     unsigned element_total = size / element_size;
 
     for (unsigned int i = 0; i != element_total; ++i) {
         auto id = s.emplace();
 
-        assert(id < size);
+        Ensures(id < size);
         for (auto [si, se] = s.element(id); si != se; ++si)
             s[si] = 99;
     }
@@ -433,7 +433,7 @@ test_size_type_greater_than_int8_subvector_impl(const unsigned size,
     unsigned element_removed = 0;
     for (unsigned int i = 0; i != element_total / 2; ++i) {
         for (auto [si, se] = s.element(i * element_size); si != se; ++si) {
-            assert(s[si] == 99);
+            Ensures(s[si] == 99);
             s[si] = 77;
         }
 
@@ -441,18 +441,18 @@ test_size_type_greater_than_int8_subvector_impl(const unsigned size,
         ++element_removed;
     }
 
-    assert(element_removed == element_total / 2);
+    Ensures(element_removed == element_total / 2);
 
     for (unsigned int i = 0; i != element_removed; ++i) {
         auto id = s.emplace();
 
-        assert(id < size);
+        Ensures(id < size);
         for (auto [si, se] = s.element(id); si != se; ++si)
             s[si] = 0;
     }
 
     for (unsigned int i = 0, e = s.size(); i != e; ++i)
-        assert(s[i] == 99 || s[i] == 0);
+        Ensures(s[i] == 99 || s[i] == 0);
 }
 
 void
