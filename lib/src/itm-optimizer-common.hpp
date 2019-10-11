@@ -359,7 +359,7 @@ optimize_problem(const context_ptr& ctx, const problem& pb)
 
     auto constraints{ make_merged_constraints(ctx, pb) };
     if (!constraints.empty() && !pb.vars.values.empty()) {
-        random_engine rng(init_random_generator_seed<random_engine>(ctx));
+        random_engine rng(init_random_generator_seed(ctx));
 
         auto variables = numeric_cast<int>(pb.vars.values.size());
         auto cost = Cost(pb.objective, variables);

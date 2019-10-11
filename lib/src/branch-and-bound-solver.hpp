@@ -295,7 +295,7 @@ struct branch_and_bound_solver
 
     void make_init_node_0()
     {
-        nodes.emplace_back(0.0, 0, 0);
+        nodes.emplace_back(Float{0}, 0, 0u);
         nodes.back().variables = subvector.emplace();
         nodes.back().z = items[1].sum_z;
 
@@ -304,7 +304,7 @@ struct branch_and_bound_solver
 
     void make_init_node_1()
     {
-        nodes.emplace_back(items[0].r, items[0].factor, 0);
+        nodes.emplace_back(items[0].r, items[0].factor, 0u);
         nodes.back().variables = subvector.emplace();
         nodes.back().z = items[0].sum_z;
 

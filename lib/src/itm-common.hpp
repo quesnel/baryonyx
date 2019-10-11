@@ -266,7 +266,7 @@ compute_violated_constraints(const Solver& slv,
 
 template<typename iteratorT>
 inline void
-random_shuffle_unique(iteratorT begin, iteratorT end, randomT& rng) noexcept
+random_shuffle_unique(iteratorT begin, iteratorT end, random_engine& rng) noexcept
 {
     auto ret = begin++;
     for (; begin != end; ++begin) {
@@ -281,7 +281,7 @@ random_shuffle_unique(iteratorT begin, iteratorT end, randomT& rng) noexcept
 
 template<typename Mode, typename Iterator>
 inline void
-calculator_sort(Iterator begin, Iterator end, Random& rng)
+calculator_sort(Iterator begin, Iterator end, random_engine& rng)
 {
     if (std::distance(begin, end) > 1) {
         std::sort(begin, end, [](const auto& lhs, const auto& rhs) {
@@ -297,7 +297,7 @@ calculator_sort(Iterator begin, Iterator end, Random& rng)
 
 template<typename Mode, typename Float>
 inline bool
-stop_iterating(Float value, Random& rng) noexcept
+stop_iterating(Float value, random_engine& rng) noexcept
 {
     if (value == 0) {
         std::bernoulli_distribution d(0.5);
@@ -1202,7 +1202,7 @@ struct compute_lagrangian_order
     std::vector<int> R;
 
     template<typename solverT, typename Xtype>
-    compute_lagrangian_order(solverT& s, const Xtype& x, Random&)
+    compute_lagrangian_order(solverT& s, const Xtype& x, random_engine&)
       : R(s.m)
     {
         compute_violated_constraints(s, x, R);
@@ -1251,10 +1251,10 @@ template<typename floatingpointT>
 struct compute_random
 {
     std::vector<int> R;
-    random_type& rng;
+    random_engine& rng;
 
     template<typename solverT, typename Xtype>
-    compute_random(solverT& s, const Xtype& x, random_type& rng_)
+    compute_random(solverT& s, const Xtype& x, random_engine& rng_)
       : R(s.m)
       , rng(rng_)
     {
@@ -1296,10 +1296,10 @@ template<typename floatingpointT, typename Order>
 struct compute_infeasibility
 {
     std::vector<std::pair<int, int>> m_order;
-    random_type& rng;
+    random_engine& rng;
 
     template<typename solverT, typename Xtype>
-    compute_infeasibility(solverT& s, const Xtype& x, random_type& rng_)
+    compute_infeasibility(solverT& s, const Xtype& x, random_engine& rng_)
       : m_order(s.m)
       , rng(rng_)
     {
@@ -1886,8 +1886,8 @@ struct quadratic_cost_type
     }
 };
 
-random_engine::result_type
-init_random_generator_seed(const context_ptr& ctx)
+inline random_engine::result_type
+init_random_generator_seed(const context_ptr& ctx) noexcept
 {
     auto epoch = std::chrono::system_clock::now().time_since_epoch().count();
     auto param = ctx->parameters.seed;
