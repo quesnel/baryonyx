@@ -124,6 +124,32 @@ namespace details {
 
 } // namespace details
 
+template<typename... Args>
+void to_log([[maybe_unused]] std::FILE* os,
+            [[maybe_unused]] const std::string_view fmt,
+            [[maybe_unused]] const Args&... args)
+{
+#ifdef BARYONYX_ENABLE_LOG
+#ifdef BARYONYX_ENABLE_DEBUG
+    fmt::print(os, fmt, args...);
+#endif
+#endif
+}
+
+template<typename... Args>
+void to_log([[maybe_unused]] std::FILE* os,
+            [[maybe_unused]] unsigned indent,
+            [[maybe_unused]] const std::string_view fmt,
+            [[maybe_unused]] const Args&... args)
+{
+#ifdef BARYONYX_ENABLE_LOG
+#ifdef BARYONYX_ENABLE_DEBUG
+    fmt::print(os, "{:{}}", "", indent);
+    fmt::print(os, fmt, args...);
+#endif
+#endif
+}
+
 inline bool
 is_loggable(context::message_type current_level,
             context::message_type level) noexcept
