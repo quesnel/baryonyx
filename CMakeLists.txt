@@ -22,7 +22,8 @@ endif ()
 add_definitions(-DFMT_HEADER_ONLY)
 include_directories(${CMAKE_SOURCE_DIR}/external/fmt/include)
 
-if (NOT WIN32)
+option(WITH_CLANG_TIDY "enable clang tidy checks. [default: OFF]" OFF)
+if (WITH_CLANG_TIDY)
   find_program(CLANG_TIDY_EXE
     NAMES "clang-tidy"
     DOC "Path to clang-tidy executable")
