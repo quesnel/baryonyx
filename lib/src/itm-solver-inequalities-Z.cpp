@@ -245,14 +245,10 @@ struct solver_inequalities_Zcoeff
         for (; begin != end; ++begin) {
             Float sum_a_pi_p = 0;
 
-            Float sum_p = 0, sum_pi = 0;
-
             for (auto [first, last] = ap.column(begin->column); first != last;
                  ++first) {
                 auto a = std::abs(static_cast<Float>(A[first->value]));
                 sum_a_pi_p += a * (pi[first->row] + P[first->value]);
-                sum_p = a * P[first->value];
-                sum_pi = a * pi[first->row];
             }
 
             R[r_size].id = r_size;
@@ -280,17 +276,14 @@ struct solver_inequalities_Zcoeff
     template<typename Xtype>
     Float local_compute_reduced_cost(int variable, const Xtype& x) noexcept
     {
-        Float sum_a_pi = 0;
-        Float sum_a_p = 0;
+        Float sum_a_pi_p = 0;
 
         for (auto [ht, hte] = ap.column(variable); ht != hte; ++ht) {
             auto a = std::abs(static_cast<Float>(A[ht->value]));
-
-            sum_a_pi += a * pi[ht->row];
-            sum_a_p += a * P[ht->value];
+            sum_a_pi_p += a * (pi[ht->row] + P[ht->value]);
         }
 
-        return c(variable, x) - sum_a_pi - sum_a_p;
+        return c(variable, x) - sum_a_pi_p;
     }
 
     int select_variables_101(const int r_size, int bkmin, int bkmax)
