@@ -95,10 +95,7 @@ struct best_solution_recorder
     }
 };
 
-template<typename Solver,
-         typename Float,
-         typename Mode,
-         typename Cost>
+template<typename Solver, typename Float, typename Mode, typename Cost>
 struct optimize_functor
 {
     const context_ptr& m_ctx;
@@ -189,7 +186,7 @@ struct optimize_functor
           m_rng, length(constraints), variables, norm_costs, constraints);
 
         solver_initializer<Solver, Float, Mode, Xtype> initializer(
-          slv, x, p.init_policy, p.init_random);
+          slv, x, p.init_policy, p.init_policy_random, p.init_random);
 
         compute_order compute(p.order, variables);
         compute.init(slv, x);
@@ -205,7 +202,8 @@ struct optimize_functor
             initializer.reinit(slv, x, x_is_solution, m_best);
 
             for (int i = 0; !stop_task.load() && i != p.limit; ++i) {
-                auto remaining = compute.run(slv, x, m_rng, kappa, delta, theta);
+                auto remaining =
+                  compute.run(slv, x, m_rng, kappa, delta, theta);
 
                 if (remaining == 0) {
                     x_is_solution = true;
@@ -261,7 +259,8 @@ struct optimize_functor
                 for (int iter = 0;
                      !stop_task.load() && iter < p.pushing_iteration_limit;
                      ++iter) {
-                    remaining = compute.run(slv, x, m_rng, kappa, delta, theta);
+                    remaining =
+                      compute.run(slv, x, m_rng, kappa, delta, theta);
 
                     if (remaining == 0) {
                         x_is_solution = true;
@@ -345,10 +344,7 @@ get_thread_number(const baryonyx::context_ptr& ctx) noexcept
     return ret;
 }
 
-template<typename Solver,
-         typename Float,
-         typename Mode,
-         typename Cost>
+template<typename Solver, typename Float, typename Mode, typename Cost>
 inline result
 optimize_problem(const context_ptr& ctx, const problem& pb)
 {

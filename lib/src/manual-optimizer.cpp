@@ -35,6 +35,7 @@ struct manual_course
     std::unique_ptr<double[]> kappa_min;
     std::unique_ptr<double[]> kappa_step;
     std::unique_ptr<double[]> init_random;
+    std::unique_ptr<double[]> init_policy_random;
     std::unique_ptr<int[]> iterators;
 
     const int length;
@@ -44,12 +45,14 @@ struct manual_course
                   double kappa_min_,
                   double kappa_step_,
                   double init_random_,
+                  double init_policy_random_,
                   int length_)
       : theta(std::make_unique<double[]>(length_))
       , delta(std::make_unique<double[]>(length_))
       , kappa_min(std::make_unique<double[]>(length_))
       , kappa_step(std::make_unique<double[]>(length_))
       , init_random(std::make_unique<double[]>(length_))
+      , init_policy_random(std::make_unique<double[]>(length_))
       , iterators(std::make_unique<int[]>(length_))
       , length(length_)
     {
@@ -70,6 +73,9 @@ struct manual_course
         init_random[0] = init_random_;
         init_random[1] = 0.9 / static_cast<double>(length);
 
+        init_policy_random[0] = init_policy_random_;
+        init_policy_random[1] = 0.9 / static_cast<double>(length);
+
         for (int i = 2; i != length; ++i)
             theta[i] = theta[i - 1] + 1.0 / static_cast<double>(length);
 
@@ -86,6 +92,10 @@ struct manual_course
 
         for (int i = 2; i != length; ++i)
             init_random[i] = theta[i - 1] + 0.9 / static_cast<double>(length);
+
+        for (int i = 2; i != length; ++i)
+            init_policy_random[i] =
+              theta[i - 1] + 0.9 / static_cast<double>(length);
 
         reset();
     }
@@ -118,7 +128,8 @@ optimize(const baryonyx::context_ptr& ctx, const baryonyx::problem& pb)
                         ctx->parameters.kappa_min,
                         ctx->parameters.kappa_step,
                         ctx->parameters.init_random,
-                        5);
+                        ctx->parameters.init_policy_random,
+                        6);
 
     auto old_log_priority = ctx->log_priority;
     ctx->log_priority = baryonyx::context::message_type::notice;
@@ -132,15 +143,19 @@ optimize(const baryonyx::context_ptr& ctx, const baryonyx::problem& pb)
         ctx->parameters.kappa_min = array.kappa_min[array.iterators[2]];
         ctx->parameters.kappa_step = array.kappa_step[array.iterators[3]];
         ctx->parameters.init_random = array.init_random[array.iterators[4]];
+        ctx->parameters.init_policy_random =
+          array.init_policy_random[array.iterators[5]];
 
         baryonyx::notice(ctx,
                          "  - optimization with theta:{} delta:{} "
-                         "kappa-min:{} kappa-step:{} init-random:{} ",
+                         "kappa-min:{} kappa-step:{} init-random:{} "
+                         "init-policy-random: {}",
                          ctx->parameters.theta,
                          ctx->parameters.delta,
                          ctx->parameters.kappa_min,
                          ctx->parameters.kappa_step,
-                         ctx->parameters.init_random);
+                         ctx->parameters.init_random,
+                         ctx->parameters.init_policy_random);
 
         auto ret = baryonyx::itm::optimize(ctx, pb);
         if (ret) {
@@ -165,7 +180,8 @@ optimize(const baryonyx::context_ptr& ctx, const baryonyx::problem& pb)
       array.delta[array.iterators[1]],
       array.kappa_min[array.iterators[2]],
       array.kappa_step[array.iterators[3]],
-      array.init_random[array.iterators[4]]);
+      array.init_random[array.iterators[4]],
+      array.init_policy_random[array.iterators[5]]);
 
     ctx->log_priority = old_log_priority;
 

@@ -527,7 +527,7 @@ template<typename Solver, typename Float, typename Mode, typename Xtype>
 class solver_initializer
 {
     std::bernoulli_distribution dist;
-    std::bernoulli_distribution toss_up{ 0.5 };
+    std::bernoulli_distribution toss_up;
     double old_best;
     bool use_cycle{ true };
     std::uint8_t iteration{ 0 };
@@ -603,6 +603,8 @@ class solver_initializer
                 slv.R[r_size].id = r_size;
             }
 
+            std::shuffle(slv.R.get(), slv.R.get() + r_size, slv.rng);
+
             std::sort(slv.R.get(),
                       slv.R.get() + r_size,
                       [](const auto& lhs, const auto& rhs) {
@@ -621,18 +623,25 @@ class solver_initializer
                     break;
                 }
 
-                sum += slv.R[i + 1].factor();
+                auto var = begin + slv.R[i].id;
+                sum += slv.factor(var->value);
             }
 
             int i = 0;
             for (; i <= best; ++i) {
                 auto var = begin + slv.R[i].id;
-                x.set(var->column);
+                if (dist(slv.rng))
+                    x.set(var->column);
+                else
+                    x.set(i, toss_up(slv.rng));
             }
 
             for (; i != r_size; ++i) {
                 auto var = begin + slv.R[i].id;
-                x.unset(var->column);
+                if (dist(slv.rng))
+                    x.unset(var->column);
+                else
+                    x.set(i, toss_up(slv.rng));
             }
         }
     }
@@ -650,6 +659,8 @@ class solver_initializer
                 slv.R[r_size].value = slv.c(it->column, x);
                 slv.R[r_size].id = r_size;
             }
+
+            std::shuffle(slv.R.get(), slv.R.get() + r_size, slv.rng);
 
             std::sort(slv.R.get(),
                       slv.R.get() + r_size,
@@ -671,18 +682,25 @@ class solver_initializer
                     stop_iterating<Mode>(slv.R[i + 1].value))
                     break;
 
-                sum += slv.R[i + 1].factor();
+                auto var = begin + slv.R[i].id;
+                sum += slv.factor(var->value);
             }
 
             int i = 0;
             for (; i <= best; ++i) {
                 auto var = begin + slv.R[i].id;
-                x.set(var->column);
+                if (dist(slv.rng))
+                    x.set(var->column);
+                else
+                    x.set(i, toss_up(slv.rng));
             }
 
             for (; i != r_size; ++i) {
                 auto var = begin + slv.R[i].id;
-                x.unset(var->column);
+                if (dist(slv.rng))
+                    x.unset(var->column);
+                else
+                    x.set(i, toss_up(slv.rng));
             }
         }
     }
@@ -691,8 +709,10 @@ public:
     solver_initializer(Solver& slv,
                        Xtype& x,
                        solver_parameters::init_policy_type policy,
+                       double init_policy_random,
                        double init_random)
-      : dist(init_random)
+      : dist(init_policy_random)
+      , toss_up(init_random)
       , old_best(bad_value<Mode, double>())
     {
         x.clear();

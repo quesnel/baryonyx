@@ -108,7 +108,9 @@ struct solver_functor
           m_rng, length(constraints), variables, norm_costs, constraints);
 
         solver_initializer<Solver, Float, Mode, x_type> initializer(
-          slv, x, p.init_policy, p.init_random);
+          slv, x, p.init_policy, p.init_policy_random, p.init_random);
+        initializer.reinit(slv, x, false, m_best);
+
         compute_order compute(p.order, variables);
         compute.init(slv, x);
 
@@ -178,7 +180,8 @@ struct solver_functor
                     break;
 
                 for (int iter = 0; iter < p.pushing_iteration_limit; ++iter) {
-                    remaining = compute.run(slv, x, m_rng, kappa, delta, theta);
+                    remaining =
+                      compute.run(slv, x, m_rng, kappa, delta, theta);
 
                     if (remaining == 0) {
                         store_if_better(
@@ -250,10 +253,7 @@ private:
     }
 };
 
-template<typename Solver,
-         typename Float,
-         typename Mode,
-         typename Cost>
+template<typename Solver, typename Float, typename Mode, typename Cost>
 inline result
 solve_problem(const context_ptr& ctx, const problem& pb)
 {
@@ -274,24 +274,21 @@ solve_problem(const context_ptr& ctx, const problem& pb)
         case solver_parameters::observer_type::pnm: {
             using obs = pnm_observer<Solver, Float>;
 
-            solver_functor<Solver, Float, Mode, Cost, obs> slv(
-              ctx, rng, pb);
+            solver_functor<Solver, Float, Mode, Cost, obs> slv(ctx, rng, pb);
 
             ret = slv(constraints, variables, cost, cost_constant);
         } break;
         case solver_parameters::observer_type::file: {
             using obs = file_observer<Solver, Float>;
 
-            solver_functor<Solver, Float, Mode, Cost, obs> slv(
-              ctx, rng, pb);
+            solver_functor<Solver, Float, Mode, Cost, obs> slv(ctx, rng, pb);
 
             ret = slv(constraints, variables, cost, cost_constant);
         } break;
         default: {
             using obs = none_observer<Solver, Float>;
 
-            solver_functor<Solver, Float, Mode, Cost, obs> slv(
-              ctx, rng, pb);
+            solver_functor<Solver, Float, Mode, Cost, obs> slv(ctx, rng, pb);
 
             ret = slv(constraints, variables, cost, cost_constant);
             break;

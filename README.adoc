@@ -352,21 +352,26 @@ To assign parameters to solver or optimizer algorithms, use the `-p
 | string
 | Change the initialization and reinitialization policy of the solution vector. Values are:
 
-* `bastert`: for each variable (or at `init-random` rate) use cost values to
-  set or unset variable.
-* `pessimistic-solve`: found a solution for each (or at `init-random` rate)
-  constraints. For soft constraints, affect one to strict minimum variables.
-* `optimistic-solve`: found a solution for each (or or `init-random` rate)
-  constraints. For soft constraints, affect one to the maximum variables that
-  valid the constraint.
+* `bastert`: for each variable (or at `init-policy-random` rate) use cost
+  values to set or unset variable.
+* `pessimistic-solve`: found a solution for each (or at `init-policy-random`
+  rate) constraints. For soft constraints, affect one to strict minimum
+  variables.
+* `optimistic-solve`: found a solution for each (or or `init-policy-random`
+  rate) constraints. For soft constraints, affect one to the maximum variables
+  that valid the constraint.
 * `cycle` (default): Only for the optimization mode, start with the
   `pessimistic-solve` mode and change to `bastert` then `pessimistic-solve`
   mode. The change between mode is done if and only if three times,
-  optimization fails to improve the current solution.
+  optimization fails to improve the current best solution.
+
+| init-policy-random
+| real
+| [0-1] (default, 0.5) parameter of the bernoulli's law to be used in conjunction with the `init-policy` parameter. If the law returns 1, it uses the `init-policy` algorithm to initialize `X_i`, 0 means use a toss up to choose 0 or 1 according to the `init-random` value.
 
 | init-random
 | real
-| [0-1] (default, 0.5) p parameter of the bernoulli's law to be used in conjunction with the `init-policy` parameter.
+| [0-1] (default, 0.5) parameter _p_ of the bernoulli's law used when 0 occurs with the `init-policy-random`.
 
 | storage-type
 | string

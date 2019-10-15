@@ -113,8 +113,10 @@ solver_started_cb(const baryonyx::solver_parameters& params)
 
         fmt::print(" * Initialization parameters:\n"
                    "  - init-policy: {}\n"
+                   "  - init-policy-random: {}\n"
                    "  - init-random: {:.10g}\n",
                    baryonyx::init_policy_type_to_string(params.init_policy),
+                   params.init_policy_random,
                    params.init_random);
     } else {
         fmt::print(" * Random solvers:\n"
@@ -404,6 +406,7 @@ enum class command_line_status
     pushing_iteration_limit_error,
     pushing_k_factor_error,
     init_policy_error,
+    init_policy_random_error,
     init_random_error,
     thread_error,
     seed_error
@@ -436,6 +439,7 @@ constexpr const std::string_view command_line_status_string[] = {
     "pushing_iteration_limit",
     "pushing_k_factor",
     "init_policy",
+    "init_policy_random",
     "init_random",
     "thread",
     "seed"
@@ -700,6 +704,12 @@ assign_parameter(baryonyx::solver_parameters& params,
             return command_line_status::init_random_error;
         else
             params.init_random = *v;
+
+    } else if (is_equal(name, "init-policy-random")) {
+        if (auto v = assign_01(value); !v)
+            return command_line_status::init_policy_random_error;
+        else
+            params.init_policy_random = *v;
 
     } else if (is_equal(name, "thread")) {
         if (auto v = assign(value, 0, std::numeric_limits<int>::max()); !v)

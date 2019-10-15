@@ -23,6 +23,7 @@ optim_gen_lp <- function(x) {
            pushes_limit = 20,
            pushing_iteration_limit = 50,
            init_policy = 0,
+           init_policy_random = 0.5,
            init_random = 0.5,
            float_type = 1)
            verbose = FALSE)

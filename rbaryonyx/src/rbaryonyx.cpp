@@ -278,6 +278,7 @@ assign_parameters(const baryonyx::context_ptr& ctx,
                   int pushes_limit,
                   int pushing_iteration_limit,
                   int init_policy,
+                  double init_policy_random,
                   double init_random,
                   int float_type,
                   int storage_type)
@@ -293,6 +294,7 @@ assign_parameters(const baryonyx::context_ptr& ctx,
     params.alpha = alpha;
     params.pushing_k_factor = pushing_k_factor;
     params.pushing_objective_amplifier = pushing_objective_amplifier;
+    params.init_policy_random = init_policy_random;
     params.init_random = init_random;
 
     if (seed > 0)
@@ -399,7 +401,8 @@ convert_result(const baryonyx::result& res, bool minimize)
 //'    - 4: infinity-norm
 //'
 //' @param init_policy the type of (re)initilization used into the solver.
-//'     Default is to use pessimistic_solve and 0.5 for policy_random.
+//'     Default is to use pessimistic_solve and 0.5 for init_policy_random
+//'     and 0.5 for init_random.
 //'    - 0: bastert,
 //'    - 1: pessimistic_solve,
 //'    - 2: optimistic_solve,
@@ -553,7 +556,8 @@ solve_01lp_problem(std::string file_path,
 //'    - 4: infinity-norm
 //'
 //' @param init_policy the type of (re)initilization used into the solver.
-//'     Default is to use pessimistic_solve and 0.5 for policy_random.
+//'     Default is to use pessimistic_solve and 0.5 for init_policy_random
+//'     and 0.5 for init_random.
 //'    - 0: bastert,
 //'    - 1: pessimistic_solve,
 //'    - 2: optimistic_solve,

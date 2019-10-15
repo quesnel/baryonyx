@@ -38,7 +38,8 @@ enum param
     param_delta,
     param_kappa_min,
     param_kappa_step,
-    param_init_random
+    param_init_random,
+    param_init_policy_random
 };
 
 struct nlopt_data
@@ -67,6 +68,8 @@ nlopt_optimize_fun(const std::vector<double>& x,
           x[static_cast<int>(param_kappa_step)];
         data->ctx->parameters.init_random =
           x[static_cast<int>(param_init_random)];
+        data->ctx->parameters.init_policy_random =
+          x[static_cast<int>(param_init_policy_random)];
 
         auto ret = baryonyx::itm::optimize(data->ctx, data->pb);
         if (!(ret))
@@ -74,12 +77,13 @@ nlopt_optimize_fun(const std::vector<double>& x,
 
         baryonyx::notice(data->ctx,
                          "theta: {} delta: {} kappa_min: {} kappa_step: {} "
-                         "init_random: {}: {:f}\n",
+                         "init_random: {} init_policy_random: {}: {:f}\n",
                          data->ctx->parameters.theta,
                          data->ctx->parameters.delta,
                          data->ctx->parameters.kappa_min,
                          data->ctx->parameters.kappa_step,
                          data->ctx->parameters.init_random,
+                         data->ctx->parameters.init_policy_random,
                          ret.solutions.back().value);
 
         return ret.solutions.back().value;
@@ -97,11 +101,11 @@ optimize(const baryonyx::context_ptr& ctx, const baryonyx::problem& pb)
 
     nlopt_data data(ctx, pb);
 
-    const std::vector<double> low{ 0, 0.0001, 0.0, 1e-7, 0 };
-    const std::vector<double> up{ 1, 0.1, 0.5, 0.01, 1 };
-    std::vector<double> x{ 0.5, 0.001, 0.1, 0.001, 0.5 };
+    const std::vector<double> low{ 0, 0.0001, 0.0, 1e-7, 0, 0 };
+    const std::vector<double> up{ 1, 0.1, 0.5, 0.01, 1, 1 };
+    std::vector<double> x{ 0.5, 0.001, 0.1, 0.001, 0.5, 0.5 };
 
-    nlopt::opt opt(nlopt::LN_NELDERMEAD, 5);
+    nlopt::opt opt(nlopt::LN_NELDERMEAD, 6);
     opt.set_maxtime(3600);
     opt.set_vector_storage(100);
     opt.set_lower_bounds(low);
@@ -130,13 +134,15 @@ optimize(const baryonyx::context_ptr& ctx, const baryonyx::problem& pb)
           x[param_delta],
           x[param_kappa_min],
           x[param_kappa_step],
-          x[param_init_random]);
+          x[param_init_random],
+          x[param_init_policy_random]);
 
         ctx->parameters.theta = x[param_theta];
         ctx->parameters.delta = x[param_delta];
         ctx->parameters.kappa_min = x[param_kappa_min];
         ctx->parameters.kappa_step = x[param_kappa_step];
         ctx->parameters.init_random = x[param_init_random];
+        ctx->parameters.init_policy_random = x[param_init_policy_random];
 
         return baryonyx::itm::optimize(ctx, pb);
     } else {

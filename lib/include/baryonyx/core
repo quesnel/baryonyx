@@ -414,6 +414,7 @@ struct BX_EXPORT solver_parameters
     double alpha{ 1 };
     double pushing_k_factor{ 0.9 };
     double pushing_objective_amplifier{ 5 };
+    double init_policy_random{0.5};
     double init_random{ 0.5 };
     unsigned int seed{ 0 }; ///< value == 0 means automatic seed.
     int thread{ 0 };        ///< value <= 0 means automatic detection.
