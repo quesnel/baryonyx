@@ -196,11 +196,17 @@ struct exhaustive_solver
             items[i].result = 0;
         }
 
-        auto z_best = init_z();
-        auto best = -1;
+        Float z_best = 0;
+        auto best = 0;
+        auto start_solution = it_constraint->start;
 
-        for (int i = 0; i != it_constraint->solutions; ++i) {
-            const auto start_solution = it_constraint->start + (i * r_size);
+        for (int j = 0; j != r_size; ++j)
+            if (flat_constraints[start_solution + j])
+                z_best += reduced_cost[j].value;
+
+
+        for (auto i = 1; i != it_constraint->solutions; ++i) {
+            start_solution = it_constraint->start + (i * r_size);
 
             Float z = 0;
             for (int j = 0; j != r_size; ++j)
@@ -213,9 +219,7 @@ struct exhaustive_solver
             }
         }
 
-        bx_ensures(best >= 0);
-
-        const auto start_solution = it_constraint->start + (best * r_size);
+        start_solution = it_constraint->start + (best * r_size);
         for (int i = 0; i != r_size; ++i)
             items[i].result = flat_constraints[start_solution + i] ? 1 : 0;
 

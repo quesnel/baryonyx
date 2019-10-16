@@ -710,7 +710,6 @@ main(int /*argc*/, char* /* argv */ [])
     unit_test::checks("uf50_0448", test_uf50_0448);
     unit_test::checks("flat30_7", test_flat30_7);
     unit_test::checks("aim_50_1_6_yes1_2", test_aim_50_1_6_yes1_2);
-
     test_Z_coefficient_1();
 #if 0
     test_bibd1n();
