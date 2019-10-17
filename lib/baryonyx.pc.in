@@ -7,7 +7,7 @@ Name: baryonyx
 Description: An integer or binary linear programming solver
 Version: @PROJECT_VERSION_MAJOR@.@PROJECT_VERSION_MINOR@.@PROJECT_VERSION_PATCH@
 URL: http://www.vle-project.org
-Requires:
+Requires: @BARYONYX_DEPENDENCIES@
 Cflags: -I${includedir}/baryonyx-@PROJECT_VERSION_MAJOR@.@PROJECT_VERSION_MINOR@
 Libs: -L${libdir} -lbaryonyx-@PROJECT_VERSION_MAJOR@.@PROJECT_VERSION_MINOR@
 Libs.private:
