@@ -127,7 +127,7 @@ optimize(const baryonyx::context_ptr& ctx, const baryonyx::problem& pb)
     if (result >= 1 || result == -4) {
         baryonyx::notice(
           ctx,
-          "  - nlopt optimization found solution {:f}: with theta:xxx "
+          "  - nlopt optimization found solution {:f}: with theta:{} "
           "delta:{} kappa-min:{} kappa-step:{} init-random:{}\n",
           value,
           x[param_theta],
