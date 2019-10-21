@@ -561,22 +561,9 @@ class solver_initializer
 
     static constexpr short iteration_limit = 3;
 
-    void reinit(Solver& slv, Xtype& x) noexcept
-    {
-        for (int i = 0; i != slv.n; ++i)
-            if (dist(slv.rng))
-                x.set(i, 1 - x[i]);
-    }
-
-    void reinit(Solver& slv, Xtype& x, const solution& best) noexcept
-    {
-        for (int i = 0; i != slv.n; ++i)
-            if (dist(slv.rng))
-                x.set(i, 1 - best.variables[i]);
-    }
-
     // Fully fill the solution vector X with a mix of values from the bastert
     // policy and from random value.
+
     void init_bastert(Solver& slv, Xtype& x) noexcept
     {
         const int value_if_cost_0 = 1;
@@ -589,12 +576,31 @@ class solver_initializer
         }
     }
 
-    void init_pessimistic_solve(Solver& slv, Xtype& x) noexcept
+    void reinit_bastert(Solver& slv, Xtype& x, const solution& best) noexcept
+    {
+        const int value_if_cost_0 = 1;
+
+        for (int i = 0; i != slv.n; ++i)
+            if (dist(slv.rng))
+                x.set(i, init_x<Mode>(slv.c(i, x), value_if_cost_0));
+            else
+                x.set(i, best.variables[i]);
+    }
+
+    void reinit_bastert(Solver& slv, Xtype& x) noexcept
+    {
+        const int value_if_cost_0 = 1;
+
+        for (int i = 0; i != slv.n; ++i)
+            if (dist(slv.rng))
+                x.set(i, init_x<Mode>(slv.c(i, x), value_if_cost_0));
+    }
+
+    void do_init_pessimistic_solve(Solver& slv, Xtype& x) noexcept
     {
         for (int k = 0; k != slv.m; ++k) {
             if (!dist(slv.rng))
                 continue;
-
             auto [begin, end] = slv.ap.row(k);
             int r_size = 0;
 
@@ -630,23 +636,42 @@ class solver_initializer
             int i = 0;
             for (; i <= best; ++i) {
                 auto var = begin + slv.R[i].id;
-                if (dist(slv.rng))
-                    x.set(var->column);
-                else
-                    x.set(i, toss_up(slv.rng));
+                x.set(var->column);
             }
 
             for (; i != r_size; ++i) {
                 auto var = begin + slv.R[i].id;
-                if (dist(slv.rng))
-                    x.unset(var->column);
-                else
-                    x.set(i, toss_up(slv.rng));
+                x.unset(var->column);
             }
         }
     }
 
-    void init_optimistic_solve(Solver& slv, Xtype& x) noexcept
+    void init_pessimistic_solve(Solver& slv, Xtype& x) noexcept
+    {
+        for (int i = 0; i != slv.n; ++i) // write complete x vector with
+            x.set(i, toss_up(slv.rng));  // random value
+
+        do_init_pessimistic_solve(slv, x);
+    }
+
+    void reinit_pessimistic_solve(Solver& slv, Xtype& x) noexcept
+    {
+        do_init_pessimistic_solve(slv, x);
+    }
+
+    void reinit_pessimistic_solve(Solver& slv,
+                                  Xtype& x,
+                                  const solution& best) noexcept
+    {
+        for (int i = 0; i != slv.n; ++i) // write complete x vector with
+            x.set(i, best.variables[i]); // best solution
+
+        do_init_pessimistic_solve(slv, x);
+    }
+
+    /////
+
+    void do_init_optimistic_solve(Solver& slv, Xtype& x) noexcept
     {
         for (int k = 0; k != slv.m; ++k) {
             if (!dist(slv.rng))
@@ -689,20 +714,37 @@ class solver_initializer
             int i = 0;
             for (; i <= best; ++i) {
                 auto var = begin + slv.R[i].id;
-                if (dist(slv.rng))
-                    x.set(var->column);
-                else
-                    x.set(i, toss_up(slv.rng));
+                x.set(var->column);
             }
 
             for (; i != r_size; ++i) {
                 auto var = begin + slv.R[i].id;
-                if (dist(slv.rng))
-                    x.unset(var->column);
-                else
-                    x.set(i, toss_up(slv.rng));
+                x.unset(var->column);
             }
         }
+    }
+
+    void init_optimistic_solve(Solver& slv, Xtype& x) noexcept
+    {
+        for (int i = 0; i != slv.n; ++i) // write complete x vector with
+            x.set(i, toss_up(slv.rng));  // random value
+
+        do_init_optimistic_solve(slv, x);
+    }
+
+    void reinit_optimistic_solve(Solver& slv, Xtype& x) noexcept
+    {
+        do_init_optimistic_solve(slv, x);
+    }
+
+    void reinit_optimistic_solve(Solver& slv,
+                                 Xtype& x,
+                                 const solution& best) noexcept
+    {
+        for (int i = 0; i != slv.n; ++i) // write complete x vector with
+            x.set(i, best.variables[i]); // best solution
+
+        do_init_optimistic_solve(slv, x);
     }
 
 public:
@@ -790,11 +832,10 @@ public:
 
         next_state(is_x_solution, is_x_better_solution);
 
-        bx_print("  solver re-initialization: ",
-                 single_automaton_string[static_cast<int>(single)],
-                 " in ",
-                 cycle_automaton_string[static_cast<int>(cycle)],
-                 "\n");
+        to_log(stdout,
+               "  solver initialization: method {} in mode {}\n",
+               cycle_automaton_string[static_cast<int>(cycle)],
+               single_automaton_string[static_cast<int>(single)]);
 
         switch (single) {
         case single_automaton::pre_init:
@@ -812,10 +853,30 @@ public:
             }
             break;
         case single_automaton::improve_x:
-            reinit(slv, x);
+            switch (cycle) {
+            case cycle_automaton::bastert:
+                reinit_bastert(slv, x);
+                return;
+            case cycle_automaton::pessimistic_solve:
+                reinit_pessimistic_solve(slv, x);
+                break;
+            case cycle_automaton::optimistic_solve:
+                reinit_optimistic_solve(slv, x);
+                break;
+            }
             break;
         case single_automaton::improve_best:
-            reinit(slv, x, best.solutions.back());
+            switch (cycle) {
+            case cycle_automaton::bastert:
+                reinit_bastert(slv, x, best.solutions.back());
+                return;
+            case cycle_automaton::pessimistic_solve:
+                reinit_pessimistic_solve(slv, x, best.solutions.back());
+                break;
+            case cycle_automaton::optimistic_solve:
+                reinit_optimistic_solve(slv, x, best.solutions.back());
+                break;
+            }
             break;
         }
     }
