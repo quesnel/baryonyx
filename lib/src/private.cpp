@@ -97,8 +97,23 @@ context_set_solver_parameters(const context_ptr& ctx,
     if (params.print_level >= 0)
         ctx->parameters.print_level = params.print_level;
 
-    if (params.w >= 0)
-        ctx->parameters.w = params.w;
+    // Convert the value [0..1] into a percentage of loop or use directly the
+    // number if the value.
+
+    if (params.w < 0) {
+        ctx->parameters.w = 0;
+    } else {
+        if (params.limit > 0) {
+            auto limit = static_cast<double>(params.limit);
+
+            if (params.w < 1)
+                ctx->parameters.w = limit * params.w;
+            else
+                ctx->parameters.w = std::min(limit, params.w);
+        } else {
+            ctx->parameters.w = std::floor(params.w);
+        }
+    }
 
     if (params.pushes_limit >= 0)
         ctx->parameters.pushes_limit = params.pushes_limit;

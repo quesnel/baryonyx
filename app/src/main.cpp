@@ -88,7 +88,7 @@ solver_started_cb(const baryonyx::solver_parameters& params)
                    "  - delta: {:.10g}\n"
                    "  - kappa: {:.10g} {:.10g} {:.10g}\n"
                    "  - alpha: {:.10g}\n"
-                   "  - w: {}\n"
+                   "  - w: {:.10g}\n"
                    "  - norm: {}\n",
                    baryonyx::pre_constraint_order_to_string(params.pre_order),
                    baryonyx::constraint_order_to_string(params.order),
@@ -637,7 +637,8 @@ assign_parameter(baryonyx::solver_parameters& params,
             params.alpha = *v;
 
     } else if (is_equal(name, "w")) {
-        if (auto v = assign(value, 0, std::numeric_limits<int>::max()); !v)
+        if (auto v = assign_d(value, 0.0, std::numeric_limits<double>::max());
+            !v)
             return command_line_status::w_error;
         else
             params.w = *v;

@@ -414,13 +414,13 @@ struct BX_EXPORT solver_parameters
     double alpha{ 1 };
     double pushing_k_factor{ 0.9 };
     double pushing_objective_amplifier{ 5 };
-    double init_policy_random{0.5};
+    double init_policy_random{ 0.5 };
     double init_random{ 0.5 };
+    double w{ 0.05 };       ///< 5% of limit
     unsigned int seed{ 0 }; ///< value == 0 means automatic seed.
     int thread{ 0 };        ///< value <= 0 means automatic detection.
     int limit{ 1000 };      ///< value <= 0 means infinity loop.
     int print_level{ 0 };
-    int w{ 20 };
     int pushes_limit{ 100 };
     int pushing_iteration_limit{ 50 };
     pre_constraint_order pre_order{ pre_constraint_order::none };

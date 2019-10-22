@@ -92,6 +92,8 @@ struct solver_functor
         const auto pushing_objective_amplifier =
           static_cast<Float>(p.pushing_objective_amplifier);
 
+        const int w_limit = static_cast<int>(p.w);
+
         if (p.limit <= 0)
             p.limit = std::numeric_limits<int>::max();
 
@@ -142,7 +144,7 @@ struct solver_functor
                 best_remaining = remaining;
             }
 
-            if (i > p.w)
+            if (i > w_limit)
                 kappa += kappa_step * std::pow(static_cast<Float>(remaining) /
                                                  static_cast<Float>(slv.m),
                                                alpha);
