@@ -824,8 +824,8 @@ public:
         auto is_x_better_solution{ false };
 
         if (!best.solutions.empty() &&
-            is_better_solution<Mode, double>(old_best,
-                                             best.solutions.back().value)) {
+            is_better_solution<Mode, double>(best.solutions.back().value,
+                                             old_best)) {
             old_best = best.solutions.back().value;
             is_x_better_solution = true;
         }
