@@ -235,8 +235,8 @@ To assign parameters to solver or optimizer algorithms, use the `-p
 | number of loop to stop algorithm
 
 | w
-| integer
-| warmup-iterator (number of loop without updating kappa)
+| double
+| warmup-iterator [0, 1] A percentage of `limit` loop and if w is greater than 1, the number of loop without updating kappa
 
 | theta
 | real
@@ -300,6 +300,7 @@ To assign parameters to solver or optimizer algorithms, use the `-p
 * `lagrangian-decr`: sort violated constraints according to the Lagrangian multiplier values in decremental order
 * `lagrangian-incr`: sort violated constraints according to the Lagrangian multiplier values in incremental order
 * `pi-sign-change`: random the remaining constraint list if the lagrangian multipliers signs have changed
+* `cycle`: switch the constraint order after each `update_row`. Starts from `none` to `pi-sign-change`.
 
 | preprocessing
 | string
