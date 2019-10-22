@@ -587,6 +587,9 @@ assign_parameter(baryonyx::solver_parameters& params,
         else if (value == "pi-sign-change")
             params.order =
               baryonyx::solver_parameters::constraint_order::pi_sign_change;
+        else if (value == "cycle")
+            params.order =
+              baryonyx::solver_parameters::constraint_order::cycle;
         else
             return command_line_status::constraint_order_error;
 
@@ -1035,6 +1038,7 @@ main(int argc, const char* argv[])
 
     params.verbose = params.quiet ? 3 : params.verbose;
     auto ctx = baryonyx::make_context(stdout, params.verbose);
+
     context_set_solver_parameters(ctx, params.parameters);
 
     context_register(

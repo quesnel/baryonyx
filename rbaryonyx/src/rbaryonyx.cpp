@@ -184,6 +184,8 @@ get_constrait_order(int order)
         return bx::solver_parameters::constraint_order::lagrangian_incr;
     case 7:
         return bx::solver_parameters::constraint_order::pi_sign_change;
+    case 8:
+        return bx::solver_parameters::constraint_order::cycle;
     default:
         return bx::solver_parameters::constraint_order::none;
     }
@@ -391,6 +393,7 @@ convert_result(const baryonyx::result& res, bool minimize)
 //'    - 5: lagrangian_decr
 //'    - 6: lagrangian_incr
 //'    - 7: pi_sign_change
+//'    - 8: cycle
 //'
 //' @param norm the normalization used to reduces cost dependencies. Default
 //'    is to use the infinity norm. Other values are:
@@ -548,6 +551,7 @@ solve_01lp_problem(std::string file_path,
 //'    - 5: lagrangian_decr
 //'    - 6: lagrangian_incr
 //'    - 7: pi_sign_change
+//'    - 8: cycle
 //'
 //' @param norm the normalization used to reduces cost dependencies. Default
 //'    is to use the infinity norm. Other values are:

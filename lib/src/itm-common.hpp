@@ -1088,13 +1088,33 @@ struct compute_order
     std::vector<int> R;
     std::vector<std::pair<int, int>> m_order;
     solver_parameters::constraint_order order;
+    bool use_cycle;
 
     compute_order(const solver_parameters::constraint_order order_,
                   const int variable_number)
       : R(static_cast<std::vector<int>::size_type>(variable_number))
       , m_order(static_cast<std::vector<int>::size_type>(variable_number))
-      , order(order_)
+      , order(order_ == solver_parameters::constraint_order::cycle
+                ? solver_parameters::constraint_order::none
+                : order_)
+      , use_cycle(order_ == solver_parameters::constraint_order::cycle)
     {}
+
+    static solver_parameters::constraint_order next_state(
+      solver_parameters::constraint_order current) noexcept
+    {
+        using int_type = typename std::underlying_type<
+          solver_parameters::constraint_order>::type;
+
+        auto int_current = static_cast<int_type>(current);
+        auto int_max =
+          static_cast<int_type>(solver_parameters::constraint_order::cycle);
+
+        ++int_current;
+
+        return static_cast<solver_parameters::constraint_order>(
+          int_current >= int_max ? 0 : int_current);
+    }
 
     template<typename Solver, typename Xtype>
     void init(const Solver& s, const Xtype& x)
@@ -1129,6 +1149,9 @@ struct compute_order
     {
         bool pi_changed = 0;
         int remaining = 0;
+
+        if (use_cycle)
+            order = next_state(order);
 
         switch (order) {
         case solver_parameters::constraint_order::reversing:
