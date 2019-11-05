@@ -70,7 +70,7 @@ struct solver_functor
                       const Cost& original_costs,
                       double cost_constant)
     {
-        x_type x(variables);
+        bit_array x(variables);
 
         int best_remaining = INT_MAX;
 
@@ -109,7 +109,7 @@ struct solver_functor
         Solver slv(
           m_rng, length(constraints), variables, norm_costs, constraints);
 
-        solver_initializer<Solver, Float, Mode, x_type> initializer(
+        solver_initializer<Solver, Float, Mode> initializer(
           slv, x, p.init_policy, p.init_policy_random, p.init_random);
         initializer.reinit(slv, x, false, m_best);
 
@@ -226,13 +226,12 @@ private:
         return compute_duration(m_begin, m_end);
     }
 
-    template<typename Xtype>
-    void store_if_better(const Xtype& x, int remaining, int i)
+    void store_if_better(const bit_array& /*x*/, int remaining, int i)
     {
         if (store_advance(m_best, remaining)) {
             m_best.loop = i;
             m_best.remaining_constraints = remaining;
-            m_best.annoying_variable = x.upper();
+            // m_best.annoying_variable = x.upper();
             m_best.duration = duration();
 
             if (m_ctx->update)
@@ -240,14 +239,14 @@ private:
         }
     }
 
-    template<typename Xtype>
-    void store_if_better(const Xtype& x, double current, int i)
+    void store_if_better(const bit_array& x, double current, int i)
     {
-        if (store_solution<Mode>(m_ctx, m_best, x.data(), current)) {
+        if (store_solution<Mode>(m_ctx, m_best, x, current)) {
             m_best.status = result_status::success;
             m_best.loop = i;
             m_best.remaining_constraints = 0;
             m_best.duration = duration();
+            // m_best.annoying_variable = x.upper();
 
             if (m_ctx->update)
                 m_ctx->update(m_best);

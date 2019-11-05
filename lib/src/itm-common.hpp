@@ -45,157 +45,6 @@ namespace itm {
 
 using random_engine = std::default_random_engine;
 
-/**
- * @brief stores vector solution in solver.
- * @details x_type uses a single @c std::vector<int8_t> instead of a
- *     @c baryonyx::fixed_array<bool> to use the specialized version of vector,
- *     which is used for elements of type bool and optimizes for space.
- *
- * @code
- */
-struct x_type
-{
-    x_type(int size)
-      : m_data(size)
-    {}
-
-    int operator[](int index) const noexcept
-    {
-        return m_data.get(index);
-    }
-
-    void invert(index index) noexcept
-    {
-        m_data.invert(index);
-    }
-
-    void set(index index)
-    {
-        m_data.set(index);
-    }
-
-    void unset(index index)
-    {
-        m_data.unset(index);
-    }
-
-    void set(index index, int v) noexcept
-    {
-        if (v > 0)
-            m_data.set(index);
-        else
-            m_data.unset(index);
-    }
-
-    int upper() const noexcept
-    {
-        return 0;
-    }
-
-    void clear() const noexcept
-    {}
-
-    const bit_array& data() const noexcept
-    {
-        return m_data;
-    }
-
-private:
-    bit_array m_data;
-};
-
-/**
- * @brief stores vector solution in solver and a counter.
- * @details x_type uses a single @c std::vector<int8_t> instead of a
- *     @c baryonyx::fixed_array<bool> to use the specialized version of vector,
- *     which is used for elements of type bool and optimizes for space. The
- *     counter vector is used to store number of change in vector solution
- *     during a @c update_row.
- */
-struct x_counter_type
-{
-    x_counter_type(int size)
-      : m_data(size)
-      , m_counter(size, 0)
-    {}
-
-    int operator[](int index) const noexcept
-    {
-        return m_data.get(index);
-    }
-
-    void invert(index index) noexcept
-    {
-        // NOTE: only the data vector is updated. Normally, m_data and
-        // m_counter have been already updated in the update_row function.
-
-        m_data.invert(index);
-    }
-
-    void set(index index, int v) noexcept
-    {
-        // TODO: Maybe use integer class members to store upper and lower index
-        // and make upper() and lower() function O(1).
-
-        if (m_data.get(index) != v) {
-            if (v)
-                m_data.set(index);
-            else
-                m_data.unset(index);
-
-            ++m_counter[index];
-        }
-    }
-
-    void set(index index) noexcept
-    {
-        // TODO: Maybe use integer class members to store upper and lower index
-        // and make upper() and lower() function O(1).
-
-        if (!m_data.get(index)) {
-            m_data.set(index);
-
-            ++m_counter[index];
-        }
-    }
-
-    void unset(index index) noexcept
-    {
-        // TODO: Maybe use integer class members to store upper and lower index
-        // and make upper() and lower() function O(1).
-
-        if (m_data.get(index)) {
-            m_data.unset(index);
-
-            ++m_counter[index];
-        }
-    }
-
-    void clear() noexcept
-    {
-        std::fill(m_counter.begin(), m_counter.end(), 0);
-    }
-
-    const bit_array& data() const noexcept
-    {
-        return m_data;
-    }
-
-    int upper() const noexcept
-    {
-        int upper_index = 0;
-        for (int i = 1, e = length(m_counter); i != e; ++i)
-            if (m_counter[i] > m_counter[upper_index])
-                upper_index = i;
-
-        return upper_index;
-    }
-
-private:
-    bit_array m_data;
-    std::vector<int> m_counter;
-};
-
 struct maximize_tag
 {};
 
@@ -523,7 +372,7 @@ constraint(Iterator it)
     return detail::constraint(it);
 }
 
-template<typename Solver, typename Float, typename Mode, typename Xtype>
+template<typename Solver, typename Float, typename Mode>
 class solver_initializer
 {
     std::bernoulli_distribution dist;
@@ -564,39 +413,59 @@ class solver_initializer
     // Fully fill the solution vector X with a mix of values from the bastert
     // policy and from random value.
 
-    void init_bastert(Solver& slv, Xtype& x) noexcept
+    void init_bastert(Solver& slv, bit_array& x) noexcept
     {
         const int value_if_cost_0 = 1;
 
         for (int i = 0; i != slv.n; ++i) {
-            if (dist(slv.rng))
-                x.set(i, init_x<Mode>(slv.c(i, x), value_if_cost_0));
-            else
-                x.set(i, toss_up(slv.rng));
+            if (dist(slv.rng)) {
+                if (init_x<Mode>(slv.c(i, x), value_if_cost_0))
+                    x.set(i);
+                else
+                    x.unset(i);
+            } else {
+                if (toss_up(slv.rng))
+                    x.set(i);
+                else
+                    x.unset(i);
+            }
         }
     }
 
-    void reinit_bastert(Solver& slv, Xtype& x, const solution& best) noexcept
+    void reinit_bastert(Solver& slv,
+                        bit_array& x,
+                        const solution& best) noexcept
     {
         const int value_if_cost_0 = 1;
 
         for (int i = 0; i != slv.n; ++i)
-            if (dist(slv.rng))
-                x.set(i, init_x<Mode>(slv.c(i, x), value_if_cost_0));
-            else
-                x.set(i, best.variables[i]);
+            if (dist(slv.rng)) {
+                if (init_x<Mode>(slv.c(i, x), value_if_cost_0))
+                    x.set(i);
+                else
+                    x.unset(i);
+            } else {
+                if (best.variables[i])
+                    x.set(i);
+                else
+                    x.unset(i);
+            }
     }
 
-    void reinit_bastert(Solver& slv, Xtype& x) noexcept
+    void reinit_bastert(Solver& slv, bit_array& x) noexcept
     {
         const int value_if_cost_0 = 1;
 
         for (int i = 0; i != slv.n; ++i)
-            if (dist(slv.rng))
-                x.set(i, init_x<Mode>(slv.c(i, x), value_if_cost_0));
+            if (dist(slv.rng)) {
+                if (init_x<Mode>(slv.c(i, x), value_if_cost_0))
+                    x.set(i);
+                else
+                    x.unset(i);
+            }
     }
 
-    void do_init_pessimistic_solve(Solver& slv, Xtype& x) noexcept
+    void do_init_pessimistic_solve(Solver& slv, bit_array& x) noexcept
     {
         for (int k = 0; k != slv.m; ++k) {
             if (!dist(slv.rng))
@@ -646,32 +515,38 @@ class solver_initializer
         }
     }
 
-    void init_pessimistic_solve(Solver& slv, Xtype& x) noexcept
+    void init_pessimistic_solve(Solver& slv, bit_array& x) noexcept
     {
-        for (int i = 0; i != slv.n; ++i) // write complete x vector with
-            x.set(i, toss_up(slv.rng));  // random value
+        for (int i = 0; i != slv.n; ++i)
+            if (toss_up(slv.rng))
+                x.set(i);
+            else
+                x.unset(i);
 
         do_init_pessimistic_solve(slv, x);
     }
 
-    void reinit_pessimistic_solve(Solver& slv, Xtype& x) noexcept
+    void reinit_pessimistic_solve(Solver& slv, bit_array& x) noexcept
     {
         do_init_pessimistic_solve(slv, x);
     }
 
     void reinit_pessimistic_solve(Solver& slv,
-                                  Xtype& x,
+                                  bit_array& x,
                                   const solution& best) noexcept
     {
-        for (int i = 0; i != slv.n; ++i) // write complete x vector with
-            x.set(i, best.variables[i]); // best solution
+        for (int i = 0; i != slv.n; ++i)
+            if (best.variables[i])
+                x.set(i);
+            else
+                x.unset(i);
 
         do_init_pessimistic_solve(slv, x);
     }
 
     /////
 
-    void do_init_optimistic_solve(Solver& slv, Xtype& x) noexcept
+    void do_init_optimistic_solve(Solver& slv, bit_array& x) noexcept
     {
         for (int k = 0; k != slv.m; ++k) {
             if (!dist(slv.rng))
@@ -724,32 +599,38 @@ class solver_initializer
         }
     }
 
-    void init_optimistic_solve(Solver& slv, Xtype& x) noexcept
+    void init_optimistic_solve(Solver& slv, bit_array& x) noexcept
     {
-        for (int i = 0; i != slv.n; ++i) // write complete x vector with
-            x.set(i, toss_up(slv.rng));  // random value
+        for (int i = 0; i != slv.n; ++i)
+            if (toss_up(slv.rng))
+                x.set(i);
+            else
+                x.unset(i);
 
         do_init_optimistic_solve(slv, x);
     }
 
-    void reinit_optimistic_solve(Solver& slv, Xtype& x) noexcept
+    void reinit_optimistic_solve(Solver& slv, bit_array& x) noexcept
     {
         do_init_optimistic_solve(slv, x);
     }
 
     void reinit_optimistic_solve(Solver& slv,
-                                 Xtype& x,
+                                 bit_array& x,
                                  const solution& best) noexcept
     {
-        for (int i = 0; i != slv.n; ++i) // write complete x vector with
-            x.set(i, best.variables[i]); // best solution
+        for (int i = 0; i != slv.n; ++i)
+            if (best.variables[i])
+                x.set(i);
+            else
+                x.unset(i);
 
         do_init_optimistic_solve(slv, x);
     }
 
 public:
     solver_initializer(Solver& slv,
-                       Xtype& x,
+                       bit_array& /*x*/,
                        solver_parameters::init_policy_type policy,
                        double init_policy_random,
                        double init_random)
@@ -757,7 +638,7 @@ public:
       , toss_up(init_random)
       , old_best(bad_value<Mode, double>())
     {
-        x.clear();
+        // x.clear();
         slv.reset();
 
         switch (policy) {
@@ -816,9 +697,12 @@ public:
         }
     }
 
-    void reinit(Solver& slv, Xtype& x, bool is_x_solution, const result& best)
+    void reinit(Solver& slv,
+                bit_array& x,
+                bool is_x_solution,
+                const result& best)
     {
-        x.clear();
+        // x.clear();
         slv.reset();
 
         auto is_x_better_solution{ false };

@@ -126,32 +126,7 @@ struct optimize_functor
                       const Cost& original_costs,
                       double cost_constant)
     {
-        return ((m_ctx->parameters.mode &
-                 solver_parameters::mode_type::branch) ==
-                solver_parameters::mode_type::branch)
-                 ? run<x_counter_type>(stop_task,
-                                       best_recorder,
-                                       constraints,
-                                       variables,
-                                       original_costs,
-                                       cost_constant)
-                 : run<x_type>(stop_task,
-                               best_recorder,
-                               constraints,
-                               variables,
-                               original_costs,
-                               cost_constant);
-    }
-
-    template<typename Xtype>
-    result run(std::atomic_bool& stop_task,
-               best_solution_recorder<Float, Mode>& best_recorder,
-               const std::vector<merged_constraint>& constraints,
-               int variables,
-               const Cost& original_costs,
-               double cost_constant)
-    {
-        Xtype x(variables);
+        bit_array x(variables);
 
         int best_remaining = INT_MAX;
 
@@ -187,7 +162,7 @@ struct optimize_functor
         Solver slv(
           m_rng, length(constraints), variables, norm_costs, constraints);
 
-        solver_initializer<Solver, Float, Mode, Xtype> initializer(
+        solver_initializer<Solver, Float, Mode> initializer(
           slv, x, p.init_policy, p.init_policy_random, p.init_random);
 
         compute_order compute(p.order, variables);
@@ -293,8 +268,7 @@ struct optimize_functor
     }
 
 private:
-    template<typename Xtype>
-    void store_if_better(const Xtype& x,
+    void store_if_better(const bit_array& /*x*/,
                          int remaining,
                          int i,
                          best_solution_recorder<Float, Mode>& best_recorder)
@@ -302,25 +276,24 @@ private:
         if (store_advance(m_best, remaining)) {
             m_best.loop = i;
             m_best.remaining_constraints = remaining;
-            m_best.annoying_variable = x.upper();
+            // m_best.annoying_variable = x.upper();
 
             best_recorder.try_update(remaining, i);
         }
     }
 
-    template<typename Xtype>
-    void store_if_better(const Xtype& x,
+    void store_if_better(const bit_array& x,
                          double current,
                          int i,
                          best_solution_recorder<Float, Mode>& best_recorder)
     {
-        if (store_solution<Mode>(m_ctx, m_best, x.data(), current)) {
+        if (store_solution<Mode>(m_ctx, m_best, x, current)) {
             m_best.status = result_status::success;
             m_best.loop = i;
             m_best.remaining_constraints = 0;
-            m_best.annoying_variable = x.upper();
+            // m_best.annoying_variable = x.upper();
 
-            best_recorder.try_update(x.data(), current, i);
+            best_recorder.try_update(x, current, i);
         }
     }
 };
