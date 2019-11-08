@@ -30,6 +30,18 @@
 #include <iosfwd>
 
 namespace baryonyx {
+
+struct raw_result
+{
+    raw_result() = default;
+
+    bit_array x;
+    double value = 0.0;
+    double duration = 0.0;
+    index loop = 0;
+    index remaining_constraints = std::numeric_limits<index>::max();
+};
+
 namespace detail {
 
 inline void

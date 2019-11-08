@@ -110,8 +110,8 @@ struct solver_functor
           m_rng, length(constraints), variables, norm_costs, constraints);
 
         solver_initializer<Solver, Float, Mode> initializer(
-          slv, x, p.init_policy, p.init_policy_random, p.init_random);
-        initializer.reinit(slv, x, false, m_best);
+          slv, p.init_policy, p.init_policy_random, p.init_random);
+        initializer.reinit(slv, x);
 
         compute_order compute(p.order, variables);
         compute.init(slv, x);

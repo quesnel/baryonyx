@@ -49,13 +49,29 @@ struct best_solution_recorder
 {
     const context_ptr& m_ctx;
     std::chrono::time_point<std::chrono::steady_clock> m_start;
-    std::mutex m_mutex;
+    mutable std::mutex m_mutex;
     result m_best;
 
     best_solution_recorder(const context_ptr& ctx)
       : m_ctx(ctx)
       , m_start(std::chrono::steady_clock::now())
     {}
+
+    void copy_to(bit_array& x) const
+    {
+        try {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            for (int i = 0, e = length(m_best.solutions.back().variables);
+                 i != e;
+                 ++i)
+                if (m_best.solutions.back().variables[i])
+                    x.set(i);
+                else
+                    x.unset(i);
+        } catch (const std::exception& e) {
+            error(m_ctx, "sync optimization error: {}", e.what());
+        }
+    }
 
     void try_update(int remaining_constraints, int loop)
     {
@@ -101,34 +117,26 @@ struct optimize_functor
     const context_ptr& m_ctx;
     random_engine m_rng;
     int m_thread_id;
-
-    const std::vector<std::string_view>& variable_names;
-    const affected_variables& affected_vars;
-
-    result m_best;
+    raw_result m_best;
 
     optimize_functor(const context_ptr& ctx,
                      unsigned thread_id,
-                     typename random_engine::result_type seed,
-                     const std::vector<std::string_view>& variable_names_,
-                     const affected_variables& affected_vars_)
+                     typename random_engine::result_type seed)
       : m_ctx(ctx)
       , m_rng(seed)
       , m_thread_id(thread_id)
-      , variable_names(variable_names_)
-      , affected_vars(affected_vars_)
-    {}
+    {
+        m_best.value = bad_value<Mode, double>();
+    }
 
-    result operator()(std::atomic_bool& stop_task,
-                      best_solution_recorder<Float, Mode>& best_recorder,
-                      const std::vector<merged_constraint>& constraints,
-                      int variables,
-                      const Cost& original_costs,
-                      double cost_constant)
+    void operator()(std::atomic_bool& stop_task,
+                    best_solution_recorder<Float, Mode>& best_recorder,
+                    const std::vector<merged_constraint>& constraints,
+                    int variables,
+                    const Cost& original_costs,
+                    double cost_constant)
     {
         bit_array x(variables);
-
-        int best_remaining = INT_MAX;
 
         auto& p = m_ctx->parameters;
 
@@ -163,27 +171,22 @@ struct optimize_functor
           m_rng, length(constraints), variables, norm_costs, constraints);
 
         solver_initializer<Solver, Float, Mode> initializer(
-          slv, x, p.init_policy, p.init_policy_random, p.init_random);
+          slv, p.init_policy, p.init_policy_random, p.init_random);
 
         compute_order compute(p.order, variables);
         compute.init(slv, x);
 
-        m_best.variables = slv.m;
-        m_best.constraints = slv.n;
-
-        auto x_is_solution{ false };
-
         while (!stop_task.load()) {
             auto kappa = static_cast<Float>(p.kappa_min);
+            int best_remaining = INT_MAX;
 
-            initializer.reinit(slv, x, x_is_solution, m_best);
+            initializer.reinit(slv, x, m_best.x, m_best.value, best_recorder);
 
             for (int i = 0; !stop_task.load() && i != p.limit; ++i) {
                 auto remaining =
                   compute.run(slv, x, m_rng, kappa, delta, theta);
 
                 if (remaining == 0) {
-                    x_is_solution = true;
                     store_if_better(x,
                                     original_costs.results(x, cost_constant),
                                     i,
@@ -191,8 +194,6 @@ struct optimize_functor
                     best_remaining = remaining;
                     break;
                 }
-
-                x_is_solution = false;
 
                 if (remaining < best_remaining) {
                     store_if_better(x, remaining, i, best_recorder);
@@ -214,7 +215,6 @@ struct optimize_functor
 
             for (int push = 0; !stop_task.load() && push < p.pushes_limit;
                  ++push) {
-                x_is_solution = false;
 
                 auto remaining =
                   compute.push_and_run(slv,
@@ -226,7 +226,6 @@ struct optimize_functor
                                        pushing_objective_amplifier);
 
                 if (remaining == 0) {
-                    x_is_solution = true;
                     store_if_better(x,
                                     original_costs.results(x, cost_constant),
                                     -push * p.pushing_iteration_limit - 1,
@@ -240,7 +239,6 @@ struct optimize_functor
                       compute.run(slv, x, m_rng, kappa, delta, theta);
 
                     if (remaining == 0) {
-                        x_is_solution = true;
                         store_if_better(
                           x,
                           original_costs.results(x, cost_constant),
@@ -260,11 +258,6 @@ struct optimize_functor
                 }
             }
         }
-
-        if (m_best.status == result_status::uninitialized && stop_task.load())
-            m_best.status = result_status::time_limit_reached;
-
-        return m_best;
     }
 
 private:
@@ -273,10 +266,9 @@ private:
                          int i,
                          best_solution_recorder<Float, Mode>& best_recorder)
     {
-        if (store_advance(m_best, remaining)) {
+        if (m_best.remaining_constraints > remaining) {
             m_best.loop = i;
             m_best.remaining_constraints = remaining;
-            // m_best.annoying_variable = x.upper();
 
             best_recorder.try_update(remaining, i);
         }
@@ -287,11 +279,11 @@ private:
                          int i,
                          best_solution_recorder<Float, Mode>& best_recorder)
     {
-        if (store_solution<Mode>(m_ctx, m_best, x, current)) {
-            m_best.status = result_status::success;
+        if (is_better_solution<Mode>(current, m_best.value)) {
+            m_best.x = x;
+            m_best.value = current;
             m_best.loop = i;
             m_best.remaining_constraints = 0;
-            // m_best.annoying_variable = x.upper();
 
             best_recorder.try_update(x, current, i);
         }
@@ -326,105 +318,64 @@ optimize_problem(const context_ptr& ctx, const problem& pb)
     if (ctx->start)
         ctx->start(ctx->parameters);
 
-    result ret;
-
     auto constraints{ make_merged_constraints(ctx, pb) };
-    if (!constraints.empty() && !pb.vars.values.empty()) {
-        random_engine rng(init_random_generator_seed(ctx));
+    if (constraints.empty() || pb.vars.values.empty())
+        return result{};
 
-        auto variables = numeric_cast<int>(pb.vars.values.size());
-        auto cost = Cost(pb.objective, variables);
-        auto cost_constant = pb.objective.value;
+    random_engine rng(init_random_generator_seed(ctx));
 
-        const auto thread = get_thread_number(ctx);
+    auto variables = numeric_cast<int>(pb.vars.values.size());
+    auto cost = Cost(pb.objective, variables);
+    auto cost_constant = pb.objective.value;
 
-        std::vector<std::thread> pool(thread);
-        pool.clear();
-        std::vector<std::future<result>> results(thread);
-        results.clear();
+    const auto thread = get_thread_number(ctx);
 
-        best_solution_recorder<Float, Mode> result(ctx);
+    std::vector<optimize_functor<Solver, Float, Mode, Cost>> functors;
+    std::vector<std::thread> pool(thread);
 
-        auto seeds = generate_seed(rng, thread);
+    best_solution_recorder<Float, Mode> result(ctx);
 
-        std::atomic_bool stop_task;
+    result.m_best.strings = pb.strings;
+    result.m_best.affected_vars = pb.affected_vars;
+    result.m_best.variable_name = pb.vars.names;
+    result.m_best.variables = variables;
+    result.m_best.constraints = length(constraints);
 
-        stop_task.store(false);
+    auto seeds = generate_seed(rng, thread);
 
-        for (unsigned i{ 0 }; i != thread; ++i) {
-            std::packaged_task<baryonyx::result()> task(
-              std::bind(optimize_functor<Solver, Float, Mode, Cost>(
-                          ctx, i, seeds[i], pb.vars.names, pb.affected_vars),
-                        std::ref(stop_task),
-                        std::ref(result),
-                        std::ref(constraints),
-                        variables,
-                        std::ref(cost),
-                        cost_constant));
+    std::atomic_bool stop_task;
+    stop_task.store(false);
 
-            results.emplace_back(task.get_future());
+    for (unsigned i = 0u; i != thread; ++i)
+        functors.emplace_back(ctx, i, seeds[i]);
 
-            pool.emplace_back(std::thread(std::move(task)));
-        }
+    for (unsigned i = 0u; i != thread; ++i)
+        pool[i] = std::thread(functors[i],
+                              std::ref(stop_task),
+                              std::ref(result),
+                              std::ref(constraints),
+                              variables,
+                              std::ref(cost),
+                              cost_constant);
 
-        // User limits the optimization process. The current thread turns into
-        // sleeping mode for the specified duration time in second.  The
-        // following code takes into account the first three decimals only.
+    // User limits the optimization process. The current thread turns into
+    // sleeping mode for the specified duration time in second.  The
+    // following code takes into account the first three decimals only.
 
-        if (ctx->parameters.time_limit > 0) {
-            const auto duration =
-              static_cast<long>(ctx->parameters.time_limit * 1000.0);
-            std::this_thread::sleep_for(std::chrono::milliseconds{ duration });
-            stop_task.store(true);
-        }
-
-        for (auto& t : pool)
-            t.join();
-
-        ret = std::move(result.m_best);
-        ret.affected_vars = pb.affected_vars;
-        ret.variable_name = pb.vars.names;
-
-        std::set<solution> all_solutions;
-
-        for (unsigned i{ 0 }; i != thread; ++i) {
-            auto current = results[i].get();
-
-            if (current.status == result_status::success)
-                all_solutions.insert(current.solutions.begin(),
-                                     current.solutions.end());
-        }
-
-        ret.solutions.clear();
-
-        if (!all_solutions.empty()) {
-            switch (ctx->parameters.storage) {
-            case solver_parameters::storage_type::one:
-                ret.solutions.push_back(*(all_solutions.rbegin()));
-                break;
-            case solver_parameters::storage_type::bound:
-                ret.solutions.push_back(*(all_solutions.begin()));
-                ret.solutions.push_back(*(all_solutions.rbegin()));
-                break;
-            case solver_parameters::storage_type::five: {
-                int i = 0;
-                for (auto& elem : all_solutions) {
-                    ret.solutions.push_back(elem);
-                    ++i;
-
-                    if (i >= 5)
-                        break;
-                }
-                break;
-            }
-            }
-        }
+    if (ctx->parameters.time_limit > 0) {
+        const auto duration =
+          static_cast<long>(ctx->parameters.time_limit * 1000.0);
+        std::this_thread::sleep_for(std::chrono::milliseconds{ duration });
+        stop_task.store(true);
     }
 
-    if (ctx->finish)
-        ctx->finish(ret);
+    for (auto& t : pool)
+        t.join();
 
-    return ret;
+    if (ctx->finish)
+        ctx->finish(result.m_best);
+
+    return result.m_best;
 }
 
 } // namespace itm
