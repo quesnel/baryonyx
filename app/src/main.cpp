@@ -291,6 +291,7 @@ help() noexcept
       "  --verbose|-v int              Set verbose level\n"
       "  --bench|-b file_name.csv      Select the bench mode and store in "
       "file_name.csv\n\n"
+      "  --debug                       Enable a debug mode\n"
       "Parameter list for in the middle heuristic\n"
       " * Global parameters"
       "  - limit: integer ]-oo, +oo[ in loop number\n"
@@ -849,6 +850,11 @@ parse(int argc, const char* argv[])
         if (arg == "--random") {
             ret.parameters.solver =
               baryonyx::solver_parameters::solver_type::random;
+            continue;
+        }
+
+        if (arg == "--debug") {
+            ret.parameters.debug = true;
             continue;
         }
 
