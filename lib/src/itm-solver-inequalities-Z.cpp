@@ -29,9 +29,10 @@
 namespace baryonyx {
 namespace itm {
 
-template<typename Float, typename Mode, typename Cost>
-struct solver_inequalities_Zcoeff
+template<typename Float, typename Mode, typename Cost, bool debug>
+struct solver_inequalities_Zcoeff : debug_logger<debug>
 {
+    using logger = debug_logger<debug>;
     using mode_type = Mode;
     using float_type = Float;
     using cost_type = Cost;
@@ -82,8 +83,6 @@ struct solver_inequalities_Zcoeff
     branch_and_bound_solver<Mode, Float> bb;
     exhaustive_solver<Mode, Float> ex;
 
-    std::FILE* debug_os = nullptr;
-
     const cost_type& c;
     int m;
     int n;
@@ -93,7 +92,8 @@ struct solver_inequalities_Zcoeff
                                int n_,
                                const cost_type& c_,
                                const std::vector<merged_constraint>& csts)
-      : rng(rng_)
+      : logger("solver_inequalities_Zcoeff")
+      , rng(rng_)
       , ap(csts, m_, n_)
       , P(std::make_unique<Float[]>(ap.size()))
       , A(std::make_unique<int[]>(ap.size()))
@@ -105,8 +105,6 @@ struct solver_inequalities_Zcoeff
       , m(m_)
       , n(n_)
     {
-        debug_os = std::fopen("debug.txt", "w");
-
         // Count the maximum function elements in the constraint where a least
         // one coefficient is in Z. To be use with the branch-and-bound and
         // exhaustive solvers.
@@ -155,12 +153,11 @@ struct solver_inequalities_Zcoeff
                 }
             }
 
-            to_log(debug_os,
-                   "Is Z: {} ({}) with {} <= {}\n",
-                   Z[i],
-                   local_z_variables_max,
-                   b[i].min,
-                   b[i].max);
+            logger::log("Is Z: {} ({}) with {} <= {}\n",
+                        Z[i],
+                        local_z_variables_max,
+                        b[i].min,
+                        b[i].max);
 
             bx_ensures(b[i].min <= b[i].max);
         }
@@ -173,6 +170,8 @@ struct solver_inequalities_Zcoeff
 
     void reset() noexcept
     {
+        logger::log("reset-solver\n");
+
         std::fill_n(P.get(), ap.length(), Float{ 0 });
         std::fill_n(pi.get(), m, Float{ 0 });
     }
@@ -340,12 +339,11 @@ struct solver_inequalities_Zcoeff
         if (selected < 0) {
             pi[k] += R[0].value / two;
 
-            to_log(debug_os,
-                   "    selected: {}/{} ({})/2 = pi {}\n",
-                   selected,
-                   r_size,
-                   R[0].value,
-                   pi[k]);
+            logger::log("    selected: {}/{} ({})/2 = pi {}\n",
+                        selected,
+                        r_size,
+                        R[0].value,
+                        pi[k]);
 
             for (int i = 0; i != r_size; ++i) {
                 auto var = it + R[i].id;
@@ -360,12 +358,11 @@ struct solver_inequalities_Zcoeff
         } else if (selected + 1 >= r_size) {
             pi[k] += R[selected].value * middle;
 
-            to_log(debug_os,
-                   "    selected: {}/{} ({})/2 = pi {}\n",
-                   selected,
-                   r_size,
-                   R[selected].value,
-                   pi[k]);
+            logger::log("    selected: {}/{} ({})/2 = pi {}\n",
+                        selected,
+                        r_size,
+                        R[selected].value,
+                        pi[k]);
 
             for (int i = 0; i != r_size; ++i) {
                 auto var = it + R[i].id;
@@ -380,13 +377,12 @@ struct solver_inequalities_Zcoeff
         } else {
             pi[k] += ((R[selected].value + R[selected + 1].value) / two);
 
-            to_log(debug_os,
-                   "    selected: {}/{} ({}x{})/2 = pi {}\n",
-                   selected,
-                   r_size,
-                   R[selected].value,
-                   R[selected + 1].value,
-                   pi[k]);
+            logger::log("    selected: {}/{} ({}x{})/2 = pi {}\n",
+                        selected,
+                        r_size,
+                        R[selected].value,
+                        R[selected + 1].value,
+                        pi[k]);
 
             int i = 0;
             for (; i <= selected; ++i) {
@@ -428,6 +424,8 @@ struct solver_inequalities_Zcoeff
                                      Float obj_amp)
     {
         auto at_least_one_pi_changed{ false };
+
+        logger::log("push-update-row {} {} {}\n", kappa, delta, theta);
 
         for (; first != last; ++first) {
             auto k = constraint(first);
@@ -493,14 +491,10 @@ struct solver_inequalities_Zcoeff
     {
         auto at_least_one_pi_changed{ false };
 
-        to_log(debug_os,
-               "push_and_compute_update_row {}\n",
-               std::distance(first, last));
+        logger::log("update-row {} {} {}\n", kappa, delta, theta);
 
         for (; first != last; ++first) {
             auto k = constraint(first);
-
-            to_log(debug_os, " solve constraint {}\n", k);
 
             const auto it = ap.row(k);
             decrease_preference(std::get<0>(it), std::get<1>(it), theta);
@@ -544,11 +538,19 @@ solve_or_optimize(const context_ptr& ctx,
                   const problem& pb,
                   bool is_optimization)
 {
-    using Solver = solver_inequalities_Zcoeff<Float, Mode, Cost>;
+    if (ctx->parameters.debug) {
+        using Solver = solver_inequalities_Zcoeff<Float, Mode, Cost, true>;
 
-    return is_optimization
-             ? optimize_problem<Solver, Float, Mode, Cost>(ctx, pb)
-             : solve_problem<Solver, Float, Mode, Cost>(ctx, pb);
+        return is_optimization
+                 ? optimize_problem<Solver, Float, Mode, Cost>(ctx, pb)
+                 : solve_problem<Solver, Float, Mode, Cost>(ctx, pb);
+    } else {
+        using Solver = solver_inequalities_Zcoeff<Float, Mode, Cost, false>;
+
+        return is_optimization
+                 ? optimize_problem<Solver, Float, Mode, Cost>(ctx, pb)
+                 : solve_problem<Solver, Float, Mode, Cost>(ctx, pb);
+    }
 }
 
 template<typename Float, typename Mode>

@@ -27,9 +27,10 @@
 namespace baryonyx {
 namespace itm {
 
-template<typename Float, typename Mode, typename Cost>
-struct solver_inequalities_101coeff_buffered
+template<typename Float, typename Mode, typename Cost, bool debug>
+struct solver_inequalities_101coeff_buffered : debug_logger<debug>
 {
+    using logger = debug_logger<debug>;
     using mode_type = Mode;
     using float_type = Float;
     using cost_type = Cost;
@@ -85,7 +86,8 @@ struct solver_inequalities_101coeff_buffered
       int n_,
       const cost_type& c_,
       const std::vector<merged_constraint>& csts)
-      : rng(rng_)
+      : logger("solver_inequalities_101coeff_buffered")
+      , rng(rng_)
       , ap(csts, m_, n_)
       , P(std::make_unique<Float[]>(ap.size()))
       , A(std::make_unique<int[]>(ap.size()))
@@ -228,11 +230,13 @@ struct solver_inequalities_101coeff_buffered
     bool push_and_compute_update_row(Xtype& /*x*/,
                                      Iterator first,
                                      Iterator last,
-                                     Float /*kappa*/,
-                                     Float /*delta*/,
+                                     Float kappa,
+                                     Float delta,
                                      Float theta,
                                      Float /*obj_amp*/)
     {
+        logger::log("push-update-row {} {} {}\n", kappa, delta, theta);
+
         for (int i = 0; i != n; ++i)
             sum_ap[i] =
               std::make_tuple(static_cast<Float>(0), static_cast<Float>(0));
@@ -301,10 +305,12 @@ struct solver_inequalities_101coeff_buffered
     bool compute_update_row(Xtype& /*x*/,
                             Iterator first,
                             Iterator last,
-                            Float /*kappa*/,
-                            Float /*delta*/,
+                            Float kappa,
+                            Float delta,
                             Float theta)
     {
+        logger::log("update-row {} {} {}\n", kappa, delta, theta);
+
         for (int i = 0; i != n; ++i)
             sum_ap[i] =
               std::make_tuple(static_cast<Float>(0), static_cast<Float>(0));
@@ -370,19 +376,27 @@ struct solver_inequalities_101coeff_buffered
     }
 };
 
-template<typename Float,
-         typename Mode,
-         typename Cost>
+template<typename Float, typename Mode, typename Cost>
 static result
 solve_or_optimize(const context_ptr& ctx,
                   const problem& pb,
                   bool is_optimization)
 {
-    using Solver = solver_inequalities_101coeff_buffered<Float, Mode, Cost>;
+    if (ctx->parameters.debug) {
+        using Solver =
+          solver_inequalities_101coeff_buffered<Float, Mode, Cost, true>;
 
-    return is_optimization
-             ? optimize_problem<Solver, Float, Mode, Cost>(ctx, pb)
-             : solve_problem<Solver, Float, Mode, Cost>(ctx, pb);
+        return is_optimization
+                 ? optimize_problem<Solver, Float, Mode, Cost>(ctx, pb)
+                 : solve_problem<Solver, Float, Mode, Cost>(ctx, pb);
+    } else {
+        using Solver =
+          solver_inequalities_101coeff_buffered<Float, Mode, Cost, false>;
+
+        return is_optimization
+                 ? optimize_problem<Solver, Float, Mode, Cost>(ctx, pb)
+                 : solve_problem<Solver, Float, Mode, Cost>(ctx, pb);
+    }
 }
 
 template<typename Float, typename Mode>
@@ -391,12 +405,12 @@ select_cost(const context_ptr& ctx, const problem& pb, bool is_optimization)
 {
     return pb.objective.qelements.empty()
              ? solve_or_optimize<Float,
-                            Mode,
-                            baryonyx::itm::default_cost_type<Float>>(
+                                 Mode,
+                                 baryonyx::itm::default_cost_type<Float>>(
                  ctx, pb, is_optimization)
              : solve_or_optimize<Float,
-                            Mode,
-                            baryonyx::itm::quadratic_cost_type<Float>>(
+                                 Mode,
+                                 baryonyx::itm::quadratic_cost_type<Float>>(
                  ctx, pb, is_optimization);
 }
 

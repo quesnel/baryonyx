@@ -28,9 +28,10 @@
 namespace baryonyx {
 namespace itm {
 
-template<typename Float, typename Mode, typename Cost>
-struct solver_inequalities_101coeff
+template<typename Float, typename Mode, typename Cost, bool debug>
+struct solver_inequalities_101coeff : debug_logger<debug>
 {
+    using logger = debug_logger<debug>;
     using mode_type = Mode;
     using float_type = Float;
     using cost_type = Cost;
@@ -83,7 +84,8 @@ struct solver_inequalities_101coeff
                                  int n_,
                                  const cost_type& c_,
                                  const std::vector<merged_constraint>& csts)
-      : rng(rng_)
+      : logger("solver_inequalities_101coeff")
+      , rng(rng_)
       , ap(csts, m_, n_)
       , P(std::make_unique<Float[]>(ap.size()))
       , A(static_cast<int>(ap.size()))
@@ -129,6 +131,8 @@ struct solver_inequalities_101coeff
 
     void reset() noexcept
     {
+        logger::log("reset-solver\n");
+
         std::fill_n(P.get(), ap.length(), Float{ 0 });
         std::fill_n(pi.get(), m, Float{ 0 });
     }
@@ -254,6 +258,8 @@ struct solver_inequalities_101coeff
     {
         auto at_least_one_pi_changed{ false };
 
+        logger::log("push-update-row {} {} {}\n", kappa, delta, theta);
+
         for (; first != last; ++first) {
             auto k = constraint(first);
 
@@ -271,6 +277,13 @@ struct solver_inequalities_101coeff
 
             calculator_sort<Mode>(R.get(), R.get() + sizes.r_size, rng);
             int selected = select_variables(sizes, b[k].min, b[k].max);
+
+            logger::log("constraints {}: {} <= ", k, b[k].min);
+
+            for (int i = 0; i < sizes.r_size; ++i)
+                logger::log("{} ({} {}) ", R[i].f, R[i].value, R[i].id);
+
+            logger::log("<= {} => Selected: {}\n", b[k].max, selected);
 
             auto pi_change = affect(*this,
                                     x,
@@ -297,6 +310,8 @@ struct solver_inequalities_101coeff
     {
         auto at_least_one_pi_changed{ false };
 
+        logger::log("update-row {} {} {}\n", kappa, delta, theta);
+
         for (; first != last; ++first) {
             auto k = constraint(first);
 
@@ -308,6 +323,13 @@ struct solver_inequalities_101coeff
 
             calculator_sort<Mode>(R.get(), R.get() + sizes.r_size, rng);
             int selected = select_variables(sizes, b[k].min, b[k].max);
+
+            logger::log("constraints {}: {} <= ", k, b[k].min);
+
+            for (int i = 0; i < sizes.r_size; ++i)
+                logger::log("{} ({} {}) ", R[i].f, R[i].value, R[i].id);
+
+            logger::log("<= {} => Selected: {}\n", b[k].max, selected);
 
             auto pi_change = affect(*this,
                                     x,
@@ -325,19 +347,25 @@ struct solver_inequalities_101coeff
     }
 };
 
-template<typename Float,
-         typename Mode,
-         typename Cost>
+template<typename Float, typename Mode, typename Cost>
 static result
 solve_or_optimize(const context_ptr& ctx,
                   const problem& pb,
                   bool is_optimization)
 {
-    using Solver = solver_inequalities_101coeff<Float, Mode, Cost>;
+    if (ctx->parameters.debug) {
+        using Solver = solver_inequalities_101coeff<Float, Mode, Cost, true>;
 
-    return is_optimization
-             ? optimize_problem<Solver, Float, Mode, Cost>(ctx, pb)
-             : solve_problem<Solver, Float, Mode, Cost>(ctx, pb);
+        return is_optimization
+                 ? optimize_problem<Solver, Float, Mode, Cost>(ctx, pb)
+                 : solve_problem<Solver, Float, Mode, Cost>(ctx, pb);
+    } else {
+        using Solver = solver_inequalities_101coeff<Float, Mode, Cost, false>;
+
+        return is_optimization
+                 ? optimize_problem<Solver, Float, Mode, Cost>(ctx, pb)
+                 : solve_problem<Solver, Float, Mode, Cost>(ctx, pb);
+    }
 }
 
 template<typename Float, typename Mode>
@@ -346,12 +374,12 @@ select_cost(const context_ptr& ctx, const problem& pb, bool is_optimization)
 {
     return pb.objective.qelements.empty()
              ? solve_or_optimize<Float,
-                            Mode,
-                            baryonyx::itm::default_cost_type<Float>>(
+                                 Mode,
+                                 baryonyx::itm::default_cost_type<Float>>(
                  ctx, pb, is_optimization)
              : solve_or_optimize<Float,
-                            Mode,
-                            baryonyx::itm::quadratic_cost_type<Float>>(
+                                 Mode,
+                                 baryonyx::itm::quadratic_cost_type<Float>>(
                  ctx, pb, is_optimization);
 }
 

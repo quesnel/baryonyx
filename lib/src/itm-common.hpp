@@ -34,11 +34,15 @@
 
 #include <algorithm>
 #include <chrono>
+#include <fstream>
 #include <iterator>
 #include <numeric>
 #include <random>
+#include <thread>
 #include <tuple>
 #include <vector>
+
+#include <fmt/ostream.h>
 
 namespace baryonyx {
 namespace itm {
@@ -421,9 +425,6 @@ class solver_initializer
     cycle_automaton cycle{ cycle_automaton::pessimistic_solve };
     init_automaton init{ init_automaton::random };
 
-    // Fully fill the solution vector X with a mix of values from the bastert
-    // policy and from random value.
-
     void init_bastert(Solver& slv, bit_array& x) noexcept
     {
         const int value_if_cost_0 = 1;
@@ -434,53 +435,16 @@ class solver_initializer
                     x.set(i);
                 else
                     x.unset(i);
-            } else {
-                if (toss_up(slv.rng))
-                    x.set(i);
-                else
-                    x.unset(i);
             }
         }
     }
 
-    void reinit_bastert(Solver& slv,
-                        bit_array& x,
-                        const solution& best) noexcept
-    {
-        const int value_if_cost_0 = 1;
-
-        for (int i = 0; i != slv.n; ++i)
-            if (dist(slv.rng)) {
-                if (init_x<Mode>(slv.c(i, x), value_if_cost_0))
-                    x.set(i);
-                else
-                    x.unset(i);
-            } else {
-                if (best.variables[i])
-                    x.set(i);
-                else
-                    x.unset(i);
-            }
-    }
-
-    void reinit_bastert(Solver& slv, bit_array& x) noexcept
-    {
-        const int value_if_cost_0 = 1;
-
-        for (int i = 0; i != slv.n; ++i)
-            if (dist(slv.rng)) {
-                if (init_x<Mode>(slv.c(i, x), value_if_cost_0))
-                    x.set(i);
-                else
-                    x.unset(i);
-            }
-    }
-
-    void do_init_pessimistic_solve(Solver& slv, bit_array& x) noexcept
+    void init_pessimistic_solve(Solver& slv, bit_array& x) noexcept
     {
         for (int k = 0; k != slv.m; ++k) {
             if (!dist(slv.rng))
                 continue;
+
             auto [begin, end] = slv.ap.row(k);
             int r_size = 0;
 
@@ -526,38 +490,7 @@ class solver_initializer
         }
     }
 
-    void init_pessimistic_solve(Solver& slv, bit_array& x) noexcept
-    {
-        for (int i = 0; i != slv.n; ++i)
-            if (toss_up(slv.rng))
-                x.set(i);
-            else
-                x.unset(i);
-
-        do_init_pessimistic_solve(slv, x);
-    }
-
-    void reinit_pessimistic_solve(Solver& slv, bit_array& x) noexcept
-    {
-        do_init_pessimistic_solve(slv, x);
-    }
-
-    void reinit_pessimistic_solve(Solver& slv,
-                                  bit_array& x,
-                                  const solution& best) noexcept
-    {
-        for (int i = 0; i != slv.n; ++i)
-            if (best.variables[i])
-                x.set(i);
-            else
-                x.unset(i);
-
-        do_init_pessimistic_solve(slv, x);
-    }
-
-    /////
-
-    void do_init_optimistic_solve(Solver& slv, bit_array& x) noexcept
+    void init_optimistic_solve(Solver& slv, bit_array& x) noexcept
     {
         for (int k = 0; k != slv.m; ++k) {
             if (!dist(slv.rng))
@@ -608,35 +541,6 @@ class solver_initializer
                 x.unset(var->column);
             }
         }
-    }
-
-    void init_optimistic_solve(Solver& slv, bit_array& x) noexcept
-    {
-        for (int i = 0; i != slv.n; ++i)
-            if (toss_up(slv.rng))
-                x.set(i);
-            else
-                x.unset(i);
-
-        do_init_optimistic_solve(slv, x);
-    }
-
-    void reinit_optimistic_solve(Solver& slv, bit_array& x) noexcept
-    {
-        do_init_optimistic_solve(slv, x);
-    }
-
-    void reinit_optimistic_solve(Solver& slv,
-                                 bit_array& x,
-                                 const solution& best) noexcept
-    {
-        for (int i = 0; i != slv.n; ++i)
-            if (best.variables[i])
-                x.set(i);
-            else
-                x.unset(i);
-
-        do_init_optimistic_solve(slv, x);
     }
 
 public:
@@ -734,13 +638,13 @@ public:
         case single_automaton::improve_x_3:
             switch (cycle) {
             case cycle_automaton::bastert:
-                reinit_bastert(slv, x);
+                init_bastert(slv, x);
                 break;
             case cycle_automaton::pessimistic_solve:
-                reinit_pessimistic_solve(slv, x);
+                init_pessimistic_solve(slv, x);
                 break;
             case cycle_automaton::optimistic_solve:
-                reinit_optimistic_solve(slv, x);
+                init_optimistic_solve(slv, x);
                 break;
             }
             break;
@@ -808,13 +712,13 @@ public:
         case single_automaton::improve_x_3:
             switch (cycle) {
             case cycle_automaton::bastert:
-                reinit_bastert(slv, x);
+                init_bastert(slv, x);
                 break;
             case cycle_automaton::pessimistic_solve:
-                reinit_pessimistic_solve(slv, x);
+                init_pessimistic_solve(slv, x);
                 break;
             case cycle_automaton::optimistic_solve:
-                reinit_optimistic_solve(slv, x);
+                init_optimistic_solve(slv, x);
                 break;
             }
             break;
@@ -1881,6 +1785,58 @@ using float_sel = typename std::conditional<
 template<int o>
 using mode_sel =
   typename std::conditional<o == 0, maximize_tag, minimize_tag>::type;
+
+template<bool debug>
+struct debug_logger
+{
+    std::FILE* ofs;
+
+    debug_logger([[maybe_unused]] const std::string_view name) noexcept
+    {
+        if constexpr (debug) {
+            char buffer[512] = { '\0' };
+
+            auto written = fmt::format_to_n(
+              buffer,
+              511,
+              "{}-{}.log",
+              name,
+              std::hash<std::thread::id>{}(std::this_thread::get_id()));
+
+            buffer[written.size] = '\0';
+
+            ofs = std::fopen(buffer, "w");
+        }
+    }
+
+    ~debug_logger() noexcept
+    {
+        if constexpr (debug) {
+            if (ofs)
+                std::fclose(ofs);
+        }
+    }
+
+    template<typename... Args>
+    void log([[maybe_unused]] const std::string_view fmt,
+             [[maybe_unused]] const Args&... args) const noexcept
+    {
+        if constexpr (debug) {
+            fmt::print(ofs, fmt, args...);
+        }
+    }
+
+    template<typename... Args>
+    void log([[maybe_unused]] unsigned indent,
+             [[maybe_unused]] const std::string_view fmt,
+             [[maybe_unused]] const Args&... args) const noexcept
+    {
+        if constexpr (debug) {
+            fmt::print(ofs, "{:{}}", "", indent);
+            fmt::print(ofs, fmt, args...);
+        }
+    }
+};
 
 } // namespace itm
 } // namespace baryonyx
