@@ -434,6 +434,7 @@ struct BX_EXPORT solver_parameters
     observer_type observer{ observer_type::none };
     storage_type storage{ storage_type::one };
     solver_type solver{ solver_type::bastert };
+    bool debug {false};
 };
 
 /**
