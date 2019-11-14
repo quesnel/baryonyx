@@ -93,9 +93,12 @@ install:
 script:
   - make
   - sudo make install
-  - gdb ./lib/testio -ex run -ex bt -ex kill -ex quit
-  - gdb ./lib/testlib -ex run -ex bt -ex kill -ex quit
-  - gdb ./lib/testsolver -ex run -ex bt -ex kill -ex quit
+  - if [ "$TRAVIS_OS_NAME" != "osx" ]; then gdb ./lib/testio -ex run -ex bt -ex kill -ex quit ; fi
+  - if [ "$TRAVIS_OS_NAME" != "osx" ]; then gdb ./lib/testlib -ex run -ex bt -ex kill -ex quit ; fi
+  - if [ "$TRAVIS_OS_NAME" != "osx" ]; then gdb ./lib/testsolver -ex run -ex bt -ex kill -ex quit ; fi
+  - if [ "$TRAVIS_OS_NAME" = "osx" ]; then ctest -V -R testio ; fi
+  - if [ "$TRAVIS_OS_NAME" = "osx" ]; then ctest -V -R testlib ; fi
+  - if [ "$TRAVIS_OS_NAME" = "osx" ]; then ctest -V -R testsolver ; fi
 
 notifications:
   email:
