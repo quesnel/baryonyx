@@ -762,18 +762,18 @@ check_trim_functions()
 
     {
         std::string str = "    ";
-        Ensures(baryonyx::left_trim(str) == "");
-        Ensures(baryonyx::right_trim(str) == "");
-        Ensures(baryonyx::trim(str) == "");
+        Ensures(baryonyx::left_trim(str).empty());
+        Ensures(baryonyx::right_trim(str).empty());
+        Ensures(baryonyx::trim(str).empty());
         Ensures(str == "    ");
     }
 
     {
         std::string str = "";
-        Ensures(baryonyx::left_trim(str) == "");
-        Ensures(baryonyx::right_trim(str) == "");
-        Ensures(baryonyx::trim(str) == "");
-        Ensures(str == "");
+        Ensures(baryonyx::left_trim(str).empty());
+        Ensures(baryonyx::right_trim(str).empty());
+        Ensures(baryonyx::trim(str).empty());
+        Ensures(str.empty());
     }
 
     {

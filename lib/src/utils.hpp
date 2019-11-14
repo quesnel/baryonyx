@@ -59,10 +59,10 @@ left_trim(std::string_view s) noexcept
 {
     auto found = s.find_first_not_of(" \t\n\v\f\r");
 
-    if (found == std::string::npos)
+    if (found == std::string_view::npos)
         return {};
 
-    return s.substr(found, std::string::npos);
+    return s.substr(found, std::string_view::npos);
 }
 
 /**
@@ -77,7 +77,7 @@ right_trim(std::string_view s) noexcept
 {
     auto found = s.find_last_not_of(" \t\n\v\f\r");
 
-    if (found == std::string::npos)
+    if (found == std::string_view::npos)
         return {};
 
     return s.substr(0, found + 1);

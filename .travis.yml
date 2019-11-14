@@ -15,6 +15,7 @@ addons:
   apt:
     packages: &common_packages
       - cmake
+      - gdb
 
 env:
   matrix:
@@ -78,10 +79,6 @@ matrix:
             - *common_packages
             - clang-8
             - g++-7
-    # osx is disabled. We are waiting for a 10.14:
-    # /benchmark.cpp:607:12:
-    # error: call to unavailable function 'visit': introduced in macOS 10.14
-    #
     - os: osx
       osx_image: xcode11.2
       env: CXX_COMPILER=clang++ CXXSTD=c++17
@@ -91,14 +88,14 @@ install:
   - cd baryonyx
   - mkdir build
   - cd build
-  - CXXFLAGS="-O3 -std=$CXXSTD" cmake -DCMAKE_CXX_COMPILER=$CXX_COMPILER -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_COLOR_MAKEFILE=OFF -DCMAKE_VERBOSE_MAKEFILE=ON ..
+  - CXXFLAGS="-std=$CXXSTD" cmake -DCMAKE_CXX_COMPILER=$CXX_COMPILER -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_COLOR_MAKEFILE=OFF -DCMAKE_VERBOSE_MAKEFILE=ON -DCMAKE_BUILD_TYPE=RelWithDebInfo ..
 
 script:
   - make
   - sudo make install
-  - ctest -V -R testio
-  - ctest -V -R testlib
-  - ctest -V -R testsolver
+  - gdb ./lib/testio -ex run -ex bt -ex kill -ex quit
+  - gdb ./lib/testlib -ex run -ex bt -ex kill -ex quit
+  - gdb ./lib/testsolver -ex run -ex bt -ex kill -ex quit
 
 notifications:
   email:
