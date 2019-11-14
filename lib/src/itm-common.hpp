@@ -1789,9 +1789,9 @@ using mode_sel =
 template<bool debug>
 struct debug_logger
 {
-    std::FILE* ofs;
+    std::FILE* ofs = nullptr;
 
-    debug_logger([[maybe_unused]] const std::string_view name) noexcept
+    debug_logger(const std::string_view name) noexcept
     {
         if constexpr (debug) {
             char buffer[512] = { '\0' };
@@ -1806,6 +1806,10 @@ struct debug_logger
             buffer[written.size] = '\0';
 
             ofs = std::fopen(buffer, "w");
+        } else {
+            (void)name;
+
+            ofs = nullptr;
         }
     }
 
