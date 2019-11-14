@@ -13,15 +13,16 @@ set(public_baryonyx_header
  include/baryonyx/core-utils)
 
 set(private_baryonyx_source
- src/nlopt-optimizer.cpp
- src/manual-optimizer.cpp
- src/branch-optimizer.cpp
- src/branch-and-bound-solver.hpp
- src/debug.hpp
  src/bit-array.hpp
+ src/branch-and-bound-solver.hpp
+ src/branch-optimizer.cpp
+ src/debug.hpp
+ src/dynarray.hpp
+ src/exhaustive-solver.hpp
  src/fixed-2darray.hpp
  src/fixed-array.hpp
  src/itm-common.hpp
+ src/itm.hpp
  src/itm-optimizer-common.hpp
  src/itm-solver-common.hpp
  src/itm-solver-equalities-01.cpp
@@ -30,12 +31,12 @@ set(private_baryonyx_source
  src/itm-solver-inequalities-101-buffered.cpp
  src/itm-solver-inequalities-101.cpp
  src/itm-solver-inequalities-Z.cpp
- src/itm.hpp
- src/knapsack-dp-solver.hpp
  src/lpcore.cpp
+ src/manual-optimizer.cpp
  src/memory.cpp
  src/memory.hpp
  src/merged-constraint.cpp
+ src/nlopt-optimizer.cpp
  src/observer.hpp
  src/parser.cpp
  src/pnm.hpp

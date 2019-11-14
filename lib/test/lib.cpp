@@ -25,7 +25,6 @@
 #include "exhaustive-solver.hpp"
 #include "fixed-2darray.hpp"
 #include "fixed-array.hpp"
-#include "knapsack-dp-solver.hpp"
 #include "memory.hpp"
 #include "pnm.hpp"
 #include "unit-test.hpp"
@@ -462,51 +461,6 @@ test_size_type_greater_than_int8_subvector()
     test_size_type_greater_than_int8_subvector_impl(8192u, 512u);
 }
 
-static void
-check_knapsack_solver()
-{
-    struct rc
-    {
-        double value;
-        int id;
-    };
-
-    struct ap
-    {
-        int value;
-    };
-
-    {
-        // An example:
-        // maximize: 16x1 + 19x2 + 23x3 + 26x4
-        // st: 2x1 + 3x2 +4x3 + 5x4 <= 7
-
-        auto R = std::make_unique<rc[]>(4);
-        R[0] = { 16, 0 };
-        R[1] = { 19, 1 };
-        R[2] = { 23, 2 };
-        R[3] = { 26, 3 };
-
-        std::vector<ap> v{ { 0 }, { 1 }, { 2 }, { 3 } };
-
-        std::vector<int> factors{ 2, 3, 4, 5 };
-        int selected =
-          baryonyx::itm::knapsack_dp_solver<baryonyx::itm::maximize_tag,
-                                            double>(
-            factors, R, v.begin(), 4, 7);
-
-        Ensures(selected == 2);
-        Ensures(R[0].id == 1 || R[1].id == 1);
-        Ensures(R[0].id == 2 || R[1].id == 2);
-
-        Ensures(
-          std::accumulate(
-            R.get(), R.get() + selected, 0.0, [](double init, const rc& elem) {
-                return init + elem.value;
-            }) == 42.0);
-    }
-}
-
 template<typename R>
 std::tuple<double, int>
 sum(const R& r, int r_size, int result)
@@ -878,7 +832,6 @@ main(int /* argc */, char* /* argv */ [])
     unit_test::checks("check_numeric_cast", check_numeric_cast);
     unit_test::checks("check_fixed_array", check_fixed_array);
     unit_test::checks("check_fixed_2darray", check_fixed_2darray);
-    unit_test::checks("check_knapsack_solver", check_knapsack_solver);
 
     unit_test::checks("branch_and_bound::subvector api", test_subvector_api);
     unit_test::checks("branch_and_bound::subvector size",
