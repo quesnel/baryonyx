@@ -73,12 +73,14 @@ struct best_solution_recorder
         }
     }
 
-    void try_update(int remaining_constraints, int loop)
+    void try_advance(const bit_array& solution,
+                     int remaining_constraints,
+                     int loop)
     {
         try {
             std::lock_guard<std::mutex> lock(m_mutex);
 
-            if (store_advance(m_best, remaining_constraints)) {
+            if (store_advance<Mode>(m_best, remaining_constraints, solution)) {
                 m_best.remaining_constraints = remaining_constraints;
                 m_best.loop = loop;
                 m_best.duration =
@@ -98,6 +100,8 @@ struct best_solution_recorder
             std::lock_guard<std::mutex> lock(m_mutex);
 
             if (store_solution<Mode>(m_ctx, m_best, solution, value)) {
+                m_best.remaining_constraints = 0;
+                m_best.status = result_status::success;
                 m_best.loop = loop;
                 m_best.duration =
                   compute_duration(m_start, std::chrono::steady_clock::now());
@@ -117,7 +121,7 @@ struct optimize_functor
     const context_ptr& m_ctx;
     random_engine m_rng;
     int m_thread_id;
-    raw_result m_best;
+    raw_result<Mode> m_best;
 
     optimize_functor(const context_ptr& ctx,
                      unsigned thread_id,
@@ -125,9 +129,7 @@ struct optimize_functor
       : m_ctx(ctx)
       , m_rng(seed)
       , m_thread_id(thread_id)
-    {
-        m_best.value = bad_value<Mode, double>();
-    }
+    {}
 
     void operator()(std::atomic_bool& stop_task,
                     best_solution_recorder<Float, Mode>& best_recorder,
@@ -175,12 +177,14 @@ struct optimize_functor
 
         compute_order compute(p.order, variables);
         compute.init(slv, x);
+        bool is_a_solution = false;
 
         while (!stop_task.load()) {
             auto kappa = static_cast<Float>(p.kappa_min);
-            int best_remaining = INT_MAX;
+            auto best_remaining = INT_MAX;
 
-            initializer.reinit(slv, x, m_best.x, m_best.value, best_recorder);
+            initializer.reinit(slv, x, is_a_solution, m_best.x, best_recorder);
+            is_a_solution = false;
 
             for (int i = 0; !stop_task.load() && i != p.limit; ++i) {
                 auto remaining =
@@ -192,11 +196,12 @@ struct optimize_functor
                                     i,
                                     best_recorder);
                     best_remaining = remaining;
+                    is_a_solution = true;
                     break;
                 }
 
                 if (remaining < best_remaining) {
-                    store_if_better(x, remaining, i, best_recorder);
+                    advance_if_better(x, remaining, i, best_recorder);
                     best_remaining = remaining;
                 }
 
@@ -230,6 +235,7 @@ struct optimize_functor
                                     original_costs.results(x, cost_constant),
                                     -push * p.pushing_iteration_limit - 1,
                                     best_recorder);
+                    is_a_solution = true;
                 }
 
                 for (int iter = 0;
@@ -244,6 +250,7 @@ struct optimize_functor
                           original_costs.results(x, cost_constant),
                           -push * p.pushing_iteration_limit - iter - 1,
                           best_recorder);
+                        is_a_solution = true;
                         break;
                     }
 
@@ -261,16 +268,17 @@ struct optimize_functor
     }
 
 private:
-    void store_if_better(const bit_array& /*x*/,
-                         int remaining,
-                         int i,
-                         best_solution_recorder<Float, Mode>& best_recorder)
+    void advance_if_better(const bit_array& x,
+                           int remaining,
+                           int i,
+                           best_solution_recorder<Float, Mode>& best_recorder)
     {
         if (m_best.remaining_constraints > remaining) {
+            m_best.x = x;
             m_best.loop = i;
             m_best.remaining_constraints = remaining;
 
-            best_recorder.try_update(remaining, i);
+            best_recorder.try_advance(x, remaining, i);
         }
     }
 

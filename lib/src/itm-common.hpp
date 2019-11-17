@@ -384,7 +384,6 @@ class solver_initializer
 {
     std::bernoulli_distribution dist;
     std::bernoulli_distribution toss_up;
-    double old_best;
     bool use_cycle{ true };
 
     enum class single_automaton : std::uint8_t
@@ -398,9 +397,14 @@ class solver_initializer
     enum class cycle_automaton : std::uint8_t
     {
         bastert,
+        bastert_crossover,
         pessimistic_solve,
+        pessimistic_crossover,
         optimistic_solve,
+        optimistic_crossover
     };
+
+    std::array<unsigned, 4> cycle_counter = { 0, 0, 0, 0 };
 
     enum class init_automaton : std::uint8_t
     {
@@ -413,9 +417,9 @@ class solver_initializer
       { "init", "improve_x_1", "improve_x_2", "improve_x_3" };
 
     static inline const std::string_view cycle_automaton_string[] = {
-        "bastert",
-        "pessimistic_solve",
-        "optimistic_solve",
+        "bastert",           "bastert_crossover",
+        "pessimistic_solve", "pessimistic_solve_crossver",
+        "optimistic_solve",  "optimistic_solve_crossover",
     };
 
     static inline const std::string_view init_automaton_string[] =
@@ -423,10 +427,50 @@ class solver_initializer
 
     single_automaton single{ single_automaton::init };
     cycle_automaton cycle{ cycle_automaton::pessimistic_solve };
-    init_automaton init{ init_automaton::random };
+    init_automaton base{ init_automaton::random };
+
+    void init_crossover(
+      Solver& slv,
+      bit_array& x,
+      const bit_array& current_best,
+      const best_solution_recorder<Float, Mode>& best_recorder)
+    {
+        to_log(stdout, 6u, "initializer: crossover {}\n", cycle_counter[3]);
+        ++cycle_counter[3];
+
+        std::uniform_int_distribution<int> uniform_dist(0, slv.n);
+        int split_at = uniform_dist(slv.rng);
+        bool first_is_current = toss_up(slv.rng);
+
+        // TODO Need to improve this part to avoid bit-per-bit copy using the
+        // std::uint64_t underlying type.
+
+        best_recorder.copy_to(x);
+
+        int first, last;
+
+        if (first_is_current) {
+            first = split_at;
+            last = slv.n;
+        } else {
+            first = 0;
+            last = split_at;
+        }
+
+        assert(first <= last);
+
+        for (; first != last; ++first)
+            if (current_best[first])
+                x.set(first);
+            else
+                x.unset(first);
+    }
 
     void init_bastert(Solver& slv, bit_array& x) noexcept
     {
+        to_log(stdout, 6u, "- initializer: bastert {}\n", cycle_counter[0]);
+        ++cycle_counter[0];
+
         const int value_if_cost_0 = 1;
 
         for (int i = 0; i != slv.n; ++i) {
@@ -441,6 +485,10 @@ class solver_initializer
 
     void init_pessimistic_solve(Solver& slv, bit_array& x) noexcept
     {
+        to_log(
+          stdout, 6u, "- initializer: pessimistic {}\n", cycle_counter[1]);
+        ++cycle_counter[1];
+
         for (int k = 0; k != slv.m; ++k) {
             if (!dist(slv.rng))
                 continue;
@@ -492,6 +540,9 @@ class solver_initializer
 
     void init_optimistic_solve(Solver& slv, bit_array& x) noexcept
     {
+        to_log(stdout, 6u, "- initializer: optimistic {}\n", cycle_counter[2]);
+        ++cycle_counter[2];
+
         for (int k = 0; k != slv.m; ++k) {
             if (!dist(slv.rng))
                 continue;
@@ -550,7 +601,6 @@ public:
                        double init_random)
       : dist(init_policy_random)
       , toss_up(init_random)
-      , old_best(bad_value<Mode, double>())
     {
         // x.clear();
         slv.reset();
@@ -575,106 +625,143 @@ public:
         }
     }
 
-    void next_state(bool is_better_solution)
+    ~solver_initializer() noexcept
     {
-        switch (single) {
-        case single_automaton::init:
-            single = single_automaton::improve_x_1;
-            break;
-        case single_automaton::improve_x_1:
-            single = is_better_solution ? single_automaton::improve_x_1
-                                        : single_automaton::improve_x_2;
-            break;
-        case single_automaton::improve_x_2:
-            single = is_better_solution ? single_automaton::improve_x_1
-                                        : single_automaton::improve_x_3;
-            break;
-        case single_automaton::improve_x_3:
-            if (is_better_solution) {
-                single = single_automaton::improve_x_1;
-            } else {
-                if (use_cycle == true) {
-                    if (cycle == cycle_automaton::bastert)
-                        cycle = cycle_automaton::optimistic_solve;
-                    else if (cycle == cycle_automaton::pessimistic_solve)
-                        cycle = cycle_automaton::bastert;
-                    else if (cycle == cycle_automaton::optimistic_solve)
-                        cycle = cycle_automaton::pessimistic_solve;
-                }
+        to_log(stdout,
+               6u,
+               "- solver-initializer status: bastert {} /"
+               "pessimistic_solve {} / optimistic_solve {} / crossover {}\n",
+               cycle_counter[0],
+               cycle_counter[1],
+               cycle_counter[2],
+               cycle_counter[3]);
+    }
 
+    void next_state(bool is_a_solution) noexcept
+    {
+        if (is_a_solution) {
+            single = single_automaton::init;
+        } else {
+            switch (single) {
+            case single_automaton::init:
+                single = single_automaton::improve_x_1;
+                break;
+            case single_automaton::improve_x_1:
+                single = single_automaton::improve_x_2;
+                break;
+            case single_automaton::improve_x_2:
+                single = single_automaton::improve_x_3;
+                break;
+            case single_automaton::improve_x_3:
                 single = single_automaton::init;
             }
-            break;
+        }
+
+        if (single == single_automaton::init) {
+            if (use_cycle) {
+                switch (cycle) {
+                case cycle_automaton::bastert:
+                    cycle = cycle_automaton::bastert_crossover;
+                    break;
+                case cycle_automaton::bastert_crossover:
+                    cycle = cycle_automaton::pessimistic_solve;
+                    break;
+                case cycle_automaton::pessimistic_solve:
+                    cycle = cycle_automaton::pessimistic_crossover;
+                    break;
+                case cycle_automaton::pessimistic_crossover:
+                    cycle = cycle_automaton::optimistic_solve;
+                    break;
+                case cycle_automaton::optimistic_solve:
+                    cycle = cycle_automaton::optimistic_crossover;
+                    break;
+                case cycle_automaton::optimistic_crossover:
+                    cycle = cycle_automaton::bastert;
+                    break;
+                }
+            } else {
+                switch (cycle) {
+                case cycle_automaton::bastert:
+                    cycle = cycle_automaton::bastert_crossover;
+                    break;
+                case cycle_automaton::bastert_crossover:
+                    cycle = cycle_automaton::bastert;
+                    break;
+                case cycle_automaton::pessimistic_solve:
+                    cycle = cycle_automaton::pessimistic_crossover;
+                    break;
+                case cycle_automaton::pessimistic_crossover:
+                    cycle = cycle_automaton::pessimistic_solve;
+                    break;
+                case cycle_automaton::optimistic_solve:
+                    cycle = cycle_automaton::optimistic_crossover;
+                    break;
+                case cycle_automaton::optimistic_crossover:
+                    cycle = cycle_automaton::optimistic_solve;
+                    break;
+                }
+            }
         }
     }
 
-    void reinit(Solver& slv, bit_array& x)
+    void init(Solver& slv, bit_array& x)
     {
         // x.clear();
         slv.reset();
 
         to_log(stdout,
-               "  solver initialization: method {} in mode {} - init {}\n",
+               6u,
+               "- initializer: init method {} in mode {} - init {}\n",
                cycle_automaton_string[static_cast<int>(cycle)],
-               init_automaton_string[static_cast<int>(init)],
+               init_automaton_string[static_cast<int>(base)],
                single_automaton_string[static_cast<int>(single)]);
 
-        switch (single) {
-        case single_automaton::init:
-            switch (cycle) {
-            case cycle_automaton::bastert:
-                init_bastert(slv, x);
-                break;
-            case cycle_automaton::pessimistic_solve:
-                init_pessimistic_solve(slv, x);
-                break;
-            case cycle_automaton::optimistic_solve:
-                init_optimistic_solve(slv, x);
-                break;
-            }
+        for (int i = 0; i != slv.n; ++i)
+            if (toss_up(slv.rng))
+                x.set(i);
+            else
+                x.unset(i);
+
+        switch (cycle) {
+        case cycle_automaton::bastert:
+            init_bastert(slv, x);
             break;
-        case single_automaton::improve_x_1:
-        case single_automaton::improve_x_2:
-        case single_automaton::improve_x_3:
-            switch (cycle) {
-            case cycle_automaton::bastert:
-                init_bastert(slv, x);
-                break;
-            case cycle_automaton::pessimistic_solve:
-                init_pessimistic_solve(slv, x);
-                break;
-            case cycle_automaton::optimistic_solve:
-                init_optimistic_solve(slv, x);
-                break;
-            }
+        case cycle_automaton::pessimistic_solve:
+            init_pessimistic_solve(slv, x);
+            break;
+        case cycle_automaton::optimistic_solve:
+            init_optimistic_solve(slv, x);
+            break;
+        case cycle_automaton::bastert_crossover:
+        case cycle_automaton::pessimistic_crossover:
+        case cycle_automaton::optimistic_crossover:
+            bx_reach();
             break;
         }
     }
 
     void reinit(Solver& slv,
                 bit_array& x,
+                bool is_a_solution,
                 const bit_array& best_x,
-                const double& best_value,
                 const best_solution_recorder<Float, Mode>& best_recorder)
     {
         // x.clear();
         slv.reset();
 
-        bool is_current_better_local_solution = false;
-        if (is_better_solution<Mode, double>(best_value, old_best)) {
-            old_best = best_value;
-            is_current_better_local_solution = true;
-        }
-
         to_log(stdout,
-               "  solver re-initialization: method {} in mode {} - init {}\n",
+               6u,
+               "- initializer: re-init method {} in mode {} - init {} - "
+               "is-a-solution {}\n",
                cycle_automaton_string[static_cast<int>(cycle)],
-               init_automaton_string[static_cast<int>(init)],
-               single_automaton_string[static_cast<int>(single)]);
+               init_automaton_string[static_cast<int>(base)],
+               single_automaton_string[static_cast<int>(single)],
+               is_a_solution);
 
-        switch (single) {
-        case single_automaton::init:
-            switch (init) {
+        next_state(is_a_solution);
+
+        if (single == single_automaton::init) {
+            switch (base) {
             case init_automaton::random:
                 for (int i = 0; i != slv.n; ++i)
                     if (toss_up(slv.rng))
@@ -682,16 +769,15 @@ public:
                     else
                         x.unset(i);
 
-                if (!is_bad_value<Mode, double>(old_best))
-                    init = init_automaton::current_best;
+                base = init_automaton::current_best;
                 break;
             case init_automaton::current_best:
                 x = best_x;
-                init = init_automaton::best_recorder;
+                base = init_automaton::best_recorder;
                 break;
             case init_automaton::best_recorder:
                 best_recorder.copy_to(x);
-                init = init_automaton::random;
+                base = init_automaton::random;
                 break;
             }
 
@@ -705,26 +791,13 @@ public:
             case cycle_automaton::optimistic_solve:
                 init_optimistic_solve(slv, x);
                 break;
-            }
-            break;
-        case single_automaton::improve_x_1:
-        case single_automaton::improve_x_2:
-        case single_automaton::improve_x_3:
-            switch (cycle) {
-            case cycle_automaton::bastert:
-                init_bastert(slv, x);
-                break;
-            case cycle_automaton::pessimistic_solve:
-                init_pessimistic_solve(slv, x);
-                break;
-            case cycle_automaton::optimistic_solve:
-                init_optimistic_solve(slv, x);
+            case cycle_automaton::bastert_crossover:
+            case cycle_automaton::pessimistic_crossover:
+            case cycle_automaton::optimistic_crossover:
+                init_crossover(slv, x, best_x, best_recorder);
                 break;
             }
-            break;
         }
-
-        next_state(is_current_better_local_solution);
     }
 };
 

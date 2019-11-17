@@ -31,12 +31,13 @@
 
 namespace baryonyx {
 
+template<typename Mode>
 struct raw_result
 {
     raw_result() = default;
 
     bit_array x;
-    double value = 0.0;
+    double value = itm::bad_value<Mode, double>();
     double duration = 0.0;
     index loop = 0;
     index remaining_constraints = std::numeric_limits<index>::max();
@@ -195,11 +196,20 @@ store_solution(const context_ptr& ctx,
     return detail::store_one_solution<Mode>(ctx, res, solution, value);
 }
 
+template<typename Mode>
 inline bool
-store_advance(result& res, int constraint_remaining)
+store_advance(result& res, int constraint_remaining, const bit_array& solution)
 {
     if (res.remaining_constraints > constraint_remaining) {
         res.remaining_constraints = constraint_remaining;
+
+        if (res.solutions.empty()) {
+            detail::push_back(res, solution, itm::bad_value<Mode, double>());
+        } else {
+            detail::assign(
+              res.solutions.begin(), solution, itm::bad_value<Mode, double>());
+        }
+
         return true;
     }
 

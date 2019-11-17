@@ -111,7 +111,7 @@ struct solver_functor
 
         solver_initializer<Solver, Float, Mode> initializer(
           slv, p.init_policy, p.init_policy_random, p.init_random);
-        initializer.reinit(slv, x);
+        initializer.init(slv, x);
 
         compute_order compute(p.order, variables);
         compute.init(slv, x);
@@ -226,9 +226,9 @@ private:
         return compute_duration(m_begin, m_end);
     }
 
-    void store_if_better(const bit_array& /*x*/, int remaining, int i)
+    void store_if_better(const bit_array& x, int remaining, int i)
     {
-        if (store_advance(m_best, remaining)) {
+        if (store_advance<Mode>(m_best, remaining, x)) {
             m_best.loop = i;
             m_best.remaining_constraints = remaining;
             // m_best.annoying_variable = x.upper();
