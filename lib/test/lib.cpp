@@ -790,10 +790,8 @@ check_bit_array()
 {
     baryonyx::bit_array a(100);
 
-    Ensures(baryonyx::bit_array::bit_per_block == 8 * 8);
     Ensures(a.size() == 100);
-    Ensures(a.block_size() == 1 + (100 / (4 * 8)));
-    Ensures(a.block_size() == 4);
+    Ensures(a.block_size() == 1 + (100 / baryonyx::bit_array::bit_per_block));
 
     a.zeros();
     for (auto i = 0; i != a.size(); ++i)

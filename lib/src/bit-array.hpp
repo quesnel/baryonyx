@@ -24,8 +24,8 @@
 #define ORG_VLEPROJECT_BARYONYX_SOLVER_BIT_ARRAY_HPP
 
 #include <algorithm>
-#include <memory>
 #include <limits>
+#include <memory>
 
 #include <cstdint>
 
@@ -45,7 +45,7 @@ public:
     using underlying_type = uintptr_t;
 
     constexpr static inline int bit_per_block =
-        std::numeric_limits<underlying_type>::digits;
+      std::numeric_limits<underlying_type>::digits;
 
     bit_array_impl()
       : m_size(0)
@@ -162,7 +162,7 @@ public:
         std::fill_n(m_data.get(), m_block_size, UINTMAX_C(0));
     }
 
-    /** 
+    /**
      * @brief Return the number of bit in the @e bit_array.
      */
     int size() const noexcept
@@ -171,7 +171,8 @@ public:
     }
 
     /**
-     * @brief Returns the number of @c underlying_type (std::uint64_t) used to store bits in the @c bit_array.
+     * @brief Returns the number of @c underlying_type (std::uint64_t) used to
+     * store bits in the @c bit_array.
      */
     int block_size() const noexcept
     {
