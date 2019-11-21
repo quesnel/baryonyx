@@ -52,24 +52,20 @@ struct solver_functor
     const context_ptr& m_ctx;
     random_engine& m_rng;
 
-    result m_best;
+    raw_result<Mode> m_best;
 
-    solver_functor(const context_ptr& ctx,
-                   random_engine& rng,
-                   const problem& problem)
+    solver_functor(const context_ptr& ctx, random_engine& rng)
       : m_ctx(ctx)
       , m_rng(rng)
-    {
-        m_best.strings = problem.strings;
-        m_best.affected_vars = problem.affected_vars;
-        m_best.variable_name = problem.vars.names;
-    }
+    {}
 
     result operator()(const std::vector<merged_constraint>& constraints,
                       int variables,
                       const Cost& original_costs,
                       double cost_constant)
     {
+        result r;
+
         bit_array x(variables);
 
         int best_remaining = INT_MAX;
@@ -116,9 +112,6 @@ struct solver_functor
         compute_order compute(p.order, variables);
         compute.init(slv, x);
 
-        m_best.variables = slv.m;
-        m_best.constraints = slv.n;
-
         bool start_push = false;
         auto kappa = static_cast<Float>(p.kappa_min);
 
@@ -150,18 +143,18 @@ struct solver_functor
                                                alpha);
 
             if (kappa > kappa_max) {
-                m_best.status = result_status::kappa_max_reached;
+                r.status = result_status::kappa_max_reached;
                 break;
             }
 
             if (is_timelimit_reached()) {
-                m_best.status = result_status::time_limit_reached;
+                r.status = result_status::time_limit_reached;
                 break;
             }
         }
 
         if (!start_push) {
-            m_best.status = result_status::limit_reached;
+            r.status = result_status::limit_reached;
         } else {
             for (int push = 0; push < p.pushes_limit; ++push) {
                 auto remaining =
@@ -208,7 +201,15 @@ struct solver_functor
             }
         }
 
-        return m_best;
+        if (m_best.remaining_constraints == 0)
+            r.status = result_status::success;
+
+        if (!m_best.x.empty()) {
+            r.solutions.resize(1);
+            convert(m_best, r.solutions[0], variables);
+        }
+
+        return r;
     }
 
 private:
@@ -228,28 +229,28 @@ private:
 
     void store_if_better(const bit_array& x, int remaining, int i)
     {
-        if (store_advance<Mode>(m_best, remaining, x)) {
+        if (m_best.remaining_constraints > remaining) {
+            m_best.x = x;
+            m_best.duration = duration();
             m_best.loop = i;
             m_best.remaining_constraints = remaining;
-            // m_best.annoying_variable = x.upper();
-            m_best.duration = duration();
 
             if (m_ctx->update)
-                m_ctx->update(m_best);
+                m_ctx->update(remaining, 0.0, i, m_best.duration);
         }
     }
 
     void store_if_better(const bit_array& x, double current, int i)
     {
-        if (store_solution<Mode>(m_ctx, m_best, x, current)) {
-            m_best.status = result_status::success;
+        if (is_better_solution<Mode>(current, m_best.value)) {
+            m_best.x = x;
+            m_best.duration = duration();
             m_best.loop = i;
             m_best.remaining_constraints = 0;
-            m_best.duration = duration();
-            // m_best.annoying_variable = x.upper();
+            m_best.value = current;
 
             if (m_ctx->update)
-                m_ctx->update(m_best);
+                m_ctx->update(0, current, i, m_best.duration);
         }
     }
 };
@@ -263,11 +264,12 @@ solve_problem(const context_ptr& ctx, const problem& pb)
 
     result ret;
 
+    auto variables = length(pb.vars.values);
     auto constraints{ make_merged_constraints(ctx, pb) };
+
     if (!constraints.empty() && !pb.vars.values.empty()) {
         random_engine rng(init_random_generator_seed(ctx));
 
-        auto variables = numeric_cast<int>(pb.vars.values.size());
         auto cost = Cost(pb.objective, variables);
         auto cost_constant = pb.objective.value;
 
@@ -275,27 +277,23 @@ solve_problem(const context_ptr& ctx, const problem& pb)
         case solver_parameters::observer_type::pnm: {
             using obs = pnm_observer<Solver, Float>;
 
-            solver_functor<Solver, Float, Mode, Cost, obs> slv(ctx, rng, pb);
-
+            solver_functor<Solver, Float, Mode, Cost, obs> slv(ctx, rng);
             ret = slv(constraints, variables, cost, cost_constant);
         } break;
         case solver_parameters::observer_type::file: {
             using obs = file_observer<Solver, Float>;
 
-            solver_functor<Solver, Float, Mode, Cost, obs> slv(ctx, rng, pb);
-
+            solver_functor<Solver, Float, Mode, Cost, obs> slv(ctx, rng);
             ret = slv(constraints, variables, cost, cost_constant);
         } break;
         default: {
             using obs = none_observer<Solver, Float>;
 
-            solver_functor<Solver, Float, Mode, Cost, obs> slv(ctx, rng, pb);
-
+            solver_functor<Solver, Float, Mode, Cost, obs> slv(ctx, rng);
             ret = slv(constraints, variables, cost, cost_constant);
             break;
         }
         }
-
     } else {
         ret.status = result_status::success;
     }
@@ -303,6 +301,8 @@ solve_problem(const context_ptr& ctx, const problem& pb)
     ret.strings = pb.strings;
     ret.variable_name = std::move(pb.vars.names);
     ret.affected_vars = std::move(pb.affected_vars);
+    ret.variables = variables;
+    ret.constraints = length(constraints);
 
     if (ctx->finish)
         ctx->finish(ret);

@@ -432,38 +432,32 @@ class solver_initializer
     void init_crossover(
       Solver& slv,
       bit_array& x,
-      const bit_array& current_best,
       const best_solution_recorder<Float, Mode>& best_recorder)
     {
         to_log(stdout, 6u, "initializer: crossover {}\n", cycle_counter[3]);
         ++cycle_counter[3];
 
-        std::uniform_int_distribution<int> uniform_dist(0, slv.n);
-        int split_at = uniform_dist(slv.rng);
-        bool first_is_current = toss_up(slv.rng);
+        const int min = 1;
+        const int max = slv.n >= 2 ? slv.n - 1 : 1;
+
+        std::uniform_int_distribution<int> uniform_dist(min, max);
+        const int split_at = uniform_dist(slv.rng);
 
         // TODO Need to improve this part to avoid bit-per-bit copy using the
         // std::uint64_t underlying type.
 
-        best_recorder.copy_to(x);
-
-        int first, last;
-
-        if (first_is_current) {
-            first = split_at;
-            last = slv.n;
+        if (toss_up(slv.rng)) {
+            if (toss_up(slv.rng)) {
+                best_recorder.copy_any_solution(x, slv.rng, 0, split_at);
+                best_recorder.copy_best_solution(x, split_at, slv.n);
+            } else {
+                best_recorder.copy_best_solution(x, 0, split_at);
+                best_recorder.copy_any_solution(x, slv.rng, split_at, slv.n);
+            }
         } else {
-            first = 0;
-            last = split_at;
+            best_recorder.copy_any_solution(x, slv.rng, 0, split_at);
+            best_recorder.copy_any_solution(x, slv.rng, split_at, slv.n);
         }
-
-        assert(first <= last);
-
-        for (; first != last; ++first)
-            if (current_best[first])
-                x.set(first);
-            else
-                x.unset(first);
     }
 
     void init_bastert(Solver& slv, bit_array& x) noexcept
@@ -743,7 +737,6 @@ public:
     void reinit(Solver& slv,
                 bit_array& x,
                 bool is_a_solution,
-                const bit_array& best_x,
                 const best_solution_recorder<Float, Mode>& best_recorder)
     {
         // x.clear();
@@ -772,11 +765,25 @@ public:
                 base = init_automaton::current_best;
                 break;
             case init_automaton::current_best:
-                x = best_x;
+                if (!best_recorder.copy_any_solution(x, slv.rng)) {
+                    for (int i = 0; i != slv.n; ++i)
+                        if (toss_up(slv.rng))
+                            x.set(i);
+                        else
+                            x.unset(i);
+                }
+
                 base = init_automaton::best_recorder;
                 break;
             case init_automaton::best_recorder:
-                best_recorder.copy_to(x);
+                if (!best_recorder.copy_best_solution(x)) {
+                    for (int i = 0; i != slv.n; ++i)
+                        if (toss_up(slv.rng))
+                            x.set(i);
+                        else
+                            x.unset(i);
+                }
+
                 base = init_automaton::random;
                 break;
             }
@@ -794,81 +801,12 @@ public:
             case cycle_automaton::bastert_crossover:
             case cycle_automaton::pessimistic_crossover:
             case cycle_automaton::optimistic_crossover:
-                init_crossover(slv, x, best_x, best_recorder);
+                init_crossover(slv, x, best_recorder);
                 break;
             }
         }
     }
 };
-
-template<typename Solver, typename Xtype>
-inline void
-print_solver(const Solver& slv,
-             const Xtype& x,
-             const context_ptr& ctx,
-             const std::vector<std::string>& names,
-             int print_level)
-{
-    if (print_level <= 0)
-        return;
-
-    debug(ctx, "  - X: {} to {}\n", 0, slv.n);
-    for (int i = 0; i != slv.n; ++i)
-        debug(ctx, "    - {} {}={}/c_i:{}\n", i, names[i], x[i], slv.c[i]);
-    debug(ctx, "\n");
-
-    for (int k = 0; k != slv.m; ++k) {
-        sparse_matrix<int>::const_row_iterator it, et;
-
-        std::tie(it, et) = slv.ap.row(k);
-        int v = 0;
-
-        for (; it != et; ++it)
-            v += slv.factor(it->value) * x[it->column];
-
-        bool valid = slv.bound_min(k) <= v && v <= slv.bound_max(k);
-
-        debug(ctx,
-              "C {}:{} (Lmult: {})\n",
-              k,
-              (valid ? "   valid" : "violated"),
-              slv.pi[k]);
-    }
-}
-
-template<typename Solver, typename Xtype>
-inline void
-print_missing_constraint(const context_ptr& ctx,
-                         const Xtype& x,
-                         const Solver& slv,
-                         const std::vector<std::string>& names) noexcept
-{
-    std::vector<int> R;
-
-    slv.compute_violated_constraints(x, R);
-    info(ctx, "Constraints remaining: {}\n", length(R));
-
-    sparse_matrix<int>::const_row_iterator it, et;
-
-    for (auto k : R) {
-        std::tie(it, et) = slv.ap.row(k);
-        int v = 0;
-
-        info(ctx, "{}: {} <= ", k, slv.bound_min(k));
-
-        for (; it != et; ++it) {
-            v += slv.factor(it->value) * x[it->column];
-
-            info(ctx,
-                 "{:+d} [{} ({})] ",
-                 slv.factor(it->value),
-                 names[it->column],
-                 x[it->column]);
-        }
-
-        info(ctx, " <= {} | value: {}\n", slv.bound_max(k));
-    }
-}
 
 /**
  * Compute a problem lower or upper bounds based on Lagrangian multipliers

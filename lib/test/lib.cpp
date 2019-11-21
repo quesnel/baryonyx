@@ -821,6 +821,75 @@ check_bit_array()
 
     for (auto i = 0; i != a.size(); i += 2)
         Ensures(a.get(i) == 1 && a.get(i + 1) == 0);
+
+    baryonyx::bit_array b(baryonyx::bit_array::bit_per_block * 2);
+    baryonyx::bit_array c(baryonyx::bit_array::bit_per_block * 2);
+
+    {
+        b.ones();
+        c.zeros();
+
+        Ensures(b.block(0) == 0xffffffffffffffff);
+        Ensures(b.block(1) == 0xffffffffffffffff);
+        Ensures(c.block(0) == 0x0);
+        Ensures(c.block(1) == 0x0);
+
+        b.assign(c,
+                 baryonyx::bit_array::bit_per_block / 2,
+                 baryonyx::bit_array::bit_per_block * 3 / 2);
+
+        Ensures(b.block(0) == 0xffffffff00000000);
+        Ensures(b.block(1) == 0x00000000ffffffff);
+    }
+
+    {
+        b.ones();
+        c.zeros();
+
+        Ensures(b.block(0) == 0xffffffffffffffff);
+        Ensures(b.block(1) == 0xffffffffffffffff);
+        Ensures(c.block(0) == 0x0);
+        Ensures(c.block(1) == 0x0);
+
+        b.assign(c, 0, baryonyx::bit_array::bit_per_block / 2);
+
+        Ensures(b.block(0) == 0x00000000ffffffff);
+        Ensures(b.block(1) == 0xffffffffffffffff);
+    }
+
+    {
+        b.ones();
+        c.zeros();
+
+        Ensures(b.block(0) == 0xffffffffffffffff);
+        Ensures(b.block(1) == 0xffffffffffffffff);
+        Ensures(c.block(0) == 0x0);
+        Ensures(c.block(1) == 0x0);
+
+        b.assign(c,
+                 baryonyx::bit_array::bit_per_block / 2,
+                 baryonyx::bit_array::bit_per_block * 2);
+
+        Ensures(b.block(0) == 0xffffffff00000000);
+        Ensures(b.block(1) == 0x0000000000000000);
+    }
+
+    {
+        b.ones();
+        c.zeros();
+
+        Ensures(b.block(0) == 0xffffffffffffffff);
+        Ensures(b.block(1) == 0xffffffffffffffff);
+        Ensures(c.block(0) == 0x0);
+        Ensures(c.block(1) == 0x0);
+
+        b.assign(c,
+                 baryonyx::bit_array::bit_per_block * 2 - 1,
+                 baryonyx::bit_array::bit_per_block * 2);
+
+        Ensures(b.block(0) == 0xffffffffffffffff);
+        Ensures(b.block(1) == 0xfffffffffffffffe);
+    }
 }
 
 int

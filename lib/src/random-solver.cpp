@@ -358,10 +358,8 @@ solve_or_optimize(const context_ptr& ctx,
     using Solver = solver_random_inequalities_101coeff<Float, Mode, Cost>;
 
     return is_optimization
-             ? optimize_problem<Solver, Float, Mode, Cost>(ctx,
-                                                                          pb)
-             : solve_problem<Solver, Float, Mode, Cost>(ctx,
-                                                                       pb);
+             ? optimize_problem<Solver, Float, Mode, Cost>(ctx, pb)
+             : solve_problem<Solver, Float, Mode, Cost>(ctx, pb);
 }
 
 

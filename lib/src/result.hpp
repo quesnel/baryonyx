@@ -36,184 +36,98 @@ struct raw_result
 {
     raw_result() = default;
 
+    raw_result(raw_result&&) = default;
+    raw_result& operator=(raw_result&&) = default;
+
+    raw_result(int variables)
+      : x(variables)
+    {}
+
+    raw_result(const bit_array& x_,
+               double value_,
+               double duration_,
+               index loop_)
+      : x(x_)
+      , value(value_)
+      , duration(duration_)
+      , loop(loop_)
+      , remaining_constraints(0)
+    {}
+
+    raw_result(const bit_array& x_,
+               index remaining_constraints_,
+               double duration_,
+               index loop_)
+      : x(x_)
+      , value(itm::bad_value<Mode, double>())
+      , duration(duration_)
+      , loop(loop_)
+      , remaining_constraints(remaining_constraints_)
+    {}
+
     bit_array x;
     double value = itm::bad_value<Mode, double>();
     double duration = 0.0;
     index loop = 0;
     index remaining_constraints = std::numeric_limits<index>::max();
+
+    bool is_solution() const noexcept
+    {
+        return remaining_constraints == 0;
+    }
+
+    void swap(raw_result& other) noexcept
+    {
+        x.swap(other.x);
+        std::swap(value, other.value);
+        std::swap(duration, other.duration);
+        std::swap(loop, other.loop);
+        std::swap(remaining_constraints, other.remaining_constraints);
+    }
 };
 
-namespace detail {
-
-inline void
-convert(const bit_array& solution, std::vector<var_value>& ret)
-{
-    ret.resize(solution.size());
-
-    // TODO unroll the loop: use solution.block_size() and 32-bit unroll to
-    // copy into ret directly. May use vectorization.
-
-    for (int i = 0, e = solution.size(); i != e; ++i)
-        ret[i] = static_cast<var_value>(solution.get(i));
-}
-
-template<typename Iterator>
-void
-assign(Iterator it, const bit_array& solution, double value)
-{
-    convert(solution, it->variables);
-    it->value = value;
-}
-
-inline void
-push_front(result& res, const bit_array& solution, double value)
-{
-    res.solutions.emplace(res.solutions.begin());
-    assign(res.solutions.begin(), solution, value);
-}
-
-inline void
-push_back(result& res, const bit_array& solution, double value)
-{
-    res.solutions.emplace_back();
-    assign(res.solutions.rbegin(), solution, value);
-}
-
 template<typename Mode>
-inline bool
-store_one_solution(const context_ptr& /*ctx*/,
-                   result& res,
-                   const bit_array& solution,
-                   double value)
+struct raw_result_compare
 {
-    if (itm::is_better_solution<Mode>(value, res.solutions.back().value)) {
-        assign(res.solutions.rbegin(), solution, value);
-        return true;
+    using is_transparent = std::true_type;
+
+    bool operator()(const raw_result<Mode>& lhs,
+                    const raw_result<Mode>& rhs) const noexcept
+    {
+        if (lhs.remaining_constraints == 0 && rhs.remaining_constraints == 0)
+            return itm::is_better_solution<Mode>(lhs.value, rhs.value);
+
+        return lhs.remaining_constraints < rhs.remaining_constraints;
     }
 
-    return false;
-}
-
-template<typename Mode>
-inline bool
-store_bound_solutions(const context_ptr& /*ctx*/,
-                      result& res,
-                      const bit_array& solution,
-                      double value)
-{
-    if (res.solutions.size() == static_cast<size_t>(1)) {
-        if (itm::is_better_solution<Mode>(value, res.solutions.back().value)) {
-            push_back(res, solution, value);
-            return true;
-        } else {
-            push_front(res, solution, value);
-            return false;
-        }
+    bool operator()(const raw_result<Mode>& lhs, double value) const noexcept
+    {
+        return itm::is_better_solution<Mode>(lhs.value, value);
     }
 
-    if (itm::is_better_solution<Mode>(value, res.solutions.back().value)) {
-        assign(res.solutions.rbegin(), solution, value);
-        return true;
-    } else if (itm::is_better_solution<Mode>(res.solutions.front().value,
-                                             value)) {
-        assign(res.solutions.begin(), solution, value);
-        return false;
+    bool operator()(double value, const raw_result<Mode>& rhs) const noexcept
+    {
+        return itm::is_better_solution<Mode>(value, rhs.value);
     }
-
-    return false;
-}
-
-template<typename Mode>
-inline bool
-store_five_solutions(const context_ptr& /*ctx*/,
-                     result& res,
-                     const bit_array& solution,
-                     double value)
-{
-    auto it = res.solutions.rbegin();
-    auto et = res.solutions.rend();
-
-    if (res.solutions.size() == static_cast<size_t>(5)) {
-        for (; it != et; ++it) {
-
-            // If the current element is better, we need to shift all previous
-            // solutions, drop the worst and replace the solution.
-
-            if (itm::is_better_solution<Mode>(value, it->value)) {
-                auto found = it.base();
-                auto first = res.solutions.begin() + 1;
-
-                for (; first != found; ++first)
-                    std::iter_swap(first - 1, first);
-
-                assign(found, solution, value);
-            }
-        }
-    } else {
-        for (; it != et; ++it) {
-            if (itm::is_better_solution<Mode>(value, it->value)) {
-                assign(it, solution, value);
-                break;
-            }
-        }
-    }
-
-    return res.solutions.back().value == value;
-}
-
-} // namespace detail
+};
 
 template<typename Mode>
 bool
-store_solution(const context_ptr& ctx,
-               result& res,
-               const bit_array& solution,
-               double value)
+operator==(const raw_result<Mode>& lhs, const raw_result<Mode>& rhs) noexcept
 {
-    // If the result solutions vector is empty, the solution and value
-    // are pushed into the solution vector. All detail functions are
-    // sure to have at lest one solution is the result solutions
-    // vector.
-
-    if (res.solutions.empty()) {
-        detail::push_back(res, solution, value);
-        res.remaining_constraints = 0;
-        res.status = result_status::success;
-        return true;
-    } else {
-        switch (ctx->parameters.storage) {
-        case solver_parameters::storage_type::one:
-            return detail::store_one_solution<Mode>(ctx, res, solution, value);
-        case solver_parameters::storage_type::bound:
-            return detail::store_bound_solutions<Mode>(
-              ctx, res, solution, value);
-        case solver_parameters::storage_type::five:
-            return detail::store_five_solutions<Mode>(
-              ctx, res, solution, value);
-        }
-    }
-
-    return detail::store_one_solution<Mode>(ctx, res, solution, value);
+  return lhs.remaining_constraints == rhs.remaining_constraints &&
+    lhs.x == rhs.x;
 }
 
 template<typename Mode>
-inline bool
-store_advance(result& res, int constraint_remaining, const bit_array& solution)
+void
+convert(const raw_result<Mode>& source, solution& sol, int variables)
 {
-    if (res.remaining_constraints > constraint_remaining) {
-        res.remaining_constraints = constraint_remaining;
+    sol.value = source.value;
+    sol.variables.resize(variables);
 
-        if (res.solutions.empty()) {
-            detail::push_back(res, solution, itm::bad_value<Mode, double>());
-        } else {
-            detail::assign(
-              res.solutions.begin(), solution, itm::bad_value<Mode, double>());
-        }
-
-        return true;
-    }
-
-    return false;
+    for (int i = 0; i != variables; ++i)
+        sol.variables[i] = static_cast<var_value>(source.x[i]);
 }
 
 std::istream&

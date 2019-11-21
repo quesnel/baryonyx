@@ -434,7 +434,7 @@ struct BX_EXPORT solver_parameters
     observer_type observer{ observer_type::none };
     storage_type storage{ storage_type::one };
     solver_type solver{ solver_type::bastert };
-    bool debug {false};
+    bool debug{ false };
 };
 
 /**
@@ -730,7 +730,8 @@ struct result
 using solver_started_cb = std::function<void(const solver_parameters& params)>;
 
 /// Function called for each solution improvement.
-using solver_updated_cb = std::function<void(const result& r)>;
+using solver_updated_cb = std::function<
+  void(int remaining_constraints, double value, int loop, double duration)>;
 
 /// finish Function called at the end of the computation.
 using solver_finished_cb = std::function<void(const result& r)>;

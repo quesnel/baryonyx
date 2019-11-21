@@ -23,6 +23,8 @@
 #ifndef ORG_VLEPROJECT_BARYONYX_SOLVER_BIT_ARRAY_HPP
 #define ORG_VLEPROJECT_BARYONYX_SOLVER_BIT_ARRAY_HPP
 
+#include "debug.hpp"
+
 #include <algorithm>
 #include <limits>
 #include <memory>
@@ -44,6 +46,11 @@ class bit_array_impl
 public:
     using underlying_type = uintptr_t;
 
+    static inline constexpr size_t k_one = underlying_type{ 1 };
+    static inline constexpr size_t k_ones =
+      std::numeric_limits<underlying_type>::max();
+    static inline constexpr size_t k_zeros = underlying_type{ 0 };
+
     constexpr static inline int bit_per_block =
       std::numeric_limits<underlying_type>::digits;
 
@@ -56,7 +63,9 @@ public:
       : m_size(size)
       , m_block_size((m_size / bit_per_block) + 1)
       , m_data(std::make_unique<underlying_type[]>(m_block_size))
-    {}
+    {
+        std::fill_n(m_data.get(), m_block_size, k_zeros);
+    }
 
     bit_array_impl(const bit_array_impl& other)
       : m_size(other.m_size)
@@ -109,6 +118,11 @@ public:
 
     ~bit_array_impl() noexcept = default;
 
+    underlying_type block(int index) const noexcept
+    {
+        return m_data[index];
+    }
+
     /**
      * @brief Affect 1 to the bits at @c index.
      *
@@ -116,7 +130,7 @@ public:
      */
     void set(int index) noexcept
     {
-        m_data[b_index(index)] |= UINTMAX_C(1) << b_offset(index);
+        m_data[b_index(index)] |= k_one << b_offset(index);
     }
 
     /**
@@ -126,40 +140,91 @@ public:
      */
     void unset(int index) noexcept
     {
-        m_data[b_index(index)] &= ~(UINTMAX_C(1) << b_offset(index));
+        m_data[b_index(index)] &= ~(k_one << b_offset(index));
     }
 
     void invert(int index) noexcept
     {
-        m_data[b_index(index)] ^= UINTMAX_C(1) << b_offset(index);
+        m_data[b_index(index)] ^= k_one << b_offset(index);
     }
 
     int get(int index) const noexcept
     {
-        return !!(m_data[b_index(index)] & (UINTMAX_C(1) << b_offset(index)));
+        return !!(m_data[b_index(index)] & (k_one << b_offset(index)));
     }
 
     int operator[](int index) const noexcept
     {
-        return !!(m_data[b_index(index)] & (UINTMAX_C(1) << b_offset(index)));
+        return !!(m_data[b_index(index)] & (k_one << b_offset(index)));
     }
 
-    template<typename Iterator>
-    void assign(Iterator first, Iterator last) noexcept
+    void assign(const bit_array_impl& other, int from, int to)
     {
-        int i = 0;
-        for (; first != last; ++first)
-            set(i++, *first);
+        bx_assert(other.size() == size());
+        bx_assert(from >= 0 && from < to && from < size() && to <= size());
+
+        int loop_min, loop_max;
+
+        {
+            const auto index = b_index(from);
+            const auto offset = b_offset(from);
+            loop_min = index;
+
+            if (offset > 0) {
+                ++loop_min;
+
+                underlying_type value_orig = m_data[index];
+                value_orig = (value_orig >> (bit_per_block - offset));
+                value_orig = (value_orig << (bit_per_block - offset));
+
+                underlying_type value_new = other.m_data[index];
+                value_new = (value_new << offset);
+                value_new = (value_new >> offset);
+
+                m_data[index] = value_new | value_orig;
+            }
+        }
+
+        {
+            const auto index = b_index(to);
+            const auto offset = b_offset(to);
+            loop_max = index;
+
+            if (offset > 0) {
+                --loop_max;
+
+                underlying_type value_orig = m_data[index];
+                value_orig = (value_orig << offset);
+                value_orig = (value_orig >> offset);
+
+                underlying_type value_new = other.m_data[index];
+                value_new = (value_new >> (bit_per_block - offset));
+                value_new = (value_new << (bit_per_block - offset));
+
+                m_data[index] = value_new | value_orig;
+            }
+        }
+
+        if (loop_max > loop_min)
+            std::copy_n(other.m_data.get() + loop_min,
+                        loop_max - loop_min,
+                        m_data.get() + loop_min);
     }
 
     void ones() noexcept
     {
-        std::fill_n(m_data.get(), m_block_size, UINTMAX_MAX);
+        std::fill_n(m_data.get(), m_block_size, k_ones);
     }
 
     void zeros() noexcept
     {
-        std::fill_n(m_data.get(), m_block_size, UINTMAX_C(0));
+
+        std::fill_n(m_data.get(), m_block_size, k_zeros);
+    }
+
+    bool empty() const noexcept
+    {
+        return m_data.get() == nullptr;
     }
 
     /**

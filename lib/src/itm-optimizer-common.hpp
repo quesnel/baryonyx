@@ -50,44 +50,123 @@ struct best_solution_recorder
     const context_ptr& m_ctx;
     std::chrono::time_point<std::chrono::steady_clock> m_start;
     mutable std::mutex m_mutex;
-    result m_best;
+
+    std::multiset<raw_result<Mode>, raw_result_compare<Mode>> m_solutions;
+    std::atomic_bool m_have_solution{ false };
+    std::atomic_int m_remaining_constraints{ std::numeric_limits<int>::max() };
+    double m_value{ bad_value<Mode, double>() };
 
     best_solution_recorder(const context_ptr& ctx)
       : m_ctx(ctx)
-      , m_start(std::chrono::steady_clock::now())
-    {}
+    {
+        m_start = std::chrono::steady_clock::now();
+    }
 
-    void copy_to(bit_array& x) const
+    bool copy_best_solution(bit_array& x) const noexcept
     {
         try {
             std::lock_guard<std::mutex> lock(m_mutex);
-            for (int i = 0, e = length(m_best.solutions.back().variables);
-                 i != e;
-                 ++i)
-                if (m_best.solutions.back().variables[i])
-                    x.set(i);
-                else
-                    x.unset(i);
+
+            if (m_solutions.empty() || m_solutions.begin()->x.empty())
+                return false;
+
+            x = m_solutions.begin()->x;
         } catch (const std::exception& e) {
-            error(m_ctx, "sync optimization error: {}", e.what());
+            error(m_ctx, "copy_best_solution: {}", e.what());
+            return false;
         }
+
+        return true;
+    }
+
+    bool copy_best_solution(bit_array& x, int from, int to) const noexcept
+    {
+        try {
+            std::lock_guard<std::mutex> lock(m_mutex);
+
+            if (m_solutions.empty() || m_solutions.begin()->x.empty())
+                return false;
+
+            x.assign(m_solutions.begin()->x, from, to);
+        } catch (const std::exception& e) {
+            error(m_ctx, "copy_best_solution: {}", e.what());
+            return false;
+        }
+
+        return true;
+    }
+
+    template<typename Random>
+    bool copy_any_solution(bit_array& x, Random& rng) const noexcept
+    {
+        try {
+            std::lock_guard<std::mutex> lock(m_mutex);
+
+            if (m_solutions.empty() || m_solutions.begin()->x.empty())
+                return false;
+
+            const std::size_t zero{ 0 };
+            const std::size_t max{ std::size(m_solutions) - 1 };
+
+            std::uniform_int_distribution<std::size_t> dist(zero, max);
+
+            auto it = m_solutions.begin();
+            std::advance(it, dist(rng));
+            x = it->x;
+        } catch (const std::exception& e) {
+            error(m_ctx, "copy_any_solution: {}", e.what());
+            return false;
+        }
+
+        return true;
+    }
+
+    template<typename Random>
+    bool copy_any_solution(bit_array& x, Random& rng, int from, int to) const
+      noexcept
+    {
+        try {
+            std::lock_guard<std::mutex> lock(m_mutex);
+
+            if (m_solutions.empty() || m_solutions.begin()->x.empty())
+                return false;
+
+            const std::size_t zero{ 0 };
+            const std::size_t max{ std::size(m_solutions) - 1 };
+
+            std::uniform_int_distribution<std::size_t> dist(zero, max);
+
+            auto it = m_solutions.begin();
+            std::advance(it, dist(rng));
+            x.assign(it->x, from, to);
+        } catch (const std::exception& e) {
+            error(m_ctx, "copy_any_solution: {}", e.what());
+            return false;
+        }
+
+        return true;
     }
 
     void try_advance(const bit_array& solution,
                      int remaining_constraints,
                      int loop)
     {
+        if (m_have_solution)
+            return;
+
         try {
             std::lock_guard<std::mutex> lock(m_mutex);
 
-            if (store_advance<Mode>(m_best, remaining_constraints, solution)) {
-                m_best.remaining_constraints = remaining_constraints;
-                m_best.loop = loop;
-                m_best.duration =
-                  compute_duration(m_start, std::chrono::steady_clock::now());
+            if (m_remaining_constraints > remaining_constraints) {
+                m_remaining_constraints = remaining_constraints;
+                const auto end = std::chrono::steady_clock::now();
+                const auto duration = compute_duration(m_start, end);
+
+                m_solutions.emplace(
+                  solution, remaining_constraints, duration, loop);
 
                 if (m_ctx->update)
-                    m_ctx->update(m_best);
+                    m_ctx->update(remaining_constraints, 0.0, loop, duration);
             }
         } catch (const std::exception& e) {
             error(m_ctx, "sync optimization error: {}", e.what());
@@ -98,16 +177,23 @@ struct best_solution_recorder
     {
         try {
             std::lock_guard<std::mutex> lock(m_mutex);
+            if (!m_have_solution) {
+                m_solutions.clear();
+                m_have_solution = true;
+            }
 
-            if (store_solution<Mode>(m_ctx, m_best, solution, value)) {
-                m_best.remaining_constraints = 0;
-                m_best.status = result_status::success;
-                m_best.loop = loop;
-                m_best.duration =
-                  compute_duration(m_start, std::chrono::steady_clock::now());
+            auto it = m_solutions.find(value);
+            if (it == m_solutions.end() || it->x != solution) {
+                const auto end = std::chrono::steady_clock::now();
+                const auto duration = compute_duration(m_start, end);
 
-                if (m_ctx->update)
-                    m_ctx->update(m_best);
+                auto ret =
+                  m_solutions.emplace(solution, value, duration, loop);
+
+                if (m_ctx->update && ret == m_solutions.begin())
+                    m_ctx->update(0, value, loop, duration);
+
+                info(m_ctx, "  - {} solutions found\n", m_solutions.size());
             }
         } catch (const std::exception& e) {
             error(m_ctx, "sync optimization error: {}", e.what());
@@ -131,7 +217,7 @@ struct optimize_functor
       , m_thread_id(thread_id)
     {}
 
-    void operator()(std::atomic_bool& stop_task,
+    void operator()(const std::atomic_bool& stop_task,
                     best_solution_recorder<Float, Mode>& best_recorder,
                     const std::vector<merged_constraint>& constraints,
                     int variables,
@@ -183,7 +269,7 @@ struct optimize_functor
             auto kappa = static_cast<Float>(p.kappa_min);
             auto best_remaining = INT_MAX;
 
-            initializer.reinit(slv, x, is_a_solution, m_best.x, best_recorder);
+            initializer.reinit(slv, x, is_a_solution, best_recorder);
             is_a_solution = false;
 
             for (int i = 0; !stop_task.load() && i != p.limit; ++i) {
@@ -323,16 +409,18 @@ template<typename Solver, typename Float, typename Mode, typename Cost>
 inline result
 optimize_problem(const context_ptr& ctx, const problem& pb)
 {
+    result r;
+
     if (ctx->start)
         ctx->start(ctx->parameters);
 
     auto constraints{ make_merged_constraints(ctx, pb) };
     if (constraints.empty() || pb.vars.values.empty())
-        return result{};
+        return r;
 
     random_engine rng(init_random_generator_seed(ctx));
 
-    auto variables = numeric_cast<int>(pb.vars.values.size());
+    auto variables = length(pb.vars.values);
     auto cost = Cost(pb.objective, variables);
     auto cost_constant = pb.objective.value;
 
@@ -341,13 +429,7 @@ optimize_problem(const context_ptr& ctx, const problem& pb)
     std::vector<optimize_functor<Solver, Float, Mode, Cost>> functors;
     std::vector<std::thread> pool(thread);
 
-    best_solution_recorder<Float, Mode> result(ctx);
-
-    result.m_best.strings = pb.strings;
-    result.m_best.affected_vars = pb.affected_vars;
-    result.m_best.variable_name = pb.vars.names;
-    result.m_best.variables = variables;
-    result.m_best.constraints = length(constraints);
+    best_solution_recorder<Float, Mode> best_recorder(ctx);
 
     auto seeds = generate_seed(rng, thread);
 
@@ -358,12 +440,12 @@ optimize_problem(const context_ptr& ctx, const problem& pb)
         functors.emplace_back(ctx, i, seeds[i]);
 
     for (unsigned i = 0u; i != thread; ++i)
-        pool[i] = std::thread(functors[i],
+        pool[i] = std::thread(std::ref(functors[i]),
                               std::ref(stop_task),
-                              std::ref(result),
-                              std::ref(constraints),
+                              std::ref(best_recorder),
+                              std::cref(constraints),
                               variables,
-                              std::ref(cost),
+                              std::cref(cost),
                               cost_constant);
 
     // User limits the optimization process. The current thread turns into
@@ -380,10 +462,68 @@ optimize_problem(const context_ptr& ctx, const problem& pb)
     for (auto& t : pool)
         t.join();
 
-    if (ctx->finish)
-        ctx->finish(result.m_best);
+    r.strings = pb.strings;
+    r.affected_vars = pb.affected_vars;
+    r.variable_name = pb.vars.names;
+    r.variables = variables;
+    r.constraints = length(constraints);
 
-    return result.m_best;
+    if (best_recorder.m_solutions.empty()) {
+        r.status = result_status::time_limit_reached;
+    } else if (!best_recorder.m_solutions.begin()->is_solution()) {
+        r.status = result_status::time_limit_reached;
+
+        r.duration = best_recorder.m_solutions.begin()->duration;
+        r.loop = best_recorder.m_solutions.begin()->loop;
+        r.remaining_constraints =
+          best_recorder.m_solutions.begin()->remaining_constraints;
+    } else {
+        r.status = result_status::success;
+
+        r.duration = best_recorder.m_solutions.begin()->duration;
+        r.loop = best_recorder.m_solutions.begin()->loop;
+        r.remaining_constraints =
+          best_recorder.m_solutions.begin()->remaining_constraints;
+
+        switch (ctx->parameters.storage) {
+        case solver_parameters::storage_type::one: {
+            r.solutions.resize(1);
+            convert(
+              *best_recorder.m_solutions.begin(), r.solutions[0], variables);
+        } break;
+
+        case solver_parameters::storage_type::bound: {
+            if (best_recorder.m_solutions.size() == 1) {
+                r.solutions.resize(1);
+                convert(*best_recorder.m_solutions.begin(),
+                        r.solutions[0],
+                        variables);
+            } else if (best_recorder.m_solutions.size() >= 2) {
+                r.solutions.resize(2);
+                convert(*best_recorder.m_solutions.begin(),
+                        r.solutions[1],
+                        variables);
+                convert(*best_recorder.m_solutions.rbegin(),
+                        r.solutions[0],
+                        variables);
+            }
+        } break;
+
+        case solver_parameters::storage_type::five: {
+            const size_t max =
+              std::min(size_t{ 5 }, std::size(best_recorder.m_solutions));
+            r.solutions.resize(max);
+            auto it = best_recorder.m_solutions.begin();
+            for (size_t i{ 0 }; i != max; ++i)
+                convert(*it++, r.solutions[max - i], variables);
+        } break;
+        }
+    }
+
+    if (ctx->finish)
+        ctx->finish(r);
+
+    return r;
 }
 
 } // namespace itm
