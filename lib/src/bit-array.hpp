@@ -29,8 +29,6 @@
 #include <limits>
 #include <memory>
 
-#include <cstdint>
-
 namespace baryonyx {
 
 /**
@@ -44,7 +42,7 @@ namespace baryonyx {
 class bit_array_impl
 {
 public:
-    using underlying_type = uintptr_t;
+    using underlying_type = std::size_t;
 
     static inline constexpr size_t k_one = underlying_type{ 1 };
     static inline constexpr size_t k_ones =
@@ -120,6 +118,8 @@ public:
 
     underlying_type block(int index) const noexcept
     {
+        bx_assert(index >= 0 && index < m_block_size);
+
         return m_data[index];
     }
 
@@ -130,6 +130,8 @@ public:
      */
     void set(int index) noexcept
     {
+        bx_assert(index >= 0 && index < m_size);
+
         m_data[b_index(index)] |= k_one << b_offset(index);
     }
 
@@ -140,21 +142,29 @@ public:
      */
     void unset(int index) noexcept
     {
+        bx_assert(index >= 0 && index < m_size);
+
         m_data[b_index(index)] &= ~(k_one << b_offset(index));
     }
 
     void invert(int index) noexcept
     {
+        bx_assert(index >= 0 && index < m_size);
+
         m_data[b_index(index)] ^= k_one << b_offset(index);
     }
 
     int get(int index) const noexcept
     {
+        bx_assert(index >= 0 && index < m_size);
+
         return !!(m_data[b_index(index)] & (k_one << b_offset(index)));
     }
 
     int operator[](int index) const noexcept
     {
+        bx_assert(index >= 0 && index < m_size);
+
         return !!(m_data[b_index(index)] & (k_one << b_offset(index)));
     }
 
@@ -305,12 +315,12 @@ public:
 
     int get(int index) const noexcept
     {
-        return !!(m_data[b_index(index)] & (UINTMAX_C(1) << b_offset(index)));
+        return !!(m_data[b_index(index)] & (k_one << b_offset(index)));
     }
 
     int operator[](int index) const noexcept
     {
-        return !!(m_data[b_index(index)] & (UINTMAX_C(1) << b_offset(index)));
+        return !!(m_data[b_index(index)] & (k_one << b_offset(index)));
     }
 };
 
@@ -336,13 +346,13 @@ public:
     int get(int index) const noexcept
     {
         return return_value[!!(m_data[b_index(index)] &
-                               (UINTMAX_C(1) << b_offset(index)))];
+                               (k_one << b_offset(index)))];
     }
 
     int operator[](int index) const noexcept
     {
         return return_value[!!(m_data[b_index(index)] &
-                               (UINTMAX_C(1) << b_offset(index)))];
+                               (k_one << b_offset(index)))];
     }
 };
 

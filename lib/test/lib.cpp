@@ -825,70 +825,72 @@ check_bit_array()
     baryonyx::bit_array b(baryonyx::bit_array::bit_per_block * 2);
     baryonyx::bit_array c(baryonyx::bit_array::bit_per_block * 2);
 
+    constexpr auto middle = baryonyx::bit_array::bit_per_block / 2;
+
     {
         b.ones();
         c.zeros();
 
-        Ensures(b.block(0) == 0xffffffffffffffff);
-        Ensures(b.block(1) == 0xffffffffffffffff);
-        Ensures(c.block(0) == 0x0);
-        Ensures(c.block(1) == 0x0);
+        Ensures(b.block(0) == baryonyx::bit_array::k_ones);
+        Ensures(b.block(1) == baryonyx::bit_array::k_ones);
+        Ensures(c.block(0) == baryonyx::bit_array::k_zeros);
+        Ensures(c.block(1) == baryonyx::bit_array::k_zeros);
 
         b.assign(c,
                  baryonyx::bit_array::bit_per_block / 2,
                  baryonyx::bit_array::bit_per_block * 3 / 2);
 
-        Ensures(b.block(0) == 0xffffffff00000000);
-        Ensures(b.block(1) == 0x00000000ffffffff);
+        Ensures(b.block(0) == baryonyx::bit_array::k_ones << middle);
+        Ensures(b.block(1) == baryonyx::bit_array::k_ones >> middle);
     }
 
     {
         b.ones();
         c.zeros();
 
-        Ensures(b.block(0) == 0xffffffffffffffff);
-        Ensures(b.block(1) == 0xffffffffffffffff);
-        Ensures(c.block(0) == 0x0);
-        Ensures(c.block(1) == 0x0);
+        Ensures(b.block(0) == baryonyx::bit_array::k_ones);
+        Ensures(b.block(1) == baryonyx::bit_array::k_ones);
+        Ensures(c.block(0) == baryonyx::bit_array::k_zeros);
+        Ensures(c.block(1) == baryonyx::bit_array::k_zeros);
 
         b.assign(c, 0, baryonyx::bit_array::bit_per_block / 2);
 
-        Ensures(b.block(0) == 0x00000000ffffffff);
-        Ensures(b.block(1) == 0xffffffffffffffff);
+        Ensures(b.block(0) == baryonyx::bit_array::k_ones >> middle);
+        Ensures(b.block(1) == baryonyx::bit_array::k_ones);
     }
 
     {
         b.ones();
         c.zeros();
 
-        Ensures(b.block(0) == 0xffffffffffffffff);
-        Ensures(b.block(1) == 0xffffffffffffffff);
-        Ensures(c.block(0) == 0x0);
-        Ensures(c.block(1) == 0x0);
+        Ensures(b.block(0) == baryonyx::bit_array::k_ones);
+        Ensures(b.block(1) == baryonyx::bit_array::k_ones);
+        Ensures(c.block(0) == baryonyx::bit_array::k_zeros);
+        Ensures(c.block(1) == baryonyx::bit_array::k_zeros);
 
         b.assign(c,
                  baryonyx::bit_array::bit_per_block / 2,
                  baryonyx::bit_array::bit_per_block * 2);
 
-        Ensures(b.block(0) == 0xffffffff00000000);
-        Ensures(b.block(1) == 0x0000000000000000);
+        Ensures(b.block(0) == baryonyx::bit_array::k_ones << middle);
+        Ensures(b.block(1) == baryonyx::bit_array::k_zeros);
     }
 
     {
         b.ones();
         c.zeros();
 
-        Ensures(b.block(0) == 0xffffffffffffffff);
-        Ensures(b.block(1) == 0xffffffffffffffff);
-        Ensures(c.block(0) == 0x0);
-        Ensures(c.block(1) == 0x0);
+        Ensures(b.block(0) == baryonyx::bit_array::k_ones);
+        Ensures(b.block(1) == baryonyx::bit_array::k_ones);
+        Ensures(c.block(0) == baryonyx::bit_array::k_zeros);
+        Ensures(c.block(1) == baryonyx::bit_array::k_zeros);
 
         b.assign(c,
                  baryonyx::bit_array::bit_per_block * 2 - 1,
                  baryonyx::bit_array::bit_per_block * 2);
 
-        Ensures(b.block(0) == 0xffffffffffffffff);
-        Ensures(b.block(1) == 0xfffffffffffffffe);
+        Ensures(b.block(0) == baryonyx::bit_array::k_ones);
+        Ensures(b.block(1) == baryonyx::bit_array::k_ones - 1);
     }
 }
 
