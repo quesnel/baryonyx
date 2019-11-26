@@ -266,10 +266,12 @@ struct optimize_functor
         bool is_a_solution = false;
 
         while (!stop_task.load()) {
-            auto kappa = static_cast<Float>(p.kappa_min);
+            // auto kappa = static_cast<Float>(p.kappa_min);
+
+            auto kappa = initializer.reinit(
+              slv, x, is_a_solution, best_recorder, p.kappa_min, p.kappa_max);
             auto best_remaining = INT_MAX;
 
-            initializer.reinit(slv, x, is_a_solution, best_recorder);
             is_a_solution = false;
 
             for (int i = 0; !stop_task.load() && i != p.limit; ++i) {

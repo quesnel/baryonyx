@@ -734,10 +734,12 @@ public:
         }
     }
 
-    void reinit(Solver& slv,
-                bit_array& x,
-                bool is_a_solution,
-                const best_solution_recorder<Float, Mode>& best_recorder)
+    Float reinit(Solver& slv,
+                 bit_array& x,
+                 bool is_a_solution,
+                 const best_solution_recorder<Float, Mode>& best_recorder,
+                 double kappa_min,
+                 double /*kappa_max*/)
     {
         // x.clear();
         slv.reset();
@@ -753,7 +755,8 @@ public:
 
         next_state(is_a_solution);
 
-        if (single == single_automaton::init) {
+        switch (single) {
+        case single_automaton::init:
             switch (base) {
             case init_automaton::random:
                 for (int i = 0; i != slv.n; ++i)
@@ -804,7 +807,19 @@ public:
                 init_crossover(slv, x, best_recorder);
                 break;
             }
+            break;
+        case single_automaton::improve_x_1:
+            kappa_min += (kappa_max - kappa_min) / 10;
+            break;
+        case single_automaton::improve_x_2:
+            kappa_min += (kappa_max - kappa_min) / 5;
+            break;
+        case single_automaton::improve_x_3:
+            kappa_min += (kappa_max - kappa_min) / 2.5;
+            break;
         }
+
+        return static_cast<Float>(kappa_min);
     }
 };
 
