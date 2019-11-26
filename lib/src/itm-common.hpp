@@ -739,7 +739,7 @@ public:
                  bool is_a_solution,
                  const best_solution_recorder<Float, Mode>& best_recorder,
                  double kappa_min,
-                 double /*kappa_max*/)
+                 double kappa_max)
     {
         // x.clear();
         slv.reset();
@@ -809,13 +809,13 @@ public:
             }
             break;
         case single_automaton::improve_x_1:
-            kappa_min += (kappa_max - kappa_min) / 10;
+            kappa_min += (kappa_max - kappa_min) / 20;
             break;
         case single_automaton::improve_x_2:
-            kappa_min += (kappa_max - kappa_min) / 5;
+            kappa_min += (kappa_max - kappa_min) / 10;
             break;
         case single_automaton::improve_x_3:
-            kappa_min += (kappa_max - kappa_min) / 2.5;
+            kappa_min += (kappa_max - kappa_min) / 5;
             break;
         }
 
