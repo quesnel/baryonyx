@@ -5,6 +5,15 @@ Gauthier Quesnel <gauthier.quesnel@inra.fr>
 
 Major changes:
 
+* Initializer: In optimization mode, Baryonyx stores all solutions found during
+  search. Two algorithms are used to initialize the X vector:
+  - A crossover using two solutions is used to re-initialize the solver.
+  - A mutating operation between a Bastert or partial solution is used.
+
+* Quadratic objective function: Experimental support.
+
+* Z-coefficient: Enable the Z-coefficient solver.
+
 * random-solver: This solver is enabled with the `--random` command line option
   and in the `solver_parameters::solver_type` and `solver_parameters::solver`
   options. It provides a pure random solver without any preference and
@@ -27,9 +36,7 @@ Small changes:
   ** add reset function to reinit solver
   ** solver: move normalized cost in thread part
 
-
 * optimizer:
-  ** reuse the current x even if it is not a solution
   ** replace time limit detection algorithm
   ** add pi signed change detection to build a new constraint remaining list
 
@@ -40,6 +47,7 @@ Small changes:
   ** fix time-limit parameter assignation
   ** missing or malformed parameters equal error
   ** fix infinity norm string
+  ** add a `--debug` mode.
 
 * CMake:
   ** reduce warning level for msvc
