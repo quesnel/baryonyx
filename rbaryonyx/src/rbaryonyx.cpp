@@ -35,24 +35,27 @@ r_solver_started_cb(const baryonyx::solver_parameters& /*params*/)
 }
 
 static void
-r_solver_updated_cb(const baryonyx::result& r)
+r_solver_updated_cb(int remaining_constraints,
+                    double value,
+                    int loop,
+                    double duration)
 {
-    if (r.status != baryonyx::result_status::success) {
+    if (remaining_constraints > 0) {
         Rprintf("  - Constraints remaining: %d (loop: %d t: %fs)\n",
-                r.remaining_constraints,
-                r.loop,
-                r.duration);
+                remaining_constraints,
+                loop,
+                duration);
     } else {
-        if (r.loop >= 0)
+        if (loop >= 0)
             Rprintf("  - Solution found: %f (loop: %d t: %fs)\n",
-                    r.solutions.back().value,
-                    r.loop,
-                    r.duration);
+                    value,
+                    loop,
+                    duration);
         else
             Rprintf("  - Solution found via push: %f (loop: %d t: %fs)\n",
-                    r.solutions.back().value,
-                    -r.loop,
-                    r.duration);
+                    value,
+                    -loop,
+                    duration);
     }
 
     R_FlushConsole();
