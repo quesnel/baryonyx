@@ -52,7 +52,7 @@ struct best_solution_recorder
     mutable std::mutex m_mutex;
 
     std::multiset<raw_result<Mode>, raw_result_compare<Mode>> m_solutions;
-    std::atomic_bool m_have_solution{ false };
+    std::atomic_size_t m_solution_number{ 0 };
     std::atomic_int m_remaining_constraints{ std::numeric_limits<int>::max() };
     double m_value{ bad_value<Mode, double>() };
 
@@ -64,10 +64,13 @@ struct best_solution_recorder
 
     bool copy_best_solution(bit_array& x) const noexcept
     {
+        if (!m_solution_number)
+            return false;
+
         try {
             std::lock_guard<std::mutex> lock(m_mutex);
 
-            if (m_solutions.empty() || m_solutions.begin()->x.empty())
+            if (m_solutions.begin()->x.empty())
                 return false;
 
             x = m_solutions.begin()->x;
@@ -81,10 +84,13 @@ struct best_solution_recorder
 
     bool copy_best_solution(bit_array& x, int from, int to) const noexcept
     {
+        if (!m_solution_number)
+            return false;
+
         try {
             std::lock_guard<std::mutex> lock(m_mutex);
 
-            if (m_solutions.empty() || m_solutions.begin()->x.empty())
+            if (m_solutions.begin()->x.empty())
                 return false;
 
             x.assign(m_solutions.begin()->x, from, to);
@@ -99,10 +105,13 @@ struct best_solution_recorder
     template<typename Random>
     bool copy_any_solution(bit_array& x, Random& rng) const noexcept
     {
+        if (!m_solution_number)
+            return false;
+
         try {
             std::lock_guard<std::mutex> lock(m_mutex);
 
-            if (m_solutions.empty() || m_solutions.begin()->x.empty())
+            if (m_solutions.begin()->x.empty())
                 return false;
 
             const std::size_t zero{ 0 };
@@ -125,10 +134,13 @@ struct best_solution_recorder
     bool copy_any_solution(bit_array& x, Random& rng, int from, int to) const
       noexcept
     {
+        if (!m_solution_number)
+            return false;
+
         try {
             std::lock_guard<std::mutex> lock(m_mutex);
 
-            if (m_solutions.empty() || m_solutions.begin()->x.empty())
+            if (m_solutions.begin()->x.empty())
                 return false;
 
             const std::size_t zero{ 0 };
@@ -151,7 +163,7 @@ struct best_solution_recorder
                      int remaining_constraints,
                      int loop)
     {
-        if (m_have_solution)
+        if (m_solution_number)
             return;
 
         try {
@@ -177,10 +189,8 @@ struct best_solution_recorder
     {
         try {
             std::lock_guard<std::mutex> lock(m_mutex);
-            if (!m_have_solution) {
+            if (m_solution_number == 0)
                 m_solutions.clear();
-                m_have_solution = true;
-            }
 
             auto it = m_solutions.find(value);
             if (it == m_solutions.end() || it->x != solution) {
@@ -193,11 +203,18 @@ struct best_solution_recorder
                 if (m_ctx->update && ret == m_solutions.begin())
                     m_ctx->update(0, value, loop, duration);
 
+                m_solution_number = m_solutions.size();
+
                 info(m_ctx, "  - {} solutions found\n", m_solutions.size());
             }
         } catch (const std::exception& e) {
             error(m_ctx, "sync optimization error: {}", e.what());
         }
+    }
+
+    std::size_t size() const noexcept
+    {
+        return m_solution_number;
     }
 };
 

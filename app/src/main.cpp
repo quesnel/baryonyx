@@ -704,6 +704,9 @@ assign_parameter(baryonyx::solver_parameters& params,
         else if (value == "cycle")
             params.init_policy =
               baryonyx::solver_parameters::init_policy_type::cycle;
+        else if (value == "crossover-cycle")
+            params.init_policy =
+              baryonyx::solver_parameters::init_policy_type::crossover_cycle;
         else
             return command_line_status::init_policy_error;
 

@@ -227,8 +227,10 @@ get_init_policy(int type)
         return bx::solver_parameters::init_policy_type::optimistic_solve;
     case 3:
         return bx::solver_parameters::init_policy_type::cycle;
+    case 4:
+        return bx::solver_parameters::init_policy_type::crossover_cycle;
     default:
-        return bx::solver_parameters::init_policy_type::pessimistic_solve;
+        return bx::solver_parameters::init_policy_type::bastert;
     }
 }
 
@@ -413,6 +415,7 @@ convert_result(const baryonyx::result& res, bool minimize)
 //'    - 1: pessimistic_solve,
 //'    - 2: optimistic_solve,
 //'    - 3: cycle
+//'    - 4: crossover_cycle
 //'
 //' @param float_type the type of real used into the solver. Default is to
 //'     use the C/C++ double representation.
@@ -571,6 +574,7 @@ solve_01lp_problem(std::string file_path,
 //'    - 1: pessimistic_solve,
 //'    - 2: optimistic_solve,
 //'    - 3: cycle
+//'    - 4: crossover_cycle
 //'
 //' @param float_type the type of real used into the solver. Default is to
 //'     use the C/C++ double representation.

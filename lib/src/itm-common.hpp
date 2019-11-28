@@ -376,6 +376,170 @@ constraint(Iterator it)
     return detail::constraint(it);
 }
 
+enum class initializer_operator
+{
+    mutation_bastert_random,
+    mutation_bastert_any,
+    mutation_bastert_best,
+    mutation_pessimistic_random,
+    mutation_pessimistic_any,
+    mutation_pessimistic_best,
+    mutation_optimistic_random,
+    mutation_optimistic_any,
+    mutation_optimistic_best,
+    crossover_operation_any,
+    crossover_operation_best,
+};
+
+enum class initializer_status
+{
+    init,
+    improve_x_1,
+    improve_x_2,
+    improve_x_3,
+    improve_x_4,
+};
+
+enum class initializer_cycle
+{
+    none,
+    improve_only,
+    mutation,
+    mutation_cycle,
+    crossover,
+    crossover_cycle,
+    mutation_crossover,
+};
+
+inline std::string_view
+to_string_view(initializer_operator op) noexcept
+{
+    switch (op) {
+    case initializer_operator::mutation_bastert_random:
+        return std::string_view("mutation_bastert_random");
+    case initializer_operator::mutation_bastert_any:
+        return std::string_view("mutation_bastert_any");
+    case initializer_operator::mutation_bastert_best:
+        return std::string_view("mutation_bastert_best");
+    case initializer_operator::mutation_pessimistic_random:
+        return std::string_view("mutation_pessimistic_random");
+    case initializer_operator::mutation_pessimistic_any:
+        return std::string_view("mutation_pessimistic_any");
+    case initializer_operator::mutation_pessimistic_best:
+        return std::string_view("mutation_pessimistic_best");
+    case initializer_operator::mutation_optimistic_random:
+        return std::string_view("mutation_optimistic_random");
+    case initializer_operator::mutation_optimistic_any:
+        return std::string_view("mutation_optimistic_any");
+    case initializer_operator::mutation_optimistic_best:
+        return std::string_view("mutation_optimistic_best");
+    case initializer_operator::crossover_operation_any:
+        return std::string_view("crossover_operation_any");
+    case initializer_operator::crossover_operation_best:
+        return std::string_view("crossover_operation_best");
+
+    default:
+        bx_reach();
+    }
+}
+
+inline std::string_view
+to_string_view(initializer_status status) noexcept
+{
+    switch (status) {
+    case initializer_status::init:
+        return std::string_view("init");
+    case initializer_status::improve_x_1:
+        return std::string_view("improve_x_1");
+    case initializer_status::improve_x_2:
+        return std::string_view("improve_x_2");
+    case initializer_status::improve_x_3:
+        return std::string_view("improve_x_3");
+    case initializer_status::improve_x_4:
+        return std::string_view("improve_x_4");
+
+    default:
+        bx_reach();
+    }
+}
+
+inline std::string_view
+to_string_view(initializer_cycle cycle) noexcept
+{
+    switch (cycle) {
+    case initializer_cycle::none:
+        return std::string_view("none");
+    case initializer_cycle::improve_only:
+        return std::string_view("improve_only");
+    case initializer_cycle::mutation:
+        return std::string_view("mutation");
+    case initializer_cycle::mutation_cycle:
+        return std::string_view("mutation_cycle");
+    case initializer_cycle::crossover:
+        return std::string_view("crossover");
+    case initializer_cycle::crossover_cycle:
+        return std::string_view("crossover_cycle");
+    case initializer_cycle::mutation_crossover:
+        return std::string_view("mutation_crossover");
+
+    default:
+        bx_reach();
+    }
+}
+
+inline initializer_operator
+next_mutation(initializer_operator mutation) noexcept
+{
+    switch (mutation) {
+    case initializer_operator::mutation_bastert_random:
+        return initializer_operator::mutation_bastert_any;
+    case initializer_operator::mutation_bastert_any:
+        return initializer_operator::mutation_bastert_best;
+    case initializer_operator::mutation_bastert_best:
+        return initializer_operator::mutation_pessimistic_random;
+    case initializer_operator::mutation_pessimistic_random:
+        return initializer_operator::mutation_pessimistic_any;
+    case initializer_operator::mutation_pessimistic_any:
+        return initializer_operator::mutation_pessimistic_best;
+    case initializer_operator::mutation_pessimistic_best:
+        return initializer_operator::mutation_optimistic_random;
+    case initializer_operator::mutation_optimistic_random:
+        return initializer_operator::mutation_optimistic_any;
+    case initializer_operator::mutation_optimistic_any:
+        return initializer_operator::mutation_optimistic_best;
+    case initializer_operator::mutation_optimistic_best:
+        return initializer_operator::mutation_bastert_random;
+
+    default:
+        bx_reach();
+    }
+}
+
+inline initializer_operator
+next_crossover(initializer_operator mutation) noexcept
+{
+    switch (mutation) {
+    case initializer_operator::crossover_operation_any:
+        return initializer_operator::crossover_operation_best;
+    case initializer_operator::crossover_operation_best:
+        return initializer_operator::crossover_operation_any;
+
+    default:
+        bx_reach();
+    }
+}
+
+inline initializer_operator
+next_mutation_crossover(initializer_operator current,
+                        initializer_operator mutation,
+                        initializer_operator crossover) noexcept
+{
+    return (current == initializer_operator::crossover_operation_best ||
+            current == initializer_operator::crossover_operation_any)
+             ? next_mutation(mutation)
+             : next_crossover(crossover);
+}
+
 template<typename Float, typename Mode>
 struct best_solution_recorder;
 
@@ -384,55 +548,111 @@ class solver_initializer
 {
     std::bernoulli_distribution dist;
     std::bernoulli_distribution toss_up;
-    bool use_cycle{ true };
 
-    enum class single_automaton : std::uint8_t
+    initializer_operator current =
+      initializer_operator::mutation_bastert_random;
+    initializer_operator mutation_start =
+      initializer_operator::mutation_bastert_random;
+    initializer_operator crossover_start =
+      initializer_operator::crossover_operation_best;
+    initializer_cycle cycle = initializer_cycle::mutation_cycle;
+    initializer_status status = initializer_status::init;
+
+    std::array<unsigned, 4> cycle_counter;
+
+    void random_x(Solver& slv, bit_array& x)
     {
-        init,
-        improve_x_1,
-        improve_x_2,
-        improve_x_3
-    };
+        for (int i = 0; i != slv.n; ++i)
+            if (toss_up(slv.rng))
+                x.set(i);
+            else
+                x.unset(i);
+    }
 
-    enum class cycle_automaton : std::uint8_t
+    void next_operator() noexcept
     {
-        bastert,
-        bastert_crossover,
-        pessimistic_solve,
-        pessimistic_crossover,
-        optimistic_solve,
-        optimistic_crossover
-    };
+        switch (cycle) {
+        case initializer_cycle::none:
+        case initializer_cycle::improve_only:
+            break;
+        case initializer_cycle::mutation:
+            current = mutation_start;
+            break;
+        case initializer_cycle::mutation_cycle:
+            current = next_mutation(mutation_start);
+            mutation_start = current;
+            break;
+        case initializer_cycle::crossover:
+            current = crossover_start;
+            break;
+        case initializer_cycle::crossover_cycle:
+            current = next_crossover(crossover_start);
+            crossover_start = current;
+            break;
+        case initializer_cycle::mutation_crossover:
+            current = next_mutation_crossover(
+              current, mutation_start, crossover_start);
 
-    std::array<unsigned, 4> cycle_counter = { 0, 0, 0, 0 };
+            if (current == initializer_operator::crossover_operation_best ||
+                current == initializer_operator::crossover_operation_any)
+                crossover_start = current;
+            else
+                mutation_start = current;
 
-    enum class init_automaton : std::uint8_t
+            break;
+        }
+    }
+
+    void compute(bool is_a_new_solution)
     {
-        random,
-        current_best,
-        best_recorder
-    };
+        if (is_a_new_solution) {
+            status = initializer_status::init;
+        } else {
+            if (cycle == initializer_cycle::none) {
+                status = initializer_status::init;
+            } else {
+                switch (status) {
+                case initializer_status::init:
+                    break;
+                case initializer_status::improve_x_1:
+                    status = initializer_status::improve_x_2;
+                    break;
+                case initializer_status::improve_x_2:
+                    status = initializer_status::improve_x_3;
+                    break;
+                case initializer_status::improve_x_3:
+                    status = initializer_status::improve_x_4;
+                    break;
+                case initializer_status::improve_x_4:
+                    status = initializer_status::init;
+                    break;
+                default:
+                    bx_reach();
+                }
+            }
+        }
 
-    static inline const std::string_view single_automaton_string[] =
-      { "init", "improve_x_1", "improve_x_2", "improve_x_3" };
+        if (status == initializer_status::init) {
+            next_operator();
+            status = initializer_status::improve_x_1;
+        }
 
-    static inline const std::string_view cycle_automaton_string[] = {
-        "bastert",           "bastert_crossover",
-        "pessimistic_solve", "pessimistic_solve_crossver",
-        "optimistic_solve",  "optimistic_solve_crossover",
-    };
+        to_log(stdout,
+               6u,
+               "- current {} mutation_start {} crossover_start {} "
+               "cycle {} status {}\n",
+               to_string_view(current),
+               to_string_view(mutation_start),
+               to_string_view(crossover_start),
+               to_string_view(cycle),
+               to_string_view(status));
+    }
 
-    static inline const std::string_view init_automaton_string[] =
-      { "random", "current_best", "best_recorder" };
-
-    single_automaton single{ single_automaton::init };
-    cycle_automaton cycle{ cycle_automaton::pessimistic_solve };
-    init_automaton base{ init_automaton::random };
-
-    void init_crossover(
+    bool init_crossover(
       Solver& slv,
       bit_array& x,
-      const best_solution_recorder<Float, Mode>& best_recorder)
+      const best_solution_recorder<Float, Mode>& best_recorder,
+      bool use_best)
     {
         to_log(stdout, 6u, "initializer: crossover {}\n", cycle_counter[3]);
         ++cycle_counter[3];
@@ -443,10 +663,10 @@ class solver_initializer
         std::uniform_int_distribution<int> uniform_dist(min, max);
         const int split_at = uniform_dist(slv.rng);
 
-        // TODO Need to improve this part to avoid bit-per-bit copy using the
-        // std::uint64_t underlying type.
+        if (best_recorder.size() < 2)
+            return false;
 
-        if (toss_up(slv.rng)) {
+        if (use_best) {
             if (toss_up(slv.rng)) {
                 best_recorder.copy_any_solution(x, slv.rng, 0, split_at);
                 best_recorder.copy_best_solution(x, split_at, slv.n);
@@ -458,6 +678,8 @@ class solver_initializer
             best_recorder.copy_any_solution(x, slv.rng, 0, split_at);
             best_recorder.copy_any_solution(x, slv.rng, split_at, slv.n);
         }
+
+        return true;
     }
 
     void init_bastert(Solver& slv, bit_array& x) noexcept
@@ -599,22 +821,34 @@ public:
         // x.clear();
         slv.reset();
 
+        status = initializer_status::init;
+
         switch (policy) {
         case solver_parameters::init_policy_type::bastert:
-            cycle = cycle_automaton::bastert;
-            use_cycle = false;
+            current = initializer_operator::mutation_bastert_random;
+            mutation_start = initializer_operator::mutation_bastert_random;
+            cycle = initializer_cycle::none;
             break;
         case solver_parameters::init_policy_type::pessimistic_solve:
-            cycle = cycle_automaton::pessimistic_solve;
-            use_cycle = false;
+            current = initializer_operator::mutation_pessimistic_random;
+            mutation_start = initializer_operator::mutation_pessimistic_random;
+            cycle = initializer_cycle::none;
             break;
         case solver_parameters::init_policy_type::optimistic_solve:
-            cycle = cycle_automaton::optimistic_solve;
-            use_cycle = false;
+            current = initializer_operator::mutation_optimistic_random;
+            mutation_start = initializer_operator::mutation_optimistic_random;
+            cycle = initializer_cycle::none;
             break;
         case solver_parameters::init_policy_type::cycle:
-            cycle = cycle_automaton::pessimistic_solve;
-            use_cycle = true;
+            current = initializer_operator::mutation_bastert_random;
+            mutation_start = initializer_operator::mutation_bastert_random;
+            cycle = initializer_cycle::mutation_cycle;
+            break;
+        case solver_parameters::init_policy_type::crossover_cycle:
+            current = initializer_operator::mutation_bastert_random;
+            mutation_start = initializer_operator::mutation_bastert_random;
+            crossover_start = initializer_operator::crossover_operation_any;
+            cycle = initializer_cycle::mutation_crossover;
             break;
         }
     }
@@ -631,112 +865,35 @@ public:
                cycle_counter[3]);
     }
 
-    void next_state(bool is_a_solution) noexcept
-    {
-        if (is_a_solution) {
-            single = single_automaton::init;
-        } else {
-            switch (single) {
-            case single_automaton::init:
-                single = single_automaton::improve_x_1;
-                break;
-            case single_automaton::improve_x_1:
-                single = single_automaton::improve_x_2;
-                break;
-            case single_automaton::improve_x_2:
-                single = single_automaton::improve_x_3;
-                break;
-            case single_automaton::improve_x_3:
-                single = single_automaton::init;
-            }
-        }
-
-        if (single == single_automaton::init) {
-            if (use_cycle) {
-                switch (cycle) {
-                case cycle_automaton::bastert:
-                    cycle = cycle_automaton::bastert_crossover;
-                    break;
-                case cycle_automaton::bastert_crossover:
-                    cycle = cycle_automaton::pessimistic_solve;
-                    break;
-                case cycle_automaton::pessimistic_solve:
-                    cycle = cycle_automaton::pessimistic_crossover;
-                    break;
-                case cycle_automaton::pessimistic_crossover:
-                    cycle = cycle_automaton::optimistic_solve;
-                    break;
-                case cycle_automaton::optimistic_solve:
-                    cycle = cycle_automaton::optimistic_crossover;
-                    break;
-                case cycle_automaton::optimistic_crossover:
-                    cycle = cycle_automaton::bastert;
-                    break;
-                }
-            } else {
-                switch (cycle) {
-                case cycle_automaton::bastert:
-                    cycle = cycle_automaton::bastert_crossover;
-                    break;
-                case cycle_automaton::bastert_crossover:
-                    cycle = cycle_automaton::bastert;
-                    break;
-                case cycle_automaton::pessimistic_solve:
-                    cycle = cycle_automaton::pessimistic_crossover;
-                    break;
-                case cycle_automaton::pessimistic_crossover:
-                    cycle = cycle_automaton::pessimistic_solve;
-                    break;
-                case cycle_automaton::optimistic_solve:
-                    cycle = cycle_automaton::optimistic_crossover;
-                    break;
-                case cycle_automaton::optimistic_crossover:
-                    cycle = cycle_automaton::optimistic_solve;
-                    break;
-                }
-            }
-        }
-    }
-
     void init(Solver& slv, bit_array& x)
     {
         // x.clear();
         slv.reset();
 
-        to_log(stdout,
-               6u,
-               "- initializer: init method {} in mode {} - init {}\n",
-               cycle_automaton_string[static_cast<int>(cycle)],
-               init_automaton_string[static_cast<int>(base)],
-               single_automaton_string[static_cast<int>(single)]);
+        if (current == initializer_operator::mutation_bastert_random ||
+            current == initializer_operator::mutation_pessimistic_random ||
+            current == initializer_operator::mutation_optimistic_random)
+            random_x(slv, x);
 
-        for (int i = 0; i != slv.n; ++i)
-            if (toss_up(slv.rng))
-                x.set(i);
-            else
-                x.unset(i);
-
-        switch (cycle) {
-        case cycle_automaton::bastert:
+        if (current == initializer_operator::mutation_bastert_random ||
+            current == initializer_operator::mutation_bastert_any ||
+            current == initializer_operator::mutation_bastert_best)
             init_bastert(slv, x);
-            break;
-        case cycle_automaton::pessimistic_solve:
+
+        if (current == initializer_operator::mutation_pessimistic_random ||
+            current == initializer_operator::mutation_pessimistic_any ||
+            current == initializer_operator::mutation_pessimistic_best)
             init_pessimistic_solve(slv, x);
-            break;
-        case cycle_automaton::optimistic_solve:
+
+        if (current == initializer_operator::mutation_optimistic_random ||
+            current == initializer_operator::mutation_optimistic_any ||
+            current == initializer_operator::mutation_optimistic_best)
             init_optimistic_solve(slv, x);
-            break;
-        case cycle_automaton::bastert_crossover:
-        case cycle_automaton::pessimistic_crossover:
-        case cycle_automaton::optimistic_crossover:
-            bx_reach();
-            break;
-        }
     }
 
     Float reinit(Solver& slv,
                  bit_array& x,
-                 bool is_a_solution,
+                 bool is_a_new_solution,
                  const best_solution_recorder<Float, Mode>& best_recorder,
                  double kappa_min,
                  double kappa_max)
@@ -744,80 +901,96 @@ public:
         // x.clear();
         slv.reset();
 
-        to_log(stdout,
-               6u,
-               "- initializer: re-init method {} in mode {} - init {} - "
-               "is-a-solution {}\n",
-               cycle_automaton_string[static_cast<int>(cycle)],
-               init_automaton_string[static_cast<int>(base)],
-               single_automaton_string[static_cast<int>(single)],
-               is_a_solution);
-
-        next_state(is_a_solution);
-
-        switch (single) {
-        case single_automaton::init:
-            switch (base) {
-            case init_automaton::random:
-                for (int i = 0; i != slv.n; ++i)
-                    if (toss_up(slv.rng))
-                        x.set(i);
-                    else
-                        x.unset(i);
-
-                base = init_automaton::current_best;
-                break;
-            case init_automaton::current_best:
-                if (!best_recorder.copy_any_solution(x, slv.rng)) {
-                    for (int i = 0; i != slv.n; ++i)
-                        if (toss_up(slv.rng))
-                            x.set(i);
-                        else
-                            x.unset(i);
+        if (is_a_new_solution) {
+            status = initializer_status::init;
+        } else {
+            if (cycle == initializer_cycle::none) {
+                status = initializer_status::init;
+            } else {
+                switch (status) {
+                case initializer_status::init:
+                    break;
+                case initializer_status::improve_x_1:
+                    status = initializer_status::improve_x_2;
+                    break;
+                case initializer_status::improve_x_2:
+                    status = initializer_status::improve_x_3;
+                    break;
+                case initializer_status::improve_x_3:
+                    status = initializer_status::init;
+                    break;
+                default:
+                    bx_reach();
                 }
-
-                base = init_automaton::best_recorder;
-                break;
-            case init_automaton::best_recorder:
-                if (!best_recorder.copy_best_solution(x)) {
-                    for (int i = 0; i != slv.n; ++i)
-                        if (toss_up(slv.rng))
-                            x.set(i);
-                        else
-                            x.unset(i);
-                }
-
-                base = init_automaton::random;
-                break;
             }
+        }
 
-            switch (cycle) {
-            case cycle_automaton::bastert:
+        switch (status) {
+        case initializer_status::init:
+            next_operator();
+
+            if (current == initializer_operator::mutation_bastert_random ||
+                current == initializer_operator::mutation_pessimistic_random ||
+                current == initializer_operator::mutation_optimistic_random)
+                random_x(slv, x);
+
+            if (current == initializer_operator::mutation_bastert_any ||
+                current == initializer_operator::mutation_pessimistic_any ||
+                current == initializer_operator::mutation_optimistic_any)
+                if (!best_recorder.copy_any_solution(x, slv.rng))
+                    random_x(slv, x);
+
+            if (current == initializer_operator::mutation_bastert_best ||
+                current == initializer_operator::mutation_pessimistic_best ||
+                current == initializer_operator::mutation_optimistic_best)
+                if (!best_recorder.copy_best_solution(x))
+                    random_x(slv, x);
+
+            if (current == initializer_operator::mutation_bastert_random ||
+                current == initializer_operator::mutation_bastert_any ||
+                current == initializer_operator::mutation_bastert_best)
                 init_bastert(slv, x);
-                break;
-            case cycle_automaton::pessimistic_solve:
+
+            if (current == initializer_operator::mutation_pessimistic_random ||
+                current == initializer_operator::mutation_pessimistic_any ||
+                current == initializer_operator::mutation_pessimistic_best)
                 init_pessimistic_solve(slv, x);
-                break;
-            case cycle_automaton::optimistic_solve:
+
+            if (current == initializer_operator::mutation_optimistic_random ||
+                current == initializer_operator::mutation_optimistic_any ||
+                current == initializer_operator::mutation_optimistic_best)
                 init_optimistic_solve(slv, x);
-                break;
-            case cycle_automaton::bastert_crossover:
-            case cycle_automaton::pessimistic_crossover:
-            case cycle_automaton::optimistic_crossover:
-                init_crossover(slv, x, best_recorder);
-                break;
-            }
+
+            if (current == initializer_operator::crossover_operation_any)
+                init_crossover(slv, x, best_recorder, false);
+
+            if (current == initializer_operator::crossover_operation_best)
+                init_crossover(slv, x, best_recorder, true);
+
+            status = initializer_status::improve_x_1;
             break;
-        case single_automaton::improve_x_1:
+        case initializer_status::improve_x_1:
+            break;
+        case initializer_status::improve_x_2:
             kappa_min += (kappa_max - kappa_min) / 20;
             break;
-        case single_automaton::improve_x_2:
+        case initializer_status::improve_x_3:
             kappa_min += (kappa_max - kappa_min) / 10;
             break;
-        case single_automaton::improve_x_3:
+        case initializer_status::improve_x_4:
             kappa_min += (kappa_max - kappa_min) / 5;
             break;
         }
+
+        to_log(stdout,
+               6u,
+               "- current {} mutation_start {} crossover_start {} "
+               "cycle {} status {}\n",
+               to_string_view(current),
+               to_string_view(mutation_start),
+               to_string_view(crossover_start),
+               to_string_view(cycle),
+               to_string_view(status));
 
         return static_cast<Float>(kappa_min);
     }

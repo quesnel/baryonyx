@@ -167,9 +167,11 @@ init_policy_type_to_string(solver_parameters::init_policy_type type) noexcept
     using underlying_type =
       typename std::underlying_type<solver_parameters::init_policy_type>::type;
 
-    static std::string_view ret[] = {
-        "bastert", "pessimistic-solve", "optimistic-solve", "cycle"
-    };
+    static std::string_view ret[] = { "bastert",
+                                      "pessimistic-solve",
+                                      "optimistic-solve",
+                                      "cycle",
+                                      "crossover-cycle" };
 
     return ret[static_cast<underlying_type>(type)];
 }

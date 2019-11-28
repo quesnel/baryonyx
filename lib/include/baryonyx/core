@@ -334,7 +334,8 @@ struct BX_EXPORT solver_parameters
         bastert,
         pessimistic_solve,
         optimistic_solve,
-        cycle
+        cycle,
+        crossover_cycle
     };
 
     enum class floating_point_type
