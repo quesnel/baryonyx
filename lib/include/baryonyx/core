@@ -425,6 +425,7 @@ struct BX_EXPORT solver_parameters
     int print_level{ 0 };
     int pushes_limit{ 100 };
     int pushing_iteration_limit{ 50 };
+    int init_population_size{ 100 };
     pre_constraint_order pre_order{ pre_constraint_order::none };
     constraint_order order{ constraint_order::none };
     floating_point_type float_type{ floating_point_type::double_type };

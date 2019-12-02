@@ -122,6 +122,9 @@ context_set_solver_parameters(const context_ptr& ctx,
         ctx->parameters.pushing_iteration_limit =
           params.pushing_iteration_limit;
 
+    if (params.init_population_size >= 5)
+        ctx->parameters.init_population_size = params.init_population_size;
+
     ctx->parameters.pre_order = params.pre_order;
     ctx->parameters.order = params.order;
     ctx->parameters.float_type = params.float_type;

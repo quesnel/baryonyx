@@ -114,10 +114,12 @@ solver_started_cb(const baryonyx::solver_parameters& params)
         fmt::print(" * Initialization parameters:\n"
                    "  - init-policy: {}\n"
                    "  - init-policy-random: {}\n"
-                   "  - init-random: {:.10g}\n",
+                   "  - init-random: {:.10g}\n"
+                   "  - init-population-size: {}\n",
                    baryonyx::init_policy_type_to_string(params.init_policy),
                    params.init_policy_random,
-                   params.init_random);
+                   params.init_random,
+                   params.init_population_size);
     } else {
         fmt::print(" * Random solvers:\n"
                    "  - random: bernouilli with p=0.5\n");
@@ -324,7 +326,8 @@ help() noexcept
       "  - pushing-k-factor: real [0, +oo[\n"
       " * Initialization parameters\n"
       "  - init-policy: bastert pessimistic-solve optimistic-solve cycle\n"
-      "  - init-random: real [0, 1]\n");
+      "  - init-random: real [0, 1]\n"
+      "  - init-population-size: integer [5, +oo[\n");
 }
 
 constexpr static bool
@@ -409,6 +412,7 @@ enum class command_line_status
     pushing_objective_amplifier_error,
     pushing_iteration_limit_error,
     pushing_k_factor_error,
+    init_population_size_error,
     init_policy_error,
     init_policy_random_error,
     init_random_error,
@@ -442,6 +446,7 @@ constexpr const std::string_view command_line_status_string[] = {
     "pushing_objective_amplifier",
     "pushing_iteration_limit",
     "pushing_k_factor",
+    "init_population_size_error",
     "init_policy",
     "init_policy_random",
     "init_random",
@@ -690,6 +695,12 @@ assign_parameter(baryonyx::solver_parameters& params,
             return command_line_status::pushing_k_factor_error;
         else
             params.pushing_k_factor = *v;
+
+    } else if (is_equal(name, "init-population-size")) {
+        if (auto v = assign(value, 5, std::numeric_limits<int>::max()); !v)
+            return command_line_status::init_population_size_error;
+        else
+            params.init_population_size = *v;
 
     } else if (is_equal(name, "init-policy")) {
         if (value == "bastert")
