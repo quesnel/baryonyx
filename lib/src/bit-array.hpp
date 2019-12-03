@@ -356,6 +356,60 @@ public:
     }
 };
 
+//
+// Swap functions
+//
+
+inline void
+swap(bit_array& lhs, bit_array& rhs) noexcept
+{
+    lhs.swap(rhs);
+}
+
+template<int Value1, int Value2>
+void
+swap(value_bit_array<Value1, Value2>& lhs,
+     value_bit_array<Value1, Value2>& rhs) noexcept
+{
+    lhs.swap(rhs);
+}
+
+//
+// Hash functions
+//
+
+template<int Value1, int Value2>
+struct value_bit_array_hash
+{
+    std::size_t operator()(const value_bit_array<Value1, Value2>& array) const
+      noexcept
+    {
+        std::size_t ret{ 0 };
+
+        for (int i = 0, e = array.block_size(); i != e; ++i)
+            ret ^=
+              std::hash<bit_array_impl::underlying_type>()(array.block(i)) +
+              0x9e3779b9 + (ret << 6) + (ret >> 2);
+
+        return ret;
+    }
+};
+
+struct bit_array_hash
+{
+    std::size_t operator()(const bit_array& array) const noexcept
+    {
+        std::size_t ret{ 0 };
+
+        for (int i = 0, e = array.block_size(); i != e; ++i)
+            ret ^=
+              std::hash<bit_array_impl::underlying_type>()(array.block(i)) +
+              0x9e3779b9 + (ret << 6) + (ret >> 2);
+
+        return ret;
+    }
+};
+
 } // namespace baryonyx
 
 #endif

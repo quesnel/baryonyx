@@ -68,8 +68,14 @@ struct raw_result
     bit_array x;
     double value = itm::bad_value<Mode, double>();
     double duration = 0.0;
+    std::size_t hash = 0;
     index loop = 0;
     index remaining_constraints = std::numeric_limits<index>::max();
+
+    void make_hash() noexcept
+    {
+        hash = bit_array_hash()(x);
+    }
 
     bool is_solution() const noexcept
     {
@@ -115,8 +121,8 @@ template<typename Mode>
 bool
 operator==(const raw_result<Mode>& lhs, const raw_result<Mode>& rhs) noexcept
 {
-  return lhs.remaining_constraints == rhs.remaining_constraints &&
-    lhs.x == rhs.x;
+    return lhs.remaining_constraints == rhs.remaining_constraints &&
+           lhs.x == rhs.x;
 }
 
 template<typename Mode>

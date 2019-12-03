@@ -105,9 +105,9 @@ struct solver_functor
         Solver slv(
           m_rng, length(constraints), variables, norm_costs, constraints);
 
-        solver_initializer<Solver, Float, Mode> initializer(
-          slv, p.init_policy, p.init_policy_random, p.init_random);
-        initializer.init(slv, x);
+        // // solver_initializer<Solver, Float, Mode> initializer(
+        // //   slv, p.init_policy, p.init_policy_random, p.init_random);
+        // initializer.init(slv, x);
 
         compute_order compute(p.order, variables);
         compute.init(slv, x);

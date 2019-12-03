@@ -44,140 +44,487 @@
 namespace baryonyx {
 namespace itm {
 
-template<typename Float, typename Mode>
+template<typename Cost, typename Mode>
+void
+init_with_bastert(bit_array& x,
+                  const Cost& c,
+                  const int variables,
+                  const int value_if_0) noexcept
+{
+    for (int i = 0; i != variables; ++i)
+        if (init_x<Mode>(c[i], value_if_0))
+            x.set(i);
+        else
+            x.unset(i);
+}
+
+inline void
+init_with_random(bit_array& x,
+                 random_engine& rng,
+                 const int variables,
+                 const double init_ramdom) noexcept
+{
+    std::bernoulli_distribution dist(init_ramdom);
+
+    for (int i = 0; i != variables; ++i)
+        if (dist(rng))
+            x.set(i);
+        else
+            x.unset(i);
+}
+
+template<typename Cost, typename Mode>
+void
+init_with_pre_solve(bit_array& x_pessimistic,
+                    bit_array& x_optimistic,
+                    random_engine& rng,
+                    const Cost& c,
+                    const std::vector<merged_constraint>& constraints) noexcept
+{
+    int max_length = 0;
+    for (const auto& cst : constraints)
+        if (length(cst.elements) > max_length)
+            max_length = length(cst.elements);
+
+    struct reduced_cost
+    {
+        float value;
+        int factor;
+        int id;
+    };
+
+    std::vector<reduced_cost> R(max_length);
+
+    for (const auto& cst : constraints) {
+        R.resize(cst.elements.size());
+        const int r_size = length(cst.elements);
+
+        for (int i = 0; i != r_size; ++i) {
+            R[i].value = static_cast<float>(c[cst.elements[i].variable_index]);
+            R[i].factor = cst.elements[i].factor;
+            R[i].id = cst.elements[i].variable_index;
+        }
+
+        std::shuffle(std::begin(R), std::end(R), rng);
+        std::sort(
+          std::begin(R), std::end(R), [](const auto& lhs, const auto& rhs) {
+              return is_better_solution<Mode>(lhs.value, rhs.value);
+          });
+
+        {
+            int sum = 0;
+            int best = -2;
+
+            for (int i = -1; i < r_size; ++i) {
+                if (cst.min <= sum && sum <= cst.max) {
+                    best = i;
+                    break;
+                }
+
+                if (i + 1 < r_size)
+                    sum += R[i + 1].factor;
+            }
+
+            int i = 0;
+            for (; i <= best; ++i)
+                x_pessimistic.set(R[i].id);
+
+            for (; i != r_size; ++i) {
+                x_pessimistic.unset(R[i].id);
+            }
+        }
+
+        {
+            int sum = 0;
+            int best = -2;
+
+            for (int i = -1; i < r_size; ++i) {
+                if (cst.min <= sum && sum <= cst.max)
+                    best = i;
+
+                if (best != -2 && i + 1 < r_size &&
+                    stop_iterating<Mode>(R[i + 1].value))
+                    break;
+
+                if (i + 1 < r_size)
+                    sum += R[i + 1].factor;
+            }
+
+            int i = 0;
+            for (; i <= best; ++i)
+                x_optimistic.set(R[i].id);
+
+            for (; i != r_size; ++i)
+                x_optimistic.unset(R[i].id);
+        }
+    }
+}
+
+template<typename Cost, typename Mode>
+struct storage
+{
+    std::vector<raw_result<Mode>> m_data;
+    std::vector<int> m_indices;
+    const Cost& costs;
+    double cost_constant;
+
+    storage(random_engine& rng,
+            const Cost& costs_,
+            const double cost_constant_,
+            const int population_size,
+            const int variables,
+            const std::vector<merged_constraint>& constraints_)
+      : m_indices(population_size)
+      , costs(costs_)
+      , cost_constant(cost_constant_)
+    {
+        m_data.reserve(population_size);
+        for (int i = 0; i < population_size; ++i)
+            m_data.emplace_back(variables);
+
+        init_with_bastert<Cost, Mode>(m_data[0].x, costs, variables, 0);
+        init_with_bastert<Cost, Mode>(m_data[1].x, costs, variables, 1);
+
+        init_with_pre_solve<Cost, Mode>(
+          m_data[2].x, m_data[3].x, rng, costs, constraints_);
+
+        for (int i = 4; i != population_size; ++i) {
+            auto pc = static_cast<double>(i) /
+                      static_cast<double>(population_size - 4);
+
+            if (pc > 1.0)
+                pc -= 1.0;
+
+            init_with_random(m_data[i].x, rng, variables, pc);
+        }
+
+        std::iota(std::begin(m_indices), std::end(m_indices), 0);
+
+        for (int i = 0; i != population_size; ++i) {
+            m_data[i].make_hash();
+            m_data[i].value = costs.results(m_data[i].x, cost_constant_);
+            m_data[i].remaining_constraints = 0;
+
+            for (int k = 0, end_k = length(constraints_); k != end_k; ++k) {
+                int sum = 0;
+                for (const auto& elem : constraints_[k].elements) {
+                    if (m_data[i].x[elem.variable_index])
+                        sum += elem.factor;
+                }
+
+                if (!(constraints_[k].min <= sum &&
+                      sum <= constraints_[k].max))
+                    ++m_data[i].remaining_constraints;
+            }
+        }
+
+        sort();
+    }
+
+    void sort() noexcept
+    {
+        std::sort(
+          std::begin(m_indices), std::end(m_indices), [this](int i1, int i2) {
+              if (this->m_data[i1].remaining_constraints == 0) {
+                  if (this->m_data[i2].remaining_constraints == 0)
+                      return is_better_solution<Mode>(this->m_data[i1].value,
+                                                      this->m_data[i2].value);
+                  else
+                      return true;
+              } else {
+                  return this->m_data[i1].remaining_constraints <
+                         this->m_data[i2].remaining_constraints;
+
+                  // if (this->m_data[i2].remaining_constraints == 0)
+                  //     return false;
+                  // else
+                  //     return
+                  //     is_better_solution<Mode>(this->m_data[i1].value,
+                  //                                     this->m_data[i2].value);
+              }
+          });
+
+#ifdef BARYONYX_ENABLE_DEBUG
+        to_log(stdout, 2u, "Solutions init population:\n");
+        for (int i = 0, e = length(m_indices); i != e; ++i)
+            to_log(stdout,
+                   2u,
+                   "- {} id {} value {} constraint {} hash {}\n",
+                   i,
+                   m_indices[i],
+                   m_data[m_indices[i]].value,
+                   m_data[m_indices[i]].remaining_constraints,
+                   m_data[m_indices[i]].hash);
+#endif
+    }
+
+    bool insert(const bit_array& x,
+                const std::size_t hash,
+                const int remaining_constraints,
+                const double duration,
+                const index loop) noexcept
+    {
+        to_log(stdout,
+               5u,
+               "insert advance {} (hash: {}) {}s in {} loops\n",
+               remaining_constraints,
+               hash,
+               duration,
+               loop);
+
+        m_data[m_indices.back()].x = x;
+        m_data[m_indices.back()].value = costs.results(x, cost_constant);
+        m_data[m_indices.back()].duration = duration;
+        m_data[m_indices.back()].hash = hash;
+        m_data[m_indices.back()].loop = loop;
+        m_data[m_indices.back()].remaining_constraints = remaining_constraints;
+
+        auto old_remaining = m_data[m_indices.front()].remaining_constraints;
+        auto old_value = m_data[m_indices.front()].value;
+
+        sort();
+
+        return old_remaining !=
+                 m_data[m_indices.front()].remaining_constraints ||
+               old_value != m_data[m_indices.front()].value;
+    }
+
+    bool insert(const bit_array& x,
+                const std::size_t hash,
+                const double value,
+                const double duration,
+                const index loop) noexcept
+    {
+        to_log(stdout,
+               5u,
+               "insert solution {} (hash: {}) {}s in {} loops\n",
+               value,
+               hash,
+               duration,
+               loop);
+
+        m_data[m_indices.back()].x = x;
+        m_data[m_indices.back()].value = value;
+        m_data[m_indices.back()].duration = duration;
+        m_data[m_indices.back()].hash = hash;
+        m_data[m_indices.back()].loop = loop;
+        m_data[m_indices.back()].remaining_constraints = 0;
+
+        auto old_remaining = m_data[m_indices.front()].remaining_constraints;
+        auto old_value = m_data[m_indices.front()].value;
+
+        sort();
+
+        return old_remaining !=
+                 m_data[m_indices.front()].remaining_constraints ||
+               old_value != m_data[m_indices.front()].value;
+    }
+
+    bool already_exists(std::size_t hash) const noexcept
+    {
+        return std::end(m_data) !=
+               std::find_if(std::begin(m_data),
+                            std::end(m_data),
+                            [hash](const auto& r) { return r.hash == hash; });
+    }
+
+    bool can_be_inserted(std::size_t hash, int constraints) const noexcept
+    {
+        to_log(stdout,
+               5u,
+               "constraint can_be_inserted: {} - {}\n",
+               hash,
+               !already_exists(hash));
+
+        return m_data[m_indices.back()].remaining_constraints > constraints &&
+               !already_exists(hash);
+    }
+
+    bool can_be_inserted(std::size_t hash, double value) const noexcept
+    {
+        to_log(stdout,
+               5u,
+               "solution can_be_inserted: {} - {}\n",
+               hash,
+               !already_exists(hash));
+
+        if (m_data[m_indices.back()].remaining_constraints)
+            return true;
+
+        if (already_exists(hash))
+            return false;
+
+        return is_better_solution<Mode, double>(
+          value, m_data[m_indices.back()].value);
+    }
+};
+
+template<typename Cost, typename Float, typename Mode>
 struct best_solution_recorder
 {
+    enum init_status
+    {
+        init_with_best = 0,
+        improve_best_1,
+        improve_best_2,
+        improve_best_3,
+        improve_best_4,
+        init_with_any,
+        improve_any_1,
+        improve_any_2,
+        improve_any_3,
+        improve_any_4,
+        count
+    };
+
     const context_ptr& m_ctx;
     std::chrono::time_point<std::chrono::steady_clock> m_start;
+    std::vector<int> m_solver_state;
     mutable std::mutex m_mutex;
+    random_engine& rng;
 
-    std::multiset<raw_result<Mode>, raw_result_compare<Mode>> m_solutions;
-    std::atomic_size_t m_solution_number{ 0 };
-    std::atomic_int m_remaining_constraints{ std::numeric_limits<int>::max() };
-    double m_value{ bad_value<Mode, double>() };
+    storage<Cost, Mode> m_storage;
+    std::uniform_int_distribution<int> split_at_dist;
+    std::uniform_int_distribution<int> choose_sol_dist;
+    std::bernoulli_distribution choose_best_or_any;
+    std::bernoulli_distribution choose_mutation;
 
-    best_solution_recorder(const context_ptr& ctx)
+    std::atomic_int m_remaining_constraints;
+    double m_value;
+
+    best_solution_recorder(const context_ptr& ctx,
+                           const unsigned thread_number,
+                           const Cost& costs,
+                           const double cost_constant,
+                           const int variables,
+                           const std::vector<merged_constraint>& constraints,
+                           random_engine& rng_)
       : m_ctx(ctx)
+      , m_solver_state(thread_number, 0)
+      , rng(rng_)
+      , m_storage(rng_,
+                  costs,
+                  cost_constant,
+                  ctx->parameters.init_population_size,
+                  variables,
+                  constraints)
+      , split_at_dist(1, variables - 1)
+      , choose_sol_dist(1, ctx->parameters.init_population_size - 1)
+      , choose_best_or_any(ctx->parameters.init_policy_random)
+      , choose_mutation(ctx->parameters.init_random)
+      , m_remaining_constraints(
+          m_storage.m_data[m_storage.m_indices.front()].remaining_constraints)
+      , m_value(m_storage.m_data[m_storage.m_indices.front()].value)
     {
         m_start = std::chrono::steady_clock::now();
     }
 
-    bool copy_best_solution(bit_array& x) const noexcept
+    void mutation(const unsigned thread_id, bit_array& x)
     {
-        if (!m_solution_number)
-            return false;
+        int first, second;
+        const int split_at = split_at_dist(rng);
+
+        if (m_solver_state[thread_id] < init_with_any) {
+            first = choose_sol_dist(rng) / 10;
+            second = choose_sol_dist(rng) / 5;
+            if (second == first)
+                ++second;
+        } else {
+            first = choose_sol_dist(rng);
+            second = choose_sol_dist(rng);
+        }
 
         try {
             std::lock_guard<std::mutex> lock(m_mutex);
-
-            if (m_solutions.begin()->x.empty())
-                return false;
-
-            x = m_solutions.begin()->x;
+            if (choose_best_or_any(rng)) {
+                x.assign(m_storage.m_data[first].x, 0, split_at);
+                x.assign(m_storage.m_data[second].x, split_at, x.size());
+            } else {
+                x.assign(m_storage.m_data[second].x, 0, split_at);
+                x.assign(m_storage.m_data[first].x, split_at, x.size());
+            }
         } catch (const std::exception& e) {
-            error(m_ctx, "copy_best_solution: {}", e.what());
-            return false;
+            error(m_ctx, "sync optimization error: {}", e.what());
         }
 
-        return true;
+        for (int i = 0, e = x.size(); i != e; ++i)
+            if (choose_mutation(rng))
+                x.invert(i);
+
+        ++m_solver_state[thread_id];
     }
 
-    bool copy_best_solution(bit_array& x, int from, int to) const noexcept
+    double improve(const unsigned thread_id,
+                   const double kappa_min,
+                   const double kappa_max)
     {
-        if (!m_solution_number)
-            return false;
-
-        try {
-            std::lock_guard<std::mutex> lock(m_mutex);
-
-            if (m_solutions.begin()->x.empty())
-                return false;
-
-            x.assign(m_solutions.begin()->x, from, to);
-        } catch (const std::exception& e) {
-            error(m_ctx, "copy_best_solution: {}", e.what());
-            return false;
+        switch (m_solver_state[thread_id]) {
+        case improve_best_2:
+        case improve_any_2:
+            return kappa_min + (kappa_max - kappa_min) * 0.1;
+        case improve_best_3:
+        case improve_any_3:
+            return kappa_min + (kappa_max - kappa_min) * 0.15;
+        case improve_best_4:
+        case improve_any_4:
+            return kappa_min + (kappa_max - kappa_min) * 0.20;
+        default:
+            return kappa_min;
         }
-
-        return true;
     }
 
-    template<typename Random>
-    bool copy_any_solution(bit_array& x, Random& rng) const noexcept
+    double reinit(const unsigned thread_id,
+                  const bool is_solution,
+                  const double kappa_min,
+                  const double kappa_max,
+                  bit_array& x)
     {
-        if (!m_solution_number)
-            return false;
+        to_log(stdout,
+               3u,
+               "- reinitinialization thread {} - status {}. Is solution: {}\n",
+               thread_id,
+               m_solver_state[thread_id],
+               is_solution);
 
-        try {
-            std::lock_guard<std::mutex> lock(m_mutex);
-
-            if (m_solutions.begin()->x.empty())
-                return false;
-
-            const std::size_t zero{ 0 };
-            const std::size_t max{ std::size(m_solutions) - 1 };
-
-            std::uniform_int_distribution<std::size_t> dist(zero, max);
-
-            auto it = m_solutions.begin();
-            std::advance(it, dist(rng));
-            x = it->x;
-        } catch (const std::exception& e) {
-            error(m_ctx, "copy_any_solution: {}", e.what());
-            return false;
+        if (is_solution) {
+            if (m_solver_state[thread_id] >= init_with_best &&
+                m_solver_state[thread_id] < init_with_any)
+                m_solver_state[thread_id] = init_with_any;
+            else
+                m_solver_state[thread_id] = init_with_best;
         }
 
-        return true;
-    }
-
-    template<typename Random>
-    bool copy_any_solution(bit_array& x, Random& rng, int from, int to) const
-      noexcept
-    {
-        if (!m_solution_number)
-            return false;
-
-        try {
-            std::lock_guard<std::mutex> lock(m_mutex);
-
-            if (m_solutions.begin()->x.empty())
-                return false;
-
-            const std::size_t zero{ 0 };
-            const std::size_t max{ std::size(m_solutions) - 1 };
-
-            std::uniform_int_distribution<std::size_t> dist(zero, max);
-
-            auto it = m_solutions.begin();
-            std::advance(it, dist(rng));
-            x.assign(it->x, from, to);
-        } catch (const std::exception& e) {
-            error(m_ctx, "copy_any_solution: {}", e.what());
-            return false;
+        auto kappa = kappa_min;
+        if (m_solver_state[thread_id] != init_with_best &&
+            m_solver_state[thread_id] != init_with_any) {
+            kappa = improve(thread_id, kappa_min, kappa_max);
+            to_log(stdout, 5u, "- improve with kappa {}\n", kappa);
+        } else {
+            mutation(thread_id, x);
+            to_log(stdout, 5u, "- mutation\n");
         }
 
-        return true;
+        ++m_solver_state[thread_id];
+        m_solver_state[thread_id] %= (count - 1);
+
+        return kappa;
     }
 
     void try_advance(const bit_array& solution,
-                     int remaining_constraints,
-                     int loop)
+                     const int remaining_constraints,
+                     const int loop)
     {
-        if (m_solution_number)
-            return;
-
         try {
+            auto hash = bit_array_hash()(solution);
+
             std::lock_guard<std::mutex> lock(m_mutex);
 
-            if (m_remaining_constraints > remaining_constraints) {
-                m_remaining_constraints = remaining_constraints;
+            if (m_storage.can_be_inserted(hash, remaining_constraints)) {
                 const auto end = std::chrono::steady_clock::now();
                 const auto duration = compute_duration(m_start, end);
 
-                m_solutions.emplace(
-                  solution, remaining_constraints, duration, loop);
-
-                if (m_ctx->update)
+                if (m_storage.insert(
+                      solution, hash, remaining_constraints, duration, loop))
                     m_ctx->update(remaining_constraints, 0.0, loop, duration);
             }
         } catch (const std::exception& e) {
@@ -185,36 +532,30 @@ struct best_solution_recorder
         }
     }
 
-    void try_update(const bit_array& solution, double value, int loop)
+    void try_update(const bit_array& solution,
+                    const double value,
+                    const int loop)
     {
         try {
-            std::lock_guard<std::mutex> lock(m_mutex);
-            if (m_solution_number == 0)
-                m_solutions.clear();
+            auto hash = bit_array_hash()(solution);
 
-            auto it = m_solutions.find(value);
-            if (it == m_solutions.end() || it->x != solution) {
+            std::lock_guard<std::mutex> lock(m_mutex);
+
+            if (m_storage.can_be_inserted(hash, value)) {
                 const auto end = std::chrono::steady_clock::now();
                 const auto duration = compute_duration(m_start, end);
 
-                auto ret =
-                  m_solutions.emplace(solution, value, duration, loop);
-
-                if (m_ctx->update && ret == m_solutions.begin())
+                if (m_storage.insert(solution, hash, value, duration, loop))
                     m_ctx->update(0, value, loop, duration);
-
-                m_solution_number = m_solutions.size();
-
-                info(m_ctx, "  - {} solutions found\n", m_solutions.size());
             }
         } catch (const std::exception& e) {
             error(m_ctx, "sync optimization error: {}", e.what());
         }
     }
 
-    std::size_t size() const noexcept
+    bool have_solution() const noexcept
     {
-        return m_solution_number;
+        return m_storage.m_data[m_storage.m_indices.front()].is_solution();
     }
 };
 
@@ -224,7 +565,6 @@ struct optimize_functor
     const context_ptr& m_ctx;
     random_engine m_rng;
     int m_thread_id;
-    raw_result<Mode> m_best;
 
     optimize_functor(const context_ptr& ctx,
                      unsigned thread_id,
@@ -235,7 +575,7 @@ struct optimize_functor
     {}
 
     void operator()(const std::atomic_bool& stop_task,
-                    best_solution_recorder<Float, Mode>& best_recorder,
+                    best_solution_recorder<Cost, Float, Mode>& best_recorder,
                     const std::vector<merged_constraint>& constraints,
                     int variables,
                     const Cost& original_costs,
@@ -275,20 +615,15 @@ struct optimize_functor
         Solver slv(
           m_rng, length(constraints), variables, norm_costs, constraints);
 
-        solver_initializer<Solver, Float, Mode> initializer(
-          slv, p.init_policy, p.init_policy_random, p.init_random);
-
         compute_order compute(p.order, variables);
         compute.init(slv, x);
         bool is_a_solution = false;
 
         while (!stop_task.load()) {
-            // auto kappa = static_cast<Float>(p.kappa_min);
+            auto kappa = static_cast<Float>(best_recorder.reinit(
+              m_thread_id, is_a_solution, p.kappa_min, p.kappa_max, x));
 
-            auto kappa = initializer.reinit(
-              slv, x, is_a_solution, best_recorder, p.kappa_min, p.kappa_max);
             auto best_remaining = INT_MAX;
-
             is_a_solution = false;
 
             for (int i = 0; !stop_task.load() && i != p.limit; ++i) {
@@ -296,19 +631,15 @@ struct optimize_functor
                   compute.run(slv, x, m_rng, kappa, delta, theta);
 
                 if (remaining == 0) {
-                    store_if_better(x,
-                                    original_costs.results(x, cost_constant),
-                                    i,
-                                    best_recorder);
-                    best_remaining = remaining;
+                    best_recorder.try_update(
+                      x, original_costs.results(x, cost_constant), i);
+                    best_remaining = 0;
                     is_a_solution = true;
                     break;
                 }
 
-                if (remaining < best_remaining) {
-                    advance_if_better(x, remaining, i, best_recorder);
+                if (remaining < best_remaining)
                     best_remaining = remaining;
-                }
 
                 if (i > w_limit)
                     kappa +=
@@ -320,8 +651,10 @@ struct optimize_functor
                     break;
             }
 
-            if (best_remaining > 0)
+            if (best_remaining > 0) {
+                best_recorder.try_advance(x, best_remaining, p.limit);
                 continue;
+            }
 
             for (int push = 0; !stop_task.load() && push < p.pushes_limit;
                  ++push) {
@@ -336,10 +669,10 @@ struct optimize_functor
                                        pushing_objective_amplifier);
 
                 if (remaining == 0) {
-                    store_if_better(x,
-                                    original_costs.results(x, cost_constant),
-                                    -push * p.pushing_iteration_limit - 1,
-                                    best_recorder);
+                    best_recorder.try_update(
+                      x,
+                      original_costs.results(x, cost_constant),
+                      -push * p.pushing_iteration_limit - 1);
                     is_a_solution = true;
                 }
 
@@ -350,11 +683,10 @@ struct optimize_functor
                       compute.run(slv, x, m_rng, kappa, delta, theta);
 
                     if (remaining == 0) {
-                        store_if_better(
+                        best_recorder.try_update(
                           x,
                           original_costs.results(x, cost_constant),
-                          -push * p.pushing_iteration_limit - iter - 1,
-                          best_recorder);
+                          -push * p.pushing_iteration_limit - iter - 1);
                         is_a_solution = true;
                         break;
                     }
@@ -369,36 +701,6 @@ struct optimize_functor
                         break;
                 }
             }
-        }
-    }
-
-private:
-    void advance_if_better(const bit_array& x,
-                           int remaining,
-                           int i,
-                           best_solution_recorder<Float, Mode>& best_recorder)
-    {
-        if (m_best.remaining_constraints > remaining) {
-            m_best.x = x;
-            m_best.loop = i;
-            m_best.remaining_constraints = remaining;
-
-            best_recorder.try_advance(x, remaining, i);
-        }
-    }
-
-    void store_if_better(const bit_array& x,
-                         double current,
-                         int i,
-                         best_solution_recorder<Float, Mode>& best_recorder)
-    {
-        if (is_better_solution<Mode>(current, m_best.value)) {
-            m_best.x = x;
-            m_best.value = current;
-            m_best.loop = i;
-            m_best.remaining_constraints = 0;
-
-            best_recorder.try_update(x, current, i);
         }
     }
 };
@@ -448,7 +750,8 @@ optimize_problem(const context_ptr& ctx, const problem& pb)
     std::vector<optimize_functor<Solver, Float, Mode, Cost>> functors;
     std::vector<std::thread> pool(thread);
 
-    best_solution_recorder<Float, Mode> best_recorder(ctx);
+    best_solution_recorder<Cost, Float, Mode> best_recorder(
+      ctx, thread, cost, cost_constant, variables, constraints, rng);
 
     auto seeds = generate_seed(rng, thread);
 
@@ -487,56 +790,50 @@ optimize_problem(const context_ptr& ctx, const problem& pb)
     r.variables = variables;
     r.constraints = length(constraints);
 
-    if (best_recorder.m_solutions.empty()) {
-        r.status = result_status::time_limit_reached;
-    } else if (!best_recorder.m_solutions.begin()->is_solution()) {
-        r.status = result_status::time_limit_reached;
+    const auto& first = best_recorder.m_storage
+                          .m_data[best_recorder.m_storage.m_indices.front()];
 
-        r.duration = best_recorder.m_solutions.begin()->duration;
-        r.loop = best_recorder.m_solutions.begin()->loop;
-        r.remaining_constraints =
-          best_recorder.m_solutions.begin()->remaining_constraints;
-    } else {
+    if (!first.is_solution())
+        r.status = result_status::time_limit_reached;
+    else
         r.status = result_status::success;
 
-        r.duration = best_recorder.m_solutions.begin()->duration;
-        r.loop = best_recorder.m_solutions.begin()->loop;
-        r.remaining_constraints =
-          best_recorder.m_solutions.begin()->remaining_constraints;
+    r.duration = first.duration;
+    r.loop = first.loop;
+    r.remaining_constraints = first.remaining_constraints;
 
-        switch (ctx->parameters.storage) {
-        case solver_parameters::storage_type::one: {
-            r.solutions.resize(1);
-            convert(
-              *best_recorder.m_solutions.begin(), r.solutions[0], variables);
-        } break;
+    switch (ctx->parameters.storage) {
+    case solver_parameters::storage_type::one: {
+        r.solutions.resize(1);
+        convert(first, r.solutions[0], variables);
+    } break;
 
-        case solver_parameters::storage_type::bound: {
-            if (best_recorder.m_solutions.size() == 1) {
-                r.solutions.resize(1);
-                convert(*best_recorder.m_solutions.begin(),
-                        r.solutions[0],
-                        variables);
-            } else if (best_recorder.m_solutions.size() >= 2) {
-                r.solutions.resize(2);
-                convert(*best_recorder.m_solutions.begin(),
-                        r.solutions[1],
-                        variables);
-                convert(*best_recorder.m_solutions.rbegin(),
-                        r.solutions[0],
-                        variables);
-            }
-        } break;
+    case solver_parameters::storage_type::bound: {
+        r.solutions.resize(2);
 
-        case solver_parameters::storage_type::five: {
-            const size_t max =
-              std::min(size_t{ 5 }, std::size(best_recorder.m_solutions));
-            r.solutions.resize(max);
-            auto it = best_recorder.m_solutions.begin();
-            for (size_t i{ 0 }; i != max; ++i)
-                convert(*it++, r.solutions[max - i], variables);
-        } break;
+        int last = 1;
+        const int end = length(best_recorder.m_storage.m_indices);
+        while (last < end && best_recorder.m_storage
+                               .m_data[best_recorder.m_storage.m_indices[last]]
+                               .is_solution())
+            ++last;
+
+        convert(first, r.solutions[0], variables);
+        convert(best_recorder.m_storage
+                  .m_data[best_recorder.m_storage.m_indices[last]],
+                r.solutions[1],
+                variables);
+    } break;
+
+    case solver_parameters::storage_type::five: {
+        r.solutions.resize(5);
+
+        for (int i = 0; i != 5; ++i) {
+            const auto& elem = best_recorder.m_storage
+                                 .m_data[best_recorder.m_storage.m_indices[i]];
+            convert(elem, r.solutions[i], variables);
         }
+    } break;
     }
 
     if (ctx->finish)
