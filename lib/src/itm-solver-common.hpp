@@ -115,14 +115,14 @@ struct solver_functor
         bool start_push = false;
         auto kappa = static_cast<Float>(p.kappa_min);
 
-        Observer obs(slv, "img", p.limit);
+        Observer obs("img", slv.m, slv.n, p.limit);
 
         m_begin = std::chrono::steady_clock::now();
         m_end = std::chrono::steady_clock::now();
 
         for (int i = 0; i != p.limit; ++i) {
             auto remaining = compute.run(slv, x, m_rng, kappa, delta, theta);
-            obs.make_observation();
+            obs.make_observation(slv.ap, slv.P.get(), slv.pi.get());
 
             if (remaining == 0) {
                 store_if_better(
@@ -275,19 +275,19 @@ solve_problem(const context_ptr& ctx, const problem& pb)
 
         switch (ctx->parameters.observer) {
         case solver_parameters::observer_type::pnm: {
-            using obs = pnm_observer<Solver, Float>;
+            using obs = pnm_observer;
 
             solver_functor<Solver, Float, Mode, Cost, obs> slv(ctx, rng);
             ret = slv(constraints, variables, cost, cost_constant);
         } break;
         case solver_parameters::observer_type::file: {
-            using obs = file_observer<Solver, Float>;
+            using obs = file_observer;
 
             solver_functor<Solver, Float, Mode, Cost, obs> slv(ctx, rng);
             ret = slv(constraints, variables, cost, cost_constant);
         } break;
         default: {
-            using obs = none_observer<Solver, Float>;
+            using obs = none_observer;
 
             solver_functor<Solver, Float, Mode, Cost, obs> slv(ctx, rng);
             ret = slv(constraints, variables, cost, cost_constant);

@@ -29,16 +29,6 @@
 namespace baryonyx {
 namespace itm {
 
-template<typename T>
-struct fake_vector
-{
-    template<typename Integer>
-    T operator[](Integer /*i*/) const noexcept
-    {
-        return T{ 0 };
-    }
-};
-
 template<typename Float, typename Mode, typename Cost>
 struct solver_random_inequalities_101coeff
 {
@@ -76,7 +66,7 @@ struct solver_random_inequalities_101coeff
     std::unique_ptr<int[]> A;
     std::unique_ptr<rc_data[]> R;
     std::unique_ptr<bound_factor[]> b;
-    fake_vector<Float> pi;
+    std::unique_ptr<Float[]> pi;
     std::unique_ptr<Float[]> P;
     const cost_type& c;
     std::bernoulli_distribution dist;
@@ -94,6 +84,7 @@ struct solver_random_inequalities_101coeff
       , A(std::make_unique<int[]>(ap.size()))
       , R(std::make_unique<rc_data[]>(compute_reduced_costs_vector_size(csts)))
       , b(std::make_unique<bound_factor[]>(m_))
+      , pi(std::make_unique<Float[]>(m_))
       , P(std::make_unique<Float[]>(ap.size()))
       , c(c_)
       , dist(0.5)
@@ -129,6 +120,7 @@ struct solver_random_inequalities_101coeff
     void reset() const noexcept
     {
         std::fill_n(P.get(), ap.length(), Float{ 0 });
+        std::fill_n(pi.get(), m, Float{ 0 });
     }
 
     int factor(int value) const noexcept
@@ -347,9 +339,7 @@ struct solver_random_inequalities_101coeff
     }
 };
 
-template<typename Float,
-         typename Mode,
-         typename Cost>
+template<typename Float, typename Mode, typename Cost>
 static result
 solve_or_optimize(const context_ptr& ctx,
                   const problem& pb,
@@ -362,19 +352,18 @@ solve_or_optimize(const context_ptr& ctx,
              : solve_problem<Solver, Float, Mode, Cost>(ctx, pb);
 }
 
-
 template<typename Float, typename Mode>
 static result
 select_cost(const context_ptr& ctx, const problem& pb, bool is_optimization)
 {
     return pb.objective.qelements.empty()
              ? solve_or_optimize<Float,
-                            Mode,
-                            baryonyx::itm::default_cost_type<Float>>(
+                                 Mode,
+                                 baryonyx::itm::default_cost_type<Float>>(
                  ctx, pb, is_optimization)
              : solve_or_optimize<Float,
-                            Mode,
-                            baryonyx::itm::quadratic_cost_type<Float>>(
+                                 Mode,
+                                 baryonyx::itm::quadratic_cost_type<Float>>(
                  ctx, pb, is_optimization);
 }
 
@@ -384,8 +373,7 @@ select_mode(const context_ptr& ctx, const problem& pb, bool is_optimization)
 {
     const auto m = static_cast<int>(pb.type);
 
-    return m == 0
-             ? select_cost<Float, mode_sel<0>>(ctx, pb, is_optimization)
+    return m == 0 ? select_cost<Float, mode_sel<0>>(ctx, pb, is_optimization)
                   : select_cost<Float, mode_sel<1>>(ctx, pb, is_optimization);
 }
 
