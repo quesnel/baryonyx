@@ -36,6 +36,7 @@
 #include <utility>
 #include <vector>
 
+#include "itm-common.hpp"
 #include "private.hpp"
 #include "result.hpp"
 #include "sparse-matrix.hpp"
@@ -43,122 +44,6 @@
 
 namespace baryonyx {
 namespace itm {
-
-template<typename Cost, typename Mode>
-void
-init_with_bastert(bit_array& x,
-                  const Cost& c,
-                  const int variables,
-                  const int value_if_0) noexcept
-{
-    for (int i = 0; i != variables; ++i)
-        if (init_x<Mode>(c[i], value_if_0))
-            x.set(i);
-        else
-            x.unset(i);
-}
-
-inline void
-init_with_random(bit_array& x,
-                 random_engine& rng,
-                 const int variables,
-                 const double init_ramdom) noexcept
-{
-    std::bernoulli_distribution dist(init_ramdom);
-
-    for (int i = 0; i != variables; ++i)
-        if (dist(rng))
-            x.set(i);
-        else
-            x.unset(i);
-}
-
-template<typename Cost, typename Mode>
-void
-init_with_pre_solve(bit_array& x_pessimistic,
-                    bit_array& x_optimistic,
-                    random_engine& rng,
-                    const Cost& c,
-                    const std::vector<merged_constraint>& constraints) noexcept
-{
-    int max_length = 0;
-    for (const auto& cst : constraints)
-        if (length(cst.elements) > max_length)
-            max_length = length(cst.elements);
-
-    struct reduced_cost
-    {
-        float value;
-        int factor;
-        int id;
-    };
-
-    std::vector<reduced_cost> R(max_length);
-
-    for (const auto& cst : constraints) {
-        R.resize(cst.elements.size());
-        const int r_size = length(cst.elements);
-
-        for (int i = 0; i != r_size; ++i) {
-            R[i].value = static_cast<float>(c[cst.elements[i].variable_index]);
-            R[i].factor = cst.elements[i].factor;
-            R[i].id = cst.elements[i].variable_index;
-        }
-
-        std::shuffle(std::begin(R), std::end(R), rng);
-        std::sort(
-          std::begin(R), std::end(R), [](const auto& lhs, const auto& rhs) {
-              return is_better_solution<Mode>(lhs.value, rhs.value);
-          });
-
-        {
-            int sum = 0;
-            int best = -2;
-
-            for (int i = -1; i < r_size; ++i) {
-                if (cst.min <= sum && sum <= cst.max) {
-                    best = i;
-                    break;
-                }
-
-                if (i + 1 < r_size)
-                    sum += R[i + 1].factor;
-            }
-
-            int i = 0;
-            for (; i <= best; ++i)
-                x_pessimistic.set(R[i].id);
-
-            for (; i != r_size; ++i) {
-                x_pessimistic.unset(R[i].id);
-            }
-        }
-
-        {
-            int sum = 0;
-            int best = -2;
-
-            for (int i = -1; i < r_size; ++i) {
-                if (cst.min <= sum && sum <= cst.max)
-                    best = i;
-
-                if (best != -2 && i + 1 < r_size &&
-                    stop_iterating<Mode>(R[i + 1].value))
-                    break;
-
-                if (i + 1 < r_size)
-                    sum += R[i + 1].factor;
-            }
-
-            int i = 0;
-            for (; i <= best; ++i)
-                x_optimistic.set(R[i].id);
-
-            for (; i != r_size; ++i)
-                x_optimistic.unset(R[i].id);
-        }
-    }
-}
 
 template<typename Cost, typename Mode>
 struct storage
@@ -616,12 +501,12 @@ struct optimize_functor
           m_rng, length(constraints), variables, norm_costs, constraints);
 
         compute_order compute(p.order, variables);
-        compute.init(slv, x);
         bool is_a_solution = false;
 
         while (!stop_task.load()) {
             auto kappa = static_cast<Float>(best_recorder.reinit(
               m_thread_id, is_a_solution, p.kappa_min, p.kappa_max, x));
+            compute.init(slv, x);
 
             auto best_remaining = INT_MAX;
             is_a_solution = false;

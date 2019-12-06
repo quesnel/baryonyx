@@ -255,6 +255,122 @@ is_signbit_change(Float lhs, Float rhs) noexcept
     return std::signbit(lhs) != std::signbit(rhs);
 }
 
+template<typename Cost, typename Mode>
+void
+init_with_bastert(bit_array& x,
+                  const Cost& c,
+                  const int variables,
+                  const int value_if_0) noexcept
+{
+    for (int i = 0; i != variables; ++i)
+        if (init_x<Mode>(c[i], value_if_0))
+            x.set(i);
+        else
+            x.unset(i);
+}
+
+inline void
+init_with_random(bit_array& x,
+                 random_engine& rng,
+                 const int variables,
+                 const double init_ramdom) noexcept
+{
+    std::bernoulli_distribution dist(init_ramdom);
+
+    for (int i = 0; i != variables; ++i)
+        if (dist(rng))
+            x.set(i);
+        else
+            x.unset(i);
+}
+
+template<typename Cost, typename Mode>
+void
+init_with_pre_solve(bit_array& x_pessimistic,
+                    bit_array& x_optimistic,
+                    random_engine& rng,
+                    const Cost& c,
+                    const std::vector<merged_constraint>& constraints) noexcept
+{
+    int max_length = 0;
+    for (const auto& cst : constraints)
+        if (length(cst.elements) > max_length)
+            max_length = length(cst.elements);
+
+    struct reduced_cost
+    {
+        float value;
+        int factor;
+        int id;
+    };
+
+    std::vector<reduced_cost> R(max_length);
+
+    for (const auto& cst : constraints) {
+        R.resize(cst.elements.size());
+        const int r_size = length(cst.elements);
+
+        for (int i = 0; i != r_size; ++i) {
+            R[i].value = static_cast<float>(c[cst.elements[i].variable_index]);
+            R[i].factor = cst.elements[i].factor;
+            R[i].id = cst.elements[i].variable_index;
+        }
+
+        std::shuffle(std::begin(R), std::end(R), rng);
+        std::sort(
+          std::begin(R), std::end(R), [](const auto& lhs, const auto& rhs) {
+              return is_better_solution<Mode>(lhs.value, rhs.value);
+          });
+
+        if (!x_pessimistic.empty()) {
+            int sum = 0;
+            int best = -2;
+
+            for (int i = -1; i < r_size; ++i) {
+                if (cst.min <= sum && sum <= cst.max) {
+                    best = i;
+                    break;
+                }
+
+                if (i + 1 < r_size)
+                    sum += R[i + 1].factor;
+            }
+
+            int i = 0;
+            for (; i <= best; ++i)
+                x_pessimistic.set(R[i].id);
+
+            for (; i != r_size; ++i) {
+                x_pessimistic.unset(R[i].id);
+            }
+        }
+
+        if (!x_optimistic.empty()) {
+            int sum = 0;
+            int best = -2;
+
+            for (int i = -1; i < r_size; ++i) {
+                if (cst.min <= sum && sum <= cst.max)
+                    best = i;
+
+                if (best != -2 && i + 1 < r_size &&
+                    stop_iterating<Mode>(R[i + 1].value))
+                    break;
+
+                if (i + 1 < r_size)
+                    sum += R[i + 1].factor;
+            }
+
+            int i = 0;
+            for (; i <= best; ++i)
+                x_optimistic.set(R[i].id);
+
+            for (; i != r_size; ++i)
+                x_optimistic.unset(R[i].id);
+        }
+    }
+}
+
 /// The bkmin and bkmax constraint bounds are not equal and can be assigned to
 /// -infinity or +infinity. We have to scan the r vector and search a value j
 /// such as b(0, k) <= Sum A(k, R[j]) < b(1, k).

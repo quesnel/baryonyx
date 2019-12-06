@@ -31,6 +31,7 @@
 #include <utility>
 #include <vector>
 
+#include "itm-common.hpp"
 #include "observer.hpp"
 #include "private.hpp"
 #include "sparse-matrix.hpp"
@@ -105,12 +106,35 @@ struct solver_functor
         Solver slv(
           m_rng, length(constraints), variables, norm_costs, constraints);
 
-        // // solver_initializer<Solver, Float, Mode> initializer(
-        // //   slv, p.init_policy, p.init_policy_random, p.init_random);
-        // initializer.init(slv, x);
-
         compute_order compute(p.order, variables);
-        compute.init(slv, x);
+
+        {
+            std::bernoulli_distribution choose_mutation(
+              m_ctx->parameters.init_random);
+            bit_array empty_x;
+
+            switch (p.init_policy) {
+            case solver_parameters::init_policy_type::pessimistic_solve:
+                init_with_pre_solve<Cost, Mode>(
+                  x, empty_x, m_rng, original_costs, constraints);
+                break;
+
+            case solver_parameters::init_policy_type::optimistic_solve:
+                init_with_pre_solve<Cost, Mode>(
+                  empty_x, x, m_rng, original_costs, constraints);
+                break;
+
+            case solver_parameters::init_policy_type::bastert:
+            case solver_parameters::init_policy_type::cycle:
+            case solver_parameters::init_policy_type::crossover_cycle:
+                init_with_bastert<Cost, Mode>(x, original_costs, variables, 0);
+                break;
+            }
+
+            for (int i = 0, e = x.size(); i != e; ++i)
+                if (choose_mutation(m_rng))
+                    x.invert(i);
+        }
 
         bool start_push = false;
         auto kappa = static_cast<Float>(p.kappa_min);
@@ -119,6 +143,8 @@ struct solver_functor
 
         m_begin = std::chrono::steady_clock::now();
         m_end = std::chrono::steady_clock::now();
+
+        compute.init(slv, x);
 
         for (int i = 0; i != p.limit; ++i) {
             auto remaining = compute.run(slv, x, m_rng, kappa, delta, theta);
