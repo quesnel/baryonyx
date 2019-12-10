@@ -290,7 +290,8 @@ init_with_pre_solve(bit_array& x_pessimistic,
                     bit_array& x_optimistic,
                     random_engine& rng,
                     const Cost& c,
-                    const std::vector<merged_constraint>& constraints) noexcept
+                    const std::vector<merged_constraint>& constraints,
+                    const double init_random) noexcept
 {
     int max_length = 0;
     for (const auto& cst : constraints)
@@ -305,8 +306,12 @@ init_with_pre_solve(bit_array& x_pessimistic,
     };
 
     std::vector<reduced_cost> R(max_length);
+    std::bernoulli_distribution dist(init_random);
 
     for (const auto& cst : constraints) {
+        if (!dist(rng))
+            continue;
+
         R.resize(cst.elements.size());
         const int r_size = length(cst.elements);
 

@@ -123,6 +123,11 @@ public:
         return m_data[index];
     }
 
+    void set_block(int index, underlying_type value) noexcept
+    {
+        m_data[index] = value;
+    }
+
     /**
      * @brief Affect 1 to the bits at @c index.
      *
@@ -133,6 +138,13 @@ public:
         bx_assert(index >= 0 && index < m_size);
 
         m_data[b_index(index)] |= k_one << b_offset(index);
+    }
+
+    void set(int index, bool val) noexcept
+    {
+        auto mask = (k_one << b_offset(index));
+        auto& ref = m_data[b_index(index)];
+        ref ^= (underlying_type(val) ^ ref) & mask;
     }
 
     /**
