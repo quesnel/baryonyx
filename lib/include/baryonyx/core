@@ -419,6 +419,25 @@ struct BX_EXPORT solver_parameters
     double pushing_objective_amplifier{ 5 };
     double init_policy_random{ 0.5 };
     double init_random{ 0.5 };
+
+    // Probability to insert a bastert solution during the crossover
+    // operation.
+    double init_crossover_bastert_insertion{ 0.01 };
+
+    double init_crossover_solution_selection_mean{ 0.0 };
+    double init_crossover_solution_selection_stddev{ 0.3 };
+
+    // Probability to mutate the solution after the crossover operation.
+    // @c init_mutation_variable defines the number of variables to
+    // changes, @c init_mutation_value defines the value of the variables.
+    // If @c init_mutation_variable_mean and init_mutation_variable_stddev
+    // equal zeros, no mutation are done after the crossover.
+
+    double init_mutation_variable_mean{ 0.0001 };
+    double init_mutation_variable_stddev{ 0.001 };
+    double init_mutation_value_mean{ 0.5 };
+    double init_mutation_value_stddev{ 0.2 };
+
     double w{ 0.05 };       ///< 5% of limit
     unsigned int seed{ 0 }; ///< value == 0 means automatic seed.
     int thread{ 0 };        ///< value <= 0 means automatic detection.

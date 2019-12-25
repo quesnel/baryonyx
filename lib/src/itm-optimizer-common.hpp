@@ -62,6 +62,8 @@ private:
     std::vector<raw_result<Mode>> m_data;
     bit_array m_bastert;
 
+    std::bernoulli_distribution m_crossover_bastert_insertion;
+
     const Cost& costs;
     double cost_constant;
     const int m_size;
@@ -108,11 +110,13 @@ public:
             const double cost_constant_,
             const int population_size,
             const int variables,
-            const std::vector<merged_constraint>& constraints_)
+            const std::vector<merged_constraint>& constraints_,
+            const double crossover_bastert_insertion)
       : m_data_mutex(population_size)
       , m_indices(population_size)
       , m_data(population_size)
       , m_bastert(variables)
+      , m_crossover_bastert_insertion(crossover_bastert_insertion)
       , costs(costs_)
       , cost_constant(cost_constant_)
       , m_size(population_size)
@@ -184,7 +188,7 @@ public:
                loop);
 
         to_log(stdout,
-               7u,
+               5u,
                "- delete {} ({})\n",
                bound.last,
                m_data[bound.last].value);
@@ -209,7 +213,7 @@ public:
         auto bound = indices_bound();
 
         to_log(stdout,
-               3u,
+               5u,
                "- insert solution {} (hash: {}) {}s in {} loops\n",
                value,
                hash,
@@ -217,7 +221,7 @@ public:
                loop);
 
         to_log(stdout,
-               7u,
+               5u,
                "- delete {} ({})\n",
                bound.last,
                m_data[bound.last].value);
@@ -362,8 +366,7 @@ public:
         m_data_reader lock_data_1{ m_data_mutex[first] };
         m_data_reader lock_data_2{ m_data_mutex[second] };
 
-        std::bernoulli_distribution ch(0.01);
-        if (ch(rng))
+        if (m_crossover_bastert_insertion(rng))
             crossover(rng, x, m_data[first].x, m_bastert);
         else
             crossover(rng, x, m_data[first].x, m_data[second].x);
@@ -443,28 +446,15 @@ struct best_solution_recorder
         return static_cast<init_status>(current);
     }
 
-    static void value_mutation_operator(bit_array& x,
-                                        random_engine& rng,
-                                        const double var_p,
-                                        const double value_p) noexcept
-    {
-        std::bernoulli_distribution dist_var_p(var_p);
-        std::bernoulli_distribution dist_value_p(value_p);
-
-        for (int i = 0, e = x.size(); i != e; ++i)
-            if (dist_var_p(rng))
-                x.set(i, dist_value_p(rng));
-    }
-
     const context_ptr& m_ctx;
     std::chrono::time_point<std::chrono::steady_clock> m_start;
     std::vector<init_status> m_solver_state;
 
     storage<Cost, Mode> m_storage;
 
-    std::normal_distribution<> choose_sol_dist;
-    std::normal_distribution<> variable_p_dist;
-    std::normal_distribution<> value_p_dist;
+    std::normal_distribution<> m_choose_sol_dist;
+    std::normal_distribution<> m_variable_p_dist;
+    std::normal_distribution<> m_value_p_dist;
 
     int best_remaining;
     double best_value;
@@ -483,10 +473,17 @@ struct best_solution_recorder
                   cost_constant,
                   ctx->parameters.init_population_size,
                   variables,
-                  constraints)
-      , choose_sol_dist(0, 0.3)
-      , variable_p_dist(ctx->parameters.init_policy_random, 0.2)
-      , value_p_dist(ctx->parameters.init_random, 0.2)
+                  constraints,
+                  ctx->parameters.init_crossover_bastert_insertion)
+      , m_choose_sol_dist(
+          ctx->parameters.init_crossover_solution_selection_mean,
+          ctx->parameters.init_crossover_solution_selection_stddev)
+      , m_variable_p_dist(
+          ctx->parameters.init_mutation_variable_mean,
+          ctx->parameters.init_mutation_variable_stddev)
+      , m_value_p_dist(
+          ctx->parameters.init_mutation_value_mean,
+          ctx->parameters.init_mutation_value_stddev)
       , best_remaining(INT_MAX)
       , best_value(bad_value<Mode, double>())
     {
@@ -497,7 +494,7 @@ struct best_solution_recorder
     {
         double value;
         do
-            value = choose_sol_dist(rng);
+            value = m_choose_sol_dist(rng);
         while (value < 0 || value > 1);
 
         return static_cast<int>(m_ctx->parameters.init_population_size *
@@ -512,32 +509,31 @@ struct best_solution_recorder
         while (first == second)
             second = choose_a_solution(rng);
 
-        // first = m_storage.m_indices[first];
-        // second = m_storage.m_indices[second];
-
-        // to_log(stdout,
-        //        7u,
-        //        "- selection {} () and {} ()\n",
-        //        first,
-        //        m_storage.m_data[first].value,
-        //        second,
-        //        m_storage.m_data[second].value);
-
         m_storage.crossover(rng, x, first, second);
+
+        if (m_value_p_dist.mean() == 0.0 &&
+            m_value_p_dist.stddev() == 0.0)
+            return;
 
         double val_p, var_p;
 
         do
-            val_p = variable_p_dist(rng);
+            val_p = m_variable_p_dist(rng);
         while (val_p <= 0.0 || val_p >= 1.0);
 
         do
-            var_p = value_p_dist(rng);
-        while (var_p <= 0.0 || var_p >= 1.0);
+            var_p = m_value_p_dist(rng);
+        while (var_p < 0.0 || var_p > 1.0);
 
-        to_log(stdout, 7u, "- mutation {} and {}\n", var_p, val_p);
+        to_log(stdout, 7u, "- mutation variables {}% and "
+               " {}% \n", var_p, val_p);
 
-        value_mutation_operator(x, rng, var_p, val_p);
+        std::bernoulli_distribution dist_var_p(var_p);
+        std::bernoulli_distribution dist_value_p(val_p);
+
+        for (int i = 0, e = x.size(); i != e; ++i)
+            if (dist_var_p(rng))
+                x.set(i, dist_value_p(rng));
     }
 
     double improve(const unsigned thread_id,
@@ -587,7 +583,7 @@ struct best_solution_recorder
             kappa = improve(thread_id, kappa_min, kappa_max);
             to_log(stdout, 5u, "- improve with kappa {}\n", kappa);
         } else {
-            to_log(stdout, 5u, "- mutation\n");
+            to_log(stdout, 5u, "- crossover and mutation\n");
             mutation(rng, x);
         }
 

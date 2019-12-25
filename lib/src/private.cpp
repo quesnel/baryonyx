@@ -73,15 +73,40 @@ context_set_solver_parameters(const context_ptr& ctx,
     if (params.alpha >= 0)
         ctx->parameters.alpha = params.alpha;
 
-    if (std::isnormal(params.pushing_k_factor))
+    if (std::isfinite(params.pushing_k_factor))
         ctx->parameters.pushing_k_factor = params.pushing_k_factor;
 
-    if (std::isnormal(params.pushing_objective_amplifier))
+    if (std::isfinite(params.pushing_objective_amplifier))
         ctx->parameters.pushing_objective_amplifier =
           params.pushing_objective_amplifier;
 
-    if (params.init_random >= 0 && params.init_random <= 1)
-        ctx->parameters.init_random = params.init_random;
+    if (std::isfinite(params.init_crossover_bastert_insertion))
+        ctx->parameters.init_crossover_bastert_insertion =
+            std::clamp(params.init_crossover_bastert_insertion, 0.0, 1.0);
+
+    if (std::isfinite(params.init_crossover_solution_selection_mean))
+        ctx->parameters.init_crossover_solution_selection_mean =
+            std::clamp(params.init_crossover_solution_selection_mean, 0.0, 1.0);
+
+    if (std::isfinite(params.init_crossover_solution_selection_stddev))
+        ctx->parameters.init_crossover_solution_selection_stddev =
+            std::clamp(params.init_crossover_solution_selection_stddev, 0.0, 1.0);
+
+    if (std::isfinite(params.init_mutation_variable_mean))
+        ctx->parameters.init_mutation_variable_mean =
+            std::clamp(params.init_mutation_variable_mean, 0.0, 1.0);
+
+    if (std::isfinite(params.init_mutation_variable_stddev))
+        ctx->parameters.init_mutation_variable_stddev =
+            std::clamp(params.init_mutation_variable_stddev, 0.0, 1.0);
+
+    if (std::isfinite(params.init_mutation_value_mean))
+        ctx->parameters.init_mutation_value_mean =
+            std::clamp(params.init_mutation_value_mean, 0.0, 1.0);
+
+    if (std::isfinite(params.init_mutation_value_stddev))
+        ctx->parameters.init_mutation_value_stddev =
+            std::clamp(params.init_mutation_value_stddev, 0.0, 1.0);
 
     if (params.init_policy_random >= 0 && params.init_policy_random <= 1)
         ctx->parameters.init_policy_random = params.init_policy_random;
