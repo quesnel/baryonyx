@@ -120,6 +120,24 @@ solver_started_cb(const baryonyx::solver_parameters& params)
                    params.init_policy_random,
                    params.init_random,
                    params.init_population_size);
+
+        fmt::print(" * Initialization parameters:\n"
+                   "  - init-population-size: {}\n"
+                   "  - init-crossover-bastert-insertion: {}\n"
+                   "  - init-crossover-solution-selection-mean: {}\n"
+                   "  - init-crossover-solution-selection-stddev: {}\n"
+                   "  - init-mutation-variable-mean: {}\n"
+                   "  - init-mutation-variable-stddev: {}\n"
+                   "  - init-mutation-value-mean: {}\n"
+                   "  - init-mutation-value-stddev: {}\n",
+                   params.init_population_size,
+                   params.init_crossover_bastert_insertion,
+                   params.init_crossover_solution_selection_mean,
+                   params.init_crossover_solution_selection_stddev,
+                   params.init_mutation_variable_mean,
+                   params.init_mutation_variable_stddev,
+                   params.init_mutation_value_mean,
+                   params.init_mutation_value_stddev);
     } else {
         fmt::print(" * Random solvers:\n"
                    "  - random: bernouilli with p=0.5\n");
@@ -327,7 +345,14 @@ help() noexcept
       " * Initialization parameters\n"
       "  - init-policy: bastert pessimistic-solve optimistic-solve cycle\n"
       "  - init-random: real [0, 1]\n"
-      "  - init-population-size: integer [5, +oo[\n");
+      "  - init-population-size: integer [5, +oo[\n"
+      "  - init-crossover-bastert-insertion:real [0, 1]\n"
+      "  - init-crossover-solution-selection-mean:real [0, 1]\n"
+      "  - init-crossover-solution-selection-stddev:real [0, 1]\n"
+      "  - init-mutation-variable-mean:real [0, 1]\n"
+      "  - init-mutation-variable-stddev:real [0, 1]\n"
+      "  - init-mutation-value-mean:real [0, 1]\n"
+      "  - init-mutation-value-stddev:real [0, 1]\n");
 }
 
 constexpr static bool
@@ -416,6 +441,13 @@ enum class command_line_status
     init_policy_error,
     init_policy_random_error,
     init_random_error,
+    init_crossover_bastert_insertion_error,
+    init_crossover_solution_selection_mean_error,
+    init_crossover_solution_selection_stddev_error,
+    init_mutation_variable_mean_error,
+    init_mutation_variable_stddev_error,
+    init_mutation_value_mean_error,
+    init_mutation_value_stddev_error,
     thread_error,
     seed_error
 };
@@ -446,10 +478,17 @@ constexpr const std::string_view command_line_status_string[] = {
     "pushing_objective_amplifier",
     "pushing_iteration_limit",
     "pushing_k_factor",
-    "init_population_size_error",
+    "init_population_size",
     "init_policy",
     "init_policy_random",
     "init_random",
+    "init_crossover_bastert_insertion",
+    "init_crossover_solution_selection_mean",
+    "init_crossover_solution_selection_stddev",
+    "init_mutation_variable_mean",
+    "init_mutation_variable_stddev",
+    "init_mutation_value_mean",
+    "init_mutation_value_stddev",
     "thread",
     "seed"
 };
@@ -701,6 +740,48 @@ assign_parameter(baryonyx::solver_parameters& params,
             return command_line_status::init_population_size_error;
         else
             params.init_population_size = *v;
+
+    } else if (is_equal(name, "init-crossover-bastert-insertion")) {
+        if (auto v = assign_01(value); !v)
+            return command_line_status::init_crossover_bastert_insertion_error;
+        else
+            params.init_crossover_bastert_insertion = *v;
+
+    } else if (is_equal(name, "init-crossover-solution-selection-mean")) {
+        if (auto v = assign_01(value); !v)
+            return command_line_status::init_crossover_solution_selection_mean_error;
+        else
+            params.init_crossover_solution_selection_mean = *v;
+
+    } else if (is_equal(name, "init-crossover-solution-selection-stddev")) {
+        if (auto v = assign_01(value); !v)
+            return command_line_status::init_crossover_solution_selection_stddev_error;
+        else
+            params.init_crossover_solution_selection_stddev = *v;
+
+    } else if (is_equal(name, "init-mutation-variable-mean")) {
+        if (auto v = assign_01(value); !v)
+            return command_line_status::init_mutation_variable_mean_error;
+        else
+            params.init_mutation_variable_mean = *v;
+
+    } else if (is_equal(name, "init-mutation-variable-stddev")) {
+        if (auto v = assign_01(value); !v)
+            return command_line_status::init_mutation_variable_stddev_error;
+        else
+            params.init_mutation_variable_stddev = *v;
+
+    } else if (is_equal(name, "init-mutation-value-mean")) {
+        if (auto v = assign_01(value); !v)
+            return command_line_status::init_mutation_value_mean_error;
+        else
+            params.init_mutation_value_mean = *v;
+
+    } else if (is_equal(name, "init-mutation-value-stddev")) {
+        if (auto v = assign_01(value); !v)
+            return command_line_status::init_mutation_value_stddev_error;
+        else
+            params.init_mutation_value_stddev = *v;
 
     } else if (is_equal(name, "init-policy")) {
         if (value == "bastert")
