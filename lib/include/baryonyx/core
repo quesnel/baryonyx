@@ -335,8 +335,6 @@ struct BX_EXPORT solver_parameters
         bastert,
         pessimistic_solve,
         optimistic_solve,
-        cycle,
-        crossover_cycle
     };
 
     enum class floating_point_type
@@ -418,7 +416,6 @@ struct BX_EXPORT solver_parameters
     double pushing_k_factor{ 0.9 };
     double pushing_objective_amplifier{ 5 };
     double init_policy_random{ 0.5 };
-    double init_random{ 0.5 };
 
     // Probability to insert a bastert solution during the crossover
     // operation.

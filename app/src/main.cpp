@@ -111,17 +111,13 @@ solver_started_cb(const baryonyx::solver_parameters& params)
                    params.pushing_iteration_limit,
                    params.pushing_k_factor);
 
-        fmt::print(" * Initialization parameters:\n"
+        fmt::print(" * Solver initialization parameters:\n"
                    "  - init-policy: {}\n"
-                   "  - init-policy-random: {}\n"
-                   "  - init-random: {:.10g}\n"
-                   "  - init-population-size: {}\n",
+                   "  - init-policy-random: {}\n",
                    baryonyx::init_policy_type_to_string(params.init_policy),
-                   params.init_policy_random,
-                   params.init_random,
-                   params.init_population_size);
+                   params.init_policy_random);
 
-        fmt::print(" * Initialization parameters:\n"
+        fmt::print(" * Optimizer initialization parameters:\n"
                    "  - init-population-size: {}\n"
                    "  - init-crossover-bastert-insertion: {}\n"
                    "  - init-crossover-solution-selection-mean: {}\n"
@@ -344,7 +340,6 @@ help() noexcept
       "  - pushing-k-factor: real [0, +oo[\n"
       " * Initialization parameters\n"
       "  - init-policy: bastert pessimistic-solve optimistic-solve cycle\n"
-      "  - init-random: real [0, 1]\n"
       "  - init-population-size: integer [5, +oo[\n"
       "  - init-crossover-bastert-insertion:real [0, 1]\n"
       "  - init-crossover-solution-selection-mean:real [0, 1]\n"
@@ -440,7 +435,6 @@ enum class command_line_status
     init_population_size_error,
     init_policy_error,
     init_policy_random_error,
-    init_random_error,
     init_crossover_bastert_insertion_error,
     init_crossover_solution_selection_mean_error,
     init_crossover_solution_selection_stddev_error,
@@ -456,10 +450,9 @@ constexpr const std::string_view command_line_status_string[] = {
     "success",
     "unknown",
     "parameter_missing",
-    "verbose_error"
+    "verbose"
     "limit",
     "time_limit",
-    "verbose_error",
     "floating_point_type",
     "observer_type",
     "print_level",
@@ -481,7 +474,6 @@ constexpr const std::string_view command_line_status_string[] = {
     "init_population_size",
     "init_policy",
     "init_policy_random",
-    "init_random",
     "init_crossover_bastert_insertion",
     "init_crossover_solution_selection_mean",
     "init_crossover_solution_selection_stddev",
@@ -793,20 +785,8 @@ assign_parameter(baryonyx::solver_parameters& params,
         else if (value == "optimistic-solve")
             params.init_policy =
               baryonyx::solver_parameters::init_policy_type::optimistic_solve;
-        else if (value == "cycle")
-            params.init_policy =
-              baryonyx::solver_parameters::init_policy_type::cycle;
-        else if (value == "crossover-cycle")
-            params.init_policy =
-              baryonyx::solver_parameters::init_policy_type::crossover_cycle;
         else
             return command_line_status::init_policy_error;
-
-    } else if (is_equal(name, "init-random")) {
-        if (auto v = assign_01(value); !v)
-            return command_line_status::init_random_error;
-        else
-            params.init_random = *v;
 
     } else if (is_equal(name, "init-policy-random")) {
         if (auto v = assign_01(value); !v)

@@ -110,7 +110,7 @@ struct solver_functor
 
         {
             std::bernoulli_distribution choose_mutation(
-              m_ctx->parameters.init_random);
+              m_ctx->parameters.init_policy_random);
             bit_array empty_x;
 
             switch (p.init_policy) {
@@ -125,8 +125,6 @@ struct solver_functor
                 break;
 
             case solver_parameters::init_policy_type::bastert:
-            case solver_parameters::init_policy_type::cycle:
-            case solver_parameters::init_policy_type::crossover_cycle:
                 init_with_bastert<Cost, Mode>(x, original_costs, variables, 0);
                 break;
             }

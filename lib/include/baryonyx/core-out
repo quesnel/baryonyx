@@ -169,9 +169,7 @@ init_policy_type_to_string(solver_parameters::init_policy_type type) noexcept
 
     static std::string_view ret[] = { "bastert",
                                       "pessimistic-solve",
-                                      "optimistic-solve",
-                                      "cycle",
-                                      "crossover-cycle" };
+                                      "optimistic-solve" };
 
     return ret[static_cast<underlying_type>(type)];
 }
