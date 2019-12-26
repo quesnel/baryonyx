@@ -605,7 +605,8 @@ struct best_solution_recorder
             m_storage.insert(
               solution, hash, remaining_constraints, duration, loop);
 
-            if (m_storage.is_updated(best_remaining, best_value))
+            if (m_storage.is_updated(best_remaining, best_value) &&
+                m_ctx->update)
                 m_ctx->update(remaining_constraints, 0.0, loop, duration);
         }
     }
@@ -622,7 +623,8 @@ struct best_solution_recorder
 
             m_storage.insert(solution, hash, value, duration, loop);
 
-            if (m_storage.is_updated(best_remaining, best_value))
+            if (m_storage.is_updated(best_remaining, best_value) &&
+                m_ctx->update)
                 m_ctx->update(0, value, loop, duration);
         }
     }
