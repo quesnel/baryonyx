@@ -345,7 +345,7 @@ public:
             const auto x_rnd = dist(rng);
             const auto x_add = x_xor & x_rnd;
 
-            x.set_block(i, x_add | b_dist(rng) ? x1 : x2);
+            x.set_block(i, x_add | (b_dist(rng) ? x1 : x2));
         }
     }
 
