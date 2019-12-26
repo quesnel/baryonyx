@@ -46,7 +46,7 @@ struct raw_result
     raw_result(const bit_array& x_,
                double value_,
                double duration_,
-               index loop_)
+               long int loop_)
       : x(x_)
       , value(value_)
       , duration(duration_)
@@ -57,7 +57,7 @@ struct raw_result
     raw_result(const bit_array& x_,
                index remaining_constraints_,
                double duration_,
-               index loop_)
+               long int loop_)
       : x(x_)
       , value(itm::bad_value<Mode, double>())
       , duration(duration_)
@@ -69,7 +69,7 @@ struct raw_result
     double value = itm::bad_value<Mode, double>();
     double duration = 0.0;
     std::size_t hash = 0;
-    index loop = 0;
+    long int loop = 0;
     index remaining_constraints = std::numeric_limits<index>::max();
 
     void make_hash() noexcept

@@ -45,7 +45,7 @@ public:
     pi_pnm_observer(const std::string_view filename,
                     int m,
                     int /*n*/,
-                    int loop)
+                    long int loop)
       : constraints(m)
       , m_pnm(fmt::format("{}-pi.pnm", filename), constraints, loop)
     {}
@@ -79,7 +79,7 @@ public:
     ap_pnm_observer(const std::string_view filename,
                     int m,
                     int n,
-                    int /*loop*/)
+                    long int /*loop*/)
       : constraints(m)
       , variables(n)
       , m_frame(0)
@@ -127,7 +127,7 @@ public:
     pi_file_observer(const std::string_view filename,
                      int m,
                      int /*n*/,
-                     int /*loop*/)
+                     long int /*loop*/)
       : constraints(m)
       , m_ofs(fmt::format("{}-pi.txt", filename))
     {}
@@ -168,7 +168,7 @@ public:
     ap_file_observer(const std::string_view filename,
                      int m,
                      int n,
-                     int /*loop*/)
+                     long int /*loop*/)
       : constraints(m)
       , variables(n)
       , m_frame(0)
@@ -208,7 +208,7 @@ class pnm_observer
     details::ap_pnm_observer m_ap_obs;
 
 public:
-    pnm_observer(const std::string_view filename, int m, int n, int loop)
+    pnm_observer(const std::string_view filename, int m, int n, long int loop)
       : m_pi_obs(filename, m, n, loop)
       , m_ap_obs(filename, m, n, loop)
     {}
@@ -231,7 +231,7 @@ class file_observer
     details::ap_file_observer m_ap_obs;
 
 public:
-    file_observer(const std::string_view filename, int m, int n, int loop)
+    file_observer(const std::string_view filename, int m, int n, long int loop)
       : m_pi_obs(filename, m, n, loop)
       , m_ap_obs(filename, m, n, loop)
     {}
@@ -254,7 +254,7 @@ public:
     none_observer(const std::string_view /*filename*/,
                   int /*m*/,
                   int /*n*/,
-                  int /*loop*/)
+                  long int /*loop*/)
     {}
 
     template<typename Float>

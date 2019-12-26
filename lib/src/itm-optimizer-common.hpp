@@ -91,7 +91,7 @@ private:
                         const double value,
                         const double duration,
                         const std::size_t hash,
-                        const index loop,
+                        const long int loop,
                         const int remaining_constraints) noexcept
     {
         m_data_writer lock{ m_data_mutex[id] };
@@ -175,7 +175,7 @@ public:
                 const std::size_t hash,
                 const int remaining_constraints,
                 const double duration,
-                const index loop) noexcept
+                const long int loop) noexcept
     {
         auto bound = indices_bound();
 
@@ -208,7 +208,7 @@ public:
                 const std::size_t hash,
                 const double value,
                 const double duration,
-                const index loop) noexcept
+                const long int loop) noexcept
     {
         auto bound = indices_bound();
 
@@ -594,7 +594,7 @@ struct best_solution_recorder
 
     void try_advance(const bit_array& solution,
                      const int remaining_constraints,
-                     const int loop)
+                     const long int loop)
     {
         auto hash = bit_array_hash()(solution);
 
@@ -612,7 +612,7 @@ struct best_solution_recorder
 
     void try_update(const bit_array& solution,
                     const double value,
-                    const int loop)
+                    const long int loop)
     {
         auto hash = bit_array_hash()(solution);
 
@@ -682,10 +682,10 @@ struct optimize_functor
         const auto pushing_objective_amplifier =
           static_cast<Float>(p.pushing_objective_amplifier);
 
-        const int w_limit = static_cast<int>(p.w);
+        const auto w_limit = static_cast<long int>(p.w);
 
         if (p.limit <= 0)
-            p.limit = std::numeric_limits<int>::max();
+            p.limit = std::numeric_limits<long int>::max();
 
         if (p.pushes_limit <= 0)
             p.pushes_limit = 0;
@@ -709,7 +709,7 @@ struct optimize_functor
             auto best_remaining = INT_MAX;
             is_a_solution = false;
 
-            for (int i = 0; !stop_task.load() && i != p.limit; ++i) {
+            for (long int i = 0; !stop_task.load() && i != p.limit; ++i) {
                 auto remaining =
                   compute.run(slv, x, m_rng, kappa, delta, theta);
 

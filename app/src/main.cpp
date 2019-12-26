@@ -395,6 +395,17 @@ assign(std::string_view value, int mindef, int maxdef)
         return std::nullopt;
 }
 
+constexpr static std::optional<long int>
+assign(std::string_view value, long int mindef, long int maxdef)
+{
+    auto result = ::to_long(value);
+
+    if (result.has_value() && *result >= mindef && *result <= maxdef)
+        return result;
+    else
+        return std::nullopt;
+}
+
 constexpr static std::optional<double>
 assign_d(std::string_view value, double mindef, double maxdef)
 {
@@ -523,7 +534,7 @@ assign_parameter(baryonyx::solver_parameters& params,
                  std::string_view value)
 {
     if (is_equal(name, "limit", 'l')) {
-        if (auto v = assign(value, -1, std::numeric_limits<int>::max()); !v)
+        if (auto v = assign(value, -1L, std::numeric_limits<long int>::max()); !v)
             return command_line_status::limit_error;
         else
             params.limit = *v;

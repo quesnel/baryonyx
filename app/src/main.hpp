@@ -109,6 +109,33 @@ to_int(std::string_view s) noexcept
         return std::nullopt;
 }
 
+/**
+ * @brief Convert a string_view into a integer.
+ *
+ * @note waiting for std::fron_chars or boost::qi dependencies
+ */
+constexpr inline std::optional<long int>
+to_long(const std::string_view s) noexcept
+{
+    constexpr std::size_t size_limit = 512;
+
+    if (s.size() > size_limit)
+        return std::nullopt;
+
+    char buffer[size_limit + 1] = { '\0' };
+    std::size_t i = 0;
+    std::size_t e = std::min(s.size(), size_limit);
+
+    for (i = 0; i != e; ++i)
+        buffer[i] = s[i];
+
+    long int result = 0;
+    if (auto read = std::sscanf(buffer, "%ld", &result); read > 0)
+        return result;
+    else
+        return std::nullopt;
+}
+
 constexpr std::string_view file_format_error_string[] = {
     "success",
     "file_not_found",

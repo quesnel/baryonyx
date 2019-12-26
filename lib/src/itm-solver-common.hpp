@@ -89,10 +89,10 @@ struct solver_functor
         const auto pushing_objective_amplifier =
           static_cast<Float>(p.pushing_objective_amplifier);
 
-        const int w_limit = static_cast<int>(p.w);
+        const long int w_limit = static_cast<long int>(p.w);
 
         if (p.limit <= 0)
-            p.limit = std::numeric_limits<int>::max();
+            p.limit = std::numeric_limits<long int>::max();
 
         if (p.time_limit <= 0)
             p.time_limit = std::numeric_limits<double>::infinity();
@@ -144,7 +144,7 @@ struct solver_functor
 
         compute.init(slv, x);
 
-        for (int i = 0; i != p.limit; ++i) {
+        for (long int i = 0; i != p.limit; ++i) {
             auto remaining = compute.run(slv, x, m_rng, kappa, delta, theta);
             obs.make_observation(slv.ap, slv.P.get(), slv.pi.get());
 
@@ -251,7 +251,7 @@ private:
         return compute_duration(m_begin, m_end);
     }
 
-    void store_if_better(const bit_array& x, int remaining, int i)
+    void store_if_better(const bit_array& x, int remaining, long int i)
     {
         if (m_best.remaining_constraints > remaining) {
             m_best.x = x;
@@ -264,7 +264,7 @@ private:
         }
     }
 
-    void store_if_better(const bit_array& x, double current, int i)
+    void store_if_better(const bit_array& x, double current, long int i)
     {
         if (is_better_solution<Mode>(current, m_best.value)) {
             m_best.x = x;

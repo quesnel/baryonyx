@@ -308,8 +308,8 @@ class pnm_vector
 private:
     std::unique_ptr<std::uint8_t[]> m_buffer;
     std::ofstream m_ofs;
-    unsigned int m_heigth;
-    unsigned int m_width;
+    long int m_heigth;
+    long int m_width;
 
 public:
     using value_type = std::uint8_t;
@@ -320,7 +320,7 @@ public:
     using size_type = std::size_t;
     using difference_type = std::ptrdiff_t;
 
-    pnm_vector(std::string filename, unsigned int m, unsigned int loop)
+    pnm_vector(std::string filename, unsigned int m, long int loop)
       : m_ofs(filename, std::ios::binary)
       , m_heigth(loop)
       , m_width(m)
