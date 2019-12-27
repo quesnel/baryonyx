@@ -284,11 +284,12 @@ public:
                            : m_data[m_indices[last]];
     }
 
-    bool is_updated(int& constraint, double& value) const noexcept
+    void get_best(int& constraints_remaining,
+                  double& value,
+                  double& duration,
+                  long int& loop) const noexcept
     {
         int id;
-        int best_constraint;
-        double best_value;
 
         {
             m_indices_reader lock(m_indices_mutex);
@@ -297,31 +298,11 @@ public:
 
         {
             m_data_reader lock_data(m_data_mutex[id]);
-            best_constraint = m_data[id].remaining_constraints;
-            best_value = m_data[id].value;
+            constraints_remaining = m_data[id].remaining_constraints;
+            value = m_data[id].value;
+            duration = m_data[id].duration;
+            loop = m_data[id].loop;
         }
-
-        if (best_constraint == 0) {
-            if (constraint == 0) {
-                if (is_better_solution<Mode>(best_value, value)) {
-                    value = best_value;
-                    return true;
-                }
-                return false;
-            }
-
-            constraint = best_constraint;
-            value = best_value;
-            return true;
-        }
-
-        if (best_constraint < constraint) {
-            constraint = best_constraint;
-            value = best_value;
-            return true;
-        }
-
-        return false;
     }
 
     const raw_result<Mode>& get_best(int i) const noexcept
@@ -456,9 +437,6 @@ struct best_solution_recorder
     std::normal_distribution<> m_variable_p_dist;
     std::normal_distribution<> m_value_p_dist;
 
-    int best_remaining;
-    double best_value;
-
     best_solution_recorder(const context_ptr& ctx,
                            const unsigned thread_number,
                            const Cost& costs,
@@ -484,8 +462,6 @@ struct best_solution_recorder
       , m_value_p_dist(
           ctx->parameters.init_mutation_value_mean,
           ctx->parameters.init_mutation_value_stddev)
-      , best_remaining(INT_MAX)
-      , best_value(bad_value<Mode, double>())
     {
         m_start = std::chrono::steady_clock::now();
     }
@@ -499,6 +475,17 @@ struct best_solution_recorder
 
         return static_cast<int>(m_ctx->parameters.init_population_size *
                                 value);
+    }
+
+    void get_best(int& constraints_remaining,
+                  double& value,
+                  double& duration,
+                  long int& loop) const noexcept
+    {
+        m_storage.get_best(constraints_remaining,
+                           value,
+                           duration,
+                           loop);
     }
 
     void mutation(random_engine& rng, bit_array& x)
@@ -604,10 +591,6 @@ struct best_solution_recorder
 
             m_storage.insert(
               solution, hash, remaining_constraints, duration, loop);
-
-            if (m_storage.is_updated(best_remaining, best_value) &&
-                m_ctx->update)
-                m_ctx->update(remaining_constraints, 0.0, loop, duration);
         }
     }
 
@@ -622,10 +605,6 @@ struct best_solution_recorder
             const auto duration = compute_duration(m_start, end);
 
             m_storage.insert(solution, hash, value, duration, loop);
-
-            if (m_storage.is_updated(best_remaining, best_value) &&
-                m_ctx->update)
-                m_ctx->update(0, value, loop, duration);
         }
     }
 
@@ -856,25 +835,39 @@ optimize_problem(const context_ptr& ctx, const problem& pb)
                               std::cref(cost),
                               cost_constant);
 
-    // User limits the optimization process. The current thread turns into
-    // sleeping mode for the specified duration time in second.  The
-    // following code takes into account the first three decimals only.
+    const auto start = std::chrono::steady_clock::now();
+    auto end = start;
 
-    if (ctx->parameters.time_limit > 0) {
-        const auto duration =
-          static_cast<long>(ctx->parameters.time_limit * 1000.0);
-        std::this_thread::sleep_for(std::chrono::milliseconds{ duration });
-        stop_task.store(true);
-    }
+    do {
+        std::this_thread::sleep_for(std::chrono::seconds{ 1L });
+
+        if (ctx->update) {
+            auto call_number = 0L;
+            for (auto i = 0u; i != thread; ++i)
+                call_number += functors[i].m_call_number;
+
+            int constraints_remaining;
+            long int loop;
+            double value;
+            double duration;
+
+            best_recorder.get_best(constraints_remaining, value, duration,
+                                   loop);
+
+            ctx->update(constraints_remaining,
+                        value,
+                        loop,
+                        duration,
+                        call_number);
+        }
+
+        end = std::chrono::steady_clock::now();
+    } while (!is_time_limit(ctx->parameters.time_limit, start, end));
+
+    stop_task.store(true);
 
     for (auto& t : pool)
         t.join();
-
-    long int call_number{ 0 };
-    for (auto i = 0u; i != thread; ++i)
-        call_number += functors[i].m_call_number;
-
-    info(ctx, "- optimizer call number: {}\n", call_number);
 
     r.strings = pb.strings;
     r.affected_vars = pb.affected_vars;

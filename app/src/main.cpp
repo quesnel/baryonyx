@@ -143,25 +143,29 @@ solver_started_cb(const baryonyx::solver_parameters& params)
 static void
 solver_updated_cb(int remaining_constraints,
                   double value,
-                  int loop,
-                  double duration)
+                  long int loop,
+                  double duration,
+                  long int reinit_number)
 {
     if (remaining_constraints > 0) {
-        fmt::print("  - Constraints remaining: {} (loop: {} t: {}s)\n",
+        fmt::print("  - Constraints remaining: {} (loop: {} t: {}s reinit: {})\n",
                    remaining_constraints,
                    loop,
-                   duration);
+                   duration,
+                   reinit_number);
     } else {
         if (loop >= 0)
-            fmt::print("  - Solution found: {:f} (loop: {} t: {}s)\n",
+            fmt::print("  - Solution found: {:f} (loop: {} t: {}s reinit: {})\n",
                        value,
                        loop,
-                       duration);
+                       duration,
+                       reinit_number);
         else
-            fmt::print("  - Solution found via push: {:f} (loop: {} t: {}s)\n",
+            fmt::print("  - Solution found via push: {:f} (loop: {} t: {}s reinit: {})\n",
                        value,
                        -loop,
-                       duration);
+                       duration,
+                       reinit_number);
     }
 }
 

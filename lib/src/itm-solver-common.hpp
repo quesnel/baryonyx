@@ -258,9 +258,6 @@ private:
             m_best.duration = duration();
             m_best.loop = i;
             m_best.remaining_constraints = remaining;
-
-            if (m_ctx->update)
-                m_ctx->update(remaining, 0.0, i, m_best.duration);
         }
     }
 
@@ -272,9 +269,6 @@ private:
             m_best.loop = i;
             m_best.remaining_constraints = 0;
             m_best.value = current;
-
-            if (m_ctx->update)
-                m_ctx->update(0, current, i, m_best.duration);
         }
     }
 };

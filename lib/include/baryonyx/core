@@ -750,7 +750,8 @@ using solver_started_cb = std::function<void(const solver_parameters& params)>;
 
 /// Function called for each solution improvement.
 using solver_updated_cb = std::function<
-  void(int remaining_constraints, double value, long int loop, double duration)>;
+  void(int remaining_constraints, double value, long int loop, double duration,
+       long int reinit_number)>;
 
 /// finish Function called at the end of the computation.
 using solver_finished_cb = std::function<void(const result& r)>;
