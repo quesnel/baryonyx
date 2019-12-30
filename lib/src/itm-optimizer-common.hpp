@@ -62,6 +62,7 @@ private:
     std::vector<raw_result<Mode>> m_data;
     bit_array m_bastert;
 
+    std::normal_distribution<> m_choose_sol_dist;
     std::bernoulli_distribution m_crossover_bastert_insertion;
 
     const Cost& costs;
@@ -104,6 +105,16 @@ private:
         m_data[id].remaining_constraints = remaining_constraints;
     }
 
+    int choose_a_solution(random_engine& rng)
+    {
+        double value;
+        do
+            value = m_choose_sol_dist(rng);
+        while (value < 0 || value > 1);
+
+        return static_cast<int>(m_size * value);
+    }
+
 public:
     storage(random_engine& rng,
             const Cost& costs_,
@@ -111,11 +122,15 @@ public:
             const int population_size,
             const int variables,
             const std::vector<merged_constraint>& constraints_,
-            const double crossover_bastert_insertion)
+            const double crossover_bastert_insertion,
+            const double crossover_solution_selection_mean,
+            const double crossover_solution_selection_stddev)
       : m_data_mutex(population_size)
       , m_indices(population_size)
       , m_data(population_size)
       , m_bastert(variables)
+      , m_choose_sol_dist(crossover_solution_selection_mean,
+                          crossover_solution_selection_stddev)
       , m_crossover_bastert_insertion(crossover_bastert_insertion)
       , costs(costs_)
       , cost_constant(cost_constant_)
@@ -330,27 +345,38 @@ public:
         }
     }
 
-    void crossover(random_engine& rng,
-                   bit_array& x,
-                   const int first_result,
-                   const int second_result)
+    void crossover(random_engine& rng, bit_array& x)
     {
-        int first;
-        int second;
+        if (m_crossover_bastert_insertion(rng)) {
+            int first = m_indices[choose_a_solution(rng)];
 
-        {
-            m_indices_reader lock_indices{ m_indices_mutex };
-            first = m_indices[first_result];
-            second = m_indices[second_result];
-        }
-
-        m_data_reader lock_data_1{ m_data_mutex[first] };
-        m_data_reader lock_data_2{ m_data_mutex[second] };
-
-        if (m_crossover_bastert_insertion(rng))
+            m_data_reader lock_data_1{ m_data_mutex[first] };
             crossover(rng, x, m_data[first].x, m_bastert);
-        else
+
+            to_log(stdout,
+                   7u,
+                   "- crossover between {} ({}) and bastert\n",
+                   first,
+                   m_data[first].value);
+
+        } else {
+            int first = m_indices[choose_a_solution(rng)];
+            int second = m_indices[choose_a_solution(rng)];
+            while (first == second)
+                second = m_indices[choose_a_solution(rng)];
+
+            m_data_reader lock_data_1{ m_data_mutex[first] };
+            m_data_reader lock_data_2{ m_data_mutex[second] };
             crossover(rng, x, m_data[first].x, m_data[second].x);
+
+            to_log(stdout,
+                   7u,
+                   "- crossover between {} ({}) and {} ({})\n",
+                   first,
+                   m_data[first].value,
+                   second,
+                   m_data[second].value);
+        }
     }
 
 private:
@@ -433,7 +459,6 @@ struct best_solution_recorder
 
     storage<Cost, Mode> m_storage;
 
-    std::normal_distribution<> m_choose_sol_dist;
     std::normal_distribution<> m_variable_p_dist;
     std::normal_distribution<> m_value_p_dist;
 
@@ -452,29 +477,15 @@ struct best_solution_recorder
                   ctx->parameters.init_population_size,
                   variables,
                   constraints,
-                  ctx->parameters.init_crossover_bastert_insertion)
-      , m_choose_sol_dist(
-          ctx->parameters.init_crossover_solution_selection_mean,
-          ctx->parameters.init_crossover_solution_selection_stddev)
-      , m_variable_p_dist(
-          ctx->parameters.init_mutation_variable_mean,
-          ctx->parameters.init_mutation_variable_stddev)
-      , m_value_p_dist(
-          ctx->parameters.init_mutation_value_mean,
-          ctx->parameters.init_mutation_value_stddev)
+                  ctx->parameters.init_crossover_bastert_insertion,
+                  ctx->parameters.init_crossover_solution_selection_mean,
+                  ctx->parameters.init_crossover_solution_selection_stddev)
+      , m_variable_p_dist(ctx->parameters.init_mutation_variable_mean,
+                          ctx->parameters.init_mutation_variable_stddev)
+      , m_value_p_dist(ctx->parameters.init_mutation_value_mean,
+                       ctx->parameters.init_mutation_value_stddev)
     {
         m_start = std::chrono::steady_clock::now();
-    }
-
-    int choose_a_solution(random_engine& rng)
-    {
-        double value;
-        do
-            value = m_choose_sol_dist(rng);
-        while (value < 0 || value > 1);
-
-        return static_cast<int>(m_ctx->parameters.init_population_size *
-                                value);
     }
 
     void get_best(int& constraints_remaining,
@@ -482,45 +493,43 @@ struct best_solution_recorder
                   double& duration,
                   long int& loop) const noexcept
     {
-        m_storage.get_best(constraints_remaining,
-                           value,
-                           duration,
-                           loop);
+        m_storage.get_best(constraints_remaining, value, duration, loop);
     }
 
     void mutation(random_engine& rng, bit_array& x)
     {
-        int first = choose_a_solution(rng);
-        int second = choose_a_solution(rng);
+        m_storage.crossover(rng, x);
 
-        while (first == second)
-            second = choose_a_solution(rng);
-
-        m_storage.crossover(rng, x, first, second);
-
-        if (m_value_p_dist.mean() == 0.0 &&
-            m_value_p_dist.stddev() == 0.0)
+        if (m_value_p_dist.mean() == 0.0 && m_value_p_dist.stddev() == 0.0)
             return;
 
         double val_p, var_p;
 
         do
-            val_p = m_variable_p_dist(rng);
-        while (val_p <= 0.0 || val_p >= 1.0);
+            var_p = m_variable_p_dist(rng);
+        while (var_p <= 0.0 || var_p >= 1.0);
 
         do
-            var_p = m_value_p_dist(rng);
-        while (var_p < 0.0 || var_p > 1.0);
+            val_p = m_value_p_dist(rng);
+        while (val_p < 0.0 || val_p > 1.0);
 
-        to_log(stdout, 7u, "- mutation variables {}% and "
-               " {}% \n", var_p, val_p);
+        to_log(stdout,
+               7u,
+               "- mutation variables {}% with "
+               " {}% of set\n",
+               var_p,
+               val_p);
 
         std::bernoulli_distribution dist_var_p(var_p);
         std::bernoulli_distribution dist_value_p(val_p);
 
-        for (int i = 0, e = x.size(); i != e; ++i)
-            if (dist_var_p(rng))
+        for (int i = 0, e = x.size(); i != e; ++i) {
+            if (dist_var_p(rng)) {
+                to_log(stdout, 9u, "- mutate variable {}\n", i);
+
                 x.set(i, dist_value_p(rng));
+            }
+        }
     }
 
     double improve(const unsigned thread_id,
@@ -851,14 +860,11 @@ optimize_problem(const context_ptr& ctx, const problem& pb)
             double value;
             double duration;
 
-            best_recorder.get_best(constraints_remaining, value, duration,
-                                   loop);
+            best_recorder.get_best(
+              constraints_remaining, value, duration, loop);
 
-            ctx->update(constraints_remaining,
-                        value,
-                        loop,
-                        duration,
-                        call_number);
+            ctx->update(
+              constraints_remaining, value, loop, duration, call_number);
         }
 
         end = std::chrono::steady_clock::now();
