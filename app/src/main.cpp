@@ -1136,7 +1136,7 @@ main(int argc, const char* argv[])
     }
 
     params.verbose = params.quiet ? 3 : params.verbose;
-    auto ctx = baryonyx::make_context(stdout, params.verbose);
+    auto ctx = baryonyx::make_context(params.verbose);
 
     context_set_solver_parameters(ctx, params.parameters);
 

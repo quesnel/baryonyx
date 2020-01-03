@@ -51,16 +51,9 @@ context_deleter(context* ctx)
 }
 
 context_ptr
-make_context(FILE* f, int verbose_level)
+make_context(int verbose_level)
 {
-    return context_ptr(new context(f, verbose_level), &context_deleter);
-}
-
-context_ptr
-make_context(string_logger_functor logger, int verbose_level)
-{
-    return context_ptr(new context(std::move(logger), verbose_level),
-                       &context_deleter);
+    return context_ptr(new context(verbose_level), &context_deleter);
 }
 
 void

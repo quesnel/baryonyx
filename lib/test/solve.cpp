@@ -72,7 +72,7 @@ get_value(const baryonyx::result& r, int variable)
 void
 test_preprocessor()
 {
-    auto ctx = baryonyx::make_context(stdout, 7);
+    auto ctx = baryonyx::make_context(6);
 
     std::stringstream ss;
 
@@ -192,7 +192,7 @@ test_preprocessor()
 void
 test_preprocessor_2()
 {
-    auto ctx = baryonyx::make_context(stdout, 7);
+    auto ctx = baryonyx::make_context(6);
 
     std::stringstream ss;
     double r;
@@ -239,7 +239,7 @@ test_preprocessor_2()
 void
 test_quadratic_preprocessor()
 {
-    auto ctx = baryonyx::make_context(stdout, 7);
+    auto ctx = baryonyx::make_context(6);
 
     const char* str_pb = "minimize\n"
                          "-5a + [ 2a * b + 3c * d ] /2 + 10b\n"
@@ -262,7 +262,7 @@ test_quadratic_preprocessor()
 void
 test_real_cost()
 {
-    auto ctx = baryonyx::make_context(stdout, 7);
+    auto ctx = baryonyx::make_context(6);
 
     const char* str_pb = "minimize\n"
                          "- 0.1 a - 0.5 b - 0.9 c - 1e-7 d\n"
@@ -295,7 +295,7 @@ test_real_cost()
 void
 test_assignment_problem()
 {
-    auto ctx = baryonyx::make_context(stdout, 7);
+    auto ctx = baryonyx::make_context(6);
 
     auto pb =
       baryonyx::make_problem(ctx, EXAMPLES_DIR "/assignment_problem_1.lp");
@@ -312,7 +312,7 @@ test_assignment_problem()
 void
 test_assignment_problem_random_coast()
 {
-    auto ctx = baryonyx::make_context(stdout, 7);
+    auto ctx = baryonyx::make_context(6);
 
     baryonyx::solver_parameters params;
     params.limit = 1000000;
@@ -345,7 +345,7 @@ test_assignment_problem_random_coast()
 void
 test_negative_coeff()
 {
-    auto ctx = baryonyx::make_context(stdout, 7);
+    auto ctx = baryonyx::make_context(6);
     auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/negative-coeff.lp");
 
     baryonyx::solver_parameters params;
@@ -361,7 +361,7 @@ test_negative_coeff()
 void
 test_negative_coeff2()
 {
-    auto ctx = baryonyx::make_context(stdout, 7);
+    auto ctx = baryonyx::make_context(6);
 
     auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/negative-coeff2.lp");
 
@@ -379,7 +379,7 @@ test_negative_coeff2()
 void
 test_negative_coeff3()
 {
-    auto ctx = baryonyx::make_context(stdout, 7);
+    auto ctx = baryonyx::make_context(6);
 
     auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/negative-coeff3.lp");
     Ensures(pb);
@@ -397,7 +397,7 @@ test_negative_coeff3()
 void
 test_negative_coeff4()
 {
-    auto ctx = baryonyx::make_context(stdout, 7);
+    auto ctx = baryonyx::make_context(6);
 
     auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/negative-coeff4.lp");
 
@@ -414,7 +414,7 @@ test_negative_coeff4()
 void
 test_negative_coeff5()
 {
-    auto ctx = baryonyx::make_context(stdout, 7);
+    auto ctx = baryonyx::make_context(6);
 
     const char* str_pb = "minimize\n"
                          "a b c d\n"
@@ -443,7 +443,7 @@ test_negative_coeff5()
 void
 test_8_queens_puzzle_fixed_cost()
 {
-    auto ctx = baryonyx::make_context(stdout, 7);
+    auto ctx = baryonyx::make_context(6);
 
     auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/8_queens_puzzle.lp");
 
@@ -488,7 +488,7 @@ test_8_queens_puzzle_fixed_cost()
 void
 test_8_queens_puzzle_random_cost()
 {
-    auto ctx = baryonyx::make_context(stdout, 7);
+    auto ctx = baryonyx::make_context(6);
 
     baryonyx::solver_parameters params;
     params.limit = -1;
@@ -524,7 +524,7 @@ test_8_queens_puzzle_random_cost()
 void
 test_qap()
 {
-    auto ctx = baryonyx::make_context(stdout, 7);
+    auto ctx = baryonyx::make_context(6);
 
     auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/small4.lp");
 
@@ -547,7 +547,7 @@ test_qap()
 void
 test_flat30_7()
 {
-    auto ctx = baryonyx::make_context(stdout, 7);
+    auto ctx = baryonyx::make_context(6);
     auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/flat30-7.lp");
 
     baryonyx::solver_parameters params;
@@ -568,7 +568,7 @@ test_flat30_7()
 void
 test_uf50_0448()
 {
-    auto ctx = baryonyx::make_context(stdout, 7);
+    auto ctx = baryonyx::make_context(6);
     auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/uf50-0448.lp");
 
     baryonyx::solver_parameters params;
@@ -593,7 +593,7 @@ test_uf50_0448()
 void
 test_aim_50_1_6_yes1_2()
 {
-    auto ctx = baryonyx::make_context(stdout, 7);
+    auto ctx = baryonyx::make_context(6);
 
     auto pb =
       baryonyx::make_problem(ctx, EXAMPLES_DIR "/aim-50-1_6-yes1-2.lp");
@@ -617,7 +617,7 @@ test_aim_50_1_6_yes1_2()
 void
 test_Z_coefficient_1()
 {
-    auto ctx = baryonyx::make_context(stdout, 7);
+    auto ctx = baryonyx::make_context(6);
 
     {
         const char* str_pb = "minimize\n"
@@ -665,7 +665,7 @@ test_Z_coefficient_1()
 void
 test_bibd1n()
 {
-    auto ctx = baryonyx::make_context(stdout, 7);
+    auto ctx = baryonyx::make_context(6);
 
     auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/bibd1n.lp");
 

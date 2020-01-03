@@ -48,8 +48,6 @@
 
 namespace baryonyx {
 
-using string_logger_functor = std::function<void(int, std::string)>;
-
 struct context
 {
     enum class message_type
@@ -66,38 +64,14 @@ struct context
 
     static const fmt::text_style message_style[];
 
-    enum class logger_type
+    static message_type convert_verbose_level(int level) noexcept
     {
-        c_file, ///< log are send to a C FILE* structure.
-        string  ///< log are store to the string_logger_functor.
-    };
+        return static_cast<context::message_type>(std::clamp(level, 0, 7));
+    }
 
     context(int verbose_level = 6)
-      : cfile_logger(stdout)
-    {
-        if (verbose_level != 6)
-            log_priority = static_cast<context::message_type>(
-              verbose_level < 0 ? 0 : verbose_level > 7 ? 7 : verbose_level);
-    }
-
-    context(FILE* f, int verbose_level = 6)
-      : cfile_logger(f ? f : stdout)
-    {
-        if (verbose_level != 6)
-            log_priority = static_cast<context::message_type>(
-              verbose_level < 0 ? 0 : verbose_level > 7 ? 7 : verbose_level);
-    }
-
-    context(string_logger_functor logger_, int verbose_level_ = 6)
-      : string_logger(std::move(logger_))
-      , cfile_logger(nullptr)
-      , logger(context::logger_type::string)
-    {
-        if (verbose_level_ != 6)
-            log_priority = static_cast<context::message_type>(
-              verbose_level_ < 0 ? 0
-                                 : verbose_level_ > 7 ? 7 : verbose_level_);
-    }
+      : log_priority(convert_verbose_level(verbose_level))
+    {}
 
     solver_parameters parameters;
     std::string method;
@@ -106,10 +80,7 @@ struct context
     solver_updated_cb update;
     solver_finished_cb finish;
 
-    string_logger_functor string_logger;
-    FILE* cfile_logger = stdout;
     message_type log_priority = context::message_type::info;
-    logger_type logger = context::logger_type::c_file;
 };
 
 namespace details {
@@ -152,81 +123,30 @@ void to_log([[maybe_unused]] std::FILE* os,
 
 inline bool
 is_loggable(context::message_type current_level,
-            context::message_type level) noexcept
+            int level) noexcept
 {
-    return static_cast<int>(current_level) >= static_cast<int>(level);
+    return static_cast<int>(current_level) >= level;
 }
 
 template<typename... Args>
 void
-log(const context_ptr& ctx,
-    context::message_type level,
-    const char* fmt,
-    const Args&... args)
+log(FILE* out, int style, const char* fmt, const Args&... args)
 {
-    if (!is_loggable(ctx->log_priority, level))
-        return;
-
-    if (ctx->logger == context::logger_type::c_file) {
-        fmt::print(ctx->cfile_logger,
-                   context::message_style[static_cast<int>(level)],
-                   fmt,
-                   args...);
-    } else {
-        ctx->string_logger(static_cast<int>(level), fmt::format(fmt, args...));
-    }
+    fmt::print(out, context::message_style[style], fmt, args...);
 }
 
 template<typename... Args>
 void
-log(const context_ptr& ctx, context::message_type level, const char* msg)
+log(FILE* out, int style, const char* msg)
 {
-    if (!is_loggable(ctx->log_priority, level))
-        return;
-
-    if (ctx->logger == context::logger_type::c_file) {
-        fmt::print(ctx->cfile_logger,
-                   context::message_style[static_cast<int>(level)],
-                   msg);
-    } else {
-        ctx->string_logger(static_cast<int>(level), fmt::format(msg));
-    }
+    fmt::print(out, context::message_style[style], msg);
 }
 
-template<typename... Args>
+template<typename T>
 void
-log(baryonyx::context* ctx,
-    context::message_type level,
-    const char* fmt,
-    const Args&... args)
+log(FILE* out, int style, const T& msg)
 {
-    if (not is_loggable(ctx->log_priority, level))
-        return;
-
-    if (ctx->logger == context::logger_type::c_file) {
-        fmt::print(ctx->cfile_logger,
-                   context::message_style[static_cast<int>(level)],
-                   fmt,
-                   args...);
-    } else {
-        ctx->string_logger(static_cast<int>(level), fmt::format(fmt, args...));
-    }
-}
-
-template<typename... Args>
-void
-log(baryonyx::context* ctx, context::message_type level, const char* msg)
-{
-    if (not is_loggable(ctx->log_priority, level))
-        return;
-
-    if (ctx->logger == context::logger_type::c_file) {
-        fmt::print(ctx->cfile_logger,
-                   context::message_style[static_cast<int>(level)],
-                   msg);
-    } else {
-        ctx->string_logger(static_cast<int>(level), fmt::format(msg));
-    }
+    fmt::print(out, context::message_style[style], "{}", msg);
 }
 
 namespace detail {
@@ -244,7 +164,10 @@ void
 emerg(const context_ptr& ctx, const char* fmt, const Args&... args)
 {
 #ifdef BARYONYX_ENABLE_LOG
-    log(ctx, context::message_type::emerg, fmt, args...);
+    if (!is_loggable(ctx->log_priority, 0))
+        return;
+
+    log(stderr, 0, fmt, args...);
 #else
     detail::sink(ctx, fmt, args...);
 #endif
@@ -255,7 +178,10 @@ void
 alert(const context_ptr& ctx, const char* fmt, const Args&... args)
 {
 #ifdef BARYONYX_ENABLE_LOG
-    log(ctx, context::message_type::alert, fmt, args...);
+    if (!is_loggable(ctx->log_priority, 1))
+        return;
+
+    log(stderr, 1, fmt, args...);
 #else
     detail::sink(ctx, fmt, args...);
 #endif
@@ -266,7 +192,10 @@ void
 crit(const context_ptr& ctx, const char* fmt, const Args&... args)
 {
 #ifdef BARYONYX_ENABLE_LOG
-    log(ctx, context::message_type::crit, fmt, args...);
+    if (!is_loggable(ctx->log_priority, 2))
+        return;
+
+    log(stderr, 2, fmt, args...);
 #else
     detail::sink(ctx, fmt, args...);
 #endif
@@ -277,7 +206,10 @@ void
 error(const context_ptr& ctx, const char* fmt, const Args&... args)
 {
 #ifdef BARYONYX_ENABLE_LOG
-    log(ctx, context::message_type::err, fmt, args...);
+    if (!is_loggable(ctx->log_priority, 3))
+        return;
+
+    log(stderr, 3, fmt, args...);
 #else
     detail::sink(ctx, fmt, args...);
 #endif
@@ -288,7 +220,10 @@ void
 warning(const context_ptr& ctx, const char* fmt, const Args&... args)
 {
 #ifdef BARYONYX_ENABLE_LOG
-    log(ctx, context::message_type::warning, fmt, args...);
+    if (!is_loggable(ctx->log_priority, 4))
+        return;
+
+    log(stderr, 4, fmt, args...);
 #else
     detail::sink(ctx, fmt, args...);
 #endif
@@ -299,7 +234,10 @@ void
 notice(const context_ptr& ctx, const char* fmt, const Args&... args)
 {
 #ifdef BARYONYX_ENABLE_LOG
-    log(ctx, context::message_type::notice, fmt, args...);
+    if (!is_loggable(ctx->log_priority, 5))
+        return;
+
+    log(stdout, 5, fmt, args...);
 #else
     detail::sink(ctx, fmt, args...);
 #endif
@@ -310,7 +248,10 @@ void
 info(const context_ptr& ctx, const char* fmt, const Args&... args)
 {
 #ifdef BARYONYX_ENABLE_LOG
-    log(ctx, context::message_type::info, fmt, args...);
+    if (!is_loggable(ctx->log_priority, 6))
+        return;
+
+    log(stdout, 6, fmt, args...);
 #else
     detail::sink(ctx, fmt, args...);
 #endif
@@ -322,7 +263,10 @@ debug(const context_ptr& ctx, const char* fmt, const Args&... args)
 {
 #ifdef BARYONYX_ENABLE_LOG
 #ifdef BARYONYX_ENABLE_DEBUG
-    log(ctx, context::message_type::debug, fmt, args...);
+    if (!is_loggable(ctx->log_priority, 7))
+        return;
+
+    log(stdout, 7, fmt, args...);
 #else
     detail::sink(ctx, fmt, args...);
 #endif
@@ -339,7 +283,10 @@ emerg(const context_ptr& ctx,
       const Args&... args)
 {
 #ifdef BARYONYX_ENABLE_LOG
-    log(ctx, context::message_type::emerg, fmt, arg1, args...);
+    if (!is_loggable(ctx->log_priority, 0))
+        return;
+
+    log(stderr, 0, fmt, arg1, args...);
 #else
     detail::sink(ctx, fmt, arg1, args...);
 #endif
@@ -353,7 +300,10 @@ alert(const context_ptr& ctx,
       const Args&... args)
 {
 #ifdef BARYONYX_ENABLE_LOG
-    log(ctx, context::message_type::alert, fmt, arg1, args...);
+    if (!is_loggable(ctx->log_priority, 1))
+        return;
+
+    log(stderr, 1, fmt, arg1, args...);
 #else
     detail::sink(ctx, fmt, arg1, args...);
 #endif
@@ -367,7 +317,10 @@ crit(const context_ptr& ctx,
      const Args&... args)
 {
 #ifdef BARYONYX_ENABLE_LOG
-    log(ctx, context::message_type::crit, fmt, arg1, args...);
+    if (!is_loggable(ctx->log_priority, 2))
+        return;
+
+    log(stderr, 2, fmt, arg1, args...);
 #else
     detail::sink(ctx, fmt, arg1, args...);
 #endif
@@ -381,7 +334,10 @@ error(const context_ptr& ctx,
       const Args&... args)
 {
 #ifdef BARYONYX_ENABLE_LOG
-    log(ctx, context::message_type::err, fmt, arg1, args...);
+    if (!is_loggable(ctx->log_priority, 3))
+        return;
+
+    log(stderr, 3, fmt, arg1, args...);
 #else
     detail::sink(ctx, fmt, arg1, args...);
 #endif
@@ -395,7 +351,10 @@ warning(const context_ptr& ctx,
         const Args&... args)
 {
 #ifdef BARYONYX_ENABLE_LOG
-    log(ctx, context::message_type::warning, fmt, arg1, args...);
+    if (!is_loggable(ctx->log_priority, 4))
+        return;
+
+    log(stderr, 4, fmt, arg1, args...);
 #else
     detail::sink(ctx, fmt, arg1, args...);
 #endif
@@ -409,7 +368,10 @@ notice(const context_ptr& ctx,
        const Args&... args)
 {
 #ifdef BARYONYX_ENABLE_LOG
-    log(ctx, context::message_type::notice, fmt, arg1, args...);
+    if (!is_loggable(ctx->log_priority, 5))
+        return;
+
+    log(stdout, 5, fmt, arg1, args...);
 #else
     detail::sink(ctx, fmt, arg1, args...);
 #endif
@@ -423,7 +385,10 @@ info(const context_ptr& ctx,
      const Args&... args)
 {
 #ifdef BARYONYX_ENABLE_LOG
-    log(ctx, context::message_type::info, fmt, arg1, args...);
+    if (!is_loggable(ctx->log_priority, 6))
+        return;
+
+    log(stdout, 6, fmt, arg1, args...);
 #else
     detail::sink(ctx, fmt, arg1, args...);
 #endif
@@ -438,47 +403,16 @@ debug(const context_ptr& ctx,
 {
 #ifdef BARYONYX_ENABLE_LOG
 #ifdef BARYONYX_ENABLE_DEBUG
-    log(ctx, context::message_type::debug, fmt, arg1, args...);
+    if (!is_loggable(ctx->log_priority, 7))
+        return;
+
+    log(stdout, 7, fmt, arg1, args...);
 #else
     detail::sink(ctx, fmt, arg1, args...);
 #endif
 #else
     detail::sink(ctx, fmt, arg1, args...);
 #endif
-}
-
-template<typename T>
-void
-log(const context_ptr& ctx, context::message_type level, const T& msg)
-{
-    if (not is_loggable(ctx->log_priority, level))
-        return;
-
-    if (ctx->logger == context::logger_type::c_file) {
-        fmt::print(ctx->cfile_logger,
-                   context::message_style[static_cast<int>(level)],
-                   "{}",
-                   msg);
-    } else {
-        ctx->string_logger(static_cast<int>(level), fmt::format("{}", msg));
-    }
-}
-
-template<typename T>
-void
-log(baryonyx::context* ctx, context::message_type level, const T& msg)
-{
-    if (not is_loggable(ctx->log_priority, level))
-        return;
-
-    if (ctx->logger == context::logger_type::c_file) {
-        fmt::print(ctx->cfile_logger,
-                   context::message_style[static_cast<int>(level)],
-                   "{}",
-                   msg);
-    } else {
-        ctx->string_logger(static_cast<int>(level), fmt::format("{}", msg));
-    }
 }
 
 ////////////////////////////////////////////////
@@ -488,7 +422,10 @@ void
 emerg(const context_ptr& ctx, const T& msg)
 {
 #ifdef BARYONYX_ENABLE_LOG
-    log(ctx, context::message_type::emerg, msg);
+    if (!is_loggable(ctx->log_priority, 0))
+        return;
+
+    log(stderr, 0, msg);
 #else
     detail::sink(ctx, msg);
 #endif
@@ -499,7 +436,10 @@ void
 alert(const context_ptr& ctx, const T& msg)
 {
 #ifdef BARYONYX_ENABLE_LOG
-    log(ctx, context::message_type::alert, msg);
+    if (!is_loggable(ctx->log_priority, 1))
+        return;
+
+    log(stderr, 1, msg);
 #else
     detail::sink(ctx, msg);
 #endif
@@ -510,7 +450,10 @@ void
 crit(const context_ptr& ctx, const T& msg)
 {
 #ifdef BARYONYX_ENABLE_LOG
-    log(ctx, context::message_type::crit, msg);
+    if (!is_loggable(ctx->log_priority, 2))
+        return;
+
+    log(stderr, 2, msg);
 #else
     detail::sink(ctx, msg);
 #endif
@@ -521,7 +464,10 @@ void
 error(const context_ptr& ctx, const T& msg)
 {
 #ifdef BARYONYX_ENABLE_LOG
-    log(ctx, context::message_type::err, msg);
+    if (!is_loggable(ctx->log_priority, 3))
+        return;
+
+    log(stderr, 3, msg);
 #else
     detail::sink(ctx, msg);
 #endif
@@ -532,7 +478,10 @@ void
 warning(const context_ptr& ctx, const T& msg)
 {
 #ifdef BARYONYX_ENABLE_LOG
-    log(ctx, context::message_type::warning, msg);
+    if (!is_loggable(ctx->log_priority, 4))
+        return;
+
+    log(stderr, 4, msg);
 #else
     detail::sink(ctx, msg);
 #endif
@@ -543,7 +492,10 @@ void
 notice(const context_ptr& ctx, const T& msg)
 {
 #ifdef BARYONYX_ENABLE_LOG
-    log(ctx, context::message_type::notice, msg);
+    if (!is_loggable(ctx->log_priority, 5))
+        return;
+
+    log(stdout, 5, msg);
 #else
     detail::sink(ctx, msg);
 #endif
@@ -554,7 +506,10 @@ void
 info(const context_ptr& ctx, const T& msg)
 {
 #ifdef BARYONYX_ENABLE_LOG
-    log(ctx, context::message_type::info, msg);
+    if (!is_loggable(ctx->log_priority, 6))
+        return;
+
+    log(stdout, 6, msg);
 #else
     detail::sink(ctx, msg);
 #endif
@@ -566,7 +521,10 @@ debug(const context_ptr& ctx, const T& msg)
 {
 #ifdef BARYONYX_ENABLE_LOG
 #ifndef BARYONYX_ENABLE_DEBUG
-    log(ctx, context::message_type::debug, msg);
+    if (!is_loggable(ctx->log_priority, 7))
+        return;
+
+    log(stdout, 7, msg);
 #else
     detail::sink(ctx, msg);
 #endif

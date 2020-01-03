@@ -484,11 +484,7 @@ struct context;
 using context_ptr = std::unique_ptr<context, void (*)(context*)>;
 
 BX_EXPORT context_ptr
-make_context(FILE* f = stdout, int verbose_level = 6);
-
-BX_EXPORT context_ptr
-make_context(std::function<void(int, std::string)> logger,
-             int verbose_level = 6);
+make_context(int verbose_level = 6);
 
 /**
  * @brief Assign baryonyx internal parameters.

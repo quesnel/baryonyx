@@ -37,7 +37,7 @@
 void
 test_bibd1n()
 {
-    auto ctx = baryonyx::make_context(stdout, 6);
+    auto ctx = baryonyx::make_context(6);
     auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/bibd1n.lp");
 
     baryonyx::solver_parameters params;
@@ -54,7 +54,7 @@ test_bibd1n()
 void
 test_qap()
 {
-    auto ctx = baryonyx::make_context(stdout, 6);
+    auto ctx = baryonyx::make_context(6);
     auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/small4.lp");
 
     baryonyx::solver_parameters params;
@@ -90,7 +90,7 @@ test_qap()
 void
 test_n_queens_problem()
 {
-    auto ctx = baryonyx::make_context(stdout, 6);
+    auto ctx = baryonyx::make_context(6);
     std::vector<bool> valid_solutions(30, false);
     std::vector<double> solutions(30, 0.0);
     std::vector<double> cplex_solutions(30, 0.0);

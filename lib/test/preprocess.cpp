@@ -42,7 +42,7 @@ get_variable(const std::vector<std::string_view>& variable_names,
 void
 test_bqp_clean()
 {
-    auto ctx = baryonyx::make_context(stdout, 7);
+    auto ctx = baryonyx::make_context(6);
 
     {
         const char* str_pb = "minimize\n"
@@ -190,7 +190,7 @@ test_bqp_clean()
 void
 test_bound_affectation()
 {
-    auto ctx = baryonyx::make_context(stdout, 7);
+    auto ctx = baryonyx::make_context(6);
 
     auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/bound.lp");
 
@@ -233,7 +233,7 @@ test_bound_affectation()
 void
 test_cleaning_affected_variables()
 {
-    auto ctx = baryonyx::make_context();
+    auto ctx = baryonyx::make_context(6);
     auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/prepro.lp");
 
     Ensures(pb);
@@ -248,7 +248,7 @@ test_cleaning_affected_variables()
 void
 test_affect_variable()
 {
-    auto ctx = baryonyx::make_context();
+    auto ctx = baryonyx::make_context(6);
     auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/prepro.lp");
 
     Ensures(pb);
@@ -297,7 +297,7 @@ test_affect_variable()
 void
 test_split()
 {
-    auto ctx = baryonyx::make_context();
+    auto ctx = baryonyx::make_context(6);
     auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/prepro.lp");
     Ensures(pb);
     auto pb_pp = baryonyx::preprocess(ctx, pb);
