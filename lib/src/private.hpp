@@ -25,7 +25,6 @@
 
 #include <baryonyx/core>
 
-#include <unordered_map>
 #include <utility>
 
 #include <fmt/color.h>
@@ -82,18 +81,6 @@ struct context
 
     message_type log_priority = context::message_type::info;
 };
-
-namespace details {
-
-#ifdef __unix__
-#define error_symbol "\u26d4 "
-#define warning_symbol "\u26a0 "
-#else
-#define error_symbol ""
-#define warning_symbol ""
-#endif
-
-} // namespace details
 
 template<typename... Args>
 void to_log([[maybe_unused]] std::FILE* os,
@@ -157,6 +144,7 @@ struct sink
     sink(const Args&...)
     {}
 };
+
 }
 
 template<typename... Args>
