@@ -299,7 +299,7 @@ make_merged_constraints(const context_ptr& ctx, const problem& pb)
 {
     info(ctx,
          "  - merge constraint according to the `{}` algorithm\n",
-         baryonyx::pre_constraint_order_to_string(ctx->parameters.pre_order));
+         ctx->parameters.pre_order);
 
     auto original_nb = static_cast<int>(pb.equal_constraints.size() +
                                         pb.less_constraints.size() +

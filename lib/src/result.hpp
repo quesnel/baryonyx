@@ -153,4 +153,74 @@ operator<<(std::ostream& os, const best_solution_writer& writer);
 
 } // namespace baryonyx
 
+template<>
+struct fmt::formatter<baryonyx::result>
+{
+    constexpr auto parse(format_parse_context& ctx)
+    {
+        return ctx.begin();
+    }
+
+    template<typename FormatContext>
+    auto format(const baryonyx::result& result, FormatContext& ctx)
+    {
+        format_to(ctx.out(),
+                  "\\ solver................: {}\n"
+                  "\\ constraints...........: {}\n"
+                  "\\ variables.............: {}\n"
+                  "\\ duration..............: {}s\n"
+                  "\\ loop..................: {}\n"
+                  "\\ status................: {}\n",
+                  result.method,
+                  result.constraints,
+                  result.variables,
+                  result.duration,
+                  result.loop,
+                  result.status);
+
+        if (result.status == baryonyx::result_status::success) {
+            if (!result.solutions.empty()) {
+                format_to(ctx.out(),
+                          "\\ value.................: {:.10g}\n",
+                          result.solutions.back().value);
+
+                if (result.solutions.size() > 1) {
+                    format_to(ctx.out(), "\\ other value...........: ");
+                    for (const auto& elem : result.solutions)
+                        format_to(ctx.out(), "{:.10g} ", elem.value);
+                    format_to(ctx.out(), "\n");
+                }
+
+                format_to(ctx.out(), "\\ variables.............: \n");
+
+                for (std::size_t i = 0, e = result.affected_vars.names.size();
+                     i != e;
+                     ++i)
+                    format_to(ctx.out(),
+                              "{}={}\n",
+                              result.affected_vars.names[i],
+                              result.affected_vars.values[i] ? 1 : 0);
+
+                for (std::size_t i = 0, e = result.variable_name.size();
+                     i != e;
+                     ++i)
+                    format_to(ctx.out(),
+                              "{}={}\n",
+                              result.variable_name[i],
+                              result.solutions.back().variables[i] ? 1 : 0);
+            }
+        } else if (result.status ==
+                     baryonyx::result_status::time_limit_reached ||
+                   result.status ==
+                     baryonyx::result_status::kappa_max_reached ||
+                   result.status == baryonyx::result_status::limit_reached) {
+            format_to(ctx.out(),
+                      "\\ remaining constraints.: {}\n",
+                      result.remaining_constraints);
+        }
+
+        return ctx.out();
+    }
+};
+
 #endif

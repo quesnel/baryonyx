@@ -75,10 +75,10 @@ solver_started_cb(const baryonyx::solver_parameters& params)
                "  - observation: {}\n",
                params.limit,
                params.time_limit,
-               baryonyx::floating_point_type_to_string(params.float_type),
+               params.float_type,
                params.print_level,
-               baryonyx::mode_type_to_string(params.mode),
-               baryonyx::observer_type_to_string(params.observer));
+               params.mode,
+               params.observer);
 
     if (params.solver == baryonyx::solver_parameters::solver_type::bastert) {
         fmt::print(" * In The Middle parameters:\n"
@@ -90,8 +90,8 @@ solver_started_cb(const baryonyx::solver_parameters& params)
                    "  - alpha: {:.10g}\n"
                    "  - w: {:.10g}\n"
                    "  - norm: {}\n",
-                   baryonyx::pre_constraint_order_to_string(params.pre_order),
-                   baryonyx::constraint_order_to_string(params.order),
+                   params.pre_order,
+                   params.order,
                    params.theta,
                    params.delta,
                    params.kappa_min,
@@ -99,7 +99,7 @@ solver_started_cb(const baryonyx::solver_parameters& params)
                    params.kappa_max,
                    params.alpha,
                    params.w,
-                   baryonyx::cost_norm_type_to_string(params.cost_norm));
+                   params.cost_norm);
 
         fmt::print(" * Pushes system parameters:\n"
                    "  - pushes-limit: {}\n"
@@ -114,7 +114,7 @@ solver_started_cb(const baryonyx::solver_parameters& params)
         fmt::print(" * Solver initialization parameters:\n"
                    "  - init-policy: {}\n"
                    "  - init-policy-random: {}\n",
-                   baryonyx::init_policy_type_to_string(params.init_policy),
+                   params.init_policy,
                    params.init_policy_random);
 
         fmt::print(" * Optimizer initialization parameters:\n"
@@ -148,20 +148,23 @@ solver_updated_cb(int remaining_constraints,
                   long int reinit_number)
 {
     if (remaining_constraints > 0) {
-        fmt::print("  - Constraints remaining: {} (loop: {} t: {}s reinit: {})\n",
-                   remaining_constraints,
-                   loop,
-                   duration,
-                   reinit_number);
+        fmt::print(
+          "  - Constraints remaining: {} (loop: {} t: {}s reinit: {})\n",
+          remaining_constraints,
+          loop,
+          duration,
+          reinit_number);
     } else {
         if (loop >= 0)
-            fmt::print("  - Solution found: {:f} (loop: {} t: {}s reinit: {})\n",
-                       value,
-                       loop,
-                       duration,
-                       reinit_number);
+            fmt::print(
+              "  - Solution found: {:f} (loop: {} t: {}s reinit: {})\n",
+              value,
+              loop,
+              duration,
+              reinit_number);
         else
-            fmt::print("  - Solution found via push: {:f} (loop: {} t: {}s reinit: {})\n",
+            fmt::print("  - Solution found via push: {:f} (loop: {} t: {}s "
+                       "reinit: {})\n",
                        value,
                        -loop,
                        duration,
@@ -538,7 +541,8 @@ assign_parameter(baryonyx::solver_parameters& params,
                  std::string_view value)
 {
     if (is_equal(name, "limit", 'l')) {
-        if (auto v = assign(value, -1L, std::numeric_limits<long int>::max()); !v)
+        if (auto v = assign(value, -1L, std::numeric_limits<long int>::max());
+            !v)
             return command_line_status::limit_error;
         else
             params.limit = *v;
@@ -756,13 +760,15 @@ assign_parameter(baryonyx::solver_parameters& params,
 
     } else if (is_equal(name, "init-crossover-solution-selection-mean")) {
         if (auto v = assign_01(value); !v)
-            return command_line_status::init_crossover_solution_selection_mean_error;
+            return command_line_status::
+              init_crossover_solution_selection_mean_error;
         else
             params.init_crossover_solution_selection_mean = *v;
 
     } else if (is_equal(name, "init-crossover-solution-selection-stddev")) {
         if (auto v = assign_01(value); !v)
-            return command_line_status::init_crossover_solution_selection_stddev_error;
+            return command_line_status::
+              init_crossover_solution_selection_stddev_error;
         else
             params.init_crossover_solution_selection_stddev = *v;
 

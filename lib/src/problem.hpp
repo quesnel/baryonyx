@@ -26,6 +26,8 @@
 #include <baryonyx/core-compare>
 #include <baryonyx/core>
 
+#include <fmt/format.h>
+
 #include <algorithm>
 
 namespace baryonyx {
@@ -229,5 +231,188 @@ std::tuple<problem, problem>
 split(const context_ptr& ctx, const problem& pb, int variable_index_to_affect);
 
 } // namespace baryonyx
+
+template<typename FormatContext, typename Problem, typename Function>
+void
+write_function_element(FormatContext& ctx, const Problem& p, const Function& f)
+{
+    for (auto& elem : f) {
+        if (elem.factor < 0)
+            fmt::format_to(ctx.out(),
+                           " {} {}",
+                           elem.factor,
+                           p.vars.names[elem.variable_index]);
+        else if (elem.factor > 0)
+            fmt::format_to(ctx.out(),
+                           "+ {} {}",
+                           elem.factor,
+                           p.vars.names[elem.variable_index]);
+
+        fmt::format_to(ctx.out(), " ");
+    }
+}
+
+template<typename FormatContext, typename Problem, typename Function>
+void
+write_quadratic_element(FormatContext& ctx,
+                        const Problem& p,
+                        const Function& f)
+{
+    if (f.empty())
+        return;
+
+    fmt::format_to(ctx.out(), "+ [");
+
+    for (auto& elem : f) {
+        if (elem.variable_index_a == elem.variable_index_b)
+            fmt::format_to(ctx.out(),
+                           " {} {} ^2",
+                           2.0 * elem.factor,
+                           p.vars.names[elem.variable_index_a]);
+        else
+            fmt::format_to(ctx.out(),
+                           " {} {} * {}",
+                           2.0 * elem.factor,
+                           p.vars.names[elem.variable_index_a],
+                           p.vars.names[elem.variable_index_b]);
+    }
+
+    fmt::format_to(ctx.out(), " ] /2");
+}
+
+template<typename FormatContext, typename Problem, typename Constraint>
+void
+write_constraint(FormatContext& ctx,
+                 const Problem& p,
+                 const Constraint& cst,
+                 const char* separator)
+{
+    if (!cst.label.empty())
+        fmt::format_to(ctx.out(), "{}: ", cst.label);
+
+    write_function_element(ctx, p, cst.elements);
+
+    fmt::format_to(ctx.out(), "{}{}\n", separator, cst.value);
+}
+
+template<typename FormatContext, typename Problem>
+void
+write_constraints(FormatContext& ctx, const Problem& pb)
+{
+    for (std::size_t i = 0, e = pb.equal_constraints.size(); i != e; ++i)
+        write_constraint(ctx, pb, pb.equal_constraints[i], " = ");
+
+    for (std::size_t i = 0, e = pb.greater_constraints.size(); i != e; ++i)
+        write_constraint(ctx, pb, pb.greater_constraints[i], " >= ");
+
+    for (std::size_t i = 0, e = pb.less_constraints.size(); i != e; ++i)
+        write_constraint(ctx, pb, pb.less_constraints[i], " <= ");
+}
+
+template<typename FormatContext, typename Problem>
+void
+write_bounds(FormatContext& ctx, const Problem& p)
+{
+    for (std::size_t i{ 0 }, e{ p.vars.names.size() }; i != e; ++i) {
+        if (p.vars.values[i].min != 0)
+            fmt::format_to(
+              ctx.out(), "{} >= {}\n", p.vars.names[i], p.vars.values[i].min);
+
+        if (p.vars.values[i].max != std::numeric_limits<int>::max())
+            fmt::format_to(
+              ctx.out(), "{} <= {}\n", p.vars.names[i], p.vars.values[i].max);
+    }
+}
+
+template<typename FormatContext, typename Problem>
+void
+write_problem(FormatContext& ctx, const Problem& p)
+{
+    if (p.vars.names.empty())
+        return;
+
+    fmt::format_to(ctx.out(),
+                   "{}\n",
+                   p.type == baryonyx::objective_function_type::maximize
+                     ? "maximize\n"
+                     : "minimize\n");
+
+    write_function_element(ctx, p, p.objective.elements);
+    write_quadratic_element(ctx, p, p.objective.qelements);
+
+    if (p.objective.value < 0)
+        fmt::format_to(ctx.out(), "{}", p.objective.value);
+    else if (p.objective.value > 0)
+        fmt::format_to(ctx.out(), " + {}", p.objective.value);
+
+    fmt::format_to(ctx.out(), "\nsubject to\n");
+    write_constraints(ctx, p);
+
+    fmt::format_to(ctx.out(), "bounds\n");
+    write_bounds(ctx, p);
+
+    bool have_binary = false;
+    bool have_general = false;
+
+    for (std::size_t i{ 0 }, e{ p.vars.names.size() }; i != e; ++i) {
+        if (p.vars.values[i].type == baryonyx::variable_type::binary) {
+            have_binary = true;
+            if (have_general == true)
+                break;
+        } else if (p.vars.values[i].type == baryonyx::variable_type::general) {
+            have_general = true;
+            if (have_binary == true)
+                break;
+        }
+    }
+
+    if (have_binary) {
+        fmt::format_to(ctx.out(), "binary\n");
+        for (std::size_t i{ 0 }, e{ p.vars.names.size() }; i != e; ++i)
+            if (p.vars.values[i].type == baryonyx::variable_type::binary)
+                fmt::format_to(ctx.out(), " {}\n", p.vars.names[i]);
+    }
+
+    if (have_general) {
+        fmt::format_to(ctx.out(), "general\n");
+        for (std::size_t i{ 0 }, e{ p.vars.names.size() }; i != e; ++i)
+            if (p.vars.values[i].type == baryonyx::variable_type::general)
+                fmt::format_to(ctx.out(), " {}\n", p.vars.names[i]);
+    }
+
+    fmt::format_to(ctx.out(), "end\n");
+};
+
+template<>
+struct fmt::formatter<baryonyx::problem>
+{
+    constexpr auto parse(format_parse_context& ctx)
+    {
+        return ctx.begin();
+    }
+
+    template<typename FormatContext>
+    auto format(const baryonyx::problem& pb, FormatContext& ctx)
+    {
+        write_problem(ctx, pb);
+        return ctx.out();
+    }
+};
+
+template<>
+struct fmt::formatter<baryonyx::raw_problem>
+{
+    constexpr auto parse(format_parse_context& ctx)
+    {
+        return ctx.begin();
+    }
+
+    template<typename FormatContext>
+    auto format(const baryonyx::raw_problem& pb, FormatContext& ctx)
+    {
+        write_problem(ctx, pb);
+        return ctx.out();
+    }
+};
 
 #endif

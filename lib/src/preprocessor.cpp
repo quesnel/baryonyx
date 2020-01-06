@@ -28,6 +28,7 @@
 #include <set>
 #include <stack>
 #include <tuple>
+#include <unordered_map>
 
 #include "debug.hpp"
 #include "memory.hpp"

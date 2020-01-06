@@ -29,9 +29,8 @@
 #include <baryonyx/core-out>
 #include <baryonyx/core>
 
-#include <iostream>
-
-#include <fmt/printf.h>
+#include <fmt/format.h>
+#include <fmt/ostream.h>
 
 #include <fstream>
 #include <map>
@@ -82,13 +81,12 @@ test_preprocessor()
         params.cost_norm = baryonyx::solver_parameters::cost_norm_type::loo;
         baryonyx::context_set_solver_parameters(ctx, params);
 
-        std::cout << pb << '\n';
+        fmt::print("{}", pb);
 
         auto result = baryonyx::solve(ctx, pb);
-
-        std::cout << result << '\n';
-        std::cout << "affected vars: " << result.affected_vars.names.size()
-                  << '\n';
+        fmt::print("{}\naffected vars: {}\n",
+                   result,
+                   result.affected_vars.names.size());
 
         Ensures(result.affected_vars.names.size() == 21);
 
@@ -171,7 +169,7 @@ test_preprocessor()
 
         Ensures(result.solutions.back().value > 6.0);
 
-        ss << result;
+        fmt::print(ss, "{}", result);
         if (!ss.good())
             Ensures(ss.good());
     }
@@ -215,7 +213,7 @@ test_preprocessor_2()
         r = result.solutions.back().value;
         Ensures(result.solutions.back().value < 1156908);
 
-        ss << result;
+        fmt::print(ss, "{}", result);
         if (!ss.good())
             Ensures(ss.good());
     }
@@ -688,7 +686,7 @@ test_bibd1n()
 #endif
 
 int
-main(int /*argc*/, char* /* argv */ [])
+main(int /*argc*/, char* /* argv */[])
 {
     unit_test::checks("preprocessor", test_preprocessor);
     unit_test::checks("preprocessor_2", test_preprocessor_2);

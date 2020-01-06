@@ -24,7 +24,6 @@
 
 #include <algorithm>
 #include <fstream>
-#include <iostream>
 #include <optional>
 #include <string>
 #include <unordered_map>
@@ -488,8 +487,8 @@ struct problem_parser
         return -1;
     }
 
-    [[nodiscard]] bool append_to_objective(
-      const function_element_token& elem) {
+    [[nodiscard]] bool append_to_objective(const function_element_token& elem)
+    {
         if (elem.name.empty()) {
             m_problem.objective.value += elem.factor;
             return true;
@@ -512,8 +511,8 @@ struct problem_parser
         }
     }
 
-      [[nodiscard]] bool set_boolean_variable(
-        const std::string_view value) noexcept
+    [[nodiscard]] bool set_boolean_variable(
+      const std::string_view value) noexcept
     {
         auto id = get_variable(value);
         if (id < 0)
@@ -538,7 +537,8 @@ struct problem_parser
         return true;
     }
 
-    [[nodiscard]] bool set_bound_variable(bound_token bound) {
+    [[nodiscard]] bool set_bound_variable(bound_token bound)
+    {
         auto id = get_variable(bound.name);
         if (id < 0)
             return false;
@@ -583,7 +583,7 @@ read_real(const std::string_view buf) noexcept
         return std::nullopt;
 }
 
-// constexpr 
+// constexpr
 std::optional<real_token>
 read_real(const std::string_view buf_1, const std::string_view buf_2) noexcept
 {
@@ -1058,9 +1058,10 @@ starts_with_quadratic(const std::string_view buf_1,
            (buf_1 == "-" && buf_2 == "[");
 }
 
-raw_problem_status parse([[maybe_unused]] const baryonyx::context_ptr& ctx,
-                         stream_buffer& buf,
-                         problem_parser& p) noexcept
+raw_problem_status
+parse([[maybe_unused]] const baryonyx::context_ptr& ctx,
+      stream_buffer& buf,
+      problem_parser& p) noexcept
 {
     if (auto obj_type = read_objective_type(buf.first()); !obj_type)
         return baryonyx::file_format_error_tag::bad_objective_function_type;

@@ -25,222 +25,363 @@
 
 #include <baryonyx/core>
 
-namespace baryonyx {
+#include <fmt/format.h>
 
-/**
- * @brief Write baryonyx::result into a `dot sol` format.
- * @details The `dot sol` format use the same comment and variable names as the
- *     `dot lp` format. All meta data, constraint remaining, duration are
- *     stored into comment in `dot sol` format. Only variable affectation are
- *     full useful.
- *
- * @param os [out] class output std::ostream.
- * @param result [in] the baryonyx::result to write.
- */
-template<typename OuputStream>
-inline OuputStream&
-operator<<(OuputStream& os, const result& result)
+template<>
+struct fmt::formatter<baryonyx::result_status> : fmt::formatter<string_view>
 {
-    std::size_t i, e;
+    template<typename FormatContext>
+    auto format(baryonyx::result_status c, FormatContext& ctx)
+    {
+        string_view name = "unknown";
 
-    os << R"(\ solver................: )" << result.method << '\n'
-       << R"(\ constraints...........: )" << result.constraints << '\n'
-       << R"(\ variables.............: )" << result.variables << '\n'
-       << R"(\ duration..............: )" << result.duration << "s\n"
-       << R"(\ loop..................: )" << result.loop << '\n'
-       << R"(\ status................: )";
-
-    switch (result.status) {
-    case result_status::internal_error:
-        os << "internal error reported\n";
-        break;
-    case result_status::uninitialized:
-        os << "uninitialized\n";
-        break;
-    case result_status::success:
-        os << "solution found\n";
-
-        if (result.solutions.empty()) // Baryonyx ensures solutions are not
-            break;                    // empty.
-
-        os << R"(\ value.................: )" << result.solutions.back().value
-           << '\n'
-           << R"(\ other value...........: )";
-
-        for (const auto& elem : result.solutions)
-            os << elem.value << ' ';
-        os << '\n';
-
-        os << "\\ variables.............: \n";
-
-        for (i = 0, e = result.affected_vars.names.size(); i != e; ++i) {
-            os << result.affected_vars.names[i] << '='
-               << (result.affected_vars.values[i] ? 1 : 0) << '\n';
+        switch (c) {
+        case baryonyx::result_status::success:
+            name = "success";
+            break;
+        case baryonyx::result_status::internal_error:
+            name = "internal_error";
+            break;
+        case baryonyx::result_status::uninitialized:
+            name = "uninitialized";
+            break;
+        case baryonyx::result_status::time_limit_reached:
+            name = "time_limit_reached";
+            break;
+        case baryonyx::result_status::kappa_max_reached:
+            name = "kappa_max_reached";
+            break;
+        case baryonyx::result_status::limit_reached:
+            name = "limit_reached";
+            break;
         }
 
-        for (i = 0, e = result.variable_name.size(); i != e; ++i) {
-            os << result.variable_name[i] << '='
-               << (result.solutions.back().variables[i] ? 1 : 0) << '\n';
+        return formatter<string_view>::format(name, ctx);
+    }
+};
+
+template<>
+struct fmt::formatter<baryonyx::solver_parameters::pre_constraint_order>
+  : fmt::formatter<string_view>
+{
+    template<typename FormatContext>
+    auto format(baryonyx::solver_parameters::pre_constraint_order c,
+                FormatContext& ctx)
+    {
+        string_view name = "unknown";
+
+        switch (c) {
+        case baryonyx::solver_parameters::pre_constraint_order::none:
+            name = "none";
+            break;
+        case baryonyx::solver_parameters::pre_constraint_order::memory:
+            name = "memory";
+            break;
+        case baryonyx::solver_parameters::pre_constraint_order::
+          less_greater_equal:
+            name = "less-greater-equal";
+            break;
+        case baryonyx::solver_parameters::pre_constraint_order::
+          less_equal_greater:
+            name = "less-equal-greater";
+            break;
+        case baryonyx::solver_parameters::pre_constraint_order::
+          greater_less_equal:
+            name = "greater-less-equal";
+            break;
+        case baryonyx::solver_parameters::pre_constraint_order::
+          greater_equal_less:
+            name = "greater-equal-less";
+            break;
+        case baryonyx::solver_parameters::pre_constraint_order::
+          equal_less_greater:
+            name = "equal-less-greater";
+            break;
+        case baryonyx::solver_parameters::pre_constraint_order::
+          equal_greater_less:
+            name = "equal-greater-less";
+            break;
+        case baryonyx::solver_parameters::pre_constraint_order::p1:
+            name = "p1";
+            break;
+        case baryonyx::solver_parameters::pre_constraint_order::p2:
+            name = "p2";
+            break;
+        case baryonyx::solver_parameters::pre_constraint_order::p3:
+            name = "p3";
+            break;
+        case baryonyx::solver_parameters::pre_constraint_order::p4:
+            name = "p4";
+            break;
         }
-        break;
-    case result_status::time_limit_reached:
-        os << "time limit reached\n"
-           << R"(\ remaining constraints.: )" << result.remaining_constraints
-           << '\n';
-        break;
-    case result_status::kappa_max_reached:
-        os << "kappa max reached\n"
-           << R"(\ remaining constraints.: )" << result.remaining_constraints
-           << '\n';
-        break;
-    case result_status::limit_reached:
-        os << "limit reached\n"
-           << R"(\ remaining constraints.: )" << result.remaining_constraints
-           << '\n';
-        break;
+
+        return formatter<string_view>::format(name, ctx);
     }
+};
 
-    return os;
-}
-
-inline std::string_view
-pre_constraint_order_to_string(
-  solver_parameters::pre_constraint_order type) noexcept
+template<>
+struct fmt::formatter<baryonyx::solver_parameters::init_policy_type>
+  : fmt::formatter<string_view>
 {
-    using underlying_type = typename std::underlying_type<
-      solver_parameters::pre_constraint_order>::type;
+    template<typename FormatContext>
+    auto format(baryonyx::solver_parameters::init_policy_type c,
+                FormatContext& ctx)
+    {
+        string_view name = "unknown";
 
-    static std::string_view ret[] = { "none",
-                                      "memory",
-                                      "less-greater-equal",
-                                      "less-equal-greater",
-                                      "greater-less-equal",
-                                      "greater-equal-less",
-                                      "equal-less-greater",
-                                      "equal-greater-less",
-                                      "p1",
-                                      "p2",
-                                      "p3",
-                                      "p4" };
+        switch (c) {
+        case baryonyx::solver_parameters::init_policy_type::bastert:
+            name = "bastert";
+            break;
+        case baryonyx::solver_parameters::init_policy_type::pessimistic_solve:
+            name = "pessimistic-solve";
+            break;
+        case baryonyx::solver_parameters::init_policy_type::optimistic_solve:
+            name = "optimistic-solve";
+            break;
+        }
 
-    return ret[static_cast<underlying_type>(type)];
-}
-
-inline std::string_view
-constraint_order_to_string(solver_parameters::constraint_order type) noexcept
-{
-    using underlying_type =
-      typename std::underlying_type<solver_parameters::constraint_order>::type;
-
-    static std::string_view ret[] = { "none",
-                                      "reversing",
-                                      "random-sorting",
-                                      "infeasibility-decr",
-                                      "infeasibility-incr",
-                                      "lagrangian-decr",
-                                      "lagrangian-incr",
-                                      "pi-sign-change",
-                                      "cycle" };
-
-    return ret[static_cast<underlying_type>(type)];
-}
-
-inline std::string_view
-floating_point_type_to_string(
-  solver_parameters::floating_point_type type) noexcept
-{
-    using underlying_type = typename std::underlying_type<
-      solver_parameters::floating_point_type>::type;
-
-    static std::string_view ret[] = {
-        "float",
-        "double",
-        "longdouble",
-    };
-
-    return ret[static_cast<underlying_type>(type)];
-}
-
-inline std::string_view
-init_policy_type_to_string(solver_parameters::init_policy_type type) noexcept
-{
-    using underlying_type =
-      typename std::underlying_type<solver_parameters::init_policy_type>::type;
-
-    static std::string_view ret[] = { "bastert",
-                                      "pessimistic-solve",
-                                      "optimistic-solve" };
-
-    return ret[static_cast<underlying_type>(type)];
-}
-
-inline std::string_view
-cost_norm_type_to_string(solver_parameters::cost_norm_type type) noexcept
-{
-    using underlying_type =
-      typename std::underlying_type<solver_parameters::cost_norm_type>::type;
-
-    static std::string_view ret[] = { "none", "random", "l1", "l2", "loo" };
-
-    return ret[static_cast<underlying_type>(type)];
-}
-
-inline std::string_view
-mode_type_to_string(solver_parameters::mode_type type) noexcept
-{
-    using underlying_type =
-      typename std::underlying_type<solver_parameters::mode_type>::type;
-
-    static std::string_view ret[] = {
-        "disabled", "manual",           "nlopt",
-        "branch",   "manul-and-branch", "nlopt-and-branch"
-    };
-
-    if (static_cast<underlying_type>(type) &
-        static_cast<underlying_type>(solver_parameters::mode_type::branch)) {
-        if (static_cast<underlying_type>(type) &
-            static_cast<underlying_type>(solver_parameters::mode_type::manual))
-            return ret[4];
-        else if (static_cast<underlying_type>(type) &
-                 static_cast<underlying_type>(
-                   solver_parameters::mode_type::nlopt))
-            return ret[5];
-        else
-            return ret[3];
-    } else {
-        if (static_cast<underlying_type>(type) &
-            static_cast<underlying_type>(solver_parameters::mode_type::manual))
-            return ret[1];
-        if (static_cast<underlying_type>(type) &
-            static_cast<underlying_type>(solver_parameters::mode_type::nlopt))
-            return ret[2];
+        return formatter<string_view>::format(name, ctx);
     }
+};
 
-    return ret[0];
-}
-
-inline std::string_view
-observer_type_to_string(solver_parameters::observer_type type) noexcept
+template<>
+struct fmt::formatter<baryonyx::solver_parameters::floating_point_type>
+  : fmt::formatter<string_view>
 {
-    using underlying_type =
-      typename std::underlying_type<solver_parameters::observer_type>::type;
+    template<typename FormatContext>
+    auto format(baryonyx::solver_parameters::floating_point_type c,
+                FormatContext& ctx)
+    {
+        string_view name = "unknown";
 
-    static std::string_view ret[] = { "none", "pnm", "file" };
+        switch (c) {
+        case baryonyx::solver_parameters::floating_point_type::float_type:
+            name = "float";
+            break;
+        case baryonyx::solver_parameters::floating_point_type::double_type:
+            name = "double";
+            break;
+        case baryonyx::solver_parameters::floating_point_type::longdouble_type:
+            name = "longdouble";
+            break;
+        }
 
-    return ret[static_cast<underlying_type>(type)];
-}
+        return formatter<string_view>::format(name, ctx);
+    }
+};
 
-inline std::string_view
-storage_type_to_string(solver_parameters::storage_type type) noexcept
+template<>
+struct fmt::formatter<baryonyx::solver_parameters::constraint_order>
+  : fmt::formatter<string_view>
 {
-    using underlying_type = typename std::underlying_type<
-      solver_parameters::solver_parameters::storage_type>::type;
+    template<typename FormatContext>
+    auto format(baryonyx::solver_parameters::constraint_order c,
+                FormatContext& ctx)
+    {
+        string_view name = "unknown";
 
-    static std::string_view ret[] = { "one", "bound", "five" };
+        switch (c) {
+        case baryonyx::solver_parameters::constraint_order::none:
+            name = "none";
+            break;
+        case baryonyx::solver_parameters::constraint_order::reversing:
+            name = "reversing";
+            break;
+        case baryonyx::solver_parameters::constraint_order::random_sorting:
+            name = "random-sorting";
+            break;
+        case baryonyx::solver_parameters::constraint_order::infeasibility_decr:
+            name = "infeasibility-decr";
+            break;
+        case baryonyx::solver_parameters::constraint_order::infeasibility_incr:
+            name = "infeasibility-incr";
+            break;
+        case baryonyx::solver_parameters::constraint_order::lagrangian_decr:
+            name = "lagrangian-decr";
+            break;
+        case baryonyx::solver_parameters::constraint_order::lagrangian_incr:
+            name = "lagrangian-incr";
+            break;
+        case baryonyx::solver_parameters::constraint_order::pi_sign_change:
+            name = "pi-sign-change";
+            break;
+        case baryonyx::solver_parameters::constraint_order::cycle:
+            name = "cycle";
+            break;
+        }
 
-    return ret[static_cast<underlying_type>(type)];
-}
+        return formatter<string_view>::format(name, ctx);
+    }
+};
 
-} // namespace baryonyx
+template<>
+struct fmt::formatter<baryonyx::solver_parameters::cost_norm_type>
+  : fmt::formatter<string_view>
+{
+    template<typename FormatContext>
+    auto format(baryonyx::solver_parameters::cost_norm_type c,
+                FormatContext& ctx)
+    {
+        string_view name = "unknown";
+
+        switch (c) {
+        case baryonyx::solver_parameters::cost_norm_type::none:
+            name = "none";
+            break;
+        case baryonyx::solver_parameters::cost_norm_type::random:
+            name = "random";
+            break;
+        case baryonyx::solver_parameters::cost_norm_type::l1:
+            name = "l1";
+            break;
+        case baryonyx::solver_parameters::cost_norm_type::l2:
+            name = "l2";
+            break;
+        case baryonyx::solver_parameters::cost_norm_type::loo:
+            name = "loo";
+            break;
+        }
+
+        return formatter<string_view>::format(name, ctx);
+    }
+};
+
+template<>
+struct fmt::formatter<baryonyx::solver_parameters::mode_type>
+  : fmt::formatter<string_view>
+{
+    template<typename FormatContext>
+    auto format(baryonyx::solver_parameters::mode_type c, FormatContext& ctx)
+    {
+        using underlying_type =
+          std::underlying_type<baryonyx::solver_parameters::mode_type>::type;
+
+        string_view name = "disabled";
+
+        if (static_cast<underlying_type>(c) &
+            static_cast<underlying_type>(
+              baryonyx::solver_parameters::mode_type::branch)) {
+            if (static_cast<underlying_type>(c) &
+                static_cast<underlying_type>(
+                  baryonyx::solver_parameters::mode_type::manual))
+                name = "manual-and-branch";
+            else if (static_cast<underlying_type>(c) &
+                     static_cast<underlying_type>(
+                       baryonyx::solver_parameters::mode_type::nlopt))
+                name = "nlopt-and-branch";
+            else
+                name = "branch";
+        } else {
+            if (static_cast<underlying_type>(c) &
+                static_cast<underlying_type>(
+                  baryonyx::solver_parameters::mode_type::manual))
+                name = "manual";
+            else if (static_cast<underlying_type>(c) &
+                     static_cast<underlying_type>(
+                       baryonyx::solver_parameters::mode_type::nlopt))
+                name = "nlopt";
+        }
+
+        return formatter<string_view>::format(name, ctx);
+    }
+};
+
+template<>
+struct fmt::formatter<baryonyx::solver_parameters::preprocessor_options>
+  : fmt::formatter<string_view>
+{
+    template<typename FormatContext>
+    auto format(baryonyx::solver_parameters::preprocessor_options c,
+                FormatContext& ctx)
+    {
+        string_view name = "unknown";
+
+        switch (c) {
+        case baryonyx::solver_parameters::preprocessor_options::none:
+            name = "none";
+            break;
+        case baryonyx::solver_parameters::preprocessor_options::all:
+            name = "all";
+            break;
+        }
+
+        return formatter<string_view>::format(name, ctx);
+    }
+};
+
+template<>
+struct fmt::formatter<baryonyx::solver_parameters::observer_type>
+  : fmt::formatter<string_view>
+{
+    template<typename FormatContext>
+    auto format(baryonyx::solver_parameters::observer_type c,
+                FormatContext& ctx)
+    {
+        string_view name = "unknown";
+
+        switch (c) {
+        case baryonyx::solver_parameters::observer_type::none:
+            name = "none";
+            break;
+        case baryonyx::solver_parameters::observer_type::pnm:
+            name = "pnm";
+            break;
+        case baryonyx::solver_parameters::observer_type::file:
+            name = "file";
+            break;
+        }
+
+        return formatter<string_view>::format(name, ctx);
+    }
+};
+
+template<>
+struct fmt::formatter<baryonyx::solver_parameters::solver_type>
+  : fmt::formatter<string_view>
+{
+    template<typename FormatContext>
+    auto format(baryonyx::solver_parameters::solver_type c, FormatContext& ctx)
+    {
+        string_view name = "unknown";
+
+        switch (c) {
+        case baryonyx::solver_parameters::solver_type::bastert:
+            name = "bastert";
+            break;
+        case baryonyx::solver_parameters::solver_type::random:
+            name = "random";
+            break;
+        }
+
+        return formatter<string_view>::format(name, ctx);
+    }
+};
+
+template<>
+struct fmt::formatter<baryonyx::solver_parameters::storage_type>
+  : fmt::formatter<string_view>
+{
+    template<typename FormatContext>
+    auto format(baryonyx::solver_parameters::storage_type c,
+                FormatContext& ctx)
+    {
+        string_view name = "unknown";
+
+        switch (c) {
+        case baryonyx::solver_parameters::storage_type::one:
+            name = "one";
+            break;
+        case baryonyx::solver_parameters::storage_type::bound:
+            name = "bound";
+            break;
+        case baryonyx::solver_parameters::storage_type::five:
+            name = "five";
+            break;
+        }
+
+        return formatter<string_view>::format(name, ctx);
+    }
+};
 
 #endif

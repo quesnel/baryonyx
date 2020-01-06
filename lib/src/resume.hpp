@@ -24,12 +24,10 @@
 #define ORG_VLEPROJECT_BARYONYX_LIB_PRIVATE_RESUME_HPP
 
 #include <array>
-#include <chrono>
-#include <iomanip>
-#include <iterator>
 #include <numeric>
-#include <ostream>
 #include <string_view>
+
+#include <fmt/format.h>
 
 #include <baryonyx/core-utils>
 #include <baryonyx/core>
@@ -76,66 +74,49 @@ struct resume
     bool use_lp_format;
 };
 
-inline std::ostream&
-operator<<(std::ostream& os, const resume& res)
+} // namespace baryonyx
+
+template<>
+struct fmt::formatter<baryonyx::resume>
 {
-    auto store = os.flags();
-
-    os << std::setprecision(std::numeric_limits<double>::digits10 + 1);
-
-    if (res.use_lp_format) {
-        os << "\\ Problem statistics:\n"
-           << R"(\  type: ) undefined\n'
-           << R"(\  nb variables: )"
-           << std::accumulate(res.variables.begin(), res.variables.end(), 0)
-           << '\n'
-           << R"(\   ..... real: )" << res.variables[0] << '\n'
-           << R"(\   ... binary: )" << res.variables[1] << '\n'
-           << R"(\   .. general: )" << res.variables[2] << '\n'
-           << R"(\  nb constraints: )"
-           << std::accumulate(res.constraints.begin(), res.constraints.end(), 0)
-           << '\n'
-           << R"(\   ........ =  : )" << res.constraints[0] << '\n'
-           << R"(\   ........ >= : )" << res.constraints[1] << '\n'
-           << R"(\   ........ <= : )" << res.constraints[2] << '\n'
-           << R"(\  minimal value.: )" << std::get<0>(res.minmax) << '\n'
-           << R"(\  maximal value.: )" << std::get<1>(res.minmax) << '\n';
-    } else {
-        os << "Problem statistics:\n"
-           << "  * type: undefined\n"
-           << "  * variables: "
-           << std::accumulate(res.variables.begin(), res.variables.end(), 0)
-           << '\n'
-           << "    - real: " << res.variables[0] << '\n'
-           << "    - binary: " << res.variables[1] << '\n'
-           << "    - general: " << res.variables[2] << '\n'
-           << "  * constraints: "
-           << std::accumulate(res.constraints.begin(), res.constraints.end(), 0)
-           << '\n'
-           << "    - constraint =  : " << res.constraints[0] << '\n'
-           << "    - constraint >= : " << res.constraints[1] << '\n'
-           << "    - constraint <= : " << res.constraints[2] << '\n'
-           << "  * objective:\n"
-           << "    - minimal value.: " << std::get<0>(res.minmax) << '\n'
-           << "    - maximal value.: " << std::get<1>(res.minmax) << '\n';
+    constexpr auto parse(format_parse_context& ctx)
+    {
+        return ctx.begin();
     }
 
-    os.flags(store);
+    template<typename FormatContext>
+    auto format(const baryonyx::resume& res, FormatContext& ctx)
+    {
+        const auto variables{ std::accumulate(
+          res.variables.begin(), res.variables.end(), 0) };
+        const auto constraints{ std::accumulate(
+          res.constraints.begin(), res.constraints.end(), 0) };
 
-    return os;
-}
-
-inline std::ostream&
-operator<<(std::ostream& os, const affected_variables& var)
-{
-    std::size_t i = 0, e = var.names.size();
-
-    for (; i != e; ++i)
-        os << var.names[i] << ": " << (var.values[i] ? 1 : 0) << '\n';
-
-    return os;
-}
-
-} // namespace baryonyx
+        return format_to(ctx.out(),
+                         "Problem statistics:\n"
+                         "  * type: undefined\n"
+                         "  * variables: {}\n"
+                         "    - real: {}\n"
+                         "    - binary: {}\n"
+                         "    - general: {}\n"
+                         "  * constraints: {}\n"
+                         "    - constraint ==: {}\n"
+                         "    - constraint >=: {}\n"
+                         "    - constraint <=: {}\n"
+                         "  * objective:\n"
+                         "    - minimal value.: {:.10g}\n"
+                         "    - maximal value.: {:.10g}\n",
+                         variables,
+                         res.variables[0],
+                         res.variables[1],
+                         res.variables[2],
+                         constraints,
+                         res.constraints[0],
+                         res.constraints[1],
+                         res.constraints[2],
+                         std::get<0>(res.minmax),
+                         std::get<1>(res.minmax));
+    }
+};
 
 #endif

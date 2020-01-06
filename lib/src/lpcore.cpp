@@ -33,6 +33,7 @@
 #include <fstream>
 #include <iterator>
 #include <string>
+#include <unordered_map>
 #include <utility>
 
 #include <fmt/printf.h>
