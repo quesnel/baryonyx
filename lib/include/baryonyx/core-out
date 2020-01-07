@@ -28,6 +28,64 @@
 #include <fmt/format.h>
 
 template<>
+struct fmt::formatter<baryonyx::file_format_error_tag>
+  : fmt::formatter<string_view>
+{
+    template<typename FormatContext>
+    auto format(baryonyx::file_format_error_tag c, FormatContext& ctx)
+    {
+        string_view name = "unknown";
+
+        switch (c) {
+        case baryonyx::file_format_error_tag::success:
+            name = "success";
+            break;
+        case baryonyx::file_format_error_tag::file_not_found:
+            name = "file_not_found";
+            break;
+        case baryonyx::file_format_error_tag::bad_end_of_file:
+            name = "bad_end_of_file";
+            break;
+        case baryonyx::file_format_error_tag::bad_general:
+            name = "bad_general";
+            break;
+        case baryonyx::file_format_error_tag::bad_binary:
+            name = "bad_binary";
+            break;
+        case baryonyx::file_format_error_tag::bad_objective_function_type:
+            name = "bad_objective_function_type";
+            break;
+        case baryonyx::file_format_error_tag::bad_objective:
+            name = "bad_objective";
+            break;
+        case baryonyx::file_format_error_tag::bad_objective_quadratic:
+            name = "bad_objective_quadratic";
+            break;
+        case baryonyx::file_format_error_tag::bad_bound:
+            name = "bad_bound";
+            break;
+        case baryonyx::file_format_error_tag::bad_end:
+            name = "bad_end";
+            break;
+        case baryonyx::file_format_error_tag::bad_constraint:
+            name = "bad_constraint";
+            break;
+        case baryonyx::file_format_error_tag::too_many_variables:
+            name = "too_many_variables";
+            break;
+        case baryonyx::file_format_error_tag::too_many_constraints:
+            name = "too_many_constraints";
+            break;
+        case baryonyx::file_format_error_tag::bad_name:
+            name = "bad_name";
+            break;
+        }
+
+        return formatter<string_view>::format(name, ctx);
+    }
+};
+
+template<>
 struct fmt::formatter<baryonyx::result_status> : fmt::formatter<string_view>
 {
     template<typename FormatContext>

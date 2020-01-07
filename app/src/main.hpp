@@ -29,6 +29,8 @@
 #include <optional>
 #include <string>
 
+#include <fmt/format.h>
+
 #include <cerrno>
 #include <climits>
 #include <cmath>

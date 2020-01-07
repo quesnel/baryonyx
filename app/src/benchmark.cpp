@@ -20,6 +20,8 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+#include <baryonyx/core-out>
+
 #include "dynarray.hpp"
 #include "main.hpp"
 #include "utils.hpp"
@@ -637,6 +639,11 @@ try_benchmark(const baryonyx::context_ptr& ctx,
                        dirname);
 
             auto rawpb = baryonyx::make_problem(ctx, dirname + filename);
+            if (!rawpb) {
+                fmt::print(
+                  stderr, "{}: error {}\n", dirname + filename, rawpb.status);
+                return open_file_error{ dirname + filename, errno };
+            }
 
             b.models[i].set_objective_type(rawpb.type);
 
