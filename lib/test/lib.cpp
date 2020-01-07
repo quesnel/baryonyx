@@ -31,8 +31,6 @@
 
 #include <baryonyx/core>
 
-#include <fmt/printf.h>
-
 #include <functional>
 #include <numeric>
 
@@ -895,7 +893,7 @@ check_bit_array()
 }
 
 int
-main(int /* argc */, char* /* argv */ [])
+main(int /* argc */, char* /* argv */[])
 {
     unit_test::checks("check_print_api", check_print_api);
     unit_test::checks("check_numeric_cast", check_numeric_cast);

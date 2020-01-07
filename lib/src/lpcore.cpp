@@ -36,8 +36,6 @@
 #include <unordered_map>
 #include <utility>
 
-#include <fmt/printf.h>
-
 #include <cerrno>
 #include <climits>
 #include <cmath>

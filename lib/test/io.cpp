@@ -32,8 +32,6 @@
 #include <baryonyx/core>
 #include <utility>
 
-#include <fmt/printf.h>
-
 void
 test_examples_1()
 {
@@ -722,7 +720,7 @@ test_verger_5_5()
 }
 
 int
-main(int /* argc */, char* /* argv */ [])
+main(int /* argc */, char* /* argv */[])
 {
     unit_test::checks("examples_1", test_examples_1);
     unit_test::checks("examples_quadratic_1", test_examples_quadratic_0);

@@ -26,8 +26,6 @@
 #include <baryonyx/core-test>
 #include <baryonyx/core>
 
-#include <fmt/printf.h>
-
 #include <fstream>
 #include <map>
 #include <numeric>

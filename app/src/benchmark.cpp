@@ -673,15 +673,14 @@ try_benchmark(const baryonyx::context_ptr& ctx,
                        "{}\n",
                        e.line(),
                        e.column(),
-                       file_format_error_format(e.failure()));
+                       e.failure());
         } catch (const baryonyx::problem_definition_failure& e) {
             fmt::print(stderr,
                        "definition problem error at {}: {}\n",
                        e.element(),
-                       problem_definition_error_format(e.failure()));
+                       e.failure());
         } catch (const baryonyx::solver_failure& e) {
-            fmt::print(
-              stderr, "solver error: {}\n", solver_error_format(e.failure()));
+            fmt::print(stderr, "solver error: {}\n", e.failure());
         } catch (const std::exception& e) {
             fmt::print(stderr, "failure: {}.\n", e.what());
         }

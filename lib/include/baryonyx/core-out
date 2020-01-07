@@ -86,6 +86,37 @@ struct fmt::formatter<baryonyx::file_format_error_tag>
 };
 
 template<>
+struct fmt::formatter<baryonyx::problem_definition_error_tag>
+  : fmt::formatter<string_view>
+{
+    template<typename FormatContext>
+    auto format(baryonyx::problem_definition_error_tag c, FormatContext& ctx)
+    {
+        string_view name = "unknown";
+
+        switch (c) {
+        case baryonyx::problem_definition_error_tag::empty_variables:
+            name = "empty_variables";
+            break;
+        case baryonyx::problem_definition_error_tag::empty_objective_function:
+            name = "empty_objective_function";
+            break;
+        case baryonyx::problem_definition_error_tag::variable_not_used:
+            name = "variable_not_used";
+            break;
+        case baryonyx::problem_definition_error_tag::bad_bound:
+            name = "bad_bound";
+            break;
+        case baryonyx::problem_definition_error_tag::multiple_constraint:
+            name = "multiple_constraint";
+            break;
+        }
+
+        return formatter<string_view>::format(name, ctx);
+    }
+};
+
+template<>
 struct fmt::formatter<baryonyx::result_status> : fmt::formatter<string_view>
 {
     template<typename FormatContext>

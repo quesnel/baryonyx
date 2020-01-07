@@ -1170,10 +1170,7 @@ main(int argc, const char* argv[])
         if (params.filenames.size() == 1) {
             auto pb = baryonyx::make_problem(ctx, params.filenames.front());
             if (!pb) {
-                fmt::print(stderr,
-                           "Fail to read file: {} ({})\n",
-                           file_format_error_format(pb.status),
-                           static_cast<int>(pb.status));
+                fmt::print(stderr, "Fail to read file: {}\n", pb.status);
             } else {
                 try {
                     auto filename = fmt::format(
@@ -1244,16 +1241,14 @@ main(int argc, const char* argv[])
                                "{}\n",
                                e.line(),
                                e.column(),
-                               file_format_error_format(e.failure()));
+                               e.failure());
                 } catch (const baryonyx::problem_definition_failure& e) {
                     fmt::print(stderr,
                                "definition problem error at {}: {}\n",
                                e.element(),
-                               problem_definition_error_format(e.failure()));
+                               e.failure());
                 } catch (const baryonyx::solver_failure& e) {
-                    fmt::print(stderr,
-                               "solver error: {}\n",
-                               solver_error_format(e.failure()));
+                    fmt::print(stderr, "solver error: {}\n", e.failure());
                 } catch (const std::exception& e) {
                     fmt::print(stderr, "failure: {}.\n", e.what());
                 }
@@ -1265,10 +1260,7 @@ main(int argc, const char* argv[])
             for (auto& elem : params.filenames) {
                 auto pb = baryonyx::make_problem(ctx, elem);
                 if (!pb) {
-                    fmt::print(stderr,
-                               "Fail to read file: {} ({})\n",
-                               file_format_error_format(pb.status),
-                               static_cast<int>(pb.status));
+                    fmt::print(stderr, "Fail to read file: {}\n", pb.status);
                     continue;
                 }
 
@@ -1310,16 +1302,14 @@ main(int argc, const char* argv[])
                                "{}\n",
                                e.line(),
                                e.column(),
-                               file_format_error_format(e.failure()));
+                               e.failure());
                 } catch (const baryonyx::problem_definition_failure& e) {
                     fmt::print(stderr,
                                "definition problem error at {}: {}\n",
                                e.element(),
-                               problem_definition_error_format(e.failure()));
+                               e.failure());
                 } catch (const baryonyx::solver_failure& e) {
-                    fmt::print(stderr,
-                               "solver error: {}\n",
-                               solver_error_format(e.failure()));
+                    fmt::print(stderr, "solver error: {}\n", e.failure());
                 } catch (const std::exception& e) {
                     fmt::print(stderr, "failure: {}.\n", e.what());
                 }
