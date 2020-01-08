@@ -38,24 +38,28 @@ static void
 r_solver_updated_cb(int remaining_constraints,
                     double value,
                     int loop,
-                    double duration)
+                    double duration,
+                    long int reinit_number)
 {
     if (remaining_constraints > 0) {
-        Rprintf("  - Constraints remaining: %d (loop: %d t: %fs)\n",
+        Rprintf("  - Constraints remaining: %d (loop: %d t: %fs reinit:%ld)\n",
                 remaining_constraints,
                 loop,
-                duration);
+                duration,
+                reinit_number);
     } else {
         if (loop >= 0)
-            Rprintf("  - Solution found: %f (loop: %d t: %fs)\n",
+            Rprintf("  - Solution found: %f (loop: %d t: %fs reinit:%ld)\n",
                     value,
                     loop,
-                    duration);
+                    duration,
+                    reinit_number);
         else
-            Rprintf("  - Solution found via push: %f (loop: %d t: %fs)\n",
+            Rprintf("  - Solution found via push: %f (loop: %d t: %fs reinit:%ld)\n",
                     value,
                     -loop,
-                    duration);
+                    duration,
+                    reinit_number);
     }
 
     R_FlushConsole();
@@ -106,32 +110,6 @@ r_solver_finished_cb(const baryonyx::result& r)
 
     R_FlushConsole();
     R_ProcessEvents();
-}
-
-static void
-r_write(int level, std::string msg)
-{
-    switch (level) {
-    case 0:
-        Rprintf("baryonyx: System is unusable: ");
-        break;
-    case 1:
-        Rprintf("baryonyx: Action must be taken immediately: ");
-        break;
-    case 2:
-        Rprintf("baryonyx: critical conditions: ");
-        break;
-    case 3:
-        Rprintf("baryonyx: error conditions: ");
-        break;
-    case 4:
-        Rprintf("baryonyx: warning conditions: ");
-        break;
-    default:
-        break;
-    }
-
-    Rprintf("%s", msg.c_str());
 }
 
 static baryonyx::solver_parameters::pre_constraint_order
@@ -225,10 +203,6 @@ get_init_policy(int type)
         return bx::solver_parameters::init_policy_type::pessimistic_solve;
     case 2:
         return bx::solver_parameters::init_policy_type::optimistic_solve;
-    case 3:
-        return bx::solver_parameters::init_policy_type::cycle;
-    case 4:
-        return bx::solver_parameters::init_policy_type::crossover_cycle;
     default:
         return bx::solver_parameters::init_policy_type::bastert;
     }
@@ -286,7 +260,6 @@ assign_parameters(const baryonyx::context_ptr& ctx,
                   int pushing_iteration_limit,
                   int init_policy,
                   double init_policy_random,
-                  double init_random,
                   int float_type,
                   int storage_type)
 {
@@ -302,7 +275,6 @@ assign_parameters(const baryonyx::context_ptr& ctx,
     params.pushing_k_factor = pushing_k_factor;
     params.pushing_objective_amplifier = pushing_objective_amplifier;
     params.init_policy_random = init_policy_random;
-    params.init_random = init_random;
 
     if (seed > 0)
         params.seed = seed;
@@ -408,14 +380,10 @@ convert_result(const baryonyx::result& res, bool minimize)
 //'    - 3: l2-norm
 //'    - 4: infinity-norm
 //'
-//' @param init_policy the type of (re)initilization used into the solver.
-//'     Default is to use pessimistic_solve and 0.5 for init_policy_random
-//'     and 0.5 for init_random.
+//' @param init_policy the type of initilization used into the solver.
 //'    - 0: bastert,
 //'    - 1: pessimistic_solve,
 //'    - 2: optimistic_solve,
-//'    - 3: cycle
-//'    - 4: crossover_cycle
 //'
 //' @param float_type the type of real used into the solver. Default is to
 //'     use the C/C++ double representation.
@@ -473,7 +441,6 @@ solve_01lp_problem(std::string file_path,
                    int pushing_iteration_limit = 50,
                    int init_policy = 0,
                    double init_policy_random = 0.5,
-                   double init_random = 0.5,
                    int float_type = 1,
                    int storage_type = 1,
                    bool verbose = true) noexcept
@@ -483,7 +450,7 @@ solve_01lp_problem(std::string file_path,
     bool minimize = true;
 
     try {
-        auto ctx = baryonyx::make_context(&r_write, verbose ? 6 : 4);
+        auto ctx = baryonyx::make_context(verbose ? 6 : 4);
         baryonyx::context_register(
           ctx, r_solver_started_cb, r_solver_updated_cb, r_solver_finished_cb);
 
@@ -512,7 +479,6 @@ solve_01lp_problem(std::string file_path,
                           pushing_iteration_limit,
                           init_policy,
                           init_policy_random,
-                          init_random,
                           float_type,
                           storage_type);
 
@@ -566,15 +532,6 @@ solve_01lp_problem(std::string file_path,
 //'    - 2: l1-norm
 //'    - 3: l2-norm
 //'    - 4: infinity-norm
-//'
-//' @param init_policy the type of (re)initilization used into the solver.
-//'     Default is to use pessimistic_solve and 0.5 for init_policy_random
-//'     and 0.5 for init_random.
-//'    - 0: bastert,
-//'    - 1: pessimistic_solve,
-//'    - 2: optimistic_solve,
-//'    - 3: cycle
-//'    - 4: crossover_cycle
 //'
 //' @param float_type the type of real used into the solver. Default is to
 //'     use the C/C++ double representation.
@@ -630,9 +587,6 @@ optimize_01lp_problem(std::string file_path,
                       double pushing_objective_amplifier = 5.0,
                       int pushes_limit = 100,
                       int pushing_iteration_limit = 50,
-                      int init_policy = 0,
-                      double init_policy_random = 0.5,
-                      double init_random = 0.5,
                       int float_type = 1,
                       int storage_type = 1,
                       bool verbose = true) noexcept
@@ -641,7 +595,7 @@ optimize_01lp_problem(std::string file_path,
     bool minimize = true;
 
     try {
-        auto ctx = baryonyx::make_context(&r_write, verbose ? 6 : 4);
+        auto ctx = baryonyx::make_context(verbose ? 6 : 4);
         baryonyx::context_register(
           ctx, r_solver_started_cb, r_solver_updated_cb, r_solver_finished_cb);
 
@@ -668,9 +622,8 @@ optimize_01lp_problem(std::string file_path,
                           pushing_objective_amplifier,
                           pushes_limit,
                           pushing_iteration_limit,
-                          init_policy,
-                          init_policy_random,
-                          init_random,
+                          0,                        // Useless in optimizer mode.
+                          0.0,                      // Same.
                           float_type,
                           storage_type);
 
