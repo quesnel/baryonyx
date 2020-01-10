@@ -144,8 +144,7 @@ public:
         init_with_bastert<Cost, Mode>(m_bastert, costs_, variables, 0);
 
         for (int i = 0, e = m_size / 2; i != e; ++i) {
-            init_with_bastert<Cost, maximize_tag>(
-              m_data[i].x, costs_, variables, 0);
+            m_data[i].x = m_bastert;
 
             std::bernoulli_distribution dist(
               std::clamp(static_cast<double>(i) / (5 * e), 0.0, 1.0));
@@ -153,9 +152,12 @@ public:
             for (int v = 0; v != variables; ++v)
                 if (dist(rng))
                     m_data[i].x.invert(v);
-        }
+        }            
 
         for (int i = m_size / 2, e = m_size; i + 1 < e; i += 2) {
+            init_with_random(m_data[i].x, rng, variables, 0.2);
+            init_with_random(m_data[i + 1].x, rng, variables, 0.8);
+            
             init_with_pre_solve<Cost, Mode>(
               m_data[i].x,
               m_data[i + 1].x,
