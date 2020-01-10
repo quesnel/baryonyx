@@ -190,6 +190,18 @@ public:
         sort();
     }
 
+    void show_population(const context_ptr& ctx) const
+    {
+        info(ctx, " Population {}:\n", m_indices.size());
+        for (int i = 0; i != m_size; ++i)
+            info(ctx,
+                 "  - {}: value {} constraints {} hash {}\n",
+                 m_indices[i],
+                 m_data[m_indices[i]].value,
+                 m_data[m_indices[i]].remaining_constraints,
+                 m_data[m_indices[i]].hash);
+    }
+
     void insert(const bit_array& x,
                 const std::size_t hash,
                 const int remaining_constraints,
@@ -365,7 +377,7 @@ public:
                        m_data[first].value);
             } else {
                 int first = m_indices[choose_a_solution(rng)];
-                init_with_random(m_random, rng, x.size(), 0.5);
+                init_with_random(m_random, rng, x.size(), 0.1);
 
                 m_data_reader lock_data_1{ m_data_mutex[first] };
                 crossover(rng, x, m_data[first].x, m_random);
@@ -632,6 +644,11 @@ struct best_solution_recorder
 
             m_storage.insert(solution, hash, value, duration, loop);
         }
+    }
+
+    void show_population() const noexcept
+    {
+        m_storage.show_population(m_ctx);
     }
 
     const raw_result<Mode>& get_worst() const noexcept
@@ -929,6 +946,8 @@ optimize_problem(const context_ptr& ctx, const problem& pb)
             convert(best_recorder.get_best(i), r.solutions[i], variables);
     } break;
     }
+
+    best_recorder.show_population();
 
     if (ctx->finish)
         ctx->finish(r);
