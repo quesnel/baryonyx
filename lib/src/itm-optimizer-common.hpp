@@ -353,41 +353,48 @@ public:
         for (int i = 0; i != block_size; ++i) {
             const auto x1 = first.block(i);
             const auto x2 = second.block(i);
-            const auto x_xor = x1 ^ x2;
-            const auto x_rnd = dist(rng);
-            const auto x_add = x_xor & x_rnd;
+            // const auto x_xor = x1 ^ x2;
+            // const auto x_rnd = dist(rng);
+            // const auto x_add = x_xor & x_rnd;
+            // x.set_block(i, x_add | (b_dist(rng) ? x1 : x2));
 
-            x.set_block(i, x_add | (b_dist(rng) ? x1 : x2));
+            x.set_block(i, ((x1 ^ x2) & dist(rng)) | x1);
         }
+
+        // std::uniform_int_distribution<int> dist(0, x.size());
+
+        // int split_at_1;
+        // do {
+        //     split_at_1 = dist(rng);
+        // } while (split_at_1 == 0 || split_at_1 == x.size());
+
+        // int split_at_2;
+        // do {
+        //     split_at_2 = dist(rng);
+        // } while (split_at_2 == 0 || split_at_2 == x.size() ||
+        //          split_at_2 == split_at_1);
+
+        // if (split_at_2 < split_at_1)
+        //     std::swap(split_at_2, split_at_1);
+
+        // x.assign(first, 0, split_at_1);
+        // x.assign(second, split_at_1, split_at_2);
+        // x.assign(first, split_at_2, x.size());
     }
 
     void crossover(random_engine& rng, bit_array& x)
     {
         if (m_crossover_bastert_insertion(rng)) {
-            if (m_crossover_bastert_insertion(rng)) {
-                int first = m_indices[choose_a_solution(rng)];
+            int first = m_indices[choose_a_solution(rng)];
 
-                m_data_reader lock_data_1{ m_data_mutex[first] };
-                crossover(rng, x, m_data[first].x, m_bastert);
+            m_data_reader lock_data_1{ m_data_mutex[first] };
+            crossover(rng, x, m_data[first].x, m_bastert);
 
-                to_log(stdout,
-                       7u,
-                       "- crossover between {} ({}) and bastert\n",
-                       first,
-                       m_data[first].value);
-            } else {
-                int first = m_indices[choose_a_solution(rng)];
-                init_with_random(m_random, rng, x.size(), 0.1);
-
-                m_data_reader lock_data_1{ m_data_mutex[first] };
-                crossover(rng, x, m_data[first].x, m_random);
-
-                to_log(stdout,
-                       7u,
-                       "- crossover between {} ({}) and bastert\n",
-                       first,
-                       m_data[first].value);
-            }
+            to_log(stdout,
+                   7u,
+                   "- crossover between {} ({}) and bastert\n",
+                   first,
+                   m_data[first].value);
         } else {
             int first = m_indices[choose_a_solution(rng)];
             int second = m_indices[choose_a_solution(rng)];
