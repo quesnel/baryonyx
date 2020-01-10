@@ -61,6 +61,7 @@ private:
     std::vector<int> m_indices;
     std::vector<raw_result<Mode>> m_data;
     bit_array m_bastert;
+    bit_array m_random;
 
     std::normal_distribution<> m_choose_sol_dist;
     std::bernoulli_distribution m_crossover_bastert_insertion;
@@ -129,6 +130,7 @@ public:
       , m_indices(population_size)
       , m_data(population_size)
       , m_bastert(variables)
+      , m_random(variables)
       , m_choose_sol_dist(crossover_solution_selection_mean,
                           crossover_solution_selection_stddev)
       , m_crossover_bastert_insertion(crossover_bastert_insertion)
@@ -348,17 +350,30 @@ public:
     void crossover(random_engine& rng, bit_array& x)
     {
         if (m_crossover_bastert_insertion(rng)) {
-            int first = m_indices[choose_a_solution(rng)];
+            if (m_crossover_bastert_insertion(rng)) {
+                int first = m_indices[choose_a_solution(rng)];
 
-            m_data_reader lock_data_1{ m_data_mutex[first] };
-            crossover(rng, x, m_data[first].x, m_bastert);
+                m_data_reader lock_data_1{ m_data_mutex[first] };
+                crossover(rng, x, m_data[first].x, m_bastert);
 
-            to_log(stdout,
-                   7u,
-                   "- crossover between {} ({}) and bastert\n",
-                   first,
-                   m_data[first].value);
+                to_log(stdout,
+                       7u,
+                       "- crossover between {} ({}) and bastert\n",
+                       first,
+                       m_data[first].value);
+            } else {
+                int first = m_indices[choose_a_solution(rng)];
+                init_with_random(m_random, rng, x.size(), 0.5);
 
+                m_data_reader lock_data_1{ m_data_mutex[first] };
+                crossover(rng, x, m_data[first].x, m_random);
+
+                to_log(stdout,
+                       7u,
+                       "- crossover between {} ({}) and bastert\n",
+                       first,
+                       m_data[first].value);
+            }
         } else {
             int first = m_indices[choose_a_solution(rng)];
             int second = m_indices[choose_a_solution(rng)];
