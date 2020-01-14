@@ -262,45 +262,50 @@ public:
         sort();
     }
 
-    bool can_be_inserted(const std::size_t hash, const int constraints) const
-      noexcept
+    bool can_be_inserted([[maybe_unused]] const std::size_t hash,
+            const int constraints) const noexcept
     {
-        m_indices_reader lock(m_indices_mutex);
+        {
+            m_indices_reader lock(m_indices_mutex);
+            const auto last_id = m_indices.back();
+            m_data_reader lock_data(m_data_mutex[last_id]);
 
-        for (int i = 0; i != m_size; ++i) {
-            const auto id = m_indices[i];
-            m_data_reader lock_data(m_data_mutex[id]);
-
-            if (hash == m_data[id].hash)
+            if (m_data[last_id].remaining_constraints < constraints)
                 return false;
-
-            if (m_data[id].remaining_constraints > constraints)
-                return true;
         }
 
-        return false;
+        for (int i = 0; i != m_size; ++i) {
+            m_data_reader lock_data(m_data_mutex[i]);
+
+            if (m_data[i].remaining_constraints == constraints)
+                return false;
+        }
+
+        return true;
     }
 
-    bool can_be_inserted(const std::size_t hash, const double value) const
-      noexcept
+    bool can_be_inserted([[maybe_unused]] const std::size_t hash,
+            const double value) const noexcept
     {
-        m_indices_reader lock(m_indices_mutex);
 
-        for (int i = 0; i != m_size; ++i) {
-            const auto id = m_indices[i];
-            m_data_reader lock_data(m_data_mutex[id]);
+        {
+            m_indices_reader lock(m_indices_mutex);
+            const auto last_id = m_indices.back();
 
-            if (hash == m_data[id].hash)
+            m_data_reader lock_data(m_data_mutex[last_id]);
+            if (m_data[last_id].remaining_constraints == 0 &&
+                    !is_better_solution<Mode, double>(value, m_data[last_id].value))
                 return false;
-
-            if (m_data[id].remaining_constraints)
-                return true;
-
-            if (is_better_solution<Mode, double>(value, m_data[id].value))
-                return true;
         }
 
-        return false;
+        for (int i = 0; i != m_size; ++i) {
+            m_data_reader lock_data(m_data_mutex[i]);
+
+            if (m_data[i].remaining_constraints == 0 && m_data[i].value == value)
+                return false;
+        }
+
+        return true;
     }
 
     const raw_result<Mode>& get_worst() const noexcept
