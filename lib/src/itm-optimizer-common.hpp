@@ -253,7 +253,7 @@ public:
         sort();
     }
 
-    bool can_be_inserted(const int constraints) const noexcept
+    bool can_be_inserted(const bit_array& x, const int constraints) const noexcept
     {
         {
             m_indices_reader lock(m_indices_mutex);
@@ -267,14 +267,15 @@ public:
         for (int i = 0; i != m_size; ++i) {
             m_data_reader lock_data(m_data_mutex[i]);
 
-            if (m_data[i].remaining_constraints == constraints)
+            if (m_data[i].remaining_constraints == constraints
+                    && m_data[i].x == x)
                 return false;
         }
 
         return true;
     }
 
-    bool can_be_inserted(const double value) const noexcept
+    bool can_be_inserted(const bit_array& x, const double value) const noexcept
     {
         {
             m_indices_reader lock(m_indices_mutex);
@@ -289,7 +290,8 @@ public:
         for (int i = 0; i != m_size; ++i) {
             m_data_reader lock_data(m_data_mutex[i]);
 
-            if (m_data[i].remaining_constraints == 0 && m_data[i].value == value)
+            if (m_data[i].remaining_constraints == 0 && m_data[i].value == value
+                    && m_data[i].x == x)
                 return false;
         }
 
@@ -620,7 +622,7 @@ struct best_solution_recorder
                      const int remaining_constraints,
                      const long int loop)
     {
-        if (m_storage.can_be_inserted(remaining_constraints)) {
+        if (m_storage.can_be_inserted(solution, remaining_constraints)) {
             const auto end = std::chrono::steady_clock::now();
             const auto duration = compute_duration(m_start, end);
 
@@ -632,7 +634,7 @@ struct best_solution_recorder
                     const double value,
                     const long int loop)
     {
-        if (m_storage.can_be_inserted(value)) {
+        if (m_storage.can_be_inserted(solution, value)) {
             const auto end = std::chrono::steady_clock::now();
             const auto duration = compute_duration(m_start, end);
 
