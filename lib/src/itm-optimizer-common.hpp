@@ -92,7 +92,6 @@ private:
                         const bit_array& x,
                         const double value,
                         const double duration,
-                        const std::size_t hash,
                         const long int loop,
                         const int remaining_constraints) noexcept
     {
@@ -101,7 +100,6 @@ private:
         m_data[id].x = x;
         m_data[id].value = value;
         m_data[id].duration = duration;
-        m_data[id].hash = hash;
         m_data[id].loop = loop;
         m_data[id].remaining_constraints = remaining_constraints;
     }
@@ -168,7 +166,6 @@ public:
         }
 
         for (int i = 0, e = m_size; i != e; ++i) {
-            m_data[i].make_hash();
             m_data[i].value = costs.results(m_data[i].x, cost_constant_);
             m_data[i].remaining_constraints = 0;
 
@@ -195,15 +192,13 @@ public:
         info(ctx, " Population {}:\n", m_indices.size());
         for (int i = 0; i != m_size; ++i)
             info(ctx,
-                 "  - {}: value {} constraints {} hash {}\n",
+                 "  - {}: value {} constraints {}\n",
                  m_indices[i],
                  m_data[m_indices[i]].value,
-                 m_data[m_indices[i]].remaining_constraints,
-                 m_data[m_indices[i]].hash);
+                 m_data[m_indices[i]].remaining_constraints);
     }
 
     void insert(const bit_array& x,
-                const std::size_t hash,
                 const int remaining_constraints,
                 const double duration,
                 const long int loop) noexcept
@@ -212,9 +207,8 @@ public:
 
         to_log(stdout,
                5u,
-               "- insert advance {} (hash: {}) {}s in {} loops\n",
+               "- insert advance {} ({}s in {} loops\n",
                remaining_constraints,
-               hash,
                duration,
                loop);
 
@@ -228,7 +222,6 @@ public:
                        x,
                        costs.results(x, cost_constant),
                        duration,
-                       hash,
                        loop,
                        remaining_constraints);
 
@@ -236,7 +229,6 @@ public:
     }
 
     void insert(const bit_array& x,
-                const std::size_t hash,
                 const double value,
                 const double duration,
                 const long int loop) noexcept
@@ -245,9 +237,8 @@ public:
 
         to_log(stdout,
                5u,
-               "- insert solution {} (hash: {}) {}s in {} loops\n",
+               "- insert solution {} {}s in {} loops\n",
                value,
-               hash,
                duration,
                loop);
 
@@ -257,13 +248,12 @@ public:
                bound.last,
                m_data[bound.last].value);
 
-        replace_result(bound.last, x, value, duration, hash, loop, 0);
+        replace_result(bound.last, x, value, duration, loop, 0);
 
         sort();
     }
 
-    bool can_be_inserted([[maybe_unused]] const std::size_t hash,
-            const int constraints) const noexcept
+    bool can_be_inserted(const int constraints) const noexcept
     {
         {
             m_indices_reader lock(m_indices_mutex);
@@ -284,10 +274,8 @@ public:
         return true;
     }
 
-    bool can_be_inserted([[maybe_unused]] const std::size_t hash,
-            const double value) const noexcept
+    bool can_be_inserted(const double value) const noexcept
     {
-
         {
             m_indices_reader lock(m_indices_mutex);
             const auto last_id = m_indices.back();
@@ -453,12 +441,11 @@ private:
         for (int i = 0; i != m_size; ++i) {
             to_log(stdout,
                    5u,
-                   "- {} id {} value {} constraint {} hash {}\n",
+                   "- {} id {} value {} constraint {}\n",
                    i,
                    m_indices[i],
                    m_data[m_indices[i]].value,
-                   m_data[m_indices[i]].remaining_constraints,
-                   m_data[m_indices[i]].hash);
+                   m_data[m_indices[i]].remaining_constraints);
         }
 #endif
     }
@@ -633,14 +620,11 @@ struct best_solution_recorder
                      const int remaining_constraints,
                      const long int loop)
     {
-        auto hash = bit_array_hash()(solution);
-
-        if (m_storage.can_be_inserted(hash, remaining_constraints)) {
+        if (m_storage.can_be_inserted(remaining_constraints)) {
             const auto end = std::chrono::steady_clock::now();
             const auto duration = compute_duration(m_start, end);
 
-            m_storage.insert(
-              solution, hash, remaining_constraints, duration, loop);
+            m_storage.insert(solution, remaining_constraints, duration, loop);
         }
     }
 
@@ -648,13 +632,11 @@ struct best_solution_recorder
                     const double value,
                     const long int loop)
     {
-        auto hash = bit_array_hash()(solution);
-
-        if (m_storage.can_be_inserted(hash, value)) {
+        if (m_storage.can_be_inserted(value)) {
             const auto end = std::chrono::steady_clock::now();
             const auto duration = compute_duration(m_start, end);
 
-            m_storage.insert(solution, hash, value, duration, loop);
+            m_storage.insert(solution, value, duration, loop);
         }
     }
 
