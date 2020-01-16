@@ -68,8 +68,14 @@ struct raw_result
     bit_array x;
     double value = itm::bad_value<Mode, double>();
     double duration = 0.0;
+    std::size_t hash = 0;
     long int loop = 0;
     index remaining_constraints = std::numeric_limits<index>::max();
+
+    void make_hash() noexcept
+    {
+        hash = bit_array_hash()(x);
+    }
 
     bool is_solution() const noexcept
     {
