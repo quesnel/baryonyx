@@ -427,25 +427,18 @@ private:
 
         std::sort(
           std::begin(m_indices), std::end(m_indices), [this](int i1, int i2) {
-              if (this->m_data[i1].remaining_constraints == 0) {
-                  if (this->m_data[i2].remaining_constraints == 0)
-                      return is_better_solution<Mode>(this->m_data[i1].value,
-                                                      this->m_data[i2].value);
-                  else
-                      return true;
-              } else {
-                  if (this->m_data[i2].remaining_constraints == 0)
-                      return false;
-                  else {
-                      if (this->m_data[i1].remaining_constraints ==
-                          this->m_data[i2].remaining_constraints)
-                          return is_better_solution<Mode>(
-                            this->m_data[i1].value, this->m_data[i2].value);
-                      else
-                          return this->m_data[i1].remaining_constraints <
-                                 this->m_data[i2].remaining_constraints;
-                  }
-              }
+              const int cst_1 = this->m_data[i1].remaining_constraints;
+              const int cst_2 = this->m_data[i2].remaining_constraints;
+              const double value_1 = this->m_data[i1].value;
+              const double value_2 = this->m_data[i2].value;
+
+              if (cst_1 < cst_2)
+                  return true;
+
+              if (cst_1 == cst_2)
+                  return is_better_solution<Mode>(value_1, value_2);
+
+              return false;
           });
 
 #ifdef BARYONYX_ENABLE_DEBUG
