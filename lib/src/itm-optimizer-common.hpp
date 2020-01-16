@@ -54,10 +54,6 @@ private:
     using m_indices_writer = std::unique_lock<std::shared_mutex>;
     using m_indices_reader = std::shared_lock<std::shared_mutex>;
 
-    mutable std::vector<std::shared_mutex> m_data_mutex;
-    using m_data_writer = std::unique_lock<std::shared_mutex>;
-    using m_data_reader = std::shared_lock<std::shared_mutex>;
-
     std::vector<int> m_indices;
     std::vector<raw_result<Mode>> m_data;
     bit_array m_bastert;
@@ -96,7 +92,7 @@ private:
                         const long int loop,
                         const int remaining_constraints) noexcept
     {
-        m_data_writer lock{ m_data_mutex[id] };
+        m_indices_reader lock{ m_indices_mutex };
 
         m_data[id].x = x;
         m_data[id].value = value;
@@ -126,8 +122,7 @@ public:
             const double crossover_bastert_insertion,
             const double crossover_solution_selection_mean,
             const double crossover_solution_selection_stddev)
-      : m_data_mutex(population_size)
-      , m_indices(population_size)
+      : m_indices(population_size)
       , m_data(population_size)
       , m_bastert(variables)
       , m_random(variables)
@@ -264,18 +259,13 @@ public:
 
     bool can_be_inserted(const std::size_t hash, const int constraints) const noexcept
     {
-        {
-            m_indices_reader lock(m_indices_mutex);
-            const auto last_id = m_indices.back();
-            m_data_reader lock_data(m_data_mutex[last_id]);
+        m_indices_reader lock(m_indices_mutex);
+        const auto last_id = m_indices.back();
 
-            if (m_data[last_id].remaining_constraints < constraints)
-                return false;
-        }
+        if (m_data[last_id].remaining_constraints < constraints)
+            return false;
 
         for (int i = 0; i != m_size; ++i) {
-            m_data_reader lock_data(m_data_mutex[i]);
-
             if (m_data[i].remaining_constraints == constraints
                     && m_data[i].hash == hash)
                 return false;
@@ -287,18 +277,14 @@ public:
     bool can_be_inserted([[maybe_unused]] const std::size_t hash,
             const double value) const noexcept
     {
-        {
-            m_indices_reader lock(m_indices_mutex);
-            const auto last_id = m_indices.back();
+        m_indices_reader lock(m_indices_mutex);
+        const auto last_id = m_indices.back();
 
-            m_data_reader lock_data(m_data_mutex[last_id]);
-            if (m_data[last_id].remaining_constraints == 0 &&
-                    !is_better_solution<Mode, double>(value, m_data[last_id].value))
-                return false;
-        }
+        if (m_data[last_id].remaining_constraints == 0 &&
+                !is_better_solution<Mode, double>(value, m_data[last_id].value))
+            return false;
 
         for (int i = 0; i != m_size; ++i) {
-            m_data_reader lock_data(m_data_mutex[i]);
 
             if (m_data[i].remaining_constraints == 0 && m_data[i].value == value
                     && m_data[i].hash == hash)
@@ -325,20 +311,13 @@ public:
                   double& duration,
                   long int& loop) const noexcept
     {
-        int id;
+        m_indices_reader lock(m_indices_mutex);
+        int id = m_indices.front();
 
-        {
-            m_indices_reader lock(m_indices_mutex);
-            id = m_indices.front();
-        }
-
-        {
-            m_data_reader lock_data(m_data_mutex[id]);
-            constraints_remaining = m_data[id].remaining_constraints;
-            value = m_data[id].value;
-            duration = m_data[id].duration;
-            loop = m_data[id].loop;
-        }
+        constraints_remaining = m_data[id].remaining_constraints;
+        value = m_data[id].value;
+        duration = m_data[id].duration;
+        loop = m_data[id].loop;
     }
 
     const raw_result<Mode>& get_best(int i) const noexcept
@@ -358,41 +337,18 @@ public:
         for (int i = 0; i != block_size; ++i) {
             const auto x1 = first.block(i);
             const auto x2 = second.block(i);
-            // const auto x_xor = x1 ^ x2;
-            // const auto x_rnd = dist(rng);
-            // const auto x_add = x_xor & x_rnd;
-            // x.set_block(i, x_add | (b_dist(rng) ? x1 : x2));
 
             x.set_block(i, ((x1 ^ x2) & dist(rng)) | x1);
         }
-
-        // std::uniform_int_distribution<int> dist(0, x.size());
-
-        // int split_at_1;
-        // do {
-        //     split_at_1 = dist(rng);
-        // } while (split_at_1 == 0 || split_at_1 == x.size());
-
-        // int split_at_2;
-        // do {
-        //     split_at_2 = dist(rng);
-        // } while (split_at_2 == 0 || split_at_2 == x.size() ||
-        //          split_at_2 == split_at_1);
-
-        // if (split_at_2 < split_at_1)
-        //     std::swap(split_at_2, split_at_1);
-
-        // x.assign(first, 0, split_at_1);
-        // x.assign(second, split_at_1, split_at_2);
-        // x.assign(first, split_at_2, x.size());
     }
 
     void crossover(random_engine& rng, bit_array& x)
     {
+        m_indices_reader lock(m_indices_mutex);
+
         if (m_crossover_bastert_insertion(rng)) {
             int first = m_indices[choose_a_solution(rng)];
 
-            m_data_reader lock_data_1{ m_data_mutex[first] };
             crossover(rng, x, m_data[first].x, m_bastert);
 
             to_log(stdout,
@@ -406,8 +362,6 @@ public:
             while (first == second)
                 second = m_indices[choose_a_solution(rng)];
 
-            m_data_reader lock_data_1{ m_data_mutex[first] };
-            m_data_reader lock_data_2{ m_data_mutex[second] };
             crossover(rng, x, m_data[first].x, m_data[second].x);
 
             to_log(stdout,
