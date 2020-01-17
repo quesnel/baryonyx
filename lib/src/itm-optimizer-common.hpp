@@ -338,7 +338,7 @@ public:
             const auto x1 = first.block(i);
             const auto x2 = second.block(i);
 
-            x.set_block(i, ((x1 ^ x2) & dist(rng)) | x1);
+            x.set_block(i, ((x1 ^ x2) & dist(rng)) ^ x1);
         }
     }
 
