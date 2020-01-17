@@ -102,6 +102,13 @@ private:
         m_data[id].remaining_constraints = remaining_constraints;
     }
 
+    int choose_a_bad_solution(random_engine& rng)
+    {
+        std::uniform_int_distribution<std::size_t> dist(m_data.size() / 5, std::size(m_data) - 1);
+
+        return static_cast<int>(dist(rng));
+    }
+
     int choose_a_solution(random_engine& rng)
     {
         double value;
@@ -201,10 +208,9 @@ public:
                 const std::size_t hash,
                 const int remaining_constraints,
                 const double duration,
-                const long int loop) noexcept
+                const long int loop,
+                random_engine& rng) noexcept
     {
-        auto bound = indices_bound();
-
         to_log(stdout,
                5u,
                "- insert advance {} (hash: {}) {}s in {} loops\n",
@@ -213,13 +219,15 @@ public:
                duration,
                loop);
 
+        int id_to_delete = m_indices[choose_a_bad_solution(rng)];
+
         to_log(stdout,
                5u,
                "- delete {} ({})\n",
-               bound.last,
-               m_data[bound.last].value);
+               id_to_delete,
+               m_data[id_to_delete].value);
 
-        replace_result(bound.last,
+        replace_result(id_to_delete,
                        x,
                        costs.results(x, cost_constant),
                        duration,
@@ -234,10 +242,9 @@ public:
                 const std::size_t hash,
                 const double value,
                 const double duration,
-                const long int loop) noexcept
+                const long int loop,
+                random_engine& rng) noexcept
     {
-        auto bound = indices_bound();
-
         to_log(stdout,
                5u,
                "- insert solution {} (hash: {}) {}s in {} loops\n",
@@ -246,13 +253,15 @@ public:
                duration,
                loop);
 
+        int id_to_delete = m_indices[choose_a_bad_solution(rng)];
+
         to_log(stdout,
                5u,
                "- delete {} ({})\n",
-               bound.last,
-               m_data[bound.last].value);
+               id_to_delete,
+               m_data[id_to_delete].value);
 
-        replace_result(bound.last, x, value, duration, hash, loop, 0);
+        replace_result(id_to_delete, x, value, duration, hash, loop, 0);
 
         sort();
     }
@@ -260,16 +269,11 @@ public:
     bool can_be_inserted(const std::size_t hash, const int constraints) const noexcept
     {
         m_indices_reader lock(m_indices_mutex);
-        const auto last_id = m_indices.back();
 
-        if (m_data[last_id].remaining_constraints < constraints)
-            return false;
-
-        for (int i = 0; i != m_size; ++i) {
+        for (int i = 0; i != m_size; ++i)
             if (m_data[i].remaining_constraints == constraints
                     && m_data[i].hash == hash)
                 return false;
-        }
 
         return true;
     }
@@ -278,18 +282,11 @@ public:
             const double value) const noexcept
     {
         m_indices_reader lock(m_indices_mutex);
-        const auto last_id = m_indices.back();
 
-        if (m_data[last_id].remaining_constraints == 0 &&
-                !is_better_solution<Mode, double>(value, m_data[last_id].value))
-            return false;
-
-        for (int i = 0; i != m_size; ++i) {
-
+        for (int i = 0; i != m_size; ++i)
             if (m_data[i].remaining_constraints == 0 && m_data[i].value == value
                     && m_data[i].hash == hash)
                 return false;
-        }
 
         return true;
     }
@@ -577,6 +574,7 @@ struct best_solution_recorder
     }
 
     void try_advance(const bit_array& solution,
+                     random_engine& rng,
                      const int remaining_constraints,
                      const long int loop)
     {
@@ -587,11 +585,12 @@ struct best_solution_recorder
             const auto duration = compute_duration(m_start, end);
 
             m_storage.insert(
-              solution, hash, remaining_constraints, duration, loop);
+              solution, hash, remaining_constraints, duration, loop, rng);
         }
     }
 
     void try_update(const bit_array& solution,
+                    random_engine& rng,
                     const double value,
                     const long int loop)
     {
@@ -601,7 +600,7 @@ struct best_solution_recorder
             const auto end = std::chrono::steady_clock::now();
             const auto duration = compute_duration(m_start, end);
 
-            m_storage.insert(solution, hash, value, duration, loop);
+            m_storage.insert(solution, hash, value, duration, loop, rng);
         }
     }
 
@@ -698,7 +697,7 @@ struct optimize_functor
 
                 if (remaining == 0) {
                     best_recorder.try_update(
-                      x, original_costs.results(x, cost_constant), i);
+                      x, m_rng, original_costs.results(x, cost_constant), i);
                     best_remaining = 0;
                     is_a_solution = true;
                     break;
@@ -717,7 +716,7 @@ struct optimize_functor
             }
 
             if (best_remaining > 0) {
-                best_recorder.try_advance(x, best_remaining, p.limit);
+                best_recorder.try_advance(x, m_rng, best_remaining, p.limit);
                 continue;
             }
 
@@ -736,6 +735,7 @@ struct optimize_functor
                 if (remaining == 0) {
                     best_recorder.try_update(
                       x,
+                      m_rng,
                       original_costs.results(x, cost_constant),
                       -push * p.pushing_iteration_limit - 1);
                     is_a_solution = true;
@@ -752,6 +752,7 @@ struct optimize_functor
                     if (remaining == 0) {
                         best_recorder.try_update(
                           x,
+                          m_rng,
                           original_costs.results(x, cost_constant),
                           -push * p.pushing_iteration_limit - iter - 1);
                         is_a_solution = true;
