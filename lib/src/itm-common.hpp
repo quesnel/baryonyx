@@ -34,15 +34,10 @@
 
 #include <algorithm>
 #include <chrono>
-#include <fstream>
-#include <iterator>
 #include <numeric>
 #include <random>
 #include <thread>
-#include <tuple>
 #include <vector>
-
-#include <fmt/ostream.h>
 
 namespace baryonyx {
 
