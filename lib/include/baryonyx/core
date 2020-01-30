@@ -162,7 +162,8 @@ enum class file_format_error_tag
     bad_constraint,
     too_many_variables,
     too_many_constraints,
-    bad_name // Mainly use when read result file and report unknown variable.
+    bad_name, // Mainly use when read result file and report unknown variable.
+    empty_context
 };
 
 struct file_format_error
@@ -691,7 +692,8 @@ enum class result_status
     uninitialized,
     time_limit_reached,
     kappa_max_reached,
-    limit_reached
+    limit_reached,
+    empty_context
 };
 
 struct solution
@@ -745,9 +747,11 @@ struct result
 using solver_started_cb = std::function<void(const solver_parameters& params)>;
 
 /// Function called for each solution improvement.
-using solver_updated_cb = std::function<
-  void(int remaining_constraints, double value, long int loop, double duration,
-       long int reinit_number)>;
+using solver_updated_cb = std::function<void(int remaining_constraints,
+                                             double value,
+                                             long int loop,
+                                             double duration,
+                                             long int reinit_number)>;
 
 /// finish Function called at the end of the computation.
 using solver_finished_cb = std::function<void(const result& r)>;

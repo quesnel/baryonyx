@@ -79,6 +79,9 @@ struct fmt::formatter<baryonyx::file_format_error_tag>
         case baryonyx::file_format_error_tag::bad_name:
             name = "bad_name";
             break;
+        case baryonyx::file_format_error_tag::empty_context:
+            name = "empty_context";
+            break;
         }
 
         return formatter<string_view>::format(name, ctx);
@@ -142,6 +145,9 @@ struct fmt::formatter<baryonyx::result_status> : fmt::formatter<string_view>
             break;
         case baryonyx::result_status::limit_reached:
             name = "limit_reached";
+            break;
+        case baryonyx::result_status::empty_context:
+            name = "empty_context";
             break;
         }
 

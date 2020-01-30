@@ -1059,7 +1059,7 @@ starts_with_quadratic(const std::string_view buf_1,
 }
 
 raw_problem_status
-parse([[maybe_unused]] const baryonyx::context_ptr& ctx,
+parse([[maybe_unused]] const baryonyx::context& ctx,
       stream_buffer& buf,
       problem_parser& p) noexcept
 {
@@ -1256,7 +1256,7 @@ parse([[maybe_unused]] const baryonyx::context_ptr& ctx,
 namespace baryonyx {
 
 raw_problem
-make_problem(const context_ptr& ctx, std::istream& is) noexcept
+make_problem(const context& ctx, std::istream& is) noexcept
 {
     stream_buffer sb(is);
     problem_parser p;

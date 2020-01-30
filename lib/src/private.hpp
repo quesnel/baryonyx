@@ -83,9 +83,10 @@ struct context
 };
 
 template<typename... Args>
-void to_log([[maybe_unused]] std::FILE* os,
-            [[maybe_unused]] const std::string_view fmt,
-            [[maybe_unused]] const Args&... args)
+void
+to_log([[maybe_unused]] std::FILE* os,
+       [[maybe_unused]] const std::string_view fmt,
+       [[maybe_unused]] const Args&... args)
 {
 #ifdef BARYONYX_ENABLE_LOG
 #ifdef BARYONYX_ENABLE_DEBUG
@@ -95,10 +96,11 @@ void to_log([[maybe_unused]] std::FILE* os,
 }
 
 template<typename... Args>
-void to_log([[maybe_unused]] std::FILE* os,
-            [[maybe_unused]] unsigned indent,
-            [[maybe_unused]] const std::string_view fmt,
-            [[maybe_unused]] const Args&... args)
+void
+to_log([[maybe_unused]] std::FILE* os,
+       [[maybe_unused]] unsigned indent,
+       [[maybe_unused]] const std::string_view fmt,
+       [[maybe_unused]] const Args&... args)
 {
 #ifdef BARYONYX_ENABLE_LOG
 #ifdef BARYONYX_ENABLE_DEBUG
@@ -109,8 +111,7 @@ void to_log([[maybe_unused]] std::FILE* os,
 }
 
 inline bool
-is_loggable(context::message_type current_level,
-            int level) noexcept
+is_loggable(context::message_type current_level, int level) noexcept
 {
     return static_cast<int>(current_level) >= level;
 }
@@ -149,10 +150,10 @@ struct sink
 
 template<typename... Args>
 void
-emerg(const context_ptr& ctx, const char* fmt, const Args&... args)
+emerg(const context& ctx, const char* fmt, const Args&... args)
 {
 #ifdef BARYONYX_ENABLE_LOG
-    if (!is_loggable(ctx->log_priority, 0))
+    if (!is_loggable(ctx.log_priority, 0))
         return;
 
     log(stderr, 0, fmt, args...);
@@ -163,10 +164,10 @@ emerg(const context_ptr& ctx, const char* fmt, const Args&... args)
 
 template<typename... Args>
 void
-alert(const context_ptr& ctx, const char* fmt, const Args&... args)
+alert(const context& ctx, const char* fmt, const Args&... args)
 {
 #ifdef BARYONYX_ENABLE_LOG
-    if (!is_loggable(ctx->log_priority, 1))
+    if (!is_loggable(ctx.log_priority, 1))
         return;
 
     log(stderr, 1, fmt, args...);
@@ -177,10 +178,10 @@ alert(const context_ptr& ctx, const char* fmt, const Args&... args)
 
 template<typename... Args>
 void
-crit(const context_ptr& ctx, const char* fmt, const Args&... args)
+crit(const context& ctx, const char* fmt, const Args&... args)
 {
 #ifdef BARYONYX_ENABLE_LOG
-    if (!is_loggable(ctx->log_priority, 2))
+    if (!is_loggable(ctx.log_priority, 2))
         return;
 
     log(stderr, 2, fmt, args...);
@@ -191,10 +192,10 @@ crit(const context_ptr& ctx, const char* fmt, const Args&... args)
 
 template<typename... Args>
 void
-error(const context_ptr& ctx, const char* fmt, const Args&... args)
+error(const context& ctx, const char* fmt, const Args&... args)
 {
 #ifdef BARYONYX_ENABLE_LOG
-    if (!is_loggable(ctx->log_priority, 3))
+    if (!is_loggable(ctx.log_priority, 3))
         return;
 
     log(stderr, 3, fmt, args...);
@@ -205,10 +206,10 @@ error(const context_ptr& ctx, const char* fmt, const Args&... args)
 
 template<typename... Args>
 void
-warning(const context_ptr& ctx, const char* fmt, const Args&... args)
+warning(const context& ctx, const char* fmt, const Args&... args)
 {
 #ifdef BARYONYX_ENABLE_LOG
-    if (!is_loggable(ctx->log_priority, 4))
+    if (!is_loggable(ctx.log_priority, 4))
         return;
 
     log(stderr, 4, fmt, args...);
@@ -219,10 +220,10 @@ warning(const context_ptr& ctx, const char* fmt, const Args&... args)
 
 template<typename... Args>
 void
-notice(const context_ptr& ctx, const char* fmt, const Args&... args)
+notice(const context& ctx, const char* fmt, const Args&... args)
 {
 #ifdef BARYONYX_ENABLE_LOG
-    if (!is_loggable(ctx->log_priority, 5))
+    if (!is_loggable(ctx.log_priority, 5))
         return;
 
     log(stdout, 5, fmt, args...);
@@ -233,10 +234,10 @@ notice(const context_ptr& ctx, const char* fmt, const Args&... args)
 
 template<typename... Args>
 void
-info(const context_ptr& ctx, const char* fmt, const Args&... args)
+info(const context& ctx, const char* fmt, const Args&... args)
 {
 #ifdef BARYONYX_ENABLE_LOG
-    if (!is_loggable(ctx->log_priority, 6))
+    if (!is_loggable(ctx.log_priority, 6))
         return;
 
     log(stdout, 6, fmt, args...);
@@ -247,11 +248,11 @@ info(const context_ptr& ctx, const char* fmt, const Args&... args)
 
 template<typename... Args>
 void
-debug(const context_ptr& ctx, const char* fmt, const Args&... args)
+debug(const context& ctx, const char* fmt, const Args&... args)
 {
 #ifdef BARYONYX_ENABLE_LOG
 #ifdef BARYONYX_ENABLE_DEBUG
-    if (!is_loggable(ctx->log_priority, 7))
+    if (!is_loggable(ctx.log_priority, 7))
         return;
 
     log(stdout, 7, fmt, args...);
@@ -265,13 +266,13 @@ debug(const context_ptr& ctx, const char* fmt, const Args&... args)
 
 template<typename Arg1, typename... Args>
 void
-emerg(const context_ptr& ctx,
+emerg(const context& ctx,
       const char* fmt,
       const Arg1& arg1,
       const Args&... args)
 {
 #ifdef BARYONYX_ENABLE_LOG
-    if (!is_loggable(ctx->log_priority, 0))
+    if (!is_loggable(ctx.log_priority, 0))
         return;
 
     log(stderr, 0, fmt, arg1, args...);
@@ -282,13 +283,13 @@ emerg(const context_ptr& ctx,
 
 template<typename Arg1, typename... Args>
 void
-alert(const context_ptr& ctx,
+alert(const context& ctx,
       const char* fmt,
       const Arg1& arg1,
       const Args&... args)
 {
 #ifdef BARYONYX_ENABLE_LOG
-    if (!is_loggable(ctx->log_priority, 1))
+    if (!is_loggable(ctx.log_priority, 1))
         return;
 
     log(stderr, 1, fmt, arg1, args...);
@@ -299,13 +300,13 @@ alert(const context_ptr& ctx,
 
 template<typename Arg1, typename... Args>
 void
-crit(const context_ptr& ctx,
+crit(const context& ctx,
      const char* fmt,
      const Arg1& arg1,
      const Args&... args)
 {
 #ifdef BARYONYX_ENABLE_LOG
-    if (!is_loggable(ctx->log_priority, 2))
+    if (!is_loggable(ctx.log_priority, 2))
         return;
 
     log(stderr, 2, fmt, arg1, args...);
@@ -316,13 +317,13 @@ crit(const context_ptr& ctx,
 
 template<typename Arg1, typename... Args>
 void
-error(const context_ptr& ctx,
+error(const context& ctx,
       const char* fmt,
       const Arg1& arg1,
       const Args&... args)
 {
 #ifdef BARYONYX_ENABLE_LOG
-    if (!is_loggable(ctx->log_priority, 3))
+    if (!is_loggable(ctx.log_priority, 3))
         return;
 
     log(stderr, 3, fmt, arg1, args...);
@@ -333,13 +334,13 @@ error(const context_ptr& ctx,
 
 template<typename Arg1, typename... Args>
 void
-warning(const context_ptr& ctx,
+warning(const context& ctx,
         const char* fmt,
         const Arg1& arg1,
         const Args&... args)
 {
 #ifdef BARYONYX_ENABLE_LOG
-    if (!is_loggable(ctx->log_priority, 4))
+    if (!is_loggable(ctx.log_priority, 4))
         return;
 
     log(stderr, 4, fmt, arg1, args...);
@@ -350,13 +351,13 @@ warning(const context_ptr& ctx,
 
 template<typename Arg1, typename... Args>
 void
-notice(const context_ptr& ctx,
+notice(const context& ctx,
        const char* fmt,
        const Arg1& arg1,
        const Args&... args)
 {
 #ifdef BARYONYX_ENABLE_LOG
-    if (!is_loggable(ctx->log_priority, 5))
+    if (!is_loggable(ctx.log_priority, 5))
         return;
 
     log(stdout, 5, fmt, arg1, args...);
@@ -367,13 +368,13 @@ notice(const context_ptr& ctx,
 
 template<typename Arg1, typename... Args>
 void
-info(const context_ptr& ctx,
+info(const context& ctx,
      const char* fmt,
      const Arg1& arg1,
      const Args&... args)
 {
 #ifdef BARYONYX_ENABLE_LOG
-    if (!is_loggable(ctx->log_priority, 6))
+    if (!is_loggable(ctx.log_priority, 6))
         return;
 
     log(stdout, 6, fmt, arg1, args...);
@@ -384,14 +385,14 @@ info(const context_ptr& ctx,
 
 template<typename Arg1, typename... Args>
 void
-debug(const context_ptr& ctx,
+debug(const context& ctx,
       const char* fmt,
       const Arg1& arg1,
       const Args&... args)
 {
 #ifdef BARYONYX_ENABLE_LOG
 #ifdef BARYONYX_ENABLE_DEBUG
-    if (!is_loggable(ctx->log_priority, 7))
+    if (!is_loggable(ctx.log_priority, 7))
         return;
 
     log(stdout, 7, fmt, arg1, args...);
@@ -407,10 +408,10 @@ debug(const context_ptr& ctx,
 
 template<typename T>
 void
-emerg(const context_ptr& ctx, const T& msg)
+emerg(const context& ctx, const T& msg)
 {
 #ifdef BARYONYX_ENABLE_LOG
-    if (!is_loggable(ctx->log_priority, 0))
+    if (!is_loggable(ctx.log_priority, 0))
         return;
 
     log(stderr, 0, msg);
@@ -421,10 +422,10 @@ emerg(const context_ptr& ctx, const T& msg)
 
 template<typename T>
 void
-alert(const context_ptr& ctx, const T& msg)
+alert(const context& ctx, const T& msg)
 {
 #ifdef BARYONYX_ENABLE_LOG
-    if (!is_loggable(ctx->log_priority, 1))
+    if (!is_loggable(ctx.log_priority, 1))
         return;
 
     log(stderr, 1, msg);
@@ -435,10 +436,10 @@ alert(const context_ptr& ctx, const T& msg)
 
 template<typename T>
 void
-crit(const context_ptr& ctx, const T& msg)
+crit(const context& ctx, const T& msg)
 {
 #ifdef BARYONYX_ENABLE_LOG
-    if (!is_loggable(ctx->log_priority, 2))
+    if (!is_loggable(ctx.log_priority, 2))
         return;
 
     log(stderr, 2, msg);
@@ -449,10 +450,10 @@ crit(const context_ptr& ctx, const T& msg)
 
 template<typename T>
 void
-error(const context_ptr& ctx, const T& msg)
+error(const context& ctx, const T& msg)
 {
 #ifdef BARYONYX_ENABLE_LOG
-    if (!is_loggable(ctx->log_priority, 3))
+    if (!is_loggable(ctx.log_priority, 3))
         return;
 
     log(stderr, 3, msg);
@@ -463,10 +464,10 @@ error(const context_ptr& ctx, const T& msg)
 
 template<typename T>
 void
-warning(const context_ptr& ctx, const T& msg)
+warning(const context& ctx, const T& msg)
 {
 #ifdef BARYONYX_ENABLE_LOG
-    if (!is_loggable(ctx->log_priority, 4))
+    if (!is_loggable(ctx.log_priority, 4))
         return;
 
     log(stderr, 4, msg);
@@ -477,10 +478,10 @@ warning(const context_ptr& ctx, const T& msg)
 
 template<typename T>
 void
-notice(const context_ptr& ctx, const T& msg)
+notice(const context& ctx, const T& msg)
 {
 #ifdef BARYONYX_ENABLE_LOG
-    if (!is_loggable(ctx->log_priority, 5))
+    if (!is_loggable(ctx.log_priority, 5))
         return;
 
     log(stdout, 5, msg);
@@ -491,10 +492,10 @@ notice(const context_ptr& ctx, const T& msg)
 
 template<typename T>
 void
-info(const context_ptr& ctx, const T& msg)
+info(const context& ctx, const T& msg)
 {
 #ifdef BARYONYX_ENABLE_LOG
-    if (!is_loggable(ctx->log_priority, 6))
+    if (!is_loggable(ctx.log_priority, 6))
         return;
 
     log(stdout, 6, msg);
@@ -505,11 +506,11 @@ info(const context_ptr& ctx, const T& msg)
 
 template<typename T>
 void
-debug(const context_ptr& ctx, const T& msg)
+debug(const context& ctx, const T& msg)
 {
 #ifdef BARYONYX_ENABLE_LOG
 #ifndef BARYONYX_ENABLE_DEBUG
-    if (!is_loggable(ctx->log_priority, 7))
+    if (!is_loggable(ctx.log_priority, 7))
         return;
 
     log(stdout, 7, msg);

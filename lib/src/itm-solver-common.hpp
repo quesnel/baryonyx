@@ -50,12 +50,12 @@ struct solver_functor
     std::chrono::time_point<std::chrono::steady_clock> m_begin;
     std::chrono::time_point<std::chrono::steady_clock> m_end;
 
-    const context_ptr& m_ctx;
+    const context& m_ctx;
     random_engine& m_rng;
 
     raw_result<Mode> m_best;
 
-    solver_functor(const context_ptr& ctx, random_engine& rng)
+    solver_functor(const context& ctx, random_engine& rng)
       : m_ctx(ctx)
       , m_rng(rng)
     {}
@@ -71,7 +71,7 @@ struct solver_functor
 
         int best_remaining = INT_MAX;
 
-        auto& p = m_ctx->parameters;
+        auto& p = m_ctx.parameters;
 
         auto norm_costs = normalize_costs<Float, Cost>(
           m_ctx, original_costs, m_rng, variables);
@@ -91,18 +91,6 @@ struct solver_functor
 
         const long int w_limit = static_cast<long int>(p.w);
 
-        if (p.limit <= 0)
-            p.limit = std::numeric_limits<long int>::max();
-
-        if (p.time_limit <= 0)
-            p.time_limit = std::numeric_limits<double>::infinity();
-
-        if (p.pushes_limit <= 0)
-            p.pushes_limit = 0;
-
-        if (p.pushing_iteration_limit <= 0)
-            p.pushes_limit = 0;
-
         Solver slv(
           m_rng, length(constraints), variables, norm_costs, constraints);
 
@@ -110,7 +98,7 @@ struct solver_functor
 
         {
             std::bernoulli_distribution choose_mutation(
-              m_ctx->parameters.init_policy_random);
+              m_ctx.parameters.init_policy_random);
             bit_array empty_x;
 
             switch (p.init_policy) {
@@ -241,7 +229,7 @@ private:
     {
         m_end = std::chrono::steady_clock::now();
 
-        return is_time_limit(m_ctx->parameters.time_limit, m_begin, m_end);
+        return is_time_limit(m_ctx.parameters.time_limit, m_begin, m_end);
     }
 
     double duration()
@@ -275,10 +263,10 @@ private:
 
 template<typename Solver, typename Float, typename Mode, typename Cost>
 inline result
-solve_problem(const context_ptr& ctx, const problem& pb)
+solve_problem(const context& ctx, const problem& pb)
 {
-    if (ctx->start)
-        ctx->start(ctx->parameters);
+    if (ctx.start)
+        ctx.start(ctx.parameters);
 
     result ret;
 
@@ -291,7 +279,7 @@ solve_problem(const context_ptr& ctx, const problem& pb)
         auto cost = Cost(pb.objective, variables);
         auto cost_constant = pb.objective.value;
 
-        switch (ctx->parameters.observer) {
+        switch (ctx.parameters.observer) {
         case solver_parameters::observer_type::pnm: {
             using obs = pnm_observer;
 
@@ -322,8 +310,8 @@ solve_problem(const context_ptr& ctx, const problem& pb)
     ret.variables = variables;
     ret.constraints = length(constraints);
 
-    if (ctx->finish)
-        ctx->finish(ret);
+    if (ctx.finish)
+        ctx.finish(ret);
 
     return ret;
 }

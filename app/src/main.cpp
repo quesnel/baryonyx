@@ -215,6 +215,9 @@ solver_finished_cb(const baryonyx::result& r)
                    r.remaining_constraints,
                    r.duration);
         break;
+    case baryonyx::result_status::empty_context:
+        fmt::print("Context uninitialized\n");
+        break;
     }
 }
 
@@ -1107,6 +1110,9 @@ resume(const baryonyx::result& result, std::ostream& os) noexcept
                    "limit reached\n"
                    "\\ remaining constraints.: {}\n",
                    result.remaining_constraints);
+        break;
+    case baryonyx::result_status::empty_context:
+        fmt::print(os, "context uninitialized\n");
         break;
     }
 }

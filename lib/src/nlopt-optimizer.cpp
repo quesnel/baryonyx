@@ -44,12 +44,12 @@ enum param
 
 struct nlopt_data
 {
-    nlopt_data(const baryonyx::context_ptr& ctx_, baryonyx::problem pb_)
+    nlopt_data(baryonyx::context& ctx_, baryonyx::problem pb_)
       : ctx(ctx_)
       , pb(std::move(pb_))
     {}
 
-    const baryonyx::context_ptr& ctx;
+    baryonyx::context& ctx;
     const baryonyx::problem pb;
 };
 
@@ -61,12 +61,12 @@ nlopt_optimize_fun(const std::vector<double>& x,
     try {
         auto* data = reinterpret_cast<nlopt_data*>(data_orig);
 
-        data->ctx->parameters.theta = x[static_cast<int>(param_theta)];
-        data->ctx->parameters.delta = x[static_cast<int>(param_delta)];
-        data->ctx->parameters.kappa_min = x[static_cast<int>(param_kappa_min)];
-        data->ctx->parameters.kappa_step =
+        data->ctx.parameters.theta = x[static_cast<int>(param_theta)];
+        data->ctx.parameters.delta = x[static_cast<int>(param_delta)];
+        data->ctx.parameters.kappa_min = x[static_cast<int>(param_kappa_min)];
+        data->ctx.parameters.kappa_step =
           x[static_cast<int>(param_kappa_step)];
-        data->ctx->parameters.init_policy_random =
+        data->ctx.parameters.init_policy_random =
           x[static_cast<int>(param_init_policy_random)];
 
         auto ret = baryonyx::itm::optimize(data->ctx, data->pb);
@@ -76,11 +76,11 @@ nlopt_optimize_fun(const std::vector<double>& x,
         baryonyx::notice(data->ctx,
                          "theta: {} delta: {} kappa_min: {} kappa_step: {} "
                          "init_policy_random: {}: {:f}\n",
-                         data->ctx->parameters.theta,
-                         data->ctx->parameters.delta,
-                         data->ctx->parameters.kappa_min,
-                         data->ctx->parameters.kappa_step,
-                         data->ctx->parameters.init_policy_random,
+                         data->ctx.parameters.theta,
+                         data->ctx.parameters.delta,
+                         data->ctx.parameters.kappa_min,
+                         data->ctx.parameters.kappa_step,
+                         data->ctx.parameters.init_policy_random,
                          ret.solutions.back().value);
 
         return ret.solutions.back().value;
@@ -91,12 +91,12 @@ nlopt_optimize_fun(const std::vector<double>& x,
 }
 
 static baryonyx::result
-optimize(const baryonyx::context_ptr& ctx, const baryonyx::problem& pb)
+optimize(const baryonyx::context& ctx, const baryonyx::problem& pb)
 {
-    auto old_log_priority = ctx->log_priority;
-    ctx->log_priority = baryonyx::context::message_type::notice;
+    baryonyx::context internal(ctx);
+    internal.log_priority = baryonyx::context::message_type::warning;
 
-    nlopt_data data(ctx, pb);
+    nlopt_data data(internal, pb);
 
     const std::vector<double> low{ 0, 0.0001, 0.0, 1e-7, 0 };
     const std::vector<double> up{ 1, 0.1, 0.5, 0.01, 1 };
@@ -119,8 +119,6 @@ optimize(const baryonyx::context_ptr& ctx, const baryonyx::problem& pb)
     double value;
     auto result = opt.optimize(x, value);
 
-    ctx->log_priority = old_log_priority;
-
     if (result >= 1 || result == -4) {
         baryonyx::notice(
           ctx,
@@ -133,13 +131,13 @@ optimize(const baryonyx::context_ptr& ctx, const baryonyx::problem& pb)
           x[param_kappa_step],
           x[param_init_policy_random]);
 
-        ctx->parameters.theta = x[param_theta];
-        ctx->parameters.delta = x[param_delta];
-        ctx->parameters.kappa_min = x[param_kappa_min];
-        ctx->parameters.kappa_step = x[param_kappa_step];
-        ctx->parameters.init_policy_random = x[param_init_policy_random];
+        internal.parameters.theta = x[param_theta];
+        internal.parameters.delta = x[param_delta];
+        internal.parameters.kappa_min = x[param_kappa_min];
+        internal.parameters.kappa_step = x[param_kappa_step];
+        internal.parameters.init_policy_random = x[param_init_policy_random];
 
-        return baryonyx::itm::optimize(ctx, pb);
+        return baryonyx::itm::optimize(internal, pb);
     } else {
         baryonyx::notice(ctx,
                          "  - nlopt optimization fail. Toggle to manual "
@@ -154,7 +152,7 @@ namespace baryonyx {
 namespace itm {
 
 result
-nlopt_optimize(const context_ptr& ctx, const problem& pb)
+nlopt_optimize(const context& ctx, const problem& pb)
 {
     notice(ctx, "- auto-tune parameters (nlopt) starts\n");
 

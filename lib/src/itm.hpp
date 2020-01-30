@@ -30,58 +30,58 @@ namespace baryonyx {
 namespace itm {
 
 result
-solve_equalities_01(const context_ptr& ctx, const problem& pb);
+solve_equalities_01(const context& ctx, const problem& pb);
 
 result
-optimize_equalities_01(const context_ptr& ctx, const problem& pb);
+optimize_equalities_01(const context& ctx, const problem& pb);
 
 result
-solve_equalities_101(const context_ptr& ctx, const problem& pb);
+solve_equalities_101(const context& ctx, const problem& pb);
 
 result
-optimize_equalities_101(const context_ptr& ctx, const problem& pb);
+optimize_equalities_101(const context& ctx, const problem& pb);
 
 result
-solve_inequalities_01(const context_ptr& ctx, const problem& pb);
+solve_inequalities_01(const context& ctx, const problem& pb);
 
 result
-optimize_inequalities_01(const context_ptr& ctx, const problem& pb);
+optimize_inequalities_01(const context& ctx, const problem& pb);
 
 result
-solve_inequalities_101(const context_ptr& ctx, const problem& pb);
+solve_inequalities_101(const context& ctx, const problem& pb);
 
 result
-optimize_inequalities_101(const context_ptr& ctx, const problem& pb);
+optimize_inequalities_101(const context& ctx, const problem& pb);
 
 result
-solve_inequalities_Z(const context_ptr& ctx, const problem& pb);
+solve_inequalities_Z(const context& ctx, const problem& pb);
 
 result
-optimize_inequalities_Z(const context_ptr& ctx, const problem& pb);
+optimize_inequalities_Z(const context& ctx, const problem& pb);
 
 result
-solve_random_inequalities_101(const context_ptr& ctx, const problem& pb);
+solve_random_inequalities_101(const context& ctx, const problem& pb);
 
 result
-optimize_random_inequalities_101(const context_ptr& ctx, const problem& pb);
+optimize_random_inequalities_101(const context& ctx, const problem& pb);
 
 result
-solve_random_equalities_101(const context_ptr& ctx, const problem& pb);
+solve_random_equalities_101(const context& ctx, const problem& pb);
 
 result
-optimize_random_equalities_101(const context_ptr& ctx, const problem& pb);
+optimize_random_equalities_101(const context& ctx, const problem& pb);
 
 result
-solve_random_inequalities_01(const context_ptr& ctx, const problem& pb);
+solve_random_inequalities_01(const context& ctx, const problem& pb);
 
 result
-optimize_random_inequalities_01(const context_ptr& ctx, const problem& pb);
+optimize_random_inequalities_01(const context& ctx, const problem& pb);
 
 result
-solve_random_equalities_01(const context_ptr& ctx, const problem& pb);
+solve_random_equalities_01(const context& ctx, const problem& pb);
 
 result
-optimize_random_equalities_01(const context_ptr& ctx, const problem& pb);
+optimize_random_equalities_01(const context& ctx, const problem& pb);
 
 /**
  * @brief Select the correct solver and solve the problem.
@@ -92,10 +92,10 @@ optimize_random_equalities_01(const context_ptr& ctx, const problem& pb);
  * @throw @c baryonyx::solver_error
  */
 inline result
-solve(const context_ptr& ctx, const problem& pb)
+solve(const context& ctx, const problem& pb)
 {
-    if (ctx->parameters.solver == solver_parameters::solver_type::bastert) {
-        if (ctx->method == "buffered")
+    if (ctx.parameters.solver == solver_parameters::solver_type::bastert) {
+        if (ctx.method == "buffered")
             return solve_equalities_01(ctx, pb);
 
         switch (pb.problem_type) {
@@ -153,10 +153,10 @@ solve(const context_ptr& ctx, const problem& pb)
  * @throw @c baryonyx::solver_error
  */
 inline result
-optimize(const context_ptr& ctx, const problem& pb)
+optimize(const context& ctx, const problem& pb)
 {
-    if (ctx->parameters.solver == solver_parameters::solver_type::bastert) {
-        if (ctx->method == "buffered")
+    if (ctx.parameters.solver == solver_parameters::solver_type::bastert) {
+        if (ctx.method == "buffered")
             return optimize_equalities_01(ctx, pb);
 
         switch (pb.problem_type) {
@@ -215,7 +215,7 @@ optimize(const context_ptr& ctx, const problem& pb)
  * @throw @c baryonyx::solver_error
  */
 result
-manual_optimize(const context_ptr& ctx, const problem& pb);
+manual_optimize(const context& ctx, const problem& pb);
 
 /**
  * @brief auto-tune solver parameters to optimize the problem using nlopt.
@@ -234,7 +234,7 @@ manual_optimize(const context_ptr& ctx, const problem& pb);
  * @throw @c baryonyx::solver_error
  */
 result
-nlopt_optimize(const context_ptr& ctx, const problem& pb);
+nlopt_optimize(const context& ctx, const problem& pb);
 
 /**
  * @brief Split the problem with affected/no-affected variable.
@@ -251,7 +251,7 @@ nlopt_optimize(const context_ptr& ctx, const problem& pb);
  * @throw @c baryonyx::solver_error
  */
 result
-branch_optimize(const context_ptr& ctx, const problem& pb);
+branch_optimize(const context& ctx, const problem& pb);
 
 } // namespace itm
 } // namespace baryonyx

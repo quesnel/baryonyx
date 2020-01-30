@@ -61,60 +61,74 @@ context_register(const context_ptr& ctx,
                  solver_updated_cb update,
                  solver_finished_cb finish)
 {
-    ctx->start = std::move(start);
-    ctx->update = std::move(update);
-    ctx->finish = std::move(finish);
+    if (ctx) {
+        ctx->start = std::move(start);
+        ctx->update = std::move(update);
+        ctx->finish = std::move(finish);
+    }
 }
 
 raw_problem
 make_problem(const baryonyx::context_ptr& ctx, const std::string& filename)
 {
-    info(ctx, "problem reads from file `{}'\n", filename);
+    if (ctx) {
+        info(*ctx, "problem reads from file `{}'\n", filename);
 
-    std::ifstream ifs(filename);
-    if (!ifs.is_open())
-        return raw_problem(baryonyx::file_format_error_tag::file_not_found);
+        std::ifstream ifs(filename);
+        if (!ifs.is_open())
+            return raw_problem(
+              baryonyx::file_format_error_tag::file_not_found);
 
-    return make_problem(ctx, ifs);
+        return make_problem(*ctx, ifs);
+    }
+
+    return raw_problem{ baryonyx::file_format_error_tag::empty_context };
 }
 
 result
 solve(const baryonyx::context_ptr& ctx, const raw_problem& rawpb)
 {
-    return (ctx->parameters.preprocessor ==
-            solver_parameters::preprocessor_options::all)
-             ? itm::solve(ctx, preprocess(ctx, rawpb))
-             : itm::solve(ctx, unpreprocess(ctx, rawpb));
+    if (ctx)
+        return (ctx->parameters.preprocessor ==
+                solver_parameters::preprocessor_options::all)
+                 ? itm::solve(*ctx, preprocess(*ctx, rawpb))
+                 : itm::solve(*ctx, unpreprocess(*ctx, rawpb));
+
+    return result{ baryonyx::result_status::empty_context };
 }
 
 result
 optimize(const baryonyx::context_ptr& ctx, const raw_problem& rawpb)
 {
-    if ((ctx->parameters.mode & solver_parameters::mode_type::branch) ==
-        solver_parameters::mode_type::branch)
+    if (ctx) {
+        if ((ctx->parameters.mode & solver_parameters::mode_type::branch) ==
+            solver_parameters::mode_type::branch)
+            return (ctx->parameters.preprocessor ==
+                    solver_parameters::preprocessor_options::all)
+                     ? itm::branch_optimize(*ctx, preprocess(*ctx, rawpb))
+                     : itm::branch_optimize(*ctx, unpreprocess(*ctx, rawpb));
+
+        if ((ctx->parameters.mode & solver_parameters::mode_type::nlopt) ==
+            solver_parameters::mode_type::nlopt)
+            return (ctx->parameters.preprocessor ==
+                    solver_parameters::preprocessor_options::all)
+                     ? itm::nlopt_optimize(*ctx, preprocess(*ctx, rawpb))
+                     : itm::nlopt_optimize(*ctx, unpreprocess(*ctx, rawpb));
+
+        if ((ctx->parameters.mode & solver_parameters::mode_type::manual) ==
+            solver_parameters::mode_type::manual)
+            return (ctx->parameters.preprocessor ==
+                    solver_parameters::preprocessor_options::all)
+                     ? itm::manual_optimize(*ctx, preprocess(*ctx, rawpb))
+                     : itm::manual_optimize(*ctx, unpreprocess(*ctx, rawpb));
+
         return (ctx->parameters.preprocessor ==
                 solver_parameters::preprocessor_options::all)
-                 ? itm::branch_optimize(ctx, preprocess(ctx, rawpb))
-                 : itm::branch_optimize(ctx, unpreprocess(ctx, rawpb));
+                 ? itm::optimize(*ctx, preprocess(*ctx, rawpb))
+                 : itm::optimize(*ctx, unpreprocess(*ctx, rawpb));
+    }
 
-    if ((ctx->parameters.mode & solver_parameters::mode_type::nlopt) ==
-        solver_parameters::mode_type::nlopt)
-        return (ctx->parameters.preprocessor ==
-                solver_parameters::preprocessor_options::all)
-                 ? itm::nlopt_optimize(ctx, preprocess(ctx, rawpb))
-                 : itm::nlopt_optimize(ctx, unpreprocess(ctx, rawpb));
-
-    if ((ctx->parameters.mode & solver_parameters::mode_type::manual) ==
-        solver_parameters::mode_type::manual)
-        return (ctx->parameters.preprocessor ==
-                solver_parameters::preprocessor_options::all)
-                 ? itm::manual_optimize(ctx, preprocess(ctx, rawpb))
-                 : itm::manual_optimize(ctx, unpreprocess(ctx, rawpb));
-
-    return (ctx->parameters.preprocessor ==
-            solver_parameters::preprocessor_options::all)
-             ? itm::optimize(ctx, preprocess(ctx, rawpb))
-             : itm::optimize(ctx, unpreprocess(ctx, rawpb));
+    return result{ baryonyx::result_status::empty_context };
 }
 
 template<typename functionT, typename variablesT>

@@ -55,10 +55,10 @@ test_bqp_clean()
                              "End\n";
 
         std::istringstream iss(str_pb);
-        auto pb = baryonyx::make_problem(ctx, iss);
+        auto pb = baryonyx::make_problem(*ctx, iss);
         Ensures(pb);
 
-        auto pb_pp = baryonyx::preprocess(ctx, pb);
+        auto pb_pp = baryonyx::preprocess(*ctx, pb);
 
         Ensures(pb_pp.vars.names.size() == 4u);
         Ensures(pb_pp.affected_vars.names.size() == 0u);
@@ -102,10 +102,10 @@ test_bqp_clean()
                              "End\n";
 
         std::istringstream iss(str_pb);
-        auto pb = baryonyx::make_problem(ctx, iss);
+        auto pb = baryonyx::make_problem(*ctx, iss);
         Ensures(pb);
 
-        auto pb_pp = baryonyx::preprocess(ctx, pb);
+        auto pb_pp = baryonyx::preprocess(*ctx, pb);
 
         Ensures(pb_pp.vars.names.size() == 4u);
         Ensures(pb_pp.affected_vars.names.size() == 0u);
@@ -150,10 +150,10 @@ test_bqp_clean()
                              "End\n";
 
         std::istringstream iss(str_pb);
-        auto pb = baryonyx::make_problem(ctx, iss);
+        auto pb = baryonyx::make_problem(*ctx, iss);
         Ensures(pb);
 
-        auto pb_pp = baryonyx::preprocess(ctx, pb);
+        auto pb_pp = baryonyx::preprocess(*ctx, pb);
 
         Ensures(pb_pp.vars.names.size() == 4u);
         Ensures(pb_pp.affected_vars.names.size() == 0u);
@@ -200,7 +200,7 @@ test_bound_affectation()
     // The preprocessing can not remove any constraint or variable from the
     // raw_problem.
 
-    auto pb_pp = baryonyx::preprocess(ctx, pb);
+    auto pb_pp = baryonyx::preprocess(*ctx, pb);
     Ensures(pb_pp.vars.names.size() == static_cast<size_t>(6));
     Ensures(pb_pp.affected_vars.names.size() == static_cast<size_t>(0));
     Ensures(pb_pp.equal_constraints.size() == static_cast<size_t>(0));
@@ -222,7 +222,7 @@ test_bound_affectation()
     pb.vars.values[id].min = 0;
     pb.vars.values[id].max = 0;
 
-    auto pb_pp2 = baryonyx::preprocess(ctx, pb);
+    auto pb_pp2 = baryonyx::preprocess(*ctx, pb);
     Ensures(pb_pp2.vars.names.size() == static_cast<size_t>(5));
     Ensures(pb_pp2.affected_vars.names.size() == static_cast<size_t>(1));
     Ensures(pb_pp2.equal_constraints.size() == static_cast<size_t>(0));
@@ -239,7 +239,7 @@ test_cleaning_affected_variables()
     Ensures(pb);
     Ensures(pb.vars.names.size() == static_cast<size_t>(23));
 
-    auto pb_pp = baryonyx::preprocess(ctx, pb);
+    auto pb_pp = baryonyx::preprocess(*ctx, pb);
 
     Ensures(pb_pp.vars.names.size() == static_cast<size_t>(2));
     Ensures(pb_pp.affected_vars.names.size() == static_cast<size_t>(21));
@@ -252,7 +252,7 @@ test_affect_variable()
     auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/prepro.lp");
 
     Ensures(pb);
-    auto pb_pp = baryonyx::preprocess(ctx, pb);
+    auto pb_pp = baryonyx::preprocess(*ctx, pb);
 
     Ensures(pb_pp.vars.names.size() == static_cast<size_t>(2));
     Ensures(pb_pp.affected_vars.names.size() == static_cast<size_t>(21));
@@ -261,7 +261,7 @@ test_affect_variable()
         // + d + e <= 1
         // d = 1 implies e = 0
 
-        auto pb_af = baryonyx::affect(ctx, pb_pp, 0, true);
+        auto pb_af = baryonyx::affect(*ctx, pb_pp, 0, true);
         Ensures(pb_af.vars.names.size() == static_cast<size_t>(0));
         Ensures(pb_af.affected_vars.names.size() == static_cast<size_t>(23));
     }
@@ -270,7 +270,7 @@ test_affect_variable()
         // + d + e <= 1
         // d = 0 implies e = {0, 1} but minimize so => 0.
 
-        auto pb_af = baryonyx::affect(ctx, pb_pp, 0, false);
+        auto pb_af = baryonyx::affect(*ctx, pb_pp, 0, false);
         Ensures(pb_af.vars.names.size() == static_cast<size_t>(0));
         Ensures(pb_af.affected_vars.names.size() == static_cast<size_t>(23));
     }
@@ -279,7 +279,7 @@ test_affect_variable()
         // + d + e <= 1
         // e = 1 implies d = 0
 
-        auto pb_af = baryonyx::affect(ctx, pb_pp, 1, true);
+        auto pb_af = baryonyx::affect(*ctx, pb_pp, 1, true);
         Ensures(pb_af.vars.names.size() == static_cast<size_t>(0));
         Ensures(pb_af.affected_vars.names.size() == static_cast<size_t>(23));
     }
@@ -288,7 +288,7 @@ test_affect_variable()
         // + d + e <= 1
         // e = 0 implies d = {0, 1} but minimize so => 0.
 
-        auto pb_af = baryonyx::affect(ctx, pb_pp, 1, false);
+        auto pb_af = baryonyx::affect(*ctx, pb_pp, 1, false);
         Ensures(pb_af.vars.names.size() == static_cast<size_t>(0));
         Ensures(pb_af.affected_vars.names.size() == static_cast<size_t>(23));
     }
@@ -300,13 +300,13 @@ test_split()
     auto ctx = baryonyx::make_context(6);
     auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/prepro.lp");
     Ensures(pb);
-    auto pb_pp = baryonyx::preprocess(ctx, pb);
+    auto pb_pp = baryonyx::preprocess(*ctx, pb);
 
     Ensures(pb_pp.vars.names.size() == static_cast<size_t>(2));
     Ensures(pb_pp.affected_vars.names.size() == static_cast<size_t>(21));
 
     baryonyx::problem p0, p1;
-    std::tie(p0, p1) = baryonyx::split(ctx, pb_pp, 0);
+    std::tie(p0, p1) = baryonyx::split(*ctx, pb_pp, 0);
 
     {
         // + d + e <= 1
@@ -326,7 +326,7 @@ test_split()
 }
 
 int
-main(int /*argc*/, char* /* argv */ [])
+main(int /*argc*/, char* /* argv */[])
 {
     unit_test::checks("bound_affectation", test_bound_affectation);
     unit_test::checks("cleaning_affected_variables",

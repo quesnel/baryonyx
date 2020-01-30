@@ -46,6 +46,42 @@
 namespace baryonyx {
 namespace itm {
 
+/**
+ * @brief Local context for each thread.
+ * @details Each thread need a copy of this data to avoid mutex.
+ *
+ */
+struct local_context
+{
+    random_engine rng;
+    std::normal_distribution<double> choose_sol_dist;
+    std::normal_distribution<double> variable_p_dist;
+    std::normal_distribution<double> value_p_dist;
+    std::uniform_int_distribution<int> bad_solution_choose;
+    std::uniform_int_distribution<std::size_t> crossover_dist;
+    std::bernoulli_distribution crossover_bastert_insertion;
+    const unsigned thread_id;
+
+    local_context(const context& ctx,
+                  const unsigned thread_id_,
+                  const random_engine::result_type seed)
+      : rng(seed)
+      , choose_sol_dist(
+          ctx.parameters.init_crossover_solution_selection_mean,
+          ctx.parameters.init_crossover_solution_selection_stddev)
+      , variable_p_dist(ctx.parameters.init_mutation_variable_mean,
+                        ctx.parameters.init_mutation_variable_stddev)
+      , value_p_dist(ctx.parameters.init_mutation_value_mean,
+                     ctx.parameters.init_mutation_value_stddev)
+      , bad_solution_choose(ctx.parameters.init_population_size / 5,
+                            ctx.parameters.init_population_size - 1)
+      , crossover_dist(0)
+      , crossover_bastert_insertion(
+          ctx.parameters.init_crossover_bastert_insertion)
+      , thread_id(thread_id_)
+    {}
+};
+
 template<typename Cost, typename Mode>
 class storage
 {
@@ -58,9 +94,6 @@ private:
     std::vector<raw_result<Mode>> m_data;
     bit_array m_bastert;
     bit_array m_random;
-
-    std::normal_distribution<> m_choose_sol_dist;
-    std::bernoulli_distribution m_crossover_bastert_insertion;
 
     const Cost& costs;
     double cost_constant;
@@ -102,18 +135,16 @@ private:
         m_data[id].remaining_constraints = remaining_constraints;
     }
 
-    int choose_a_bad_solution(random_engine& rng)
+    int choose_a_bad_solution(local_context& ctx)
     {
-        std::uniform_int_distribution<std::size_t> dist(m_data.size() / 5, std::size(m_data) - 1);
-
-        return static_cast<int>(dist(rng));
+        return ctx.bad_solution_choose(ctx.rng);
     }
 
-    int choose_a_solution(random_engine& rng)
+    int choose_a_solution(local_context& ctx)
     {
         double value;
         do
-            value = m_choose_sol_dist(rng);
+            value = ctx.choose_sol_dist(ctx.rng);
         while (value < 0 || value > 1);
 
         return static_cast<int>(m_size * value);
@@ -125,17 +156,11 @@ public:
             const double cost_constant_,
             const int population_size,
             const int variables,
-            const std::vector<merged_constraint>& constraints_,
-            const double crossover_bastert_insertion,
-            const double crossover_solution_selection_mean,
-            const double crossover_solution_selection_stddev)
+            const std::vector<merged_constraint>& constraints_)
       : m_indices(population_size)
       , m_data(population_size)
       , m_bastert(variables)
       , m_random(variables)
-      , m_choose_sol_dist(crossover_solution_selection_mean,
-                          crossover_solution_selection_stddev)
-      , m_crossover_bastert_insertion(crossover_bastert_insertion)
       , costs(costs_)
       , cost_constant(cost_constant_)
       , m_size(population_size)
@@ -154,12 +179,12 @@ public:
             for (int v = 0; v != variables; ++v)
                 if (dist(rng))
                     m_data[i].x.invert(v);
-        }            
+        }
 
         for (int i = m_size / 2, e = m_size; i + 1 < e; i += 2) {
             init_with_random(m_data[i].x, rng, variables, 0.2);
             init_with_random(m_data[i + 1].x, rng, variables, 0.8);
-            
+
             init_with_pre_solve<Cost, Mode>(
               m_data[i].x,
               m_data[i + 1].x,
@@ -192,7 +217,7 @@ public:
         sort();
     }
 
-    void show_population(const context_ptr& ctx) const
+    void show_population(const context& ctx) const
     {
         info(ctx, " Population {}:\n", m_indices.size());
         for (int i = 0; i != m_size; ++i)
@@ -204,12 +229,12 @@ public:
                  m_data[m_indices[i]].hash);
     }
 
-    void insert(const bit_array& x,
+    void insert(local_context& ctx,
+                const bit_array& x,
                 const std::size_t hash,
                 const int remaining_constraints,
                 const double duration,
-                const long int loop,
-                random_engine& rng) noexcept
+                const long int loop) noexcept
     {
         to_log(stdout,
                5u,
@@ -219,7 +244,7 @@ public:
                duration,
                loop);
 
-        int id_to_delete = m_indices[choose_a_bad_solution(rng)];
+        int id_to_delete = m_indices[choose_a_bad_solution(ctx)];
 
         to_log(stdout,
                5u,
@@ -238,12 +263,12 @@ public:
         sort();
     }
 
-    void insert(const bit_array& x,
+    void insert(local_context& ctx,
+                const bit_array& x,
                 const std::size_t hash,
                 const double value,
                 const double duration,
-                const long int loop,
-                random_engine& rng) noexcept
+                const long int loop) noexcept
     {
         to_log(stdout,
                5u,
@@ -253,7 +278,7 @@ public:
                duration,
                loop);
 
-        int id_to_delete = m_indices[choose_a_bad_solution(rng)];
+        int id_to_delete = m_indices[choose_a_bad_solution(ctx)];
 
         to_log(stdout,
                5u,
@@ -266,26 +291,27 @@ public:
         sort();
     }
 
-    bool can_be_inserted(const std::size_t hash, const int constraints) const noexcept
+    bool can_be_inserted(const std::size_t hash, const int constraints) const
+      noexcept
     {
         m_indices_reader lock(m_indices_mutex);
 
         for (int i = 0; i != m_size; ++i)
-            if (m_data[i].remaining_constraints == constraints
-                    && m_data[i].hash == hash)
+            if (m_data[i].remaining_constraints == constraints &&
+                m_data[i].hash == hash)
                 return false;
 
         return true;
     }
 
     bool can_be_inserted([[maybe_unused]] const std::size_t hash,
-            const double value) const noexcept
+                         const double value) const noexcept
     {
         m_indices_reader lock(m_indices_mutex);
 
         for (int i = 0; i != m_size; ++i)
-            if (m_data[i].remaining_constraints == 0 && m_data[i].value == value
-                    && m_data[i].hash == hash)
+            if (m_data[i].remaining_constraints == 0 &&
+                m_data[i].value == value && m_data[i].hash == hash)
                 return false;
 
         return true;
@@ -322,31 +348,28 @@ public:
         return m_data[m_indices[i]];
     }
 
-    void crossover(random_engine& rng,
+    void crossover(local_context& ctx,
                    bit_array& x,
                    const bit_array& first,
                    const bit_array& second)
     {
-        std::uniform_int_distribution<bit_array::underlying_type> dist(0);
-        std::bernoulli_distribution b_dist;
-
         const auto block_size = x.block_size();
         for (int i = 0; i != block_size; ++i) {
             const auto x1 = first.block(i);
             const auto x2 = second.block(i);
 
-            x.set_block(i, ((x1 ^ x2) & dist(rng)) ^ x1);
+            x.set_block(i, ((x1 ^ x2) & ctx.crossover_dist(ctx.rng)) ^ x1);
         }
     }
 
-    void crossover(random_engine& rng, bit_array& x)
+    void crossover(local_context& ctx, bit_array& x)
     {
         m_indices_reader lock(m_indices_mutex);
 
-        if (m_crossover_bastert_insertion(rng)) {
-            int first = m_indices[choose_a_solution(rng)];
+        if (ctx.crossover_bastert_insertion(ctx.rng)) {
+            int first = m_indices[choose_a_solution(ctx)];
 
-            crossover(rng, x, m_data[first].x, m_bastert);
+            crossover(ctx, x, m_data[first].x, m_bastert);
 
             to_log(stdout,
                    7u,
@@ -354,12 +377,12 @@ public:
                    first,
                    m_data[first].value);
         } else {
-            int first = m_indices[choose_a_solution(rng)];
-            int second = m_indices[choose_a_solution(rng)];
+            int first = m_indices[choose_a_solution(ctx)];
+            int second = m_indices[choose_a_solution(ctx)];
             while (first == second)
-                second = m_indices[choose_a_solution(rng)];
+                second = m_indices[choose_a_solution(ctx)];
 
-            crossover(rng, x, m_data[first].x, m_data[second].x);
+            crossover(ctx, x, m_data[first].x, m_data[second].x);
 
             to_log(stdout,
                    7u,
@@ -438,37 +461,25 @@ struct best_solution_recorder
         return static_cast<init_status>(current);
     }
 
-    const context_ptr& m_ctx;
     std::chrono::time_point<std::chrono::steady_clock> m_start;
     std::vector<init_status> m_solver_state;
 
     storage<Cost, Mode> m_storage;
 
-    std::normal_distribution<> m_variable_p_dist;
-    std::normal_distribution<> m_value_p_dist;
-
-    best_solution_recorder(const context_ptr& ctx,
+    best_solution_recorder(random_engine& rng,
                            const unsigned thread_number,
                            const Cost& costs,
                            const double cost_constant,
                            const int variables,
                            const std::vector<merged_constraint>& constraints,
-                           random_engine& rng)
-      : m_ctx(ctx)
-      , m_solver_state(thread_number, init_status::init_with_best)
+                           const int population_size)
+      : m_solver_state(thread_number, init_status::init_with_best)
       , m_storage(rng,
                   costs,
                   cost_constant,
-                  ctx->parameters.init_population_size,
+                  population_size,
                   variables,
-                  constraints,
-                  ctx->parameters.init_crossover_bastert_insertion,
-                  ctx->parameters.init_crossover_solution_selection_mean,
-                  ctx->parameters.init_crossover_solution_selection_stddev)
-      , m_variable_p_dist(ctx->parameters.init_mutation_variable_mean,
-                          ctx->parameters.init_mutation_variable_stddev)
-      , m_value_p_dist(ctx->parameters.init_mutation_value_mean,
-                       ctx->parameters.init_mutation_value_stddev)
+                  constraints)
     {
         m_start = std::chrono::steady_clock::now();
     }
@@ -481,21 +492,21 @@ struct best_solution_recorder
         m_storage.get_best(constraints_remaining, value, duration, loop);
     }
 
-    void mutation(random_engine& rng, bit_array& x)
+    void mutation(local_context& ctx, bit_array& x)
     {
-        m_storage.crossover(rng, x);
+        m_storage.crossover(ctx, x);
 
-        if (m_value_p_dist.mean() == 0.0 && m_value_p_dist.stddev() == 0.0)
+        if (ctx.value_p_dist.mean() == 0.0 && ctx.value_p_dist.stddev() == 0.0)
             return;
 
         double val_p, var_p;
 
         do
-            var_p = m_variable_p_dist(rng);
+            var_p = ctx.variable_p_dist(ctx.rng);
         while (var_p <= 0.0 || var_p >= 1.0);
 
         do
-            val_p = m_value_p_dist(rng);
+            val_p = ctx.value_p_dist(ctx.rng);
         while (val_p < 0.0 || val_p > 1.0);
 
         to_log(stdout,
@@ -509,10 +520,10 @@ struct best_solution_recorder
         std::bernoulli_distribution dist_value_p(val_p);
 
         for (int i = 0, e = x.size(); i != e; ++i) {
-            if (dist_var_p(rng)) {
+            if (dist_var_p(ctx.rng)) {
                 to_log(stdout, 9u, "- mutate variable {}\n", i);
 
-                x.set(i, dist_value_p(rng));
+                x.set(i, dist_value_p(ctx.rng));
             }
         }
     }
@@ -536,8 +547,7 @@ struct best_solution_recorder
         }
     }
 
-    double reinit(random_engine& rng,
-                  const unsigned thread_id,
+    double reinit(local_context& ctx,
                   const bool is_solution,
                   const double kappa_min,
                   const double kappa_max,
@@ -546,35 +556,35 @@ struct best_solution_recorder
         to_log(stdout,
                3u,
                "- reinitinialization thread {} - status {}. Is solution: {}\n",
-               thread_id,
-               m_solver_state[thread_id],
+               ctx.thread_id,
+               m_solver_state[ctx.thread_id],
                is_solution);
 
         if (is_solution) {
-            if (m_solver_state[thread_id] >= init_with_best &&
-                m_solver_state[thread_id] < init_with_any)
-                m_solver_state[thread_id] = init_with_any;
+            if (m_solver_state[ctx.thread_id] >= init_with_best &&
+                m_solver_state[ctx.thread_id] < init_with_any)
+                m_solver_state[ctx.thread_id] = init_with_any;
             else
-                m_solver_state[thread_id] = init_with_best;
+                m_solver_state[ctx.thread_id] = init_with_best;
         }
 
         auto kappa = kappa_min;
-        if (m_solver_state[thread_id] != init_with_best &&
-            m_solver_state[thread_id] != init_with_any) {
-            kappa = improve(thread_id, kappa_min, kappa_max);
+        if (m_solver_state[ctx.thread_id] != init_with_best &&
+            m_solver_state[ctx.thread_id] != init_with_any) {
+            kappa = improve(ctx.thread_id, kappa_min, kappa_max);
             to_log(stdout, 5u, "- improve with kappa {}\n", kappa);
         } else {
             to_log(stdout, 5u, "- crossover and mutation\n");
-            mutation(rng, x);
+            mutation(ctx, x);
         }
 
-        m_solver_state[thread_id] = advance(m_solver_state[thread_id]);
+        m_solver_state[ctx.thread_id] = advance(m_solver_state[ctx.thread_id]);
 
         return kappa;
     }
 
-    void try_advance(const bit_array& solution,
-                     random_engine& rng,
+    void try_advance(local_context& ctx,
+                     const bit_array& solution,
                      const int remaining_constraints,
                      const long int loop)
     {
@@ -585,12 +595,12 @@ struct best_solution_recorder
             const auto duration = compute_duration(m_start, end);
 
             m_storage.insert(
-              solution, hash, remaining_constraints, duration, loop, rng);
+              ctx, solution, hash, remaining_constraints, duration, loop);
         }
     }
 
-    void try_update(const bit_array& solution,
-                    random_engine& rng,
+    void try_update(local_context& ctx,
+                    const bit_array& solution,
                     const double value,
                     const long int loop)
     {
@@ -600,13 +610,13 @@ struct best_solution_recorder
             const auto end = std::chrono::steady_clock::now();
             const auto duration = compute_duration(m_start, end);
 
-            m_storage.insert(solution, hash, value, duration, loop, rng);
+            m_storage.insert(ctx, solution, hash, value, duration, loop);
         }
     }
 
-    void show_population() const noexcept
+    void show_population(const context& ctx) const noexcept
     {
-        m_storage.show_population(m_ctx);
+        m_storage.show_population(ctx);
     }
 
     const raw_result<Mode>& get_worst() const noexcept
@@ -623,16 +633,16 @@ struct best_solution_recorder
 template<typename Solver, typename Float, typename Mode, typename Cost>
 struct optimize_functor
 {
-    const context_ptr& m_ctx;
-    random_engine m_rng;
+    const context& m_ctx;
+    local_context m_local_ctx;
     long int m_call_number;
     unsigned m_thread_id;
 
-    optimize_functor(const context_ptr& ctx,
-                     unsigned thread_id,
-                     typename random_engine::result_type seed)
+    optimize_functor(const context& ctx,
+                     const unsigned thread_id,
+                     const typename random_engine::result_type seed)
       : m_ctx{ ctx }
-      , m_rng{ seed }
+      , m_local_ctx{ ctx, thread_id, seed }
       , m_call_number{ 0 }
       , m_thread_id{ thread_id }
     {}
@@ -646,10 +656,10 @@ struct optimize_functor
     {
         bit_array x(variables);
 
-        auto& p = m_ctx->parameters;
+        auto& p = m_ctx.parameters;
 
         auto norm_costs = normalize_costs<Float, Cost>(
-          m_ctx, original_costs, m_rng, variables);
+          m_ctx, original_costs, m_local_ctx.rng, variables);
 
         const auto kappa_step = static_cast<Float>(p.kappa_step);
         const auto kappa_max = static_cast<Float>(p.kappa_max);
@@ -666,17 +676,11 @@ struct optimize_functor
 
         const auto w_limit = static_cast<long int>(p.w);
 
-        if (p.limit <= 0)
-            p.limit = std::numeric_limits<long int>::max();
-
-        if (p.pushes_limit <= 0)
-            p.pushes_limit = 0;
-
-        if (p.pushing_iteration_limit <= 0)
-            p.pushes_limit = 0;
-
-        Solver slv(
-          m_rng, length(constraints), variables, norm_costs, constraints);
+        Solver slv(m_local_ctx.rng,
+                   length(constraints),
+                   variables,
+                   norm_costs,
+                   constraints);
 
         compute_order compute(p.order, variables);
         bool is_a_solution = false;
@@ -684,7 +688,7 @@ struct optimize_functor
         while (!stop_task.load()) {
             ++m_call_number;
             const auto kappa_start = static_cast<Float>(best_recorder.reinit(
-              m_rng, m_thread_id, is_a_solution, p.kappa_min, p.kappa_max, x));
+              m_local_ctx, is_a_solution, p.kappa_min, p.kappa_max, x));
             auto kappa = kappa_start;
             compute.init(slv, x);
 
@@ -693,11 +697,15 @@ struct optimize_functor
 
             for (long int i = 0; !stop_task.load() && i != p.limit; ++i) {
                 auto remaining =
-                  compute.run(slv, x, m_rng, kappa, delta, theta);
+                  compute.run(slv, x, m_local_ctx.rng, kappa, delta, theta);
 
                 if (remaining == 0) {
                     best_recorder.try_update(
-                      x, m_rng, original_costs.results(x, cost_constant), i);
+                      m_local_ctx,
+                      x,
+                      original_costs.results(x, cost_constant),
+                      i);
+
                     best_remaining = 0;
                     is_a_solution = true;
                     break;
@@ -716,7 +724,8 @@ struct optimize_functor
             }
 
             if (best_remaining > 0) {
-                best_recorder.try_advance(x, m_rng, best_remaining, p.limit);
+                best_recorder.try_advance(
+                  m_local_ctx, x, best_remaining, p.limit);
                 continue;
             }
 
@@ -726,7 +735,7 @@ struct optimize_functor
                 auto remaining =
                   compute.push_and_run(slv,
                                        x,
-                                       m_rng,
+                                       m_local_ctx.rng,
                                        pushing_k_factor,
                                        delta,
                                        theta,
@@ -734,8 +743,8 @@ struct optimize_functor
 
                 if (remaining == 0) {
                     best_recorder.try_update(
+                      m_local_ctx,
                       x,
-                      m_rng,
                       original_costs.results(x, cost_constant),
                       -push * p.pushing_iteration_limit - 1);
                     is_a_solution = true;
@@ -746,13 +755,13 @@ struct optimize_functor
                      !stop_task.load() && iter < p.pushing_iteration_limit;
                      ++iter) {
 
-                    remaining =
-                      compute.run(slv, x, m_rng, kappa, delta, theta);
+                    remaining = compute.run(
+                      slv, x, m_local_ctx.rng, kappa, delta, theta);
 
                     if (remaining == 0) {
                         best_recorder.try_update(
+                          m_local_ctx,
                           x,
-                          m_rng,
                           original_costs.results(x, cost_constant),
                           -push * p.pushing_iteration_limit - iter - 1);
                         is_a_solution = true;
@@ -779,14 +788,14 @@ struct optimize_functor
 // returns 1.
 //
 inline unsigned
-get_thread_number(const baryonyx::context_ptr& ctx) noexcept
+get_thread_number(const baryonyx::context& ctx) noexcept
 {
     unsigned ret;
 
-    if (ctx->parameters.thread <= 0)
+    if (ctx.parameters.thread <= 0)
         ret = std::thread::hardware_concurrency();
     else
-        ret = static_cast<unsigned>(ctx->parameters.thread);
+        ret = static_cast<unsigned>(ctx.parameters.thread);
 
     if (ret == 0)
         return 1;
@@ -796,12 +805,12 @@ get_thread_number(const baryonyx::context_ptr& ctx) noexcept
 
 template<typename Solver, typename Float, typename Mode, typename Cost>
 inline result
-optimize_problem(const context_ptr& ctx, const problem& pb)
+optimize_problem(const context& ctx, const problem& pb)
 {
     result r;
 
-    if (ctx->start)
-        ctx->start(ctx->parameters);
+    if (ctx.start)
+        ctx.start(ctx.parameters);
 
     auto constraints{ make_merged_constraints(ctx, pb) };
     if (constraints.empty() || pb.vars.values.empty())
@@ -819,7 +828,13 @@ optimize_problem(const context_ptr& ctx, const problem& pb)
     std::vector<std::thread> pool(thread);
 
     best_solution_recorder<Cost, Float, Mode> best_recorder(
-      ctx, thread, cost, cost_constant, variables, constraints, rng);
+      rng,
+      thread,
+      cost,
+      cost_constant,
+      variables,
+      constraints,
+      ctx.parameters.init_population_size);
 
     auto seeds = generate_seed(rng, thread);
 
@@ -844,7 +859,7 @@ optimize_problem(const context_ptr& ctx, const problem& pb)
     do {
         std::this_thread::sleep_for(std::chrono::seconds{ 1L });
 
-        if (ctx->update) {
+        if (ctx.update) {
             auto call_number = 0L;
             for (auto i = 0u; i != thread; ++i)
                 call_number += functors[i].m_call_number;
@@ -857,12 +872,12 @@ optimize_problem(const context_ptr& ctx, const problem& pb)
             best_recorder.get_best(
               constraints_remaining, value, duration, loop);
 
-            ctx->update(
+            ctx.update(
               constraints_remaining, value, loop, duration, call_number);
         }
 
         end = std::chrono::steady_clock::now();
-    } while (!is_time_limit(ctx->parameters.time_limit, start, end));
+    } while (!is_time_limit(ctx.parameters.time_limit, start, end));
 
     stop_task.store(true);
 
@@ -886,7 +901,7 @@ optimize_problem(const context_ptr& ctx, const problem& pb)
     r.loop = first.loop;
     r.remaining_constraints = first.remaining_constraints;
 
-    switch (ctx->parameters.storage) {
+    switch (ctx.parameters.storage) {
     case solver_parameters::storage_type::one: {
         r.solutions.resize(1);
         convert(first, r.solutions[0], variables);
@@ -907,10 +922,10 @@ optimize_problem(const context_ptr& ctx, const problem& pb)
     } break;
     }
 
-    best_recorder.show_population();
+    best_recorder.show_population(ctx);
 
-    if (ctx->finish)
-        ctx->finish(r);
+    if (ctx.finish)
+        ctx.finish(r);
 
     return r;
 }

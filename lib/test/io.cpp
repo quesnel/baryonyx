@@ -20,6 +20,7 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+#include "problem.hpp"
 #include "resume.hpp"
 #include "unit-test.hpp"
 
@@ -48,7 +49,7 @@ test_examples_1()
     auto ctx = baryonyx::make_context();
     std::istringstream iss(example_1);
 
-    auto pb = baryonyx::make_problem(ctx, iss);
+    auto pb = baryonyx::make_problem(*ctx, iss);
 
     Ensures(pb);
     Ensures(pb.type == baryonyx::objective_function_type::maximize);
@@ -122,7 +123,7 @@ test_examples_quadratic_3()
     auto ctx = baryonyx::make_context();
     std::istringstream iss(example_1);
 
-    auto pb = baryonyx::make_problem(ctx, iss);
+    auto pb = baryonyx::make_problem(*ctx, iss);
 
     Ensures(pb);
     Ensures(pb.type == baryonyx::objective_function_type::maximize);
@@ -198,7 +199,7 @@ test_examples_quadratic_4()
     auto ctx = baryonyx::make_context();
     std::istringstream iss(example_1);
 
-    auto pb = baryonyx::make_problem(ctx, iss);
+    auto pb = baryonyx::make_problem(*ctx, iss);
 
     Ensures(pb);
     Ensures(pb.type == baryonyx::objective_function_type::maximize);
@@ -285,7 +286,7 @@ test_examples_quadratic_5()
     auto ctx = baryonyx::make_context();
     std::istringstream iss(example_1);
 
-    auto pb = baryonyx::make_problem(ctx, iss);
+    auto pb = baryonyx::make_problem(*ctx, iss);
 
     Ensures(pb);
     Ensures(pb.type == baryonyx::objective_function_type::maximize);
@@ -366,7 +367,7 @@ test_examples_quadratic_0()
     auto ctx = baryonyx::make_context();
     std::istringstream iss(example_1);
 
-    auto pb = baryonyx::make_problem(ctx, iss);
+    auto pb = baryonyx::make_problem(*ctx, iss);
 
     Ensures(pb);
     Ensures(pb.type == baryonyx::objective_function_type::maximize);
@@ -442,7 +443,7 @@ test_examples_quadratic_1()
     auto ctx = baryonyx::make_context();
     std::istringstream iss(example_1);
 
-    auto pb = baryonyx::make_problem(ctx, iss);
+    auto pb = baryonyx::make_problem(*ctx, iss);
 
     Ensures(pb);
     Ensures(pb.type == baryonyx::objective_function_type::maximize);
@@ -529,7 +530,7 @@ test_examples_quadratic_2()
     auto ctx = baryonyx::make_context();
     std::istringstream iss(example_1);
 
-    auto pb = baryonyx::make_problem(ctx, iss);
+    auto pb = baryonyx::make_problem(*ctx, iss);
 
     Ensures(pb);
     Ensures(pb.type == baryonyx::objective_function_type::maximize);
@@ -620,7 +621,7 @@ test_examples_2()
         std::stringstream ss;
         ss << pb;
 
-        auto pb2 = baryonyx::make_problem(ctx, ss);
+        auto pb2 = baryonyx::make_problem(*ctx, ss);
 
         Ensures(pb == pb2);
     }

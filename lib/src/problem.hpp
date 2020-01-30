@@ -177,13 +177,13 @@ compute_solution(const problem& pb,
                  const std::vector<var_value>& variable_value);
 
 problem
-unpreprocess(const context_ptr& ctx, const raw_problem& pb_);
+unpreprocess(const context& ctx, const raw_problem& pb_);
 
 problem
-preprocess(const context_ptr& ctx, const raw_problem& pb_);
+preprocess(const context& ctx, const raw_problem& pb_);
 
 raw_problem
-make_problem(const context_ptr& ctx, std::istream& is) noexcept;
+make_problem(const context& ctx, std::istream& is) noexcept;
 
 std::ostream&
 operator<<(std::ostream& os, const problem& p);
@@ -207,7 +207,7 @@ operator<<(std::ostream& os, const raw_problem& p);
  * @note Implemented in the private @c preprocessor-2.cpp file.
  */
 problem
-affect(const context_ptr& ctx,
+affect(const context& ctx,
        const problem& pb,
        int variable_index,
        bool variable_value);
@@ -228,7 +228,7 @@ affect(const context_ptr& ctx,
  * @note Implemented in the private @c preprocessor-2.cpp file.
  */
 std::tuple<problem, problem>
-split(const context_ptr& ctx, const problem& pb, int variable_index_to_affect);
+split(const context& ctx, const problem& pb, int variable_index_to_affect);
 
 } // namespace baryonyx
 

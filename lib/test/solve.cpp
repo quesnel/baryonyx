@@ -250,7 +250,7 @@ test_quadratic_preprocessor()
                          "End\n";
 
     std::istringstream iss(str_pb);
-    auto pb = baryonyx::make_problem(ctx, iss);
+    auto pb = baryonyx::make_problem(*ctx, iss);
     Ensures(pb);
 
     auto result = baryonyx::solve(ctx, pb);
@@ -277,7 +277,7 @@ test_real_cost()
 
     std::istringstream iss(str_pb);
 
-    auto pb = baryonyx::make_problem(ctx, iss);
+    auto pb = baryonyx::make_problem(*ctx, iss);
     auto result = baryonyx::solve(ctx, pb);
 
     Ensures(result);
@@ -429,7 +429,7 @@ test_negative_coeff5()
 
     std::istringstream iss(str_pb);
 
-    auto pb = baryonyx::make_problem(ctx, iss);
+    auto pb = baryonyx::make_problem(*ctx, iss);
     auto result = baryonyx::solve(ctx, pb);
 
     Ensures(result.status == baryonyx::result_status::success);
@@ -628,7 +628,7 @@ test_Z_coefficient_1()
 
         std::istringstream iss(str_pb);
 
-        auto pb = baryonyx::make_problem(ctx, iss);
+        auto pb = baryonyx::make_problem(*ctx, iss);
         auto result = baryonyx::solve(ctx, pb);
 
         Ensures(result.status == baryonyx::result_status::success);
@@ -649,7 +649,7 @@ test_Z_coefficient_1()
 
         std::istringstream iss(str_pb);
 
-        auto pb = baryonyx::make_problem(ctx, iss);
+        auto pb = baryonyx::make_problem(*ctx, iss);
         auto result = baryonyx::solve(ctx, pb);
 
         Ensures(result.status == baryonyx::result_status::success);

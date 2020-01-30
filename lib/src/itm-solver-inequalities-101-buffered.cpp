@@ -378,11 +378,9 @@ struct solver_inequalities_101coeff_buffered : debug_logger<debug>
 
 template<typename Float, typename Mode, typename Cost>
 static result
-solve_or_optimize(const context_ptr& ctx,
-                  const problem& pb,
-                  bool is_optimization)
+solve_or_optimize(const context& ctx, const problem& pb, bool is_optimization)
 {
-    if (ctx->parameters.debug) {
+    if (ctx.parameters.debug) {
         using Solver =
           solver_inequalities_101coeff_buffered<Float, Mode, Cost, true>;
 
@@ -401,7 +399,7 @@ solve_or_optimize(const context_ptr& ctx,
 
 template<typename Float, typename Mode>
 static result
-select_cost(const context_ptr& ctx, const problem& pb, bool is_optimization)
+select_cost(const context& ctx, const problem& pb, bool is_optimization)
 {
     return pb.objective.qelements.empty()
              ? solve_or_optimize<Float,
@@ -416,7 +414,7 @@ select_cost(const context_ptr& ctx, const problem& pb, bool is_optimization)
 
 template<typename Float>
 static result
-select_mode(const context_ptr& ctx, const problem& pb, bool is_optimization)
+select_mode(const context& ctx, const problem& pb, bool is_optimization)
 {
     const auto m = static_cast<int>(pb.type);
 
@@ -425,9 +423,9 @@ select_mode(const context_ptr& ctx, const problem& pb, bool is_optimization)
 }
 
 static result
-select_float(const context_ptr& ctx, const problem& pb, bool is_optimization)
+select_float(const context& ctx, const problem& pb, bool is_optimization)
 {
-    const auto f = static_cast<int>(ctx->parameters.float_type);
+    const auto f = static_cast<int>(ctx.parameters.float_type);
 
     if (f == 0)
         return select_mode<float_sel<0>>(ctx, pb, is_optimization);
@@ -438,14 +436,14 @@ select_float(const context_ptr& ctx, const problem& pb, bool is_optimization)
 }
 
 result
-solve_inequalities_101_buffered(const context_ptr& ctx, const problem& pb)
+solve_inequalities_101_buffered(const context& ctx, const problem& pb)
 {
     info(ctx, "  - solve_inequalities_101_buffered\n");
     return select_float(ctx, pb, false);
 }
 
 result
-optimize_inequalities_101_buffered(const context_ptr& ctx, const problem& pb)
+optimize_inequalities_101_buffered(const context& ctx, const problem& pb)
 {
     info(ctx, "  - optimize_inequalities_101_buffered\n");
     return select_float(ctx, pb, true);

@@ -59,7 +59,7 @@ is_best(const baryonyx::result& lhs,
 }
 
 static bool
-is_best(const baryonyx::context_ptr& ctx,
+is_best(const baryonyx::context& ctx,
         const baryonyx::result& current,
         const baryonyx::result& best,
         baryonyx::objective_function_type type)
@@ -136,19 +136,15 @@ struct node_result_compare
 using problem_set = std::multiset<node, node_result_compare>;
 
 static baryonyx::result
-optimize(const baryonyx::context_ptr& ctx, const baryonyx::problem& pb)
+optimize(const baryonyx::context& ctx, const baryonyx::problem& pb)
 {
-    // NOTE 1 - add a solver parameter to limit the size of the list.
+    baryonyx::context internal_ctx(ctx);
+    internal_ctx.log_priority = baryonyx::context::message_type::warning;
 
-    auto old_log_priority = ctx->log_priority;
-#ifndef BARYONYX_ENABLE_DEBUG
-    ctx->log_priority = baryonyx::context::message_type::notice;
-#endif
-
-    auto best = baryonyx::itm::optimize(ctx, pb);
+    auto best = baryonyx::itm::optimize(internal_ctx, pb);
 
     if (best)
-        baryonyx::notice(ctx,
+        baryonyx::notice(internal_ctx,
                          "  - branch optimization found solution {:f}\n",
                          best.solutions.front().value);
 
@@ -163,15 +159,16 @@ optimize(const baryonyx::context_ptr& ctx, const baryonyx::problem& pb)
     do {
         auto it = jobs.begin();
 
-        baryonyx::notice(ctx,
+        baryonyx::notice(internal_ctx,
                          "  - branch-optimization splits on {} (id: {})\n",
                          it->problem.vars.names[it->annoying_variable],
                          it->annoying_variable);
 
-        auto sp = baryonyx::split(ctx, it->problem, annoying_variable);
+        auto sp =
+          baryonyx::split(internal_ctx, it->problem, annoying_variable);
 
-        auto ret0 = baryonyx::itm::optimize(ctx, std::get<0>(sp));
-        if (is_best(ctx, ret0, best, it->problem.type))
+        auto ret0 = baryonyx::itm::optimize(internal_ctx, std::get<0>(sp));
+        if (is_best(internal_ctx, ret0, best, it->problem.type))
             best = ret0;
 
         jobs.emplace(std::get<0>(sp),
@@ -179,8 +176,8 @@ optimize(const baryonyx::context_ptr& ctx, const baryonyx::problem& pb)
                      ret0.remaining_constraints,
                      ret0.annoying_variable);
 
-        auto ret1 = baryonyx::itm::optimize(ctx, std::get<1>(sp));
-        if (is_best(ctx, ret1, best, it->problem.type))
+        auto ret1 = baryonyx::itm::optimize(internal_ctx, std::get<1>(sp));
+        if (is_best(internal_ctx, ret1, best, it->problem.type))
             best = ret1;
 
         jobs.emplace(std::get<1>(sp),
@@ -190,11 +187,11 @@ optimize(const baryonyx::context_ptr& ctx, const baryonyx::problem& pb)
 
         jobs.erase(it);
 
-        baryonyx::notice(ctx, "    Jobs lists:\n");
+        baryonyx::notice(internal_ctx, "    Jobs lists:\n");
         for (const auto& elem : jobs) {
             if (elem.remaining_constraints == 0)
                 baryonyx::notice(
-                  ctx,
+                  internal_ctx,
                   "    * solution: {} annoying: {} vars: {}/{}\n",
                   elem.solution,
                   elem.annoying_variable,
@@ -203,7 +200,7 @@ optimize(const baryonyx::context_ptr& ctx, const baryonyx::problem& pb)
                     elem.problem.vars.values.size());
             else
                 baryonyx::notice(
-                  ctx,
+                  internal_ctx,
                   "    * remaining: {} annoying: {} vars: {}/{}\n",
                   elem.remaining_constraints,
                   elem.annoying_variable,
@@ -214,8 +211,6 @@ optimize(const baryonyx::context_ptr& ctx, const baryonyx::problem& pb)
 
     } while (!jobs.empty());
 
-    ctx->log_priority = old_log_priority;
-
     return best;
 }
 
@@ -223,10 +218,9 @@ namespace baryonyx {
 namespace itm {
 
 result
-branch_optimize(const baryonyx::context_ptr& ctx, const baryonyx::problem& pb)
+branch_optimize(const baryonyx::context& ctx, const baryonyx::problem& pb)
 {
     baryonyx::notice(ctx, "- branch-optimization starts\n");
-
     return ::optimize(ctx, pb);
 }
 

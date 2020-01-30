@@ -36,14 +36,15 @@ namespace baryonyx {
 result
 make_result(const baryonyx::context_ptr& ctx, const std::string& filename)
 {
-    info(ctx, "solution reads from file {}\n", filename);
+    if (ctx) {
+        info(*ctx, "solution reads from file {}\n", filename);
+        std::ifstream ifs(filename);
+        result ret;
+        ifs >> ret;
+        return ret;
+    }
 
-    std::ifstream ifs(filename);
-
-    result ret;
-    ifs >> ret;
-
-    return ret;
+    return result{ result_status::empty_context };
 }
 
 /**

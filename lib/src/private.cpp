@@ -44,17 +44,16 @@ context_set_parameters(const context_ptr& ctx,
     if (name == "method")
         ctx->method = std::move(value);
     else
-        warning(ctx, "context: unknown variable {}.\n", name);
+        warning(*ctx, "context: unknown variable {}.\n", name);
 }
 
 void
 context_set_solver_parameters(const context_ptr& ctx,
                               const solver_parameters& params)
 {
-    if (params.time_limit > 0)
-        ctx->parameters.time_limit = params.time_limit;
-    else
-        ctx->parameters.time_limit = -1;
+    ctx->parameters.time_limit = params.time_limit <= 0
+                                   ? std::numeric_limits<double>::infinity()
+                                   : params.time_limit;
 
     if (params.theta >= 0 && params.theta <= 1)
         ctx->parameters.theta = params.theta;
@@ -82,31 +81,31 @@ context_set_solver_parameters(const context_ptr& ctx,
 
     if (std::isfinite(params.init_crossover_bastert_insertion))
         ctx->parameters.init_crossover_bastert_insertion =
-            std::clamp(params.init_crossover_bastert_insertion, 0.0, 1.0);
+          std::clamp(params.init_crossover_bastert_insertion, 0.0, 1.0);
 
     if (std::isfinite(params.init_crossover_solution_selection_mean))
         ctx->parameters.init_crossover_solution_selection_mean =
-            std::clamp(params.init_crossover_solution_selection_mean, 0.0, 1.0);
+          std::clamp(params.init_crossover_solution_selection_mean, 0.0, 1.0);
 
     if (std::isfinite(params.init_crossover_solution_selection_stddev))
-        ctx->parameters.init_crossover_solution_selection_stddev =
-            std::clamp(params.init_crossover_solution_selection_stddev, 0.0, 1.0);
+        ctx->parameters.init_crossover_solution_selection_stddev = std::clamp(
+          params.init_crossover_solution_selection_stddev, 0.0, 1.0);
 
     if (std::isfinite(params.init_mutation_variable_mean))
         ctx->parameters.init_mutation_variable_mean =
-            std::clamp(params.init_mutation_variable_mean, 0.0, 1.0);
+          std::clamp(params.init_mutation_variable_mean, 0.0, 1.0);
 
     if (std::isfinite(params.init_mutation_variable_stddev))
         ctx->parameters.init_mutation_variable_stddev =
-            std::clamp(params.init_mutation_variable_stddev, 0.0, 1.0);
+          std::clamp(params.init_mutation_variable_stddev, 0.0, 1.0);
 
     if (std::isfinite(params.init_mutation_value_mean))
         ctx->parameters.init_mutation_value_mean =
-            std::clamp(params.init_mutation_value_mean, 0.0, 1.0);
+          std::clamp(params.init_mutation_value_mean, 0.0, 1.0);
 
     if (std::isfinite(params.init_mutation_value_stddev))
         ctx->parameters.init_mutation_value_stddev =
-            std::clamp(params.init_mutation_value_stddev, 0.0, 1.0);
+          std::clamp(params.init_mutation_value_stddev, 0.0, 1.0);
 
     if (params.init_policy_random >= 0 && params.init_policy_random <= 1)
         ctx->parameters.init_policy_random = params.init_policy_random;
@@ -114,10 +113,9 @@ context_set_solver_parameters(const context_ptr& ctx,
     ctx->parameters.seed = params.seed;
     ctx->parameters.thread = params.thread;
 
-    if (params.limit >= -1)
-        ctx->parameters.limit = params.limit;
-    else
-        ctx->parameters.limit = -1;
+    ctx->parameters.limit = (params.limit <= 0)
+                              ? std::numeric_limits<long int>::max()
+                              : params.limit;
 
     if (params.print_level >= 0)
         ctx->parameters.print_level = params.print_level;
@@ -140,12 +138,11 @@ context_set_solver_parameters(const context_ptr& ctx,
         }
     }
 
-    if (params.pushes_limit >= 0)
-        ctx->parameters.pushes_limit = params.pushes_limit;
+    ctx->parameters.pushes_limit =
+      params.pushes_limit <= 0 ? 0 : params.pushes_limit;
 
-    if (params.pushing_iteration_limit >= 0)
-        ctx->parameters.pushing_iteration_limit =
-          params.pushing_iteration_limit;
+    ctx->parameters.pushing_iteration_limit =
+      params.pushing_iteration_limit <= 0 ? 0 : params.pushing_iteration_limit;
 
     if (params.init_population_size >= 5)
         ctx->parameters.init_population_size = params.init_population_size;

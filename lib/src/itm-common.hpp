@@ -45,9 +45,11 @@
 #include <fmt/ostream.h>
 
 namespace baryonyx {
-namespace itm {
 
+// We statically define this PRNG for all subsystems in Baryonyx.
 using random_engine = std::default_random_engine;
+
+namespace itm {
 
 struct maximize_tag
 {};
@@ -74,7 +76,7 @@ struct merged_constraint
 };
 
 std::vector<merged_constraint>
-make_merged_constraints(const context_ptr& ctx, const problem& pb);
+make_merged_constraints(const context& ctx, const problem& pb);
 
 template<typename Solver, typename Xtype>
 bool
@@ -549,7 +551,7 @@ struct bounds_printer
         return { 0 };
     }
 
-    void print_bound(const context_ptr& ctx,
+    void print_bound(const context& ctx,
                      floatingpointT lower_bound,
                      floatingpointT upper_bound,
                      minimize_tag)
@@ -574,7 +576,7 @@ struct bounds_printer
         }
     }
 
-    void print_bound(const context_ptr& ctx,
+    void print_bound(const context& ctx,
                      floatingpointT lower_bound,
                      floatingpointT upper_bound,
                      maximize_tag)
@@ -610,9 +612,7 @@ struct bounds_printer
     }
 
     template<typename SolverT>
-    void operator()(const SolverT& slv,
-                    const context_ptr& ctx,
-                    const result& best)
+    void operator()(const SolverT& slv, const context& ctx, const result& best)
     {
         floatingpointT lb = init_bound(slv);
         floatingpointT ub = init_ub(modeT());
@@ -921,7 +921,7 @@ struct compute_order
 
 template<typename Float, typename Cost>
 inline Float
-compute_delta(const context_ptr& ctx, const Cost& c, Float theta, int n)
+compute_delta(const context& ctx, const Cost& c, Float theta, int n)
 {
     info(ctx, "  - delta not defined, compute it:\n");
 
@@ -971,14 +971,11 @@ random_epsilon_unique(iteratorT begin,
  */
 template<typename floatingpointT, typename Cost>
 inline Cost
-normalize_costs(const context_ptr& ctx,
-                const Cost& c,
-                random_engine& rng,
-                int n)
+normalize_costs(const context& ctx, const Cost& c, random_engine& rng, int n)
 {
     Cost ret(c, n);
 
-    switch (ctx->parameters.cost_norm) {
+    switch (ctx.parameters.cost_norm) {
     case solver_parameters::cost_norm_type::none:
         info(ctx, "  - No norm");
         return ret;
@@ -1448,10 +1445,10 @@ struct quadratic_cost_type
 };
 
 inline random_engine::result_type
-init_random_generator_seed(const context_ptr& ctx) noexcept
+init_random_generator_seed(const context& ctx) noexcept
 {
     auto epoch = std::chrono::system_clock::now().time_since_epoch().count();
-    auto param = ctx->parameters.seed;
+    auto param = ctx.parameters.seed;
 
     if (param <= 0)
         return static_cast<random_engine::result_type>(epoch);

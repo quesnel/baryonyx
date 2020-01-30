@@ -142,7 +142,7 @@ template<typename Problem>
 class preprocessor
 {
 private:
-    const bx::context_ptr& ctx;
+    const bx::context& ctx;
     const Problem& pb;
     std::unordered_map<int, bool> vars;
     std::vector<int> equal_constraints;
@@ -578,7 +578,7 @@ private:
     }
 
 public:
-    explicit preprocessor(const bx::context_ptr& ctx_, const Problem& pb_)
+    explicit preprocessor(const bx::context& ctx_, const Problem& pb_)
       : ctx(ctx_)
       , pb(pb_)
       , equal_constraints(pb.equal_constraints.size())
@@ -864,7 +864,7 @@ private:
 namespace baryonyx {
 
 std::tuple<problem, problem>
-split(const context_ptr& ctx, const problem& pb, int variable_index_to_affect)
+split(const context& ctx, const problem& pb, int variable_index_to_affect)
 {
     bx_expects(variable_index_to_affect >= 0 &&
                variable_index_to_affect < length(pb.vars.values));
@@ -881,7 +881,7 @@ split(const context_ptr& ctx, const problem& pb, int variable_index_to_affect)
 }
 
 problem
-affect(const context_ptr& ctx,
+affect(const context& ctx,
        const problem& pb,
        int variable_index,
        bool variable_value)
@@ -901,7 +901,7 @@ affect(const context_ptr& ctx,
 }
 
 problem
-preprocess(const context_ptr& ctx, const raw_problem& raw_pb)
+preprocess(const context& ctx, const raw_problem& raw_pb)
 {
     info(ctx,
          "- Preprocessing starts (size: {})\n",
@@ -913,7 +913,7 @@ preprocess(const context_ptr& ctx, const raw_problem& raw_pb)
 }
 
 problem
-unpreprocess(const context_ptr& ctx, const raw_problem& raw_pb)
+unpreprocess(const context& ctx, const raw_problem& raw_pb)
 {
     info(ctx,
          "- Unprepossessing starts (size: {})\n",

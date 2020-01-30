@@ -56,7 +56,7 @@ struct merged_constraint_hash
 //
 template<typename cacheT, typename retT>
 static void
-fill_merged_constraints(const baryonyx::context_ptr& ctx,
+fill_merged_constraints(const baryonyx::context& ctx,
                         cacheT& cache,
                         baryonyx::operator_type op,
                         const baryonyx::problem& pb,
@@ -131,7 +131,7 @@ fill_merged_constraints(const baryonyx::context_ptr& ctx,
  *    the initial order of the raw problem.
  */
 static std::vector<merged_constraint>
-make_unsorted_merged_constraints(const baryonyx::context_ptr& ctx,
+make_unsorted_merged_constraints(const baryonyx::context& ctx,
                                  const baryonyx::problem& pb)
 {
     std::unordered_map<std::vector<baryonyx::function_element>,
@@ -161,7 +161,7 @@ make_unsorted_merged_constraints(const baryonyx::context_ptr& ctx,
  *    using the type of constraints (equal, less, greater or any order).
  */
 static std::vector<merged_constraint>
-make_ordered_merged_constraints(const baryonyx::context_ptr& ctx,
+make_ordered_merged_constraints(const baryonyx::context& ctx,
                                 const baryonyx::problem& pb)
 {
     std::unordered_map<std::vector<baryonyx::function_element>,
@@ -177,7 +177,7 @@ make_ordered_merged_constraints(const baryonyx::context_ptr& ctx,
                                       baryonyx::operator_type::greater,
                                       baryonyx::operator_type::equal };
 
-    switch (ctx->parameters.pre_order) {
+    switch (ctx.parameters.pre_order) {
     case baryonyx::solver_parameters::pre_constraint_order::less_greater_equal:
         fill_merged_constraints(ctx, cache, op[0], pb, ret);
         fill_merged_constraints(ctx, cache, op[1], pb, ret);
@@ -221,7 +221,7 @@ make_ordered_merged_constraints(const baryonyx::context_ptr& ctx,
 // unsorted_merged_constraints.
 //
 static std::vector<merged_constraint>
-make_special_merged_constraints(const baryonyx::context_ptr& ctx,
+make_special_merged_constraints(const baryonyx::context& ctx,
                                 const baryonyx::problem& pb)
 {
     auto csts = make_unsorted_merged_constraints(ctx, pb);
@@ -250,7 +250,7 @@ make_special_merged_constraints(const baryonyx::context_ptr& ctx,
         }
     }
 
-    if (ctx->parameters.pre_order ==
+    if (ctx.parameters.pre_order ==
         solver_parameters::pre_constraint_order::p1) {
         std::sort(constraints_ratio_min.begin(),
                   constraints_ratio_min.end(),
@@ -295,11 +295,11 @@ improve_memory_usage(std::vector<merged_constraint>& csts)
 }
 
 std::vector<merged_constraint>
-make_merged_constraints(const context_ptr& ctx, const problem& pb)
+make_merged_constraints(const context& ctx, const problem& pb)
 {
     info(ctx,
          "  - merge constraint according to the `{}` algorithm\n",
-         ctx->parameters.pre_order);
+         ctx.parameters.pre_order);
 
     auto original_nb = static_cast<int>(pb.equal_constraints.size() +
                                         pb.less_constraints.size() +
@@ -308,7 +308,7 @@ make_merged_constraints(const context_ptr& ctx, const problem& pb)
     std::vector<merged_constraint> ret;
     ret.reserve(original_nb);
 
-    switch (ctx->parameters.pre_order) {
+    switch (ctx.parameters.pre_order) {
     case solver_parameters::pre_constraint_order::none:
         ret = make_unsorted_merged_constraints(ctx, pb);
         break;

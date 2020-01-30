@@ -112,42 +112,42 @@ struct manual_course
 };
 
 static baryonyx::result
-optimize(const baryonyx::context_ptr& ctx, const baryonyx::problem& pb)
+optimize(const baryonyx::context& ctx, const baryonyx::problem& pb)
 {
-    manual_course array(ctx->parameters.theta,
-                        ctx->parameters.delta,
-                        ctx->parameters.kappa_min,
-                        ctx->parameters.kappa_step,
-                        ctx->parameters.init_policy_random,
+    manual_course array(ctx.parameters.theta,
+                        ctx.parameters.delta,
+                        ctx.parameters.kappa_min,
+                        ctx.parameters.kappa_step,
+                        ctx.parameters.init_policy_random,
                         5);
 
-    auto old_log_priority = ctx->log_priority;
-    ctx->log_priority = baryonyx::context::message_type::notice;
+    baryonyx::context internal(ctx);
+    internal.log_priority = baryonyx::context::message_type::warning;
 
     auto best_params = std::make_unique<int[]>(array.length);
     double best = +HUGE_VAL;
 
     do {
-        ctx->parameters.theta = array.theta[array.iterators[0]];
-        ctx->parameters.delta = array.delta[array.iterators[1]];
-        ctx->parameters.kappa_min = array.kappa_min[array.iterators[2]];
-        ctx->parameters.kappa_step = array.kappa_step[array.iterators[3]];
-        ctx->parameters.init_policy_random =
+        internal.parameters.theta = array.theta[array.iterators[0]];
+        internal.parameters.delta = array.delta[array.iterators[1]];
+        internal.parameters.kappa_min = array.kappa_min[array.iterators[2]];
+        internal.parameters.kappa_step = array.kappa_step[array.iterators[3]];
+        internal.parameters.init_policy_random =
           array.init_policy_random[array.iterators[4]];
 
-        baryonyx::notice(ctx,
+        baryonyx::notice(internal,
                          "  - optimization with theta:{} delta:{} "
                          "kappa-min:{} kappa-step:{} "
                          "init-policy-random: {}",
-                         ctx->parameters.theta,
-                         ctx->parameters.delta,
-                         ctx->parameters.kappa_min,
-                         ctx->parameters.kappa_step,
-                         ctx->parameters.init_policy_random);
+                         internal.parameters.theta,
+                         internal.parameters.delta,
+                         internal.parameters.kappa_min,
+                         internal.parameters.kappa_step,
+                         internal.parameters.init_policy_random);
 
-        auto ret = baryonyx::itm::optimize(ctx, pb);
+        auto ret = baryonyx::itm::optimize(internal, pb);
         if (ret) {
-            baryonyx::notice(ctx, "{:f}\n", ret.solutions.back().value);
+            baryonyx::notice(internal, "{:f}\n", ret.solutions.back().value);
             if (best > ret.solutions.back().value) {
                 best = ret.solutions.back().value;
 
@@ -155,12 +155,12 @@ optimize(const baryonyx::context_ptr& ctx, const baryonyx::problem& pb)
                   array.iterators.get(), array.length, best_params.get());
             }
         } else {
-            baryonyx::notice(ctx, "no solution\n");
+            baryonyx::notice(internal, "no solution\n");
         }
     } while (array.next());
 
     baryonyx::notice(
-      ctx,
+      internal,
       "  - manual optimization found solution {:f}: with theta:{} "
       "delta:{} kappa-min:{} kappa-step:{} init-random:{}\n",
       best,
@@ -170,19 +170,16 @@ optimize(const baryonyx::context_ptr& ctx, const baryonyx::problem& pb)
       array.kappa_step[array.iterators[3]],
       array.init_policy_random[array.iterators[4]]);
 
-    ctx->log_priority = old_log_priority;
-
-    return baryonyx::itm::optimize(ctx, pb);
+    return baryonyx::itm::optimize(internal, pb);
 }
 
 namespace baryonyx {
 namespace itm {
 
 result
-manual_optimize(const baryonyx::context_ptr& ctx, const baryonyx::problem& pb)
+manual_optimize(const baryonyx::context& ctx, const baryonyx::problem& pb)
 {
     baryonyx::notice(ctx, "- auto-tune parameters (manual) starts\n");
-
     return ::optimize(ctx, pb);
 }
 
