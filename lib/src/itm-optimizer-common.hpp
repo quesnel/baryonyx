@@ -434,37 +434,9 @@ private:
 template<typename Cost, typename Float, typename Mode>
 struct best_solution_recorder
 {
-    enum init_status
-    {
-        init_with_best = 0,
-        improve_best_1,
-        improve_best_2,
-        improve_best_3,
-        improve_best_4,
-        init_with_any,
-        improve_any_1,
-        improve_any_2,
-        improve_any_3,
-        improve_any_4,
-        count
-    };
-
-    static init_status advance(init_status s) noexcept
-    {
-        auto current = static_cast<int>(s);
-        const auto count = static_cast<int>(init_status::count);
-
-        ++current;
-        if (current >= count)
-            current = 0;
-
-        return static_cast<init_status>(current);
-    }
-
     std::chrono::time_point<std::chrono::steady_clock> m_start;
-    std::vector<init_status> m_solver_state;
-
     storage<Cost, Mode> m_storage;
+    std::vector<double> m_kappa_append;
 
     best_solution_recorder(random_engine& rng,
                            const unsigned thread_number,
@@ -473,13 +445,9 @@ struct best_solution_recorder
                            const int variables,
                            const std::vector<merged_constraint>& constraints,
                            const int population_size)
-      : m_solver_state(thread_number, init_status::init_with_best)
-      , m_storage(rng,
-                  costs,
-                  cost_constant,
-                  population_size,
-                  variables,
-                  constraints)
+      : m_storage{ rng,       costs,      cost_constant, population_size,
+                   variables, constraints }
+      , m_kappa_append(std::size_t{ thread_number }, 0.0)
     {
         m_start = std::chrono::steady_clock::now();
     }
@@ -492,10 +460,13 @@ struct best_solution_recorder
         m_storage.get_best(constraints_remaining, value, duration, loop);
     }
 
-    void mutation(local_context& ctx, bit_array& x)
+    void crossover(local_context& ctx, bit_array& x)
     {
         m_storage.crossover(ctx, x);
+    }
 
+    void mutation(local_context& ctx, bit_array& x)
+    {
         if (ctx.value_p_dist.mean() == 0.0 && ctx.value_p_dist.stddev() == 0.0)
             return;
 
@@ -528,57 +499,30 @@ struct best_solution_recorder
         }
     }
 
-    double improve(const unsigned thread_id,
-                   const double kappa_min,
-                   const double kappa_max)
-    {
-        switch (m_solver_state[thread_id]) {
-        case improve_best_2:
-        case improve_any_2:
-            return kappa_min + (kappa_max - kappa_min) * 0.1;
-        case improve_best_3:
-        case improve_any_3:
-            return kappa_min + (kappa_max - kappa_min) * 0.15;
-        case improve_best_4:
-        case improve_any_4:
-            return kappa_min + (kappa_max - kappa_min) * 0.20;
-        default:
-            return kappa_min;
-        }
-    }
-
     double reinit(local_context& ctx,
-                  const bool is_solution,
+                  const bool /*is_solution*/,
                   const double kappa_min,
                   const double kappa_max,
                   bit_array& x)
     {
-        to_log(stdout,
-               3u,
-               "- reinitinialization thread {} - status {}. Is solution: {}\n",
-               ctx.thread_id,
-               m_solver_state[ctx.thread_id],
-               is_solution);
+        to_log(stdout, 3u, "- reinitinialization thread {}.\n", ctx.thread_id);
 
-        if (is_solution) {
-            if (m_solver_state[ctx.thread_id] >= init_with_best &&
-                m_solver_state[ctx.thread_id] < init_with_any)
-                m_solver_state[ctx.thread_id] = init_with_any;
-            else
-                m_solver_state[ctx.thread_id] = init_with_best;
-        }
+        double kappa = kappa_min;
 
-        auto kappa = kappa_min;
-        if (m_solver_state[ctx.thread_id] != init_with_best &&
-            m_solver_state[ctx.thread_id] != init_with_any) {
-            kappa = improve(ctx.thread_id, kappa_min, kappa_max);
+        if (m_kappa_append[ctx.thread_id] < 0.2) {
+            m_kappa_append[ctx.thread_id] += 0.02;
+            kappa = kappa_min +
+                    (kappa_max - kappa_min) * m_kappa_append[ctx.thread_id];
+
             to_log(stdout, 5u, "- improve with kappa {}\n", kappa);
         } else {
-            to_log(stdout, 5u, "- crossover and mutation\n");
-            mutation(ctx, x);
+            m_kappa_append[ctx.thread_id] = 0.0;
+            crossover(ctx, x);
+
+            to_log(stdout, 5u, "- crossover\n");
         }
 
-        m_solver_state[ctx.thread_id] = advance(m_solver_state[ctx.thread_id]);
+        mutation(ctx, x);
 
         return kappa;
     }
