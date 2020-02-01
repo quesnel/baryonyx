@@ -21,6 +21,7 @@ endif ()
 
 add_definitions(-DFMT_HEADER_ONLY)
 include_directories(${CMAKE_SOURCE_DIR}/external/fmt/include)
+include_directories(${CMAKE_SOURCE_DIR}/external/ut/include)
 
 option(WITH_CLANG_TIDY "enable clang tidy checks. [default: OFF]" OFF)
 if (WITH_CLANG_TIDY)
