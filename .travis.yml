@@ -28,7 +28,7 @@ matrix:
   include:
     - os: linux
       dist: xenial
-      env: CXX_COMPILER=g++-7 CXXSTD=c++17
+      env: CXX_COMPILER=g++-7 CXXSTD=c++17 WITH_COVERAGE=0
       addons:
         apt:
           sources:
@@ -38,7 +38,7 @@ matrix:
             - g++-7
     - os: linux
       dist: xenial
-      env: CXX_COMPILER=g++-8 CXXSTD=c++17
+      env: CXX_COMPILER=g++-8 CXXSTD=c++17 WITH_COVERAGE=0
       addons:
         apt:
           sources:
@@ -47,7 +47,17 @@ matrix:
             - *common_packages
             - g++-8
     - os: linux
-      env: CXX_COMPILER=clang++-6.0 CXXSTD=c++17
+      dist: xenial
+      env: CXX_COMPILER=g++-8 CXXSTD=c++17 WITH_COVERAGE=1
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - *common_packages
+            - g++-8
+    - os: linux
+      env: CXX_COMPILER=clang++-6.0 CXXSTD=c++17 WITH_COVERAGE=0
       addons:
         apt:
           sources:
@@ -58,7 +68,7 @@ matrix:
             - clang-6.0
             - g++-7
     - os: linux
-      env: CXX_COMPILER=clang++-7 CXXSTD=c++17
+      env: CXX_COMPILER=clang++-7 CXXSTD=c++17 WITH_COVERAGE=0
       addons:
         apt:
           sources:
@@ -69,7 +79,7 @@ matrix:
             - clang-7
             - g++-7
     - os: linux
-      env: CXX_COMPILER=clang++-8 CXXSTD=c++17
+      env: CXX_COMPILER=clang++-8 CXXSTD=c++17 WITH_COVERAGE=0
       addons:
         apt:
           sources:
@@ -81,14 +91,18 @@ matrix:
             - g++-7
     - os: osx
       osx_image: xcode11.2
-      env: CXX_COMPILER=clang++ CXXSTD=c++17
+      env: CXX_COMPILER=clang++ CXXSTD=c++17 WITH_COVERAGE=0
+
+before_install:
+  - pip install --user cpp-coveralls
 
 install:
   - cd ..
   - cd baryonyx
   - mkdir build
   - cd build
-  - CXXFLAGS="-std=$CXXSTD" cmake -DCMAKE_CXX_COMPILER=$CXX_COMPILER -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_COLOR_MAKEFILE=OFF -DCMAKE_VERBOSE_MAKEFILE=ON -DCMAKE_BUILD_TYPE=RelWithDebInfo ..
+  - if [ "$WITH_COVERAGE" = "0" ]; then CXXFLAGS="-std=$CXXSTD" cmake -DCMAKE_CXX_COMPILER=$CXX_COMPILER -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_COLOR_MAKEFILE=OFF -DCMAKE_VERBOSE_MAKEFILE=ON -DCMAKE_BUILD_TYPE=RelWithDebInfo .. ; fi
+  - if [ "$WITH_COVERAGE" = "1" ]; then CXXFLAGS="-std=$CXXSTD -g -O0 --coverage -fprofile-arcs -ftest-coverage" cmake -DCMAKE_CXX_COMPILER=$CXX_COMPILER -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_COLOR_MAKEFILE=OFF -DCMAKE_VERBOSE_MAKEFILE=ON -DCMAKE_BUILD_TYPE=None .. ; fi
 
 script:
   - make
@@ -99,6 +113,10 @@ script:
   - if [ "$TRAVIS_OS_NAME" = "osx" ]; then ctest -V -R testio ; fi
   - if [ "$TRAVIS_OS_NAME" = "osx" ]; then ctest -V -R testlib ; fi
   - if [ "$TRAVIS_OS_NAME" = "osx" ]; then ctest -V -R testsolver ; fi
+  - if [ "$WITH_COVERAGE" = "1" ]; then ctest -E testoptimizer ; fi
+
+after_success:
+  - coveralls --gcov-options '\-lp'
 
 notifications:
   email:
