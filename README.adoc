@@ -418,6 +418,18 @@ To assign parameters to solver or optimizer algorithms, use the `-p
 * `bound`: stores the best and the bad solution found.
 * `five`: stores the best five solution found.
 
+| init-kappa-improve-start (optimizer only)
+| real
+| [0-1] The start value of kappa for the improve mode.
+
+| init_kappa_improve_increase (optimizer only)
+| real
+| [0-1] The start value of kappa for the improve mode.
+
+| init_kappa_improve_stop (optimizer only)
+| real
+| [init-kappa-improve-start - 1.0] The stop value of kappa for the improve mode. When the optimizer kappa exceeds this value, a new crossover and mutation will run. If `init_kappa_improve_stop` equals `init-kappa-improve-start` then improving is disabled.
+
 |===
 
 For example:

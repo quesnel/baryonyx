@@ -436,6 +436,10 @@ struct BX_EXPORT solver_parameters
     double init_mutation_value_mean{ 0.5 };
     double init_mutation_value_stddev{ 0.2 };
 
+    double init_kappa_improve_start{ 0 };
+    double init_kappa_improve_increase{ 0.02 };
+    double init_kappa_improve_stop{ 0.2 };
+
     double w{ 0.05 };       ///< 5% of limit
     unsigned int seed{ 0 }; ///< value == 0 means automatic seed.
     int thread{ 0 };        ///< value <= 0 means automatic detection.

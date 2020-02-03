@@ -60,6 +60,11 @@ struct local_context
     std::uniform_int_distribution<int> bad_solution_choose;
     std::uniform_int_distribution<std::size_t> crossover_dist;
     std::bernoulli_distribution crossover_bastert_insertion;
+
+    const double init_kappa_improve_start;
+    const double init_kappa_improve_increase;
+    const double init_kappa_improve_stop;
+
     const unsigned thread_id;
 
     local_context(const context& ctx,
@@ -78,6 +83,9 @@ struct local_context
       , crossover_dist(0)
       , crossover_bastert_insertion(
           ctx.parameters.init_crossover_bastert_insertion)
+      , init_kappa_improve_start(ctx.parameters.init_kappa_improve_start)
+      , init_kappa_improve_increase(ctx.parameters.init_kappa_improve_increase)
+      , init_kappa_improve_stop(ctx.parameters.init_kappa_improve_stop)
       , thread_id(thread_id_)
     {}
 };
@@ -509,14 +517,14 @@ struct best_solution_recorder
 
         double kappa = kappa_min;
 
-        if (m_kappa_append[ctx.thread_id] < 0.2) {
-            m_kappa_append[ctx.thread_id] += 0.02;
+        if (m_kappa_append[ctx.thread_id] < ctx.init_kappa_improve_stop) {
+            m_kappa_append[ctx.thread_id] += ctx.init_kappa_improve_increase;
             kappa = kappa_min +
                     (kappa_max - kappa_min) * m_kappa_append[ctx.thread_id];
 
             to_log(stdout, 5u, "- improve with kappa {}\n", kappa);
         } else {
-            m_kappa_append[ctx.thread_id] = 0.0;
+            m_kappa_append[ctx.thread_id] = ctx.init_kappa_improve_start;
             crossover(ctx, x);
 
             to_log(stdout, 5u, "- crossover\n");

@@ -125,7 +125,10 @@ solver_started_cb(const baryonyx::solver_parameters& params)
                    "  - init-mutation-variable-mean: {}\n"
                    "  - init-mutation-variable-stddev: {}\n"
                    "  - init-mutation-value-mean: {}\n"
-                   "  - init-mutation-value-stddev: {}\n",
+                   "  - init-mutation-value-stddev: {}\n"
+                   "  - init-kappa-improve-start: {}\n"
+                   "  - init-kappa-improve-increase: {}\n"
+                   "  - init-kappa-improve-stop: {}\n",
                    params.init_population_size,
                    params.init_crossover_bastert_insertion,
                    params.init_crossover_solution_selection_mean,
@@ -133,7 +136,10 @@ solver_started_cb(const baryonyx::solver_parameters& params)
                    params.init_mutation_variable_mean,
                    params.init_mutation_variable_stddev,
                    params.init_mutation_value_mean,
-                   params.init_mutation_value_stddev);
+                   params.init_mutation_value_stddev,
+                   params.init_kappa_improve_start,
+                   params.init_kappa_improve_increase,
+                   params.init_kappa_improve_stop);
     } else {
         fmt::print(" * Random solvers:\n"
                    "  - random: bernouilli with p=0.5\n");
@@ -463,6 +469,9 @@ enum class command_line_status
     init_mutation_variable_stddev_error,
     init_mutation_value_mean_error,
     init_mutation_value_stddev_error,
+    init_kappa_improve_start_error,
+    init_kappa_improve_increase_error,
+    init_kappa_improve_stop_error,
     thread_error,
     seed_error
 };
@@ -502,6 +511,9 @@ constexpr const std::string_view command_line_status_string[] = {
     "init_mutation_variable_stddev",
     "init_mutation_value_mean",
     "init_mutation_value_stddev",
+    "init_kappa_improve_start",
+    "init_kappa_improve_increase",
+    "init_kappa_improve_stop",
     "thread",
     "seed"
 };
@@ -798,6 +810,24 @@ assign_parameter(baryonyx::solver_parameters& params,
             return command_line_status::init_mutation_value_stddev_error;
         else
             params.init_mutation_value_stddev = *v;
+
+    } else if (is_equal(name, "init-kappa-improve-start")) {
+        if (auto v = assign_01(value); !v)
+            return command_line_status::init_kappa_improve_start_error;
+        else
+            params.init_kappa_improve_start = *v;
+
+    } else if (is_equal(name, "init-kappa-improve-increase")) {
+        if (auto v = assign_01(value); !v)
+            return command_line_status::init_kappa_improve_increase_error;
+        else
+            params.init_kappa_improve_increase = *v;
+
+    } else if (is_equal(name, "init-kappa-improve-stop")) {
+        if (auto v = assign_01(value); !v)
+            return command_line_status::init_kappa_improve_stop_error;
+        else
+            params.init_kappa_improve_stop = *v;
 
     } else if (is_equal(name, "init-policy")) {
         if (value == "bastert")

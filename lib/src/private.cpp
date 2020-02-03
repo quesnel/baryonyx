@@ -147,6 +147,17 @@ context_set_solver_parameters(const context_ptr& ctx,
     if (params.init_population_size >= 5)
         ctx->parameters.init_population_size = params.init_population_size;
 
+    ctx->parameters.init_kappa_improve_start =
+      std::clamp(params.init_kappa_improve_start, 0.0, 1.0);
+
+    ctx->parameters.init_kappa_improve_increase =
+      std::clamp(params.init_kappa_improve_increase, 0.0, 1.0);
+
+    ctx->parameters.init_kappa_improve_stop =
+      std::clamp(params.init_kappa_improve_stop,
+                 ctx->parameters.init_kappa_improve_start,
+                 1.0);
+
     ctx->parameters.pre_order = params.pre_order;
     ctx->parameters.order = params.order;
     ctx->parameters.float_type = params.float_type;
