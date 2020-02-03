@@ -108,7 +108,17 @@ script:
   - ctest -E testoptimizer
 
 after_success:
-  - if [ "$TRAVIS_OS_NAME" != "osx" ]; then coveralls -r .. --gcov-options '\-lp' ; fi
+  - if [ "$TRAVIS_OS_NAME" != "osx" ]; then
+    coveralls
+        --root ../
+        --build-root ./
+        --exclude-pattern '../build/'
+        --exclude-pattern '../external/'
+        --exclude-pattern '../rbaryonyx/'
+        --gcov /usr/bin/gcov
+        --gcov-options '\--long-file-names --preserve-paths'
+        --verbose;
+    fi
 
 notifications:
   email:
