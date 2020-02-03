@@ -1,19 +1,18 @@
 = Baryonyx
-Gauthier Quesnel <gauthier.quesnel@inra.fr>
-v0.5.x, 2020-01-??
+Gauthier Quesnel <gauthier.quesnel@inrae.fr>
+v0.5.0, 2020-02-03
 :toc:
 :homepage: https://github.com/quesnel/baryonyx/
 
-https://en.wikipedia.org/wiki/Baryonyx[Baryonyx] is an integer and binary linear
-programming solver based on the http://www.cse.chalmers.se/~dag/[Dag Wedelin]
-heuristic.
+https://en.wikipedia.org/wiki/Baryonyx[Baryonyx] is an integer and binary
+linear programming solver based on the http://www.cse.chalmers.se/~dag/[Dag Wedelin] heuristic.
 
 [width="15%"]
 |============
 | https://travis-ci.org/quesnel/baryonyx[image:https://travis-ci.org/quesnel/baryonyx.png?branch=master[Build Status]] | https://ci.appveyor.com/project/quesnel/baryonyx?branch=master[image:https://ci.appveyor.com/api/projects/status/github/quesnel/baryonyx?branch=master&svg=true[Build Status]] | https://coveralls.io/github/quesnel/baryonyx?branch=master[image:https://coveralls.io/repos/github/quesnel/baryonyx/badge.svg?branch=master[Coverage Status]]
 |============
 
-Copyright © 2017-2019 http://www.inra.fr/en[INRA]
+Copyright © 2017-2020 http://www.inrae.fr/en[INRA]
 
 The software is released under the MIT license. See the LICENSE file.
 
@@ -295,8 +294,8 @@ To assign parameters to solver or optimizer algorithms, use the `-p
 * `none` (default): use the lp format constraint order
 * `reversing`: reverse the lp format constraint order
 * `random-sorting`: random the remaining constraint list
-* `infeasibility-decr`: compute infeasibility constraint in decremental order
-* `infeasibility-incr`: compute infeasibility constraint in incremental order
+* `infeasibility-decr`: compute in-feasibility constraint in decremental order
+* `infeasibility-incr`: compute in-feasibility constraint in incremental order
 * `lagrangian-decr`: sort violated constraints according to the Lagrangian multiplier values in decremental order
 * `lagrangian-incr`: sort violated constraints according to the Lagrangian multiplier values in incremental order
 * `pi-sign-change`: random the remaining constraint list if the lagrangian multipliers signs have changed
@@ -395,7 +394,7 @@ To assign parameters to solver or optimizer algorithms, use the `-p
 | init-mutation-variable-stddev (optimizer only)
 | real
 | [0-1] Probability to mutate the solution after the crossover operation. This
-  parameter defines the number of variables to change. The standard deviatation
+  parameter defines the number of variables to change. The standard deviation
   for the normal probability law.
 
 | init-mutation-value-mean (optimizer only)
