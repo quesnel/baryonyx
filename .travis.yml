@@ -1,7 +1,5 @@
 language: cpp
 
-sudo: false
-
 os:
   - linux
   - osx
@@ -18,10 +16,10 @@ addons:
       - gdb
 
 env:
-  matrix:
+  jobs:
     - BOGUS_JOB=true
 
-matrix:
+jobs:
   exclude:
     - env: BOGUS_JOB=true
 
@@ -120,4 +118,4 @@ after_success:
 
 notifications:
   email:
-    on_sucess: always
+    on_success: always
