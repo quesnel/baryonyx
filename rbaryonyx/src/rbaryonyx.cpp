@@ -55,11 +55,12 @@ r_solver_updated_cb(int remaining_constraints,
                     duration,
                     reinit_number);
         else
-            Rprintf("  - Solution found via push: %f (loop: %d t: %fs reinit:%ld)\n",
-                    value,
-                    -loop,
-                    duration,
-                    reinit_number);
+            Rprintf(
+              "  - Solution found via push: %f (loop: %d t: %fs reinit:%ld)\n",
+              value,
+              -loop,
+              duration,
+              reinit_number);
     }
 
     R_FlushConsole();
@@ -238,63 +239,6 @@ get_storage_type(int type)
     }
 }
 
-static void
-assign_parameters(const baryonyx::context_ptr& ctx,
-                  int limit,
-                  double theta,
-                  double delta,
-                  int pre_constraint_order,
-                  int constraint_order,
-                  double kappa_min,
-                  double kappa_step,
-                  double kappa_max,
-                  double alpha,
-                  double w,
-                  double time_limit,
-                  int seed,
-                  int thread,
-                  int norm,
-                  double pushing_k_factor,
-                  double pushing_objective_amplifier,
-                  int pushes_limit,
-                  int pushing_iteration_limit,
-                  int init_policy,
-                  double init_policy_random,
-                  int float_type,
-                  int storage_type)
-{
-    baryonyx::solver_parameters params;
-
-    params.time_limit = time_limit;
-    params.theta = theta;
-    params.delta = delta;
-    params.kappa_min = kappa_min;
-    params.kappa_step = kappa_step;
-    params.kappa_max = kappa_max;
-    params.alpha = alpha;
-    params.pushing_k_factor = pushing_k_factor;
-    params.pushing_objective_amplifier = pushing_objective_amplifier;
-    params.init_policy_random = init_policy_random;
-
-    if (seed > 0)
-        params.seed = seed;
-
-    params.thread = thread;
-    params.limit = limit;
-    params.w = w;
-    params.pushes_limit = pushes_limit;
-    params.pushing_iteration_limit = pushing_iteration_limit;
-
-    params.pre_order = get_pre_constraint_order(pre_constraint_order);
-    params.order = get_constrait_order(constraint_order);
-    params.cost_norm = get_cost_norm(norm);
-    params.init_policy = get_init_policy(init_policy);
-    params.float_type = get_floating_point_type(float_type);
-    params.storage = get_storage_type(storage_type);
-
-    baryonyx::context_set_solver_parameters(ctx, params);
-}
-
 static List
 convert_result(const baryonyx::result& res, bool minimize)
 {
@@ -385,6 +329,8 @@ convert_result(const baryonyx::result& res, bool minimize)
 //'    - 1: pessimistic_solve,
 //'    - 2: optimistic_solve,
 //'
+//' @param init_policy_random the type percentage of random in the init_policy.
+//'
 //' @param float_type the type of real used into the solver. Default is to
 //'     use the C/C++ double representation.
 //'    - 0: float
@@ -458,29 +404,32 @@ solve_01lp_problem(std::string file_path,
 
         minimize = (pb.type == baryonyx::objective_function_type::minimize);
 
-        assign_parameters(ctx,
-                          limit,
-                          theta,
-                          delta,
-                          pre_constraint_order,
-                          constraint_order,
-                          kappa_min,
-                          kappa_step,
-                          kappa_max,
-                          alpha,
-                          w,
-                          time_limit,
-                          seed,
-                          thread,
-                          norm,
-                          pushing_k_factor,
-                          pushing_objective_amplifier,
-                          pushes_limit,
-                          pushing_iteration_limit,
-                          init_policy,
-                          init_policy_random,
-                          float_type,
-                          storage_type);
+        baryonyx::solver_parameters params;
+
+        params.time_limit = time_limit;
+        params.theta = theta;
+        params.delta = delta;
+        params.kappa_min = kappa_min;
+        params.kappa_step = kappa_step;
+        params.kappa_max = kappa_max;
+        params.alpha = alpha;
+        params.pushing_k_factor = pushing_k_factor;
+        params.pushing_objective_amplifier = pushing_objective_amplifier;
+        params.init_policy_random = init_policy_random;
+        params.seed = seed;
+        params.thread = thread;
+        params.limit = limit;
+        params.w = w;
+        params.pushes_limit = pushes_limit;
+        params.pushing_iteration_limit = pushing_iteration_limit;
+        params.pre_order = get_pre_constraint_order(pre_constraint_order);
+        params.order = get_constrait_order(constraint_order);
+        params.cost_norm = get_cost_norm(norm);
+        params.init_policy = get_init_policy(init_policy);
+        params.float_type = get_floating_point_type(float_type);
+        params.storage = get_storage_type(storage_type);
+
+        baryonyx::context_set_solver_parameters(ctx, params);
 
         ret = baryonyx::solve(ctx, pb);
     } catch (const std::bad_alloc& e) {
@@ -587,6 +536,16 @@ optimize_01lp_problem(std::string file_path,
                       double pushing_objective_amplifier = 5.0,
                       int pushes_limit = 100,
                       int pushing_iteration_limit = 50,
+                      double init_crossover_bastert_insertion = 0.01,
+                      double init_crossover_solution_selection_mean = 0.0,
+                      double init_crossover_solution_selection_stddev = 0.3,
+                      double init_mutation_variable_mean = 0.0001,
+                      double init_mutation_variable_stddev = 0.001,
+                      double init_mutation_value_mean = 0.5,
+                      double init_mutation_value_stddev = 0.2,
+                      double init_kappa_improve_start = 0,
+                      double init_kappa_improve_increase = 0.02,
+                      double init_kappa_improve_stop = 0.2,
                       int float_type = 1,
                       int storage_type = 1,
                       bool verbose = true) noexcept
@@ -603,29 +562,45 @@ optimize_01lp_problem(std::string file_path,
 
         minimize = (pb.type == baryonyx::objective_function_type::minimize);
 
-        assign_parameters(ctx,
-                          limit,
-                          theta,
-                          delta,
-                          pre_constraint_order,
-                          constraint_order,
-                          kappa_min,
-                          kappa_step,
-                          kappa_max,
-                          alpha,
-                          w,
-                          time_limit,
-                          seed,
-                          thread,
-                          norm,
-                          pushing_k_factor,
-                          pushing_objective_amplifier,
-                          pushes_limit,
-                          pushing_iteration_limit,
-                          0,                        // Useless in optimizer mode.
-                          0.0,                      // Same.
-                          float_type,
-                          storage_type);
+        baryonyx::solver_parameters params;
+
+        params.time_limit = time_limit;
+        params.theta = theta;
+        params.delta = delta;
+        params.kappa_min = kappa_min;
+        params.kappa_step = kappa_step;
+        params.kappa_max = kappa_max;
+        params.alpha = alpha;
+        params.pushing_k_factor = pushing_k_factor;
+        params.pushing_objective_amplifier = pushing_objective_amplifier;
+
+        params.init_crossover_bastert_insertion =
+          init_crossover_bastert_insertion;
+        params.init_crossover_solution_selection_mean =
+          init_crossover_solution_selection_mean;
+        params.init_crossover_solution_selection_stddev =
+          init_crossover_solution_selection_stddev;
+        params.init_mutation_variable_mean = init_mutation_variable_mean;
+        params.init_mutation_variable_stddev = init_mutation_variable_stddev;
+        params.init_mutation_value_mean = init_mutation_value_mean;
+        params.init_mutation_value_stddev = init_mutation_value_stddev;
+        params.init_kappa_improve_start = init_kappa_improve_start;
+        params.init_kappa_improve_increase = init_kappa_improve_increase;
+        params.init_kappa_improve_stop = init_kappa_improve_stop;
+
+        params.seed = seed;
+        params.thread = thread;
+        params.limit = limit;
+        params.w = w;
+        params.pushes_limit = pushes_limit;
+        params.pushing_iteration_limit = pushing_iteration_limit;
+        params.pre_order = get_pre_constraint_order(pre_constraint_order);
+        params.order = get_constrait_order(constraint_order);
+        params.cost_norm = get_cost_norm(norm);
+        params.float_type = get_floating_point_type(float_type);
+        params.storage = get_storage_type(storage_type);
+
+        baryonyx::context_set_solver_parameters(ctx, params);
 
         ret = baryonyx::optimize(ctx, pb);
     } catch (const std::bad_alloc& e) {
