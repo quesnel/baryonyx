@@ -376,14 +376,32 @@ public:
 
         if (ctx.crossover_bastert_insertion(ctx.rng)) {
             int first = m_indices[choose_a_solution(ctx)];
+            std::bernoulli_distribution b(0.5);
 
-            crossover(ctx, x, m_data[first].x, m_bastert);
-
-            to_log(stdout,
-                   7u,
-                   "- crossover between {} ({}) and bastert\n",
-                   first,
-                   m_data[first].value);
+            if (b(ctx.rng)) {
+                if (b(ctx.rng)) {
+                    crossover(ctx, x, m_data[first].x, m_bastert);
+                    to_log(stdout,
+                           7u,
+                           "- crossover between {} ({}) and bastert\n",
+                           first,
+                           m_data[first].value);
+                } else {
+                    m_data[first].x = m_bastert;
+                }
+            } else {
+                init_with_random(m_random, ctx.rng, x.size(), 0.5);
+                if (b(ctx.rng)) {
+                    crossover(ctx, x, m_data[first].x, m_random);
+                    to_log(stdout,
+                           7u,
+                           "- crossover between {} ({}) and random\n",
+                           first,
+                           m_data[first].value);
+                } else {
+                    m_data[first].x = m_random;
+                }
+            }
         } else {
             int first = m_indices[choose_a_solution(ctx)];
             int second = m_indices[choose_a_solution(ctx)];
