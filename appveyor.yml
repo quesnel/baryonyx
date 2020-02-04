@@ -1,4 +1,4 @@
-os: Visual Studio 2017
+os: Visual Studio 2019
 branches:
   only:
     - master
@@ -7,35 +7,23 @@ branches:
 
 environment:
   matrix:
-#    - COMPILER: mingw-w64
-#      GENERATOR: MinGW Makefiles
-#      PLATFORM: x64
-#      BUILD_TYPE: RelWithDebInfo
-#      BINDIR: C:\mingw-w64\x86_64-7.2.0-posix-seh-rt_v5-rev1\mingw64\bin
-
-#    - COMPILER: mingw-w64
-#      GENERATOR: MinGW Makefiles
-#      PLATFORM: x64
-#      BUILD_TYPE: Release
-#      BINDIR: C:\mingw-w64\x86_64-7.2.0-posix-seh-rt_v5-rev1\mingw64\bin
-
     - COMPILER: msvc
-      GENERATOR: Visual Studio 15 2017 Win64
+      GENERATOR: Visual Studio 16 2019
       PLATFORM: x64
       BUILD_TYPE: Debug
 
     - COMPILER: msvc
-      GENERATOR: Visual Studio 15 2017 Win64
+      GENERATOR: Visual Studio 16 2019
       PLATFORM: x64
       BUILD_TYPE: Release
 
     - COMPILER: msvc
-      GENERATOR: Visual Studio 15 2017
+      GENERATOR: Visual Studio 16 2019
       PLATFORM: Win32
       BUILD_TYPE: Debug
 
     - COMPILER: msvc
-      GENERATOR: Visual Studio 15 2017
+      GENERATOR: Visual Studio 16 2019
       PLATFORM: Win32
       BUILD_TYPE: Release
 

@@ -4,8 +4,16 @@ target_link_libraries(app libbaryonyx threads)
 
 set_target_properties(app PROPERTIES
   OUTPUT_NAME "baryonyx-${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}"
-  CXX_STANDARD 17
-  CXX_STANDARD_REQUIRED ON)
+  CXX_STANDARD 20)
+
+target_compile_options(app
+  PRIVATE
+  $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:GNU>>:
+      -pipe -march=native
+      $<$<CONFIG:Debug>:-Og -Wall -Wextra>>
+  $<$<CXX_COMPILER_ID:MSVC>:
+      /EHsc /bigobj
+      $<$<CONFIG:Debug>:/Od /W3 /Zi>>)
 
 target_compile_definitions(app
   PRIVATE

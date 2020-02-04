@@ -65,10 +65,10 @@ target_compile_options(libbaryonyx
   PRIVATE
   $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:GNU>>:
       -pipe -march=native
-      $<$<CONFIG:Debug>:-O0 -Wall -Wextra>>
+      $<$<CONFIG:Debug>:-Og -Wall -Wextra>>
   $<$<CXX_COMPILER_ID:MSVC>:
-      $<$<CONFIG:Debug>:/Od /W3 /Zi>>
-  $<$<CXX_COMPILER_ID:MSVC>:/bigobj>)
+      /EHsc /bigobj
+      $<$<CONFIG:Debug>:/Od /W3 /Zi>>)
 
 target_include_directories(libbaryonyx PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
@@ -85,8 +85,7 @@ set_target_properties(libbaryonyx PROPERTIES
   POSITION_INDEPENDENT_CODE ON
   CXX_VISIBILITY_PRESET hidden
   VISIBILITY_INLINES_HIDDEN ON
-  CXX_STANDARD 17
-  CXX_STANDARD_REQUIRED ON)
+  CXX_STANDARD 20)
 
 if (CLANG_TIDY_EXE)
   set_target_properties(libbaryonyx PROPERTIES
@@ -150,8 +149,16 @@ function(baryonyx_add_test test_name)
 
   set_target_properties(${test_name} PROPERTIES
     COMPILE_DEFINITIONS EXAMPLES_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}/test\"
-    CXX_STANDARD 17
-    CXX_STANDARD_REQUIRED ON)
+    CXX_STANDARD 20)
+
+  target_compile_options(${test_name} BEFORE
+    PRIVATE
+    $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:GNU>>:
+        -pipe -march=native
+        $<$<CONFIG:Debug>:-Og -Wall -Wextra>>
+    $<$<CXX_COMPILER_ID:MSVC>:
+        /EHsc /bigobj
+        $<$<CONFIG:Debug>:/Od /W3 /Zi>>)
 
   target_compile_definitions(${test_name}
     PRIVATE
