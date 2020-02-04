@@ -12,7 +12,9 @@ branches:
 addons:
   apt:
     packages: &common_packages
+      - lcov
       - cmake
+      - make
       - gdb
 
 env:
@@ -91,9 +93,6 @@ jobs:
       osx_image: xcode11.2
       env: CXX_COMPILER=clang++ CXXSTD=c++17
 
-before_install:
-  - pip install --user cpp-coveralls
-
 install:
   - cd ..
   - cd baryonyx
@@ -108,17 +107,12 @@ script:
   - ctest -E testoptimizer
 
 after_success:
-  - if [ "$TRAVIS_OS_NAME" != "osx" ]; then
-    coveralls
-        --root ../
-        --build-root ./
-        --exclude-pattern '../build/'
-        --exclude-pattern '../external/'
-        --exclude-pattern '../rbaryonyx/'
-        --gcov /usr/bin/gcov
-        --gcov-options '\--long-file-names --preserve-paths'
-        --verbose;
-    fi
+  - if [ "$TRAVIS_OS_NAME" != "osx" ]; then cd ${TRAVIS_BUILD_DIR} ; fi
+  - if [ "$TRAVIS_OS_NAME" != "osx" ]; then lcov --directory . --capture --output-file coverage.info ; fi
+  - if [ "$TRAVIS_OS_NAME" != "osx" ]; then lcov --remove coverage.info '/usr/*' --output-file coverage.info ; fi
+  - if [ "$TRAVIS_OS_NAME" != "osx" ]; then lcov --remove coverage.info 'external/*' --output-file coverage.info ; fi
+  - if [ "$TRAVIS_OS_NAME" != "osx" ]; then lcov --list coverage.info ; fi
+  - if [ "$TRAVIS_OS_NAME" != "osx" ]; then bash <(curl -s https://codecov.io/bash) ; fi
 
 notifications:
   email:
