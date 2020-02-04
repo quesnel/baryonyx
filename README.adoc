@@ -1,6 +1,6 @@
 = Baryonyx
 Gauthier Quesnel <gauthier.quesnel@inrae.fr>
-v0.5.0, 2020-02-03
+v0.5.0, 2020-02-04
 :toc:
 :homepage: https://github.com/quesnel/baryonyx/
 
@@ -24,7 +24,7 @@ The software is released under the MIT license. See the LICENSE file.
 * $$C++$$ compiler with $$C++17$$ support:
 ** `gcc` ≥ 7 (https://www.gnu.org/software/gcc/projects/cxx-status.html[notes])
 ** `clang` ≥ 5 (https://clang.llvm.org/cxx_status.html[notes])
-** `visual studio 2017 15.9` with the latest patchs of 2018 (https://docs.microsoft.com/en-us/visualstudio/releasenotes/vs2017-relnotes[notes])
+** `visual studio 2019 16.0` (https://docs.microsoft.com/en-us/visualstudio/releasenotes/vs2017-relnotes[notes])
 
 For recent Debian GNU/Linux and Ubuntu derivatives (remove clang to
 only use gcc):
@@ -35,7 +35,7 @@ apt-get install build-essential cmake clang
 ....
 
 For Windows, install the https://www.cmake.org[CMake program] and
-Visual Studio 2017 (MSVC). You may also install the vcpkg program to
+Visual Studio 2019 (MSVC). You may also install the vcpkg program to
 install nlopt and other dependencies.
 
 * `nlopt` library - optimization library to automatic parametrization

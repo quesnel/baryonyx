@@ -1,61 +1,56 @@
-= Baryonyx
-Gauthier Quesnel <gauthier.quesnel@inra.fr>
+## baryonyx v0.5.0 - 2020-02-04
 
-== baryonyx v0.5.0 - 2019-??-??
+### Major changes:
 
-Major changes:
-
-* Initializer: In optimization mode, Baryonyx stores all solutions found during
-  search. Two algorithms are used to initialize the X vector:
-  - A crossover using two solutions is used to re-initialize the solver.
-  - A mutating operation between a Bastert or partial solution is used.
-
-* Quadratic objective function: Experimental support.
-
-* Z-coefficient: Enable the Z-coefficient solver.
-
-* random-solver: This solver is enabled with the `--random` command line option
-  and in the `solver_parameters::solver_type` and `solver_parameters::solver`
-  options. It provides a pure random solver without any preference and
-  Lagrangian relaxation. It is provided only for benchmark.
-
-* add Lagrangian multipliers sign change detection.
-
-Small changes:
-
-* c++:
-  ** solvers: replace fill and copy with fill_n and copy_n
-  ** solvers: replace `std::vector<T>` with a new `bit_array` to improve cache
-     efficiency
-  ** main: fix signed/unsigned warning
-
-* solver:
-  ** negative coefficient solvers: fix R access
-  ** add pi signed change detection
-  ** improve efficiency of random-solver
-  ** add reset function to reinit solver
-  ** solver: move normalized cost in thread part
+* project:
+  * add [codecov.io](https://codecove.io) to produce coverage reports in travis
+  * use Visual Studio 2019 image in appveyor
+  * [boost/ut](https://github.com/boost-experimental/ut): use boost.UT v1.1.6
+  * [fmtlib/fmt](https://fmt.dev/latest/index.html): bump to version v6.1.1
 
 * optimizer:
-  ** replace time limit detection algorithm
-  ** add pi signed change detection to build a new constraint remaining list
+  * use a evolutionary algorithm to init/reinit solver. In optimization mode, Baryonyx stores all solutions found during search. Two algorithms are used to initialize the X vector:
+    * A crossover/mutation using two solutions is used to re-initialize the solver.
+    * An improve mode using a dynamical kappa.
+  * Quadratic objective function: Experimental support.
+  * Z-coefficient: Enable the Z-coefficient solver.
+  * random-solver: This solver is enabled with the `--random` command line option
+  and in the `solver_parameters::solver_type`. It provides a pure random solver without any preference and Lagrangian relaxation. It is provided only for benchmark.
+  * add Lagrangian multipliers sign change detection.
+
+### Small changes:
+
+* c++:
+  * solvers: replace `fill` and `copy` with `fill_n` and `copy_n` equivalent.
+  * solvers: replace `std::vector<T>` with a new `bit_array` to improve cache  efficiency
+  * main: fix signed/unsigned warning
+
+* solver
+  * negative coefficient solvers: fix R access
+  * add pi signed change detection
+  * improve efficiency of random-solver
+  * add reset function to reinit solver
+  * solver: move normalized cost in thread part
+
+* optimizer:
+  * replace time limit detection algorithm
+  * add pi signed change detection to build a new constraint remaining list
 
 * benchmark:
-  ** fix sort functor behaviour
+  * fix sort functor behaviour
 
 * main:
-  ** fix time-limit parameter assignation
-  ** missing or malformed parameters equal error
-  ** fix infinity norm string
-  ** add a `--debug` mode.
+  * fix time-limit parameter assignation
+  * missing or malformed parameters equal error
+  * fix infinity norm string
+  * add a `--debug` mode.
 
 * CMake:
-  ** reduce warning level for msvc
-  ** use the BUILD_SHARED_LIBS CMake option to build share library. Default, a
+  * reduce warning level for msvc
+  * use the BUILD_SHARED_LIBS CMake option to build share library. Default, a
      static library is build to enable all internal test that use private API.
 
-
-== baryonyx v0.4.0 - 2019-02-19
+## baryonyx v0.4.0 - 2019-02-19
 
 Bump C++ dependency to C++17 standard.
 
@@ -110,7 +105,7 @@ solver/optimizer::
   ** `lagrangian-incr`: sort violated constraints according to the Lagrangian
      multiplier values in incremental order
 
-== baryonyx v0.3.3 - 2018-10-04
+## baryonyx v0.3.3 - 2018-10-04
 
 main::
 
@@ -133,7 +128,7 @@ preprocessor::
   `memory`, the default, to use the raw_problem (or lp file) order for
   constraints but sort the variables to improve the memory cache efficiency.
 
-== baryonyx v0.3.2 - 2018-09-24
+## baryonyx v0.3.2 - 2018-09-24
 
 solver/optimizer::
 
@@ -160,7 +155,7 @@ main::
 * Add the `storage-type` option with a string parameter (one, bound
   and five).
 
-== baryonyx v0.3.1 - 2018-09-18
+## baryonyx v0.3.1 - 2018-09-18
 
 main::
 
@@ -189,7 +184,7 @@ problem::
 
 * fix the coefficient_type function
 
-== baryonyx v0.3.0 - 2018-09-11
+## baryonyx v0.3.0 - 2018-09-11
 
 general::
 
