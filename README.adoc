@@ -142,13 +142,13 @@ make install
 
 === Solver & Optimizer
 
-To run Baryonyx in solver mode (i.e. trying to valid all constraints):
+To run Baryonyx in solver mode (i trying to valid all constraints):
 
 ....
 baryonyx-0.5 file.lp
 ....
 
-To run baryonyx into the heuristic model (i.e. trying to valid all
+To run baryonyx into the heuristic model (i trying to valid all
 constraints and optimize the solution), add a `-o` or `--optimize`
 option to the command line:
 
@@ -156,7 +156,7 @@ option to the command line:
 baryonyx-0.5 -o file.lp
 ....
 
-To run baryonyx into the heuristic model (i.e. trying to valid all
+To run baryonyx into the heuristic model (i trying to valid all
 constraints and optimize the solution), add a `-o` or `--optimize`
 option to the command line:
 
@@ -348,6 +348,14 @@ To assign parameters to solver or optimizer algorithms, use the `-p
 | integer
 | show information if greater than 0
 
+| storage-type
+| string
+| Change the solution storage policy for the optimizer mode.
+
+* `one` (default): stores only the best solution found.
+* `bound`: stores the best and the bad solution found.
+* `five`: stores the best five solution found.
+
 | init-policy (solver only)
 | string
 | Change the initialization and reinitialization policy of the solution vector. Values are:
@@ -367,6 +375,10 @@ To assign parameters to solver or optimizer algorithms, use the `-p
   conjunction with the `init-policy` parameter. If the law returns 1, it
   uses the `init-policy` algorithm to initialize `X_i`, 0 means use a toss
   up to choose 0 or 1 according to the `init-random` value.
+
+| init-population-size (optimizer only)
+| integer
+| [25-+oo] Defines the size of the population for the evolutionary algorithm.
 
 | init-crossover-bastert-insertion (optimizer only)
 | real
@@ -409,23 +421,15 @@ To assign parameters to solver or optimizer algorithms, use the `-p
   parameter defines the value of the variable. The standard deviation for the
   normal probability law.
 
-| storage-type
-| string
-| Change the solution storage policy for the optimizer mode.
-
-* `one` (default): stores only the best solution found.
-* `bound`: stores the best and the bad solution found.
-* `five`: stores the best five solution found.
-
 | init-kappa-improve-start (optimizer only)
 | real
 | [0-1] The start value of kappa for the improve mode.
 
-| init_kappa_improve_increase (optimizer only)
+| init-kappa-improve-increase (optimizer only)
 | real
 | [0-1] The start value of kappa for the improve mode.
 
-| init_kappa_improve_stop (optimizer only)
+| init-kappa-improve-stop (optimizer only)
 | real
 | [init-kappa-improve-start - 1.0] The stop value of kappa for the improve mode. When the optimizer kappa exceeds this value, a new crossover and mutation will run. If `init_kappa_improve_stop` equals `init-kappa-improve-start` then improving is disabled.
 
