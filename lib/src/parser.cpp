@@ -983,8 +983,11 @@ constexpr int
 try_read_objective_label(const std::string_view first,
                          const std::string_view second) noexcept
 {
-    if (are_equal(first, "obj"))
-        return are_equal(second, ":") ? 2 : 1;
+    if (is_keyword(first))
+        return 0;
+
+    if (are_equal(second, ":"))
+        return 2;
 
     return 0;
 }

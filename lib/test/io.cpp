@@ -39,6 +39,46 @@ main()
 {
     using namespace boost::ut;
 
+    "named objective"_test = [] {
+        const char* example = "maximize\n"
+            "x0: +x1 + 2x2 + 3x3 - 100\n"
+            "end\n";
+
+        auto ctx = baryonyx::make_context(4);
+        std::istringstream iss(example);
+
+        auto pb = baryonyx::make_problem(*ctx, iss);
+        expect(pb);
+        expect(pb.type == baryonyx::objective_function_type::maximize);
+        expect(pb.objective.elements.size() == 3_ul);
+        expect(pb.objective.elements[0].factor == 1_i);
+        expect(pb.objective.elements[0].variable_index == 0_i);
+        expect(pb.objective.elements[1].factor == 2_i);
+        expect(pb.objective.elements[1].variable_index == 1_i);
+        expect(pb.objective.elements[2].factor == 3_i);
+        expect(pb.objective.elements[2].variable_index == 2_i);
+        expect(pb.objective.value == -100.0_d);
+    };
+
+    "no-named objective"_test = [] {
+        const char* example = "maximize\n"
+            "st: x1 + x2 + x3 = 1\n"
+            "end\n";
+
+        auto ctx = baryonyx::make_context(4);
+        std::istringstream iss(example);
+
+        auto pb = baryonyx::make_problem(*ctx, iss);
+        expect(pb);
+        expect(pb.type == baryonyx::objective_function_type::maximize);
+        expect(pb.objective.elements.size() == 0_ul);
+        expect(pb.vars.names.size() == 3_ul);
+        expect(pb.vars.values.size() == 3_ul);
+        expect(pb.less_constraints.size() == 0_ul);
+        expect(pb.greater_constraints.size() == 0_ul);
+        expect(pb.equal_constraints.size() == 1_ul);
+    };
+
     "small lp"_test = [] {
         const char* example_1 = "maximize\n"
                                 "obj: x1 + 2x2 + 3x3 - 100\n"
