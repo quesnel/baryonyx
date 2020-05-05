@@ -9,7 +9,7 @@ linear programming solver based on the http://www.cse.chalmers.se/~dag/[Dag Wede
 
 [width="15%"]
 |============
-| https://travis-ci.org/quesnel/baryonyx[image:https://travis-ci.org/quesnel/baryonyx.png?branch=master[Build Status]] | https://ci.appveyor.com/project/quesnel/baryonyx?branch=master[image:https://ci.appveyor.com/api/projects/status/github/quesnel/baryonyx?branch=master&svg=true[Build Status]] | https://codecov.io/gh/quesnel/baryonyx[image:https://codecov.io/gh/quesnel/baryonyx/branch/master/graph/badge.svg[Coverage Status]]
+| https://travis-ci.org/quesnel/baryonyx[image:https://travis-ci.org/quesnel/baryonyx.png?branch=baryonyx-0.5[Build Status]] | https://ci.appveyor.com/project/quesnel/baryonyx?branch=baryonyx-0.5[image:https://ci.appveyor.com/api/projects/status/github/quesnel/baryonyx?branch=baryonyx-0.5&svg=true[Build Status]] | https://codecov.io/gh/quesnel/baryonyx[image:https://codecov.io/gh/quesnel/baryonyx/branch/baryonyx-0.5/graph/badge.svg[Coverage Status]]
 |============
 
 Copyright © 2017-2020 http://www.inrae.fr/en[INRA]
