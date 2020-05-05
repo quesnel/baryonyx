@@ -44,24 +44,19 @@ struct resume
       , minmax(compute_min_max_objective_function(pb.objective))
       , use_lp_format(use_lp_format_)
     {
-        variables = std::accumulate(pb.vars.values.begin(),
-                                    pb.vars.values.end(),
-                                    variables,
-                                    [](std::array<int, 3>& value, auto vv) {
-                                        switch (vv.type) {
-                                        case variable_type::real:
-                                            value[0]++;
-                                            break;
-                                        case variable_type::binary:
-                                            value[1]++;
-                                            break;
-                                        case variable_type::general:
-                                            value[2]++;
-                                            break;
-                                        }
-
-                                        return value;
-                                    });
+        for (const auto& vv : pb.vars.values) {
+            switch (vv.type) {
+            case variable_type::real:
+                variables[0]++;
+                break;
+            case variable_type::binary:
+                variables[1]++;
+                break;
+            case variable_type::general:
+                variables[2]++;
+                break;
+            }
+        }
 
         constraints[0] = static_cast<int>(pb.equal_constraints.size());
         constraints[1] = static_cast<int>(pb.greater_constraints.size());
