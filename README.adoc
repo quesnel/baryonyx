@@ -142,13 +142,13 @@ make install
 
 === Solver & Optimizer
 
-To run Baryonyx in solver mode (i trying to valid all constraints):
+To run Baryonyx in solver mode (i.e. trying to valid all constraints):
 
 ....
 baryonyx-0.5 file.lp
 ....
 
-To run baryonyx into the heuristic model (i trying to valid all
+To run baryonyx into the heuristic model (i.e. trying to valid all
 constraints and optimize the solution), add a `-o` or `--optimize`
 option to the command line:
 
@@ -156,7 +156,7 @@ option to the command line:
 baryonyx-0.5 -o file.lp
 ....
 
-To run baryonyx into the heuristic model (i trying to valid all
+To run baryonyx into the heuristic model (i.e. trying to valid all
 constraints and optimize the solution), add a `-o` or `--optimize`
 option to the command line:
 
