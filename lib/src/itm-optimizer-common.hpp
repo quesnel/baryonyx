@@ -783,8 +783,15 @@ optimize_problem(const context& ctx, const problem& pb)
         ctx.start(ctx.parameters);
 
     auto constraints{ make_merged_constraints(ctx, pb) };
-    if (constraints.empty() || pb.vars.values.empty())
+    if (constraints.empty() || pb.vars.values.empty()) {
+        r.status = result_status::success;
+        r.solutions.resize(1);
+        r.solutions.back().value = pb.objective.value;
+        r.strings = pb.strings;
+        r.affected_vars = pb.affected_vars;
+        r.variable_name = pb.vars.names;
         return r;
+    }
 
     random_engine rng(init_random_generator_seed(ctx));
 

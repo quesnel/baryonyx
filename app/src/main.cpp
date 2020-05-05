@@ -185,17 +185,27 @@ solver_finished_cb(const baryonyx::result& r)
 
     switch (r.status) {
     case baryonyx::result_status::success:
-        if (r.loop >= 0)
-            fmt::print("Best solution found: {:.10g} in {} loop and {}s\n",
-                       r.solutions.back().value,
-                       r.loop,
-                       r.duration);
-        else
-            fmt::print(
-              "Best solution found via push: {:.10g} in {} loop and {}s\n",
-              r.solutions.back().value,
-              -r.loop,
-              r.duration);
+        if (!r.solutions.empty()) {
+            if (r.solutions.back().variables.empty()) {
+                fmt::print(
+                  "Best solution found via preprocessor: {:.10g} in {}s\n",
+                  r.solutions.back().value,
+                  r.duration);
+            } else {
+                if (r.loop >= 0)
+                    fmt::print(
+                      "Best solution found: {:.10g} in {} loop and {}s\n",
+                      r.solutions.back().value,
+                      r.loop,
+                      r.duration);
+                else
+                    fmt::print("Best solution found via push: {:.10g} in {} "
+                               "loop and {}s\n",
+                               r.solutions.back().value,
+                               -r.loop,
+                               r.duration);
+            }
+        }
         break;
     case baryonyx::result_status::internal_error:
         fmt::print("No solution. Internal error\n");
@@ -233,17 +243,17 @@ solver_finished_cb(const baryonyx::result& r)
  *     characters `=' or `:'.
  *
  * @param param String to split.
- * @return Return left and right part in success, otherwise only the left part
- *     if the splitting characters are not found or an empty tuple if all is
- *     empty.
+ * @return Return left and right part in success, otherwise only the left
+ * part if the splitting characters are not found or an empty tuple if all
+ * is empty.
  */
 constexpr static std::tuple<std::string_view, std::string_view>
 split_argument(const std::string_view param)
 {
     auto position = param.find_first_of(":=");
 
-    if (position == std::string_view::npos) /* If nothing is found, return an
-                                               empty tuple.*/
+    if (position == std::string_view::npos) /* If nothing is found, return
+                                               an empty tuple.*/
         return {};
 
     if (position + 1 >= param.size())
@@ -339,7 +349,8 @@ help() noexcept
       "  - preprocessing: none memory less-greater-equal (or any "
       "combination), p1, p2, p3, p4\n"
       "  - constraint-order: none reversing random-sorting "
-      "infeasibility-decr infeasibility-incr lagrangian-decr lagrangian-incr "
+      "infeasibility-decr infeasibility-incr lagrangian-decr "
+      "lagrangian-incr "
       "pi-sign-change\n"
       "  - theta: real [0, 1]\n"
       "  - delta: real [0, +oo[\n"

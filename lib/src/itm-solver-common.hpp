@@ -302,6 +302,8 @@ solve_problem(const context& ctx, const problem& pb)
         }
     } else {
         ret.status = result_status::success;
+        ret.solutions.resize(1);
+        ret.solutions.back().value = pb.objective.value;
     }
 
     ret.strings = pb.strings;
