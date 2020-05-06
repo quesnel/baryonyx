@@ -295,7 +295,7 @@ struct branch_and_bound_solver
 
     void make_init_node_0()
     {
-        nodes.emplace_back(Float{0}, 0, 0u);
+        nodes.emplace_back(Float{ 0 }, 0, 0u);
         nodes.back().variables = subvector.emplace();
         nodes.back().z = items[1].sum_z;
 
@@ -415,7 +415,7 @@ struct branch_and_bound_solver
         }
 
         while (!nodes.empty())
-            make_next_inequality_node();
+            make_next_equality_node();
     }
 
     void solve_inequality()

@@ -204,7 +204,6 @@ struct exhaustive_solver
             if (flat_constraints[start_solution + j])
                 z_best += reduced_cost[j].value;
 
-
         for (auto i = 1; i != it_constraint->solutions; ++i) {
             start_solution = it_constraint->start + (i * r_size);
 

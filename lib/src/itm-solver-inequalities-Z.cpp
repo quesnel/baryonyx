@@ -37,8 +37,7 @@ struct solver_inequalities_Zcoeff : debug_logger<debug>
     using float_type = Float;
     using cost_type = Cost;
 
-    static inline const int maximum_factor_exhaustive_solver =
-      std::numeric_limits<int>::max();
+    static inline const int maximum_factor_exhaustive_solver = 10;
 
     random_engine& rng;
 
@@ -72,11 +71,20 @@ struct solver_inequalities_Zcoeff : debug_logger<debug>
         int negative_factor;
     };
 
+    enum class subsolver_type : char
+    {
+        branch_and_bound,
+        exhaustive,
+        unconstrained_branch_and_bound,
+        unconstrained_exhaustive,
+        linear,
+    };
+
     sparse_matrix<int> ap;
     std::unique_ptr<Float[]> P;
     std::unique_ptr<int[]> A;
     std::unique_ptr<rc_data[]> R;
-    std::vector<bool> Z;
+    std::unique_ptr<subsolver_type[]> Z;
     std::unique_ptr<bound_factor[]> b;
     std::unique_ptr<Float[]> pi;
 
@@ -98,7 +106,7 @@ struct solver_inequalities_Zcoeff : debug_logger<debug>
       , P(std::make_unique<Float[]>(ap.size()))
       , A(std::make_unique<int[]>(ap.size()))
       , R(std::make_unique<rc_data[]>(compute_reduced_costs_vector_size(csts)))
-      , Z(m_, false)
+      , Z(std::make_unique<subsolver_type[]>(m_))
       , b(std::make_unique<bound_factor[]>(m_))
       , pi(std::make_unique<Float[]>(m_))
       , c(c_)
@@ -119,6 +127,10 @@ struct solver_inequalities_Zcoeff : debug_logger<debug>
             int lower = 0, upper = 0;
             std::size_t local_z_variables_max = 0;
 
+            Z[i] =
+              subsolver_type::linear; // Default, Z solver use the classical
+                                      // Bastert selection for 101 problem.
+
             for (const auto& cst : csts[i].elements) {
                 bx_ensures(cst.factor);
                 A[id++] = cst.factor;
@@ -129,32 +141,40 @@ struct solver_inequalities_Zcoeff : debug_logger<debug>
                 else
                     lower += cst.factor;
 
-                if (!Z[i] && (cst.factor < -1 || cst.factor > 1))
-                    Z[i] = true;
+                if (cst.factor < -1 || cst.factor > 1) {
+                    Z[i] = subsolver_type::branch_and_bound;
+                }
             }
+
+            if (Z[i] == subsolver_type::branch_and_bound &&
+                local_z_variables_max < maximum_factor_exhaustive_solver)
+                Z[i] = subsolver_type::exhaustive;
 
             if (csts[i].min == csts[i].max) {
                 b[i].min = csts[i].min;
                 b[i].max = csts[i].max;
             } else {
+                if (lower >= csts[i].min || upper <= csts[i].max) {
+                    if (Z[i] == subsolver_type::branch_and_bound)
+                        Z[i] = subsolver_type::unconstrained_branch_and_bound;
+                    else if (Z[i] == subsolver_type::exhaustive)
+                        Z[i] = subsolver_type::unconstrained_exhaustive;
+                }
+
                 b[i].min = std::max(lower, csts[i].min);
                 b[i].max = std::min(upper, csts[i].max);
             }
 
-            if (Z[i]) {
-                z_variables_max =
-                  std::max(z_variables_max, local_z_variables_max);
+            z_variables_max = std::max(z_variables_max, local_z_variables_max);
 
-                if (local_z_variables_max <=
-                    maximum_factor_exhaustive_solver) {
-                    ++z_constraint_exhaustive;
-                    ex.build_constraints(
-                      i, csts[i].elements, b[i].min, b[i].max);
-                }
+            if (Z[i] == subsolver_type::exhaustive ||
+                Z[i] == subsolver_type::unconstrained_exhaustive) {
+                z_constraint_exhaustive++;
+                ex.build_constraints(i, csts[i].elements, b[i].min, b[i].max);
             }
 
             logger::log("Is Z: {} ({}) with {} <= {}\n",
-                        Z[i],
+                        static_cast<int>(Z[i]),
                         local_z_variables_max,
                         b[i].min,
                         b[i].max);
@@ -304,20 +324,24 @@ struct solver_inequalities_Zcoeff : debug_logger<debug>
         return best;
     }
 
-    // int select_variables(const rc_size& sizes, int bkmin, int bkmax)
-    //{
-    //    if (bkmin == bkmax)
-    //        return std::min(bkmin + sizes.c_size, sizes.r_size) - 1;
+    int select_variables(const int r_size, int bkmin, int bkmax)
+    {
+        int sum = 0;
+        int best = -2;
 
-    //    bkmin += sizes.c_size;
-    //    bkmax = std::min(bkmax + sizes.c_size, sizes.r_size);
+        for (int i = -1; i < r_size; ++i) {
+            if (bkmin <= sum && sum <= bkmax)
+                best = i;
 
-    //    for (int i = bkmin; i <= bkmax; ++i)
-    //        if (stop_iterating<Mode>(R[i].value, rng))
-    //            return i - 1;
+            if (best != -2 && i - 1 < r_size &&
+                stop_iterating<Mode>(R[i + 1].value))
+                break;
 
-    //    return bkmax - 1;
-    //}
+            sum += R[i + 1].f;
+        }
+
+        return best;
+    }
 
     template<typename Xtype, typename Iterator>
     bool local_affect(Xtype& x,
@@ -445,36 +469,37 @@ struct solver_inequalities_Zcoeff : debug_logger<debug>
                   obj_amp * c((std::get<0>(it) + R[i].id)->column, x);
 
             Float pi_change;
+            int selected;
 
-            if (Z[k]) {
-                // if (r_size <= maximum_factor_exhaustive_solver) {
-                const auto selected = ex.solve(k, R, r_size);
-
-                pi_change = local_affect(
-                  x, std::get<0>(it), k, selected, r_size, kappa, delta);
-                //} else {
-                //    calculator_sort<Mode>(
-                //      R.get(), R.get() + r_size, rng);
-                //    const auto selected =
-                //      bb.solve(R, r_size, b[k].min, b[k].max);
-
-                //    pi_change = local_affect(x,
-                //                             std::get<0>(it),
-                //                             k,
-                //                             selected,
-                //                             r_size,
-                //                             kappa,
-                //                             delta);
-                // }
-            } else {
+            switch (Z[k]) {
+            case subsolver_type::branch_and_bound:
                 calculator_sort<Mode>(R.get(), R.get() + r_size, rng);
-                const auto selected =
-                  select_variables_101(r_size, b[k].min, b[k].max);
-
-                pi_change = local_affect(
-                  x, std::get<0>(it), k, selected, r_size, kappa, delta);
+                selected = bb.solve(R, r_size, b[k].min, b[k].max);
+                break;
+            case subsolver_type::exhaustive:
+                selected = ex.solve(k, R, r_size);
+                break;
+            case subsolver_type::unconstrained_branch_and_bound:
+                calculator_sort<Mode>(R.get(), R.get() + r_size, rng);
+                selected = select_variables(r_size, b[k].min, b[k].max);
+                if (selected == -2)
+                    selected = bb.solve(R, r_size, b[k].min, b[k].max);
+                break;
+            case subsolver_type::unconstrained_exhaustive:
+                calculator_sort<Mode>(R.get(), R.get() + r_size, rng);
+                selected = select_variables(r_size, b[k].min, b[k].max);
+                if (selected == -2)
+                    selected = ex.solve(k, R, r_size);
+                break;
+            case subsolver_type::linear:
+            default:
+                calculator_sort<Mode>(R.get(), R.get() + r_size, rng);
+                selected = select_variables_101(r_size, b[k].min, b[k].max);
+                break;
             }
 
+            pi_change = local_affect(
+              x, std::get<0>(it), k, selected, r_size, kappa, delta);
             at_least_one_pi_changed = at_least_one_pi_changed || pi_change;
         }
 
@@ -502,29 +527,36 @@ struct solver_inequalities_Zcoeff : debug_logger<debug>
               compute_reduced_costs(std::get<0>(it), std::get<1>(it), x);
 
             Float pi_change;
+            int selected = -2;
 
-            if (Z[k]) {
-                if (r_size <= maximum_factor_exhaustive_solver) {
-                    const auto selected = ex.solve(k, R, r_size);
-                    pi_change = local_affect(
-                      x, std::get<0>(it), k, selected, r_size, kappa, delta);
-                } else {
-                    calculator_sort<Mode>(R.get(), R.get() + r_size, rng);
-                    const auto selected =
-                      bb.solve(R, r_size, b[k].min, b[k].max);
-
-                    pi_change = local_affect(
-                      x, std::get<0>(it), k, selected, r_size, kappa, delta);
-                }
-            } else {
+            switch (Z[k]) {
+            case subsolver_type::branch_and_bound:
                 calculator_sort<Mode>(R.get(), R.get() + r_size, rng);
-                const auto selected =
-                  select_variables_101(r_size, b[k].min, b[k].max);
-
-                pi_change = local_affect(
-                  x, std::get<0>(it), k, selected, r_size, kappa, delta);
+                selected = bb.solve(R, r_size, b[k].min, b[k].max);
+                break;
+            case subsolver_type::exhaustive:
+                selected = ex.solve(k, R, r_size);
+                break;
+            case subsolver_type::unconstrained_branch_and_bound:
+                calculator_sort<Mode>(R.get(), R.get() + r_size, rng);
+                selected = select_variables(r_size, b[k].min, b[k].max);
+                if (selected == -2)
+                    selected = bb.solve(R, r_size, b[k].min, b[k].max);
+                break;
+            case subsolver_type::unconstrained_exhaustive:
+                calculator_sort<Mode>(R.get(), R.get() + r_size, rng);
+                selected = select_variables(r_size, b[k].min, b[k].max);
+                if (selected == -2)
+                    selected = ex.solve(k, R, r_size);
+                break;
+            case subsolver_type::linear:
+                calculator_sort<Mode>(R.get(), R.get() + r_size, rng);
+                selected = select_variables_101(r_size, b[k].min, b[k].max);
+                break;
             }
 
+            pi_change = local_affect(
+              x, std::get<0>(it), k, selected, r_size, kappa, delta);
             at_least_one_pi_changed = at_least_one_pi_changed || pi_change;
         }
 
