@@ -544,8 +544,8 @@ to_signed(Integer value)
 {
     assert(static_cast<std::uintmax_t>(value) <
              static_cast<std::uintmax_t>(
-               std::numeric_limits<
-                 typename std::make_signed<Integer>::type>::max()) &&
+               (std::numeric_limits<
+                 typename std::make_signed<Integer>::type>::max)()) &&
            "Unsigned to signed error: too big unsigned");
 
     return static_cast<typename std::make_signed<Integer>::type>(value);
@@ -567,7 +567,7 @@ assign_parameter(baryonyx::solver_parameters& params,
                  std::string_view value)
 {
     if (is_equal(name, "limit", 'l')) {
-        if (auto v = assign(value, -1L, std::numeric_limits<long int>::max());
+        if (auto v = assign(value, -1L, (std::numeric_limits<long int>::max)());
             !v)
             return command_line_status::limit_error;
         else
@@ -725,7 +725,7 @@ assign_parameter(baryonyx::solver_parameters& params,
             params.alpha = *v;
 
     } else if (is_equal(name, "w")) {
-        if (auto v = assign_d(value, 0.0, std::numeric_limits<double>::max());
+        if (auto v = assign_d(value, 0.0, (std::numeric_limits<double>::max)());
             !v)
             return command_line_status::w_error;
         else
@@ -749,7 +749,7 @@ assign_parameter(baryonyx::solver_parameters& params,
             return command_line_status::norm_error;
 
     } else if (is_equal(name, "pushes-limit")) {
-        if (auto v = assign(value, 0, std::numeric_limits<int>::max()); !v)
+        if (auto v = assign(value, 0, (std::numeric_limits<int>::max)()); !v)
             return command_line_status::pushes_limit_error;
         else
             params.pushes_limit = *v;
@@ -761,7 +761,7 @@ assign_parameter(baryonyx::solver_parameters& params,
             params.pushing_objective_amplifier = *v;
 
     } else if (is_equal(name, "pushing-iteration-limit")) {
-        if (auto v = assign(value, 0, std::numeric_limits<int>::max()); !v)
+        if (auto v = assign(value, 0, (std::numeric_limits<int>::max)()); !v)
             return command_line_status::pushing_iteration_limit_error;
         else
             params.pushing_iteration_limit = *v;
@@ -773,7 +773,7 @@ assign_parameter(baryonyx::solver_parameters& params,
             params.pushing_k_factor = *v;
 
     } else if (is_equal(name, "init-population-size")) {
-        if (auto v = assign(value, 5, std::numeric_limits<int>::max()); !v)
+        if (auto v = assign(value, 5, (std::numeric_limits<int>::max)()); !v)
             return command_line_status::init_population_size_error;
         else
             params.init_population_size = *v;
@@ -860,13 +860,13 @@ assign_parameter(baryonyx::solver_parameters& params,
             params.init_policy_random = *v;
 
     } else if (is_equal(name, "thread")) {
-        if (auto v = assign(value, 0, std::numeric_limits<int>::max()); !v)
+        if (auto v = assign(value, 0, (std::numeric_limits<int>::max)()); !v)
             return command_line_status::thread_error;
         else
             params.thread = *v;
 
     } else if (is_equal(name, "seed")) {
-        if (auto v = assign(value, 0, std::numeric_limits<int>::max()); !v)
+        if (auto v = assign(value, 0, (std::numeric_limits<int>::max)()); !v)
             return command_line_status::seed_error;
         else
             params.seed = *v;
