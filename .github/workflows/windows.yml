@@ -1,0 +1,39 @@
+name: Windows
+
+on:
+  push:
+    branches: [ master, test ]
+  pull_request:
+    branches: [ master, test ]
+
+jobs:
+  build:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        BUILD_TYPE: [Debug, Release]
+
+    steps:
+    - name: Checkout repository and submodules
+      uses: actions/checkout@v2
+      with:
+        submodules: recursive
+
+    - name: Prepare vcpkg
+      uses: lukka/run-vcpkg@v7
+      id: runvcpkg
+      with:
+        vcpkgArguments: nlopt:x64-windows
+        vcpkgDirectory: ${{ runner.workspace }}/vcpkg/
+        vcpkgTriplet: x64-windows
+        vcpkgGitCommitId: 7bc5b8cdfaf35329c1520b2af8d368e2b1cb78e6
+    
+    - name: Configure CMake
+      run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{matrix.BUILD_TYPE}}
+
+    - name: Build
+      run: cmake --build ${{github.workspace}}/build --config ${{matrix.BUILD_TYPE}}
+
+    - name: Test
+      working-directory: ${{github.workspace}}/build
+      run: ctest -C ${{matrix.BUILD_TYPE}} --rerun-failed --output-on-failure
