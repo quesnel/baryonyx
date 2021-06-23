@@ -38,6 +38,7 @@
 #include <tuple>
 #include <utility>
 
+#include <cassert>
 #include <cctype>
 #include <cstring>
 
