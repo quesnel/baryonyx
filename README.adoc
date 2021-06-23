@@ -7,10 +7,9 @@ v0.5.0, 2020-02-04
 https://en.wikipedia.org/wiki/Baryonyx[Baryonyx] is an integer and binary
 linear programming solver based on the http://www.cse.chalmers.se/~dag/[Dag Wedelin] heuristic.
 
-[width="15%"]
-|============
-| https://travis-ci.org/quesnel/baryonyx[image:https://travis-ci.org/quesnel/baryonyx.png?branch=master[Build Status]] | https://ci.appveyor.com/project/quesnel/baryonyx?branch=master[image:https://ci.appveyor.com/api/projects/status/github/quesnel/baryonyx?branch=master&svg=true[Build Status]] | https://codecov.io/gh/quesnel/baryonyx[image:https://codecov.io/gh/quesnel/baryonyx/branch/master/graph/badge.svg[Coverage Status]]
-|============
+image:https://github.com/quesnel/baryonyx/actions/workflows/linux.yml/badge.svg[Linux, link=https://github.com/quesnel/baryonyx/actions/workflows/linux.yml]
+image:https://github.com/quesnel/baryonyx/actions/workflows/macos.yml/badge.svg[MacOS, link=https://github.com/quesnel/baryonyx/actions/workflows/macos.yml]
+image:https://github.com/quesnel/baryonyx/actions/workflows/windows.yml/badge.svg[Windows, link=https://github.com/quesnel/baryonyx/actions/workflows/windows.yml]
 
 Copyright © 2017-2020 http://www.inrae.fr/en[INRA]
 
