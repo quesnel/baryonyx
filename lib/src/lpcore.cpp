@@ -153,7 +153,7 @@ compute_function(const functionT& fct, const variablesT& vars) noexcept
 
 static bool
 is_valid_solution_impl(const raw_problem& pb,
-                       const std::vector<var_value>& variable_value)
+                       const std::vector<std::int8_t>& variable_value)
 {
     bx_expects(!variable_value.empty());
     bx_expects(variable_value.size() == pb.vars.names.size());
@@ -184,7 +184,7 @@ is_valid_solution_impl(const raw_problem& pb,
 
 static double
 compute_solution_impl(const raw_problem& pb,
-                      const std::vector<var_value>& variable_value)
+                      const std::vector<std::int8_t>& variable_value)
 {
     bx_expects(!variable_value.empty());
 
@@ -201,7 +201,7 @@ compute_solution_impl(const raw_problem& pb,
 }
 
 template<typename Problem>
-static std::vector<var_value>
+static std::vector<std::int8_t>
 make_variable_value(const Problem& pb, const result& r)
 {
     if (!r || r.solutions.empty())
@@ -219,7 +219,7 @@ make_variable_value(const Problem& pb, const result& r)
     for (size_t i = 0, e = r.variable_name.size(); i != e; ++i)
         cache[r.variable_name[i]] = r.solutions.back().variables[i];
 
-    std::vector<var_value> ret(pb.vars.names.size(), false);
+    std::vector<std::int8_t> ret(pb.vars.names.size(), false);
 
     for (std::size_t i = 0, e = pb.vars.names.size(); i != e; ++i) {
         auto it = cache.find(pb.vars.names[i]);

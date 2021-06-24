@@ -170,11 +170,11 @@ clear(raw_problem& pb);
 
 bool
 is_valid_solution(const problem& pb,
-                  const std::vector<var_value>& variable_value);
+                  const std::vector<std::int8_t>& variable_value);
 
 double
 compute_solution(const problem& pb,
-                 const std::vector<var_value>& variable_value);
+                 const std::vector<std::int8_t>& variable_value);
 
 problem
 unpreprocess(const context& ctx, const raw_problem& pb_);

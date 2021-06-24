@@ -667,7 +667,7 @@ main()
         expect(pb.vars.names.size() == 819);
         expect(pb.vars.values.size() == 819);
 
-        baryonyx::index nb{ 0 };
+        int nb = 0;
         for (auto& elem : pb.vars.values)
             if (elem.type == baryonyx::variable_type::binary)
                 ++nb;
@@ -683,7 +683,7 @@ main()
         expect(pb.vars.names.size() == 3);
         expect(pb.vars.values.size() == 3);
 
-        baryonyx::index nb{ 0 };
+        int nb = 0;
         for (auto& elem : pb.vars.values)
             if (elem.type == baryonyx::variable_type::general)
                 ++nb;
