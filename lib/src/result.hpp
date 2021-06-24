@@ -55,7 +55,7 @@ struct raw_result
     {}
 
     raw_result(const bit_array& x_,
-               index remaining_constraints_,
+               int remaining_constraints_,
                double duration_,
                long int loop_)
       : x(x_)
@@ -70,7 +70,7 @@ struct raw_result
     double duration = 0.0;
     std::size_t hash = 0;
     long int loop = 0;
-    index remaining_constraints = std::numeric_limits<index>::max();
+    int remaining_constraints = std::numeric_limits<int>::max();
 
     void make_hash() noexcept
     {
@@ -133,7 +133,7 @@ convert(const raw_result<Mode>& source, solution& sol, int variables)
     sol.variables.resize(variables);
 
     for (int i = 0; i != variables; ++i)
-        sol.variables[i] = static_cast<var_value>(source.x[i]);
+        sol.variables[i] = static_cast<std::int8_t>(source.x[i]);
 }
 
 std::istream&

@@ -40,9 +40,6 @@
 
 namespace baryonyx {
 
-/** @c index is used as accessors for all array. */
-using index = std::int32_t;
-
 /** @c real is used internally for all computation. */
 #ifdef BARYONYX_FLOATINGPOINT_TYPE
 #if BARYONYX_FLOATINGPOINT_TYPE == 0
@@ -57,9 +54,6 @@ using real = long double;
 #else
 using real = float;
 #endif
-
-/** @c value is used as value for variable. */
-using var_value = std::int_least8_t;
 
 struct string_buffer
 {
@@ -594,24 +588,24 @@ struct function_element
 {
     function_element() = default;
 
-    function_element(int factor_, index variable_index_) noexcept
+    function_element(int factor_, int variable_index_) noexcept
       : factor(factor_)
       , variable_index(variable_index_)
     {}
 
     int factor = { 0 };
-    index variable_index{ -1 };
+    int variable_index{ -1 };
 };
 
 struct objective_function_element
 {
-    objective_function_element(double factor_, index variable_index_) noexcept
+    objective_function_element(double factor_, int variable_index_) noexcept
       : factor(factor_)
       , variable_index(variable_index_)
     {}
 
     double factor = { 0 };
-    index variable_index{ -1 };
+    int variable_index{ -1 };
 };
 
 struct objective_quadratic_element
@@ -619,16 +613,16 @@ struct objective_quadratic_element
     objective_quadratic_element() noexcept = default;
 
     constexpr objective_quadratic_element(double factor_,
-                                          index variable_index_a_,
-                                          index variable_index_b_) noexcept
+                                          int variable_index_a_,
+                                          int variable_index_b_) noexcept
       : factor(factor_)
       , variable_index_a(variable_index_a_)
       , variable_index_b(variable_index_b_)
     {}
 
     double factor = 0;
-    index variable_index_a = -1;
-    index variable_index_b = -1;
+    int variable_index_a = -1;
+    int variable_index_b = -1;
 };
 
 struct constraint
@@ -667,7 +661,7 @@ struct affected_variables
     }
 
     std::vector<std::string_view> names;
-    std::vector<var_value> values;
+    std::vector<std::int8_t> values;
 };
 
 struct raw_problem
@@ -711,12 +705,12 @@ struct solution
 {
     solution() = default;
 
-    solution(std::vector<var_value> variables_, double value_)
+    solution(std::vector<std::int8_t> variables_, double value_)
       : variables(std::move(variables_))
       , value(value_)
     {}
 
-    std::vector<var_value> variables;
+    std::vector<std::int8_t> variables;
     double value;
 };
 
@@ -738,9 +732,9 @@ struct result
 
     double duration = 0.0;
     long int loop = 0;
-    index variables = 0;
-    index constraints = 0;
-    index remaining_constraints = std::numeric_limits<index>::max();
+    int variables = 0;
+    int constraints = 0;
+    int remaining_constraints = std::numeric_limits<int>::max();
 
     // The variable id with the heaviest load factor i.e. the variable which
     // changes too many times during the @c update_row in-the-middle process.
