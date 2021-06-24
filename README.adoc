@@ -1,6 +1,6 @@
 = Baryonyx
 Gauthier Quesnel <gauthier.quesnel@inrae.fr>
-v0.5.0, 2020-02-04
+v0.5.0, 2021-xx-xx
 :toc:
 :homepage: https://github.com/quesnel/baryonyx/
 
@@ -11,7 +11,7 @@ image:https://github.com/quesnel/baryonyx/actions/workflows/linux.yml/badge.svg[
 image:https://github.com/quesnel/baryonyx/actions/workflows/macos.yml/badge.svg[MacOS, link=https://github.com/quesnel/baryonyx/actions/workflows/macos.yml]
 image:https://github.com/quesnel/baryonyx/actions/workflows/windows.yml/badge.svg[Windows, link=https://github.com/quesnel/baryonyx/actions/workflows/windows.yml]
 
-Copyright © 2017-2020 http://www.inrae.fr/en[INRA]
+Copyright © 2017-2021 http://www.inrae.fr/en[INRA]
 
 The software is released under the MIT license. See the LICENSE file.
 
