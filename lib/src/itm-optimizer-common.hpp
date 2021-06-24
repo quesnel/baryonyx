@@ -54,16 +54,16 @@ namespace itm {
 struct local_context
 {
     random_engine rng;
-    std::normal_distribution<double> choose_sol_dist;
-    std::normal_distribution<double> variable_p_dist;
-    std::normal_distribution<double> value_p_dist;
+    std::normal_distribution<real> choose_sol_dist;
+    std::normal_distribution<real> variable_p_dist;
+    std::normal_distribution<real> value_p_dist;
     std::uniform_int_distribution<int> bad_solution_choose;
     std::uniform_int_distribution<std::size_t> crossover_dist;
     std::bernoulli_distribution crossover_bastert_insertion;
 
-    const double init_kappa_improve_start;
-    const double init_kappa_improve_increase;
-    const double init_kappa_improve_stop;
+    const real init_kappa_improve_start;
+    const real init_kappa_improve_increase;
+    const real init_kappa_improve_stop;
 
     const unsigned thread_id;
 
@@ -72,20 +72,27 @@ struct local_context
                   const random_engine::result_type seed)
       : rng(seed)
       , choose_sol_dist(
-          ctx.parameters.init_crossover_solution_selection_mean,
-          ctx.parameters.init_crossover_solution_selection_stddev)
-      , variable_p_dist(ctx.parameters.init_mutation_variable_mean,
-                        ctx.parameters.init_mutation_variable_stddev)
-      , value_p_dist(ctx.parameters.init_mutation_value_mean,
-                     ctx.parameters.init_mutation_value_stddev)
+          static_cast<real>(
+            ctx.parameters.init_crossover_solution_selection_mean),
+          static_cast<real>(
+            ctx.parameters.init_crossover_solution_selection_stddev))
+      , variable_p_dist(
+          static_cast<real>(ctx.parameters.init_mutation_variable_mean),
+          static_cast<real>(ctx.parameters.init_mutation_variable_stddev))
+      , value_p_dist(
+          static_cast<real>(ctx.parameters.init_mutation_value_mean),
+          static_cast<real>(ctx.parameters.init_mutation_value_stddev))
       , bad_solution_choose(ctx.parameters.init_population_size / 5,
                             ctx.parameters.init_population_size - 1)
       , crossover_dist(0)
       , crossover_bastert_insertion(
-          ctx.parameters.init_crossover_bastert_insertion)
-      , init_kappa_improve_start(ctx.parameters.init_kappa_improve_start)
-      , init_kappa_improve_increase(ctx.parameters.init_kappa_improve_increase)
-      , init_kappa_improve_stop(ctx.parameters.init_kappa_improve_stop)
+          static_cast<real>(ctx.parameters.init_crossover_bastert_insertion))
+      , init_kappa_improve_start(
+          static_cast<real>(ctx.parameters.init_kappa_improve_start))
+      , init_kappa_improve_increase(
+          static_cast<real>(ctx.parameters.init_kappa_improve_increase))
+      , init_kappa_improve_stop(
+          static_cast<real>(ctx.parameters.init_kappa_improve_stop))
       , thread_id(thread_id_)
     {}
 };
@@ -104,7 +111,7 @@ private:
     bit_array m_random;
 
     const Cost& costs;
-    double cost_constant;
+    real cost_constant;
     const int m_size;
 
     struct bound_indices
@@ -127,7 +134,7 @@ private:
 
     void replace_result(const int id,
                         const bit_array& x,
-                        const double value,
+                        const real value,
                         const double duration,
                         const std::size_t hash,
                         const long int loop,
@@ -150,10 +157,10 @@ private:
 
     int choose_a_solution(local_context& ctx)
     {
-        double value;
-        do
+        real value;
+        do {
             value = ctx.choose_sol_dist(ctx.rng);
-        while (value < 0 || value > 1);
+        } while (value < 0 || value > 1);
 
         return static_cast<int>(m_size * value);
     }
@@ -161,7 +168,7 @@ private:
 public:
     storage(random_engine& rng,
             const Cost& costs_,
-            const double cost_constant_,
+            const real cost_constant_,
             const int population_size,
             const int variables,
             const std::vector<merged_constraint>& constraints_)
@@ -274,7 +281,7 @@ public:
     void insert(local_context& ctx,
                 const bit_array& x,
                 const std::size_t hash,
-                const double value,
+                const real value,
                 const double duration,
                 const long int loop) noexcept
     {
@@ -299,8 +306,8 @@ public:
         sort();
     }
 
-    bool can_be_inserted(const std::size_t hash, const int constraints) const
-      noexcept
+    bool can_be_inserted(const std::size_t hash,
+                         const int constraints) const noexcept
     {
         m_indices_reader lock(m_indices_mutex);
 
@@ -338,7 +345,7 @@ public:
     }
 
     void get_best(int& constraints_remaining,
-                  double& value,
+                  real& value,
                   double& duration,
                   long int& loop) const noexcept
     {
@@ -429,8 +436,8 @@ private:
           std::begin(m_indices), std::end(m_indices), [this](int i1, int i2) {
               const int cst_1 = this->m_data[i1].remaining_constraints;
               const int cst_2 = this->m_data[i2].remaining_constraints;
-              const double value_1 = this->m_data[i1].value;
-              const double value_2 = this->m_data[i2].value;
+              const real value_1 = this->m_data[i1].value;
+              const real value_2 = this->m_data[i2].value;
 
               if (cst_1 < cst_2)
                   return true;
@@ -457,17 +464,17 @@ private:
     }
 };
 
-template<typename Cost, typename Float, typename Mode>
+template<typename Cost, typename Mode>
 struct best_solution_recorder
 {
     std::chrono::time_point<std::chrono::steady_clock> m_start;
     storage<Cost, Mode> m_storage;
-    std::vector<double> m_kappa_append;
+    std::vector<real> m_kappa_append;
 
     best_solution_recorder(random_engine& rng,
                            const unsigned thread_number,
                            const Cost& costs,
-                           const double cost_constant,
+                           const real cost_constant,
                            const int variables,
                            const std::vector<merged_constraint>& constraints,
                            const int population_size)
@@ -479,7 +486,7 @@ struct best_solution_recorder
     }
 
     void get_best(int& constraints_remaining,
-                  double& value,
+                  real& value,
                   double& duration,
                   long int& loop) const noexcept
     {
@@ -496,15 +503,15 @@ struct best_solution_recorder
         if (ctx.value_p_dist.mean() == 0.0 && ctx.value_p_dist.stddev() == 0.0)
             return;
 
-        double val_p, var_p;
+        real val_p, var_p;
 
-        do
+        do {
             var_p = ctx.variable_p_dist(ctx.rng);
-        while (var_p <= 0.0 || var_p >= 1.0);
+        } while (var_p <= 0.0 || var_p >= 1.0);
 
-        do
+        do {
             val_p = ctx.value_p_dist(ctx.rng);
-        while (val_p < 0.0 || val_p > 1.0);
+        } while (val_p < 0.0 || val_p > 1.0);
 
         to_log(stdout,
                7u,
@@ -525,15 +532,15 @@ struct best_solution_recorder
         }
     }
 
-    double reinit(local_context& ctx,
+    real reinit(local_context& ctx,
                   const bool /*is_solution*/,
-                  const double kappa_min,
-                  const double kappa_max,
+                  const real kappa_min,
+                  const real kappa_max,
                   bit_array& x)
     {
         to_log(stdout, 3u, "- reinitinialization thread {}.\n", ctx.thread_id);
 
-        double kappa = kappa_min;
+        real kappa = kappa_min;
 
         if (m_kappa_append[ctx.thread_id] < ctx.init_kappa_improve_stop) {
             m_kappa_append[ctx.thread_id] += ctx.init_kappa_improve_increase;
@@ -571,7 +578,7 @@ struct best_solution_recorder
 
     void try_update(local_context& ctx,
                     const bit_array& solution,
-                    const double value,
+                    const real value,
                     const long int loop)
     {
         auto hash = bit_array_hash()(solution);
@@ -600,7 +607,7 @@ struct best_solution_recorder
     }
 };
 
-template<typename Solver, typename Float, typename Mode, typename Cost>
+template<typename Solver, typename Mode, typename Cost>
 struct optimize_functor
 {
     const context& m_ctx;
@@ -618,31 +625,32 @@ struct optimize_functor
     {}
 
     void operator()(const std::atomic_bool& stop_task,
-                    best_solution_recorder<Cost, Float, Mode>& best_recorder,
+                    best_solution_recorder<Cost, Mode>& best_recorder,
                     const std::vector<merged_constraint>& constraints,
                     int variables,
                     const Cost& original_costs,
-                    double cost_constant)
+                    real cost_constant)
     {
         bit_array x(variables);
 
         auto& p = m_ctx.parameters;
 
-        auto norm_costs = normalize_costs<Float, Cost>(
+        auto norm_costs = normalize_costs<Cost>(
           m_ctx, original_costs, m_local_ctx.rng, variables);
 
-        const auto kappa_step = static_cast<Float>(p.kappa_step);
-        const auto kappa_max = static_cast<Float>(p.kappa_max);
-        const auto alpha = static_cast<Float>(p.alpha);
-        const auto theta = static_cast<Float>(p.theta);
+        const auto kappa_min = static_cast<real>(p.kappa_min);
+        const auto kappa_step = static_cast<real>(p.kappa_step);
+        const auto kappa_max = static_cast<real>(p.kappa_max);
+        const auto alpha = static_cast<real>(p.alpha);
+        const auto theta = static_cast<real>(p.theta);
         const auto delta =
           p.delta < 0
-            ? compute_delta<Float, Cost>(m_ctx, norm_costs, theta, variables)
-            : static_cast<Float>(p.delta);
+            ? compute_delta<Cost>(m_ctx, norm_costs, theta, variables)
+            : static_cast<real>(p.delta);
 
-        const auto pushing_k_factor = static_cast<Float>(p.pushing_k_factor);
+        const auto pushing_k_factor = static_cast<real>(p.pushing_k_factor);
         const auto pushing_objective_amplifier =
-          static_cast<Float>(p.pushing_objective_amplifier);
+          static_cast<real>(p.pushing_objective_amplifier);
 
         const auto w_limit = static_cast<long int>(p.w);
 
@@ -657,8 +665,8 @@ struct optimize_functor
 
         while (!stop_task.load()) {
             ++m_call_number;
-            const auto kappa_start = static_cast<Float>(best_recorder.reinit(
-              m_local_ctx, is_a_solution, p.kappa_min, p.kappa_max, x));
+            const auto kappa_start = static_cast<real>(best_recorder.reinit(
+              m_local_ctx, is_a_solution, kappa_min, kappa_max, x));
             auto kappa = kappa_start;
             compute.init(slv, x);
 
@@ -685,8 +693,8 @@ struct optimize_functor
 
                 if (i > w_limit)
                     kappa +=
-                      kappa_step * std::pow(static_cast<Float>(remaining) /
-                                              static_cast<Float>(slv.m),
+                      kappa_step * std::pow(static_cast<real>(remaining) /
+                                              static_cast<real>(slv.m),
                                             alpha);
 
                 if (kappa > kappa_max)
@@ -740,8 +748,8 @@ struct optimize_functor
 
                     if (iter > p.w)
                         kappa +=
-                          kappa_step * std::pow(static_cast<Float>(remaining) /
-                                                  static_cast<Float>(slv.m),
+                          kappa_step * std::pow(static_cast<real>(remaining) /
+                                                  static_cast<real>(slv.m),
                                                 alpha);
 
                     if (kappa > kappa_max)
@@ -773,7 +781,7 @@ get_thread_number(const baryonyx::context& ctx) noexcept
     return ret;
 }
 
-template<typename Solver, typename Float, typename Mode, typename Cost>
+template<typename Solver, typename Mode, typename Cost>
 inline result
 optimize_problem(const context& ctx, const problem& pb)
 {
@@ -797,14 +805,14 @@ optimize_problem(const context& ctx, const problem& pb)
 
     auto variables = length(pb.vars.values);
     auto cost = Cost(pb.objective, variables);
-    auto cost_constant = pb.objective.value;
+    auto cost_constant = static_cast<real>(pb.objective.value);
 
     const auto thread = get_thread_number(ctx);
 
-    std::vector<optimize_functor<Solver, Float, Mode, Cost>> functors;
+    std::vector<optimize_functor<Solver, Mode, Cost>> functors;
     std::vector<std::thread> pool(thread);
 
-    best_solution_recorder<Cost, Float, Mode> best_recorder(
+    best_solution_recorder<Cost, Mode> best_recorder(
       rng,
       thread,
       cost,
@@ -843,7 +851,7 @@ optimize_problem(const context& ctx, const problem& pb)
 
             int constraints_remaining;
             long int loop;
-            double value;
+            real value;
             double duration;
 
             best_recorder.get_best(

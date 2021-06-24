@@ -29,18 +29,17 @@
 namespace baryonyx {
 namespace itm {
 
-template<typename Float, typename Mode, typename Cost>
+template<typename Mode, typename Cost>
 struct solver_random_inequalities_101coeff
 {
     using mode_type = Mode;
-    using float_type = Float;
     using cost_type = Cost;
 
     random_engine& rng;
 
     struct rc_data
     {
-        Float value;
+        real value;
         int id;
         int a;
 
@@ -66,8 +65,8 @@ struct solver_random_inequalities_101coeff
     std::unique_ptr<int[]> A;
     std::unique_ptr<rc_data[]> R;
     std::unique_ptr<bound_factor[]> b;
-    std::unique_ptr<Float[]> pi;
-    std::unique_ptr<Float[]> P;
+    std::unique_ptr<real[]> pi;
+    std::unique_ptr<real[]> P;
     const cost_type& c;
     std::bernoulli_distribution dist;
     int m;
@@ -84,8 +83,8 @@ struct solver_random_inequalities_101coeff
       , A(std::make_unique<int[]>(ap.size()))
       , R(std::make_unique<rc_data[]>(compute_reduced_costs_vector_size(csts)))
       , b(std::make_unique<bound_factor[]>(m_))
-      , pi(std::make_unique<Float[]>(m_))
-      , P(std::make_unique<Float[]>(ap.size()))
+      , pi(std::make_unique<real[]>(m_))
+      , P(std::make_unique<real[]>(ap.size()))
       , c(c_)
       , dist(0.5)
       , m(m_)
@@ -119,8 +118,8 @@ struct solver_random_inequalities_101coeff
 
     void reset() const noexcept
     {
-        std::fill_n(P.get(), ap.length(), Float{ 0 });
-        std::fill_n(pi.get(), m, Float{ 0 });
+        std::fill_n(P.get(), ap.length(), real{ 0 });
+        std::fill_n(pi.get(), m, real{ 0 });
     }
 
     int factor(int value) const noexcept
@@ -155,7 +154,7 @@ struct solver_random_inequalities_101coeff
 
     void decrease_preference(sparse_matrix<int>::row_iterator begin,
                              sparse_matrix<int>::row_iterator end,
-                             Float theta) noexcept
+                             real theta) noexcept
     {
         for (; begin != end; ++begin)
             P[begin->value] *= theta;
@@ -165,10 +164,10 @@ struct solver_random_inequalities_101coeff
     bool push_and_compute_update_row(Xtype& x,
                                      Iterator first,
                                      Iterator last,
-                                     Float kappa,
-                                     Float delta,
-                                     Float theta,
-                                     Float /*obj_amp*/)
+                                     real kappa,
+                                     real delta,
+                                     real theta,
+                                     real /*obj_amp*/)
     {
         return compute_update_row(x, first, last, kappa, delta, theta);
     }
@@ -177,9 +176,9 @@ struct solver_random_inequalities_101coeff
     bool compute_update_row(Xtype& x,
                             Iterator first,
                             Iterator last,
-                            Float kappa,
-                            Float delta,
-                            Float theta)
+                            real kappa,
+                            real delta,
+                            real theta)
     {
         for (; first != last; ++first) {
             auto k = constraint(first);
@@ -190,11 +189,11 @@ struct solver_random_inequalities_101coeff
 
             int r_size = 0;
             for (auto it = row_begin; it != row_end; ++it, ++r_size) {
-                Float sum_a_p = 0;
+                real sum_a_p = 0;
 
                 auto [col_begin, col_end] = ap.column(it->column);
                 for (; col_begin != col_end; ++col_begin)
-                    sum_a_p += static_cast<Float>(A[col_begin->value]) *
+                    sum_a_p += static_cast<real>(A[col_begin->value]) *
                                P[col_begin->value];
 
                 R[r_size].id = r_size;
@@ -288,8 +287,8 @@ struct solver_random_inequalities_101coeff
             //         }
             //     }
 
-            constexpr Float one{ 1 };
-            constexpr Float two{ 2 };
+            constexpr real one{ 1 };
+            constexpr real two{ 2 };
 
             if (!valid) {
                 do {
@@ -339,109 +338,92 @@ struct solver_random_inequalities_101coeff
     }
 };
 
-template<typename Float, typename Mode, typename Cost>
+template<typename Mode, typename Cost>
 static result
 solve_or_optimize(const context& ctx, const problem& pb, bool is_optimization)
 {
-    using Solver = solver_random_inequalities_101coeff<Float, Mode, Cost>;
+    using Solver = solver_random_inequalities_101coeff<Mode, Cost>;
 
-    return is_optimization
-             ? optimize_problem<Solver, Float, Mode, Cost>(ctx, pb)
-             : solve_problem<Solver, Float, Mode, Cost>(ctx, pb);
+    return is_optimization ? optimize_problem<Solver, Mode, Cost>(ctx, pb)
+                           : solve_problem<Solver, Mode, Cost>(ctx, pb);
 }
 
-template<typename Float, typename Mode>
+template<typename Mode>
 static result
 select_cost(const context& ctx, const problem& pb, bool is_optimization)
 {
     return pb.objective.qelements.empty()
-             ? solve_or_optimize<Float,
-                                 Mode,
-                                 baryonyx::itm::default_cost_type<Float>>(
+             ? solve_or_optimize<Mode,
+                                 baryonyx::itm::default_cost_type>(
                  ctx, pb, is_optimization)
-             : solve_or_optimize<Float,
-                                 Mode,
-                                 baryonyx::itm::quadratic_cost_type<Float>>(
+             : solve_or_optimize<Mode,
+                                 baryonyx::itm::quadratic_cost_type>(
                  ctx, pb, is_optimization);
 }
 
-template<typename Float>
 static result
 select_mode(const context& ctx, const problem& pb, bool is_optimization)
 {
     const auto m = static_cast<int>(pb.type);
 
-    return m == 0 ? select_cost<Float, mode_sel<0>>(ctx, pb, is_optimization)
-                  : select_cost<Float, mode_sel<1>>(ctx, pb, is_optimization);
-}
-
-static result
-select_float(const context& ctx, const problem& pb, bool is_optimization)
-{
-    const auto f = static_cast<int>(ctx.parameters.float_type);
-
-    if (f == 0)
-        return select_mode<float_sel<0>>(ctx, pb, is_optimization);
-    else if (f == 1)
-        return select_mode<float_sel<1>>(ctx, pb, is_optimization);
-    else
-        return select_mode<float_sel<2>>(ctx, pb, is_optimization);
+    return m == 0 ? select_cost<mode_sel<0>>(ctx, pb, is_optimization)
+                  : select_cost<mode_sel<1>>(ctx, pb, is_optimization);
 }
 
 result
 solve_random_equalities_01(const context& ctx, const problem& pb)
 {
     info(ctx, "  - random::solver_equalities_01coeff\n");
-    return select_float(ctx, pb, false);
+    return select_mode(ctx, pb, false);
 }
 
 result
 optimize_random_equalities_01(const context& ctx, const problem& pb)
 {
     info(ctx, "  - random::optimizer_equalities_01coeff\n");
-    return select_float(ctx, pb, false);
+    return select_mode(ctx, pb, false);
 }
 
 result
 solve_random_inequalities_01(const context& ctx, const problem& pb)
 {
     info(ctx, "  - random::solver_inequalities_01coeff\n");
-    return select_float(ctx, pb, true);
+    return select_mode(ctx, pb, true);
 }
 
 result
 optimize_random_inequalities_01(const context& ctx, const problem& pb)
 {
     info(ctx, "  - random::optimizer_inequalities_01coeff\n");
-    return select_float(ctx, pb, true);
+    return select_mode(ctx, pb, true);
 }
 
 result
 solve_random_equalities_101(const context& ctx, const problem& pb)
 {
     info(ctx, "  - random::solver_equalities_101coeff\n");
-    return select_float(ctx, pb, false);
+    return select_mode(ctx, pb, false);
 }
 
 result
 optimize_random_equalities_101(const context& ctx, const problem& pb)
 {
     info(ctx, "  - random::optimizer_equalities_101coeff\n");
-    return select_float(ctx, pb, false);
+    return select_mode(ctx, pb, false);
 }
 
 result
 solve_random_inequalities_101(const context& ctx, const problem& pb)
 {
     info(ctx, "  - random::solver_inequalities_101coeff\n");
-    return select_float(ctx, pb, true);
+    return select_mode(ctx, pb, true);
 }
 
 result
 optimize_random_inequalities_101(const context& ctx, const problem& pb)
 {
     info(ctx, "  - random::optimizer_inequalities_101coeff\n");
-    return select_float(ctx, pb, true);
+    return select_mode(ctx, pb, true);
 }
 
 } // namespace itm

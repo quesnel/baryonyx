@@ -43,6 +43,21 @@ namespace baryonyx {
 /** @c index is used as accessors for all array. */
 using index = std::int32_t;
 
+/** @c real is used internally for all computation. */
+#ifdef BARYONYX_FLOATINGPOINT_TYPE
+#if BARYONYX_FLOATINGPOINT_TYPE == 0
+using real = float;
+#elif BARYONYX_FLOATINGPOINT_TYPE == 1
+using real = double;
+#elif BARYONYX_FLOATINGPOINT_TYPE == 2
+using real = long double;
+#else
+#error "Bad value for BARYONYX_FLOATINGPOINT_TYPE: Must be equal to 0, 1 or 2 for respectively (float, double, long double"
+#endif
+#else
+using real = float;
+#endif
+
 /** @c value is used as value for variable. */
 using var_value = std::int_least8_t;
 
@@ -338,13 +353,6 @@ struct BX_EXPORT solver_parameters
         optimistic_solve,
     };
 
-    enum class floating_point_type
-    {
-        float_type = 0,
-        double_type,
-        longdouble_type
-    };
-
     enum class constraint_order
     {
         none = 0,
@@ -450,7 +458,6 @@ struct BX_EXPORT solver_parameters
     int init_population_size{ 100 };
     pre_constraint_order pre_order{ pre_constraint_order::none };
     constraint_order order{ constraint_order::none };
-    floating_point_type float_type{ floating_point_type::double_type };
     init_policy_type init_policy{ init_policy_type::bastert };
     cost_norm_type cost_norm{ cost_norm_type::loo };
     mode_type mode{ mode_type::none };

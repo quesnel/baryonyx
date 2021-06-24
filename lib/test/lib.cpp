@@ -376,14 +376,12 @@ main()
     "check_branch_and_bound_solver"_test = [] {
         struct rc
         {
-            double value;
+            baryonyx::real value;
             int id;
             int f;
         };
 
-        baryonyx::itm::branch_and_bound_solver<baryonyx::itm::maximize_tag,
-                                               double>
-          bb;
+        baryonyx::itm::branch_and_bound_solver<baryonyx::itm::maximize_tag> bb;
         bb.reserve(10u);
 
         {
@@ -440,7 +438,7 @@ main()
     "check_exhaustive_solver"_test = [] {
         struct rc
         {
-            double value;
+            baryonyx::real value;
             int id;
             int f;
         };
@@ -451,9 +449,7 @@ main()
         };
 
         {
-            baryonyx::itm::exhaustive_solver<baryonyx::itm::maximize_tag,
-                                             double>
-              ex;
+            baryonyx::itm::exhaustive_solver<baryonyx::itm::maximize_tag> ex;
             ex.reserve(10u, 1u);
 
             std::vector<rc> R = {
@@ -476,8 +472,7 @@ main()
         }
 
         {
-            baryonyx::itm::exhaustive_solver<baryonyx::itm::maximize_tag,
-                                             double>
+            baryonyx::itm::exhaustive_solver<baryonyx::itm::maximize_tag>
               ex;
             ex.reserve(10u, 1u);
 
@@ -501,8 +496,7 @@ main()
         }
 
         {
-            baryonyx::itm::exhaustive_solver<baryonyx::itm::maximize_tag,
-                                             double>
+            baryonyx::itm::exhaustive_solver<baryonyx::itm::maximize_tag>
               ex;
             ex.reserve(10u, 1u);
 
@@ -526,8 +520,7 @@ main()
         }
 
         {
-            baryonyx::itm::exhaustive_solver<baryonyx::itm::maximize_tag,
-                                             double>
+            baryonyx::itm::exhaustive_solver<baryonyx::itm::maximize_tag>
               ex;
             ex.reserve(10u, 2u);
 

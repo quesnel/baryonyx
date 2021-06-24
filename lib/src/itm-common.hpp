@@ -147,9 +147,9 @@ calculator_sort(Iterator begin, Iterator end, random_engine& rng)
     }
 }
 
-template<typename Mode, typename Float>
+template<typename Mode>
 inline bool
-stop_iterating(Float value, random_engine& rng) noexcept
+stop_iterating(real value, random_engine& rng) noexcept
 {
     if (value == 0) {
         std::bernoulli_distribution d(0.5);
@@ -162,26 +162,26 @@ stop_iterating(Float value, random_engine& rng) noexcept
         return value < 0;
 }
 
-template<typename Mode, typename Float>
-constexpr Float
+template<typename Mode>
+constexpr real
 bad_value() noexcept
 {
     if constexpr (std::is_same_v<Mode, minimize_tag>)
-        return std::numeric_limits<Float>::infinity();
+        return std::numeric_limits<real>::infinity();
     else
-        return -std::numeric_limits<Float>::infinity();
+        return -std::numeric_limits<real>::infinity();
 }
 
-template<typename Mode, typename Float>
+template<typename Mode>
 constexpr bool
-is_bad_value(Float value) noexcept
+is_bad_value(real value) noexcept
 {
-    return value == bad_value<Mode, Float>();
+    return value == bad_value<Mode, real>();
 }
 
-template<typename Mode, typename Float>
+template<typename Mode>
 inline bool
-stop_iterating(Float value) noexcept
+stop_iterating(real value) noexcept
 {
     if constexpr (std::is_same_v<Mode, minimize_tag>)
         return value > 0;
@@ -189,9 +189,9 @@ stop_iterating(Float value) noexcept
         return value < 0;
 }
 
-template<typename Mode, typename Float>
+template<typename Mode>
 inline bool
-is_better_solution(Float lhs, Float rhs) noexcept
+is_better_solution(real lhs, real rhs) noexcept
 {
     if constexpr (std::is_same_v<Mode, minimize_tag>)
         return lhs < rhs;
@@ -199,9 +199,9 @@ is_better_solution(Float lhs, Float rhs) noexcept
         return lhs > rhs;
 }
 
-template<typename Mode, typename Float>
+template<typename Mode>
 inline bool
-init_x(Float cost, int value_if_cost_0) noexcept
+init_x(real cost, int value_if_cost_0) noexcept
 {
     if constexpr (std::is_same_v<Mode, minimize_tag>) {
         if (cost < 0)
@@ -245,9 +245,8 @@ compute_reduced_costs_vector_size(
 }
 
 /// Test if the bit sign between two reals are differents.
-template<typename Float>
 inline bool
-is_signbit_change(Float lhs, Float rhs) noexcept
+is_signbit_change(real lhs, real rhs) noexcept
 {
     return std::signbit(lhs) != std::signbit(rhs);
 }
@@ -297,7 +296,7 @@ init_with_pre_solve(bit_array& x_pessimistic,
 
     struct reduced_cost
     {
-        float value;
+        real value;
         int factor;
         int id;
     };
@@ -313,7 +312,7 @@ init_with_pre_solve(bit_array& x_pessimistic,
         const int r_size = length(cst.elements);
 
         for (int i = 0; i != r_size; ++i) {
-            R[i].value = static_cast<float>(c[cst.elements[i].variable_index]);
+            R[i].value = static_cast<real>(c[cst.elements[i].variable_index]);
             R[i].factor = cst.elements[i].factor;
             R[i].id = cst.elements[i].variable_index;
         }
@@ -379,7 +378,7 @@ init_with_pre_solve(bit_array& x_pessimistic,
 ///
 /// @return True if the sign of the pi vector change during the affect
 ///     operation.
-template<typename Solver, typename Xtype, typename Iterator, typename Float>
+template<typename Solver, typename Xtype, typename Iterator>
 bool
 affect(Solver& slv,
        Xtype& x,
@@ -387,12 +386,12 @@ affect(Solver& slv,
        int k,
        int selected,
        int r_size,
-       const Float kappa,
-       const Float delta)
+       const real kappa,
+       const real delta)
 {
-    constexpr Float one{ 1 };
-    constexpr Float two{ 2 };
-    constexpr Float middle{ (two + one) / two };
+    constexpr real one{ 1 };
+    constexpr real two{ 2 };
+    constexpr real middle{ (two + one) / two };
 
     const auto old_pi = slv.pi[k];
 
@@ -498,34 +497,34 @@ constraint(Iterator it)
  * Compute a problem lower or upper bounds based on Lagrangian multipliers
  * (valid if there are equality constraints only?)
  */
-template<typename floatingpointT, typename modeT>
+template<typename real, typename modeT>
 struct bounds_printer
 {
-    floatingpointT bestlb;
-    floatingpointT bestub;
-    floatingpointT max_cost;
+    real bestlb;
+    real bestub;
+    real max_cost;
 
-    bounds_printer(floatingpointT max_cost_init)
-      : bestlb(std::numeric_limits<floatingpointT>::lowest())
-      , bestub(std::numeric_limits<floatingpointT>::max())
+    bounds_printer(real max_cost_init)
+      : bestlb(std::numeric_limits<real>::lowest())
+      , bestub(std::numeric_limits<real>::max())
       , max_cost(max_cost_init)
     {}
 
     template<typename SolverT>
-    floatingpointT init_bound(const SolverT& slv)
+    real init_bound(const SolverT& slv)
     {
-        floatingpointT b{ 0 };
+        real b{ 0 };
 
         for (auto c = 0; c != slv.m; ++c)
-            b += slv.pi[c] * static_cast<floatingpointT>(slv.bound_init(c));
+            b += slv.pi[c] * static_cast<real>(slv.bound_init(c));
 
         return b;
     }
 
     template<typename SolverT>
-    floatingpointT add_bound(const SolverT& slv,
+    real add_bound(const SolverT& slv,
                              int j,
-                             floatingpointT sum_a_pi,
+                             real sum_a_pi,
                              minimize_tag)
     {
         if (slv.c[j] - sum_a_pi < 0)
@@ -535,9 +534,9 @@ struct bounds_printer
     }
 
     template<typename SolverT>
-    floatingpointT add_bound(const SolverT& slv,
+    real add_bound(const SolverT& slv,
                              int j,
-                             floatingpointT sum_a_pi,
+                             real sum_a_pi,
                              maximize_tag)
     {
         if (slv.c[j] - sum_a_pi > 0)
@@ -547,8 +546,8 @@ struct bounds_printer
     }
 
     void print_bound(const context& ctx,
-                     floatingpointT lower_bound,
-                     floatingpointT upper_bound,
+                     real lower_bound,
+                     real upper_bound,
                      minimize_tag)
     {
         bool better_gap = (lower_bound > bestlb || upper_bound < bestub);
@@ -560,20 +559,20 @@ struct bounds_printer
             bestlb = lower_bound;
 
         if (better_gap) {
-            if (bestub == static_cast<floatingpointT>(0.0))
+            if (bestub == static_cast<real>(0.0))
                 info(ctx, "  - Lower bound: {}   (gap: 0%)\n", bestlb);
             else
                 info(ctx,
                      "  - Lower bound: {}   (gap: {}%)\n",
                      bestlb,
-                     static_cast<floatingpointT>(100.) * (bestub - bestlb) /
+                     static_cast<real>(100.) * (bestub - bestlb) /
                        bestub);
         }
     }
 
     void print_bound(const context& ctx,
-                     floatingpointT lower_bound,
-                     floatingpointT upper_bound,
+                     real lower_bound,
+                     real upper_bound,
                      maximize_tag)
     {
         bool better_gap = (lower_bound > bestlb || upper_bound < bestub);
@@ -585,35 +584,35 @@ struct bounds_printer
             bestlb = lower_bound;
 
         if (better_gap) {
-            if (bestlb == static_cast<floatingpointT>(0.0))
+            if (bestlb == static_cast<real>(0.0))
                 info(ctx, "  - Upper bound: {}   (gap: 0%)\n", bestub);
             else
                 info(ctx,
                      "  - Upper bound: {}   (gap: {}%)\n",
                      bestub,
-                     static_cast<floatingpointT>(100.) * (bestlb - bestub) /
+                     static_cast<real>(100.) * (bestlb - bestub) /
                        bestlb);
         }
     }
 
-    floatingpointT init_ub(minimize_tag)
+    real init_ub(minimize_tag)
     {
-        return std::numeric_limits<floatingpointT>::max();
+        return std::numeric_limits<real>::max();
     }
 
-    floatingpointT init_ub(maximize_tag)
+    real init_ub(maximize_tag)
     {
-        return std::numeric_limits<floatingpointT>::lowest();
+        return std::numeric_limits<real>::lowest();
     }
 
     template<typename SolverT>
     void operator()(const SolverT& slv, const context& ctx, const result& best)
     {
-        floatingpointT lb = init_bound(slv);
-        floatingpointT ub = init_ub(modeT());
+        real lb = init_bound(slv);
+        real ub = init_ub(modeT());
 
         if (not best.solutions.empty())
-            ub = static_cast<floatingpointT>(best.solutions.back().value);
+            ub = static_cast<real>(best.solutions.back().value);
 
         for (auto j = 0; j != slv.n; ++j)
             lb += add_bound(slv, j, slv.compute_sum_A_pi(j), modeT());
@@ -679,14 +678,14 @@ struct compute_order
         }
     };
 
-    template<typename Solver, typename Xtype, typename Float>
+    template<typename Solver, typename Xtype>
     int push_and_run(Solver& solver,
                      Xtype& x,
                      random_engine& rng,
-                     Float kappa,
-                     Float delta,
-                     Float theta,
-                     Float objective_amplifier)
+                     real kappa,
+                     real delta,
+                     real theta,
+                     real objective_amplifier)
     {
         bool pi_changed = 0;
         int remaining = 0;
@@ -797,13 +796,13 @@ struct compute_order
         }
     }
 
-    template<typename Solver, typename Xtype, typename Float>
+    template<typename Solver, typename Xtype>
     int run(Solver& solver,
             Xtype& x,
             random_engine& rng,
-            Float kappa,
-            Float delta,
-            Float theta)
+            real kappa,
+            real delta,
+            real theta)
     {
         bool pi_changed = false;
         int remaining = 0;
@@ -914,9 +913,9 @@ struct compute_order
     }
 };
 
-template<typename Float, typename Cost>
-inline Float
-compute_delta(const context& ctx, const Cost& c, Float theta, int n)
+template<typename Cost>
+inline real
+compute_delta(const context& ctx, const Cost& c, real theta, int n)
 {
     info(ctx, "  - delta not defined, compute it:\n");
 
@@ -943,17 +942,17 @@ element_number(const std::vector<merged_constraint>& csts)
     return numeric_cast<int>(ret);
 }
 
-template<typename floatingpointT, typename iteratorT>
+template<typename iteratorT>
 inline void
 random_epsilon_unique(iteratorT begin,
                       iteratorT end,
                       random_engine& rng,
-                      floatingpointT min,
-                      floatingpointT max)
+                      real min,
+                      real max)
 {
     bx_expects(min != max);
 
-    std::uniform_real_distribution<floatingpointT> distribution(min, max);
+    std::uniform_real_distribution<real> distribution(min, max);
 
     for (; begin != end; ++begin)
         begin->first = distribution(rng);
@@ -964,7 +963,7 @@ random_epsilon_unique(iteratorT begin,
  * If the input vector is too small or with infinity value, the c is
  * unchanged.
  */
-template<typename floatingpointT, typename Cost>
+template<typename Cost>
 inline Cost
 normalize_costs(const context& ctx, const Cost& c, random_engine& rng, int n)
 {
@@ -997,27 +996,26 @@ normalize_costs(const context& ctx, const Cost& c, random_engine& rng, int n)
     }
 }
 
-template<typename Float>
 struct default_cost_type
 {
     const baryonyx::objective_function& obj;
-    std::unique_ptr<Float[]> linear_elements;
+    std::unique_ptr<real[]> linear_elements;
 
     default_cost_type(const objective_function& obj_, int n)
       : obj(obj_)
-      , linear_elements(std::make_unique<Float[]>(n))
+      , linear_elements(std::make_unique<real[]>(n))
     {
         for (const auto& elem : obj.elements) {
             bx_ensures(0 <= elem.variable_index && elem.variable_index < n);
 
             linear_elements[elem.variable_index] +=
-              static_cast<Float>(elem.factor);
+              static_cast<real>(elem.factor);
         }
     }
 
     default_cost_type(const default_cost_type& other, int n)
       : obj(other.obj)
-      , linear_elements(std::make_unique<Float[]>(n))
+      , linear_elements(std::make_unique<real[]>(n))
     {
         std::copy_n(other.linear_elements.get(), n, linear_elements.get());
     }
@@ -1025,7 +1023,7 @@ struct default_cost_type
     template<typename Random>
     void make_random_norm(int n, Random& rng)
     {
-        std::vector<std::pair<Float, int>> r(n);
+        std::vector<std::pair<real, int>> r(n);
 
         for (int i = 0; i != n; ++i)
             r[i] = { linear_elements[i], i };
@@ -1074,16 +1072,16 @@ struct default_cost_type
 
         // Finally we compute the l+oo norm.
 
-        Float div =
+        real div =
           *std::max_element(linear_elements.get(), linear_elements.get() + n);
         if (std::isnormal(div))
             for (int i = 0; i != n; ++i)
                 linear_elements[i] /= div;
     }
 
-    Float min(int n) const noexcept
+    real min(int n) const noexcept
     {
-        Float min = std::numeric_limits<Float>::max();
+        real min = std::numeric_limits<real>::max();
 
         for (int i = 0; i != n; ++i)
             if (linear_elements[i])
@@ -1094,7 +1092,7 @@ struct default_cost_type
 
     void make_l1_norm(int n)
     {
-        Float div = { 0 };
+        real div = { 0 };
 
         for (int i = 0; i != n; ++i)
             div += std::abs(linear_elements[i]);
@@ -1106,7 +1104,7 @@ struct default_cost_type
 
     void make_l2_norm(int n)
     {
-        Float div = { 0 };
+        real div = { 0 };
 
         for (int i = 0; i != n; ++i)
             div += linear_elements[i] * linear_elements[i];
@@ -1118,7 +1116,7 @@ struct default_cost_type
 
     void make_loo_norm(int n)
     {
-        Float div =
+        real div =
           *std::max_element(linear_elements.get(), linear_elements.get() + n);
 
         if (std::isnormal(div))
@@ -1126,44 +1124,43 @@ struct default_cost_type
                 linear_elements[i] /= div;
     }
 
-    Float operator[](int index) const noexcept
+    real operator[](int index) const noexcept
     {
         return linear_elements[index];
     }
 
-    Float operator()(int index, [[maybe_unused]] const bit_array& x) const
+    real operator()(int index, [[maybe_unused]] const bit_array& x) const
       noexcept
     {
         return linear_elements[index];
     }
 
-    double results(const bit_array& x, double cost_constant) const noexcept
+    real results(const bit_array& x, real cost_constant) const noexcept
     {
         for (int i = 0, e = length(obj.elements); i != e; ++i)
             if (x[obj.elements[i].variable_index])
-                cost_constant += obj.elements[i].factor;
+                cost_constant += static_cast<real>(obj.elements[i].factor);
 
         return cost_constant;
     }
 };
 
-template<typename Float>
 struct quadratic_cost_type
 {
     struct quad
     {
-        Float factor;
+        real factor;
         int id;
     };
 
     const baryonyx::objective_function& obj;
-    std::unique_ptr<Float[]> linear_elements;
+    std::unique_ptr<real[]> linear_elements;
     std::unique_ptr<quad[]> quadratic_elements;
     std::unique_ptr<int[]> indices;
 
     quadratic_cost_type(const objective_function& obj_, int n)
       : obj(obj_)
-      , linear_elements(std::make_unique<Float[]>(n))
+      , linear_elements(std::make_unique<real[]>(n))
       , quadratic_elements(
           std::make_unique<quad[]>(2 * obj.qelements.size() + 1))
       , indices(std::make_unique<int[]>(n + 1))
@@ -1173,7 +1170,7 @@ struct quadratic_cost_type
                        obj.elements[i].variable_index < n);
 
             linear_elements[obj.elements[i].variable_index] +=
-              static_cast<Float>(obj.elements[i].factor);
+              static_cast<real>(obj.elements[i].factor);
         }
 
         indices[0] = 0;
@@ -1199,7 +1196,7 @@ struct quadratic_cost_type
 
                 if (is_a || is_b) {
                     quadratic_elements[id].factor =
-                      static_cast<Float>(obj.qelements[i].factor);
+                      static_cast<real>(obj.qelements[i].factor);
                     quadratic_elements[id].id =
                       is_a ? obj.qelements[i].variable_index_b
                            : obj.qelements[i].variable_index_a;
@@ -1211,7 +1208,7 @@ struct quadratic_cost_type
 
     quadratic_cost_type(const quadratic_cost_type& other, int n)
       : obj(other.obj)
-      , linear_elements(std::make_unique<Float[]>(n))
+      , linear_elements(std::make_unique<real[]>(n))
       , quadratic_elements(std::make_unique<quad[]>(other.indices[n]))
       , indices(std::make_unique<int[]>(n + 1))
     {
@@ -1225,7 +1222,7 @@ struct quadratic_cost_type
     template<typename Random>
     void make_random_norm(int n, Random& rng)
     {
-        std::vector<std::pair<Float, int>> r(n);
+        std::vector<std::pair<real, int>> r(n);
         std::vector<std::pair<quad, int>> q(indices[n]);
 
         for (int i = 0; i != n; ++i)
@@ -1326,9 +1323,9 @@ struct quadratic_cost_type
         make_loo_norm(n);
     }
 
-    Float min(int n) const noexcept
+    real min(int n) const noexcept
     {
-        Float min = std::numeric_limits<Float>::max();
+        real min = std::numeric_limits<real>::max();
 
         for (int i = 0; i != n; ++i)
             if (linear_elements[i])
@@ -1343,7 +1340,7 @@ struct quadratic_cost_type
 
     void make_l1_norm(int n)
     {
-        Float div = { 0 };
+        real div = { 0 };
 
         for (int i = 0; i != n; ++i)
             div += std::abs(linear_elements[i]);
@@ -1362,7 +1359,7 @@ struct quadratic_cost_type
 
     void make_l2_norm(int n)
     {
-        Float div = { 0 };
+        real div = { 0 };
 
         for (int i = 0; i != n; ++i)
             div += linear_elements[i] * linear_elements[i];
@@ -1382,7 +1379,7 @@ struct quadratic_cost_type
 
     void make_loo_norm(int n)
     {
-        Float div =
+        real div =
           *std::max_element(linear_elements.get(), linear_elements.get() + n);
 
         for (int i = 0, e = indices[n]; i != e; ++i)
@@ -1397,9 +1394,9 @@ struct quadratic_cost_type
         }
     }
 
-    Float operator[](int index) const noexcept
+    real operator[](int index) const noexcept
     {
-        Float ret = linear_elements[index];
+        real ret = linear_elements[index];
 
         auto first = indices[index];
         auto last = indices[index + 1];
@@ -1410,9 +1407,9 @@ struct quadratic_cost_type
         return ret;
     }
 
-    Float operator()(int index, const bit_array& x) const noexcept
+    real operator()(int index, const bit_array& x) const noexcept
     {
-        Float ret = linear_elements[index];
+        real ret = linear_elements[index];
 
         auto first = indices[index];
         auto last = indices[index + 1];
@@ -1424,16 +1421,16 @@ struct quadratic_cost_type
         return ret;
     }
 
-    double results(const bit_array& x, double cost_constant) const noexcept
+    real results(const bit_array& x, real cost_constant) const noexcept
     {
         for (int i = 0, e = length(obj.elements); i != e; ++i)
             if (x[obj.elements[i].variable_index])
-                cost_constant += obj.elements[i].factor;
+                cost_constant += static_cast<real>(obj.elements[i].factor);
 
         for (int i = 0, e = length(obj.qelements); i != e; ++i)
             if (x[obj.qelements[i].variable_index_a] &&
                 x[obj.qelements[i].variable_index_b])
-                cost_constant += obj.qelements[i].factor;
+                cost_constant += static_cast<real>(obj.qelements[i].factor);
 
         return cost_constant;
     }
@@ -1484,9 +1481,9 @@ generate_seed(random_engine& rng, unsigned thread_id)
 }
 
 template<int f>
-using float_sel = typename std::conditional<
+using real_sel = typename std::conditional<
   f == 0,
-  float,
+  real,
   typename std::conditional<f == 1, double, long double>::type>::type;
 
 template<int o>
