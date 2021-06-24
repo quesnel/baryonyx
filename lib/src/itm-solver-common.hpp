@@ -40,11 +40,7 @@
 namespace baryonyx {
 namespace itm {
 
-template<typename Solver,
-         typename Float,
-         typename Mode,
-         typename Cost,
-         typename Observer>
+template<typename Solver, typename Mode, typename Cost, typename Observer>
 struct solver_functor
 {
     std::chrono::time_point<std::chrono::steady_clock> m_begin;
@@ -63,7 +59,7 @@ struct solver_functor
     result operator()(const std::vector<merged_constraint>& constraints,
                       int variables,
                       const Cost& original_costs,
-                      double cost_constant)
+                      real cost_constant)
     {
         result r;
 
@@ -73,21 +69,21 @@ struct solver_functor
 
         auto& p = m_ctx.parameters;
 
-        auto norm_costs = normalize_costs<Float, Cost>(
-          m_ctx, original_costs, m_rng, variables);
+        auto norm_costs =
+          normalize_costs<Cost>(m_ctx, original_costs, m_rng, variables);
 
-        const auto kappa_step = static_cast<Float>(p.kappa_step);
-        const auto kappa_max = static_cast<Float>(p.kappa_max);
-        const auto alpha = static_cast<Float>(p.alpha);
-        const auto theta = static_cast<Float>(p.theta);
+        const auto kappa_step = static_cast<real>(p.kappa_step);
+        const auto kappa_max = static_cast<real>(p.kappa_max);
+        const auto alpha = static_cast<real>(p.alpha);
+        const auto theta = static_cast<real>(p.theta);
         const auto delta =
           p.delta < 0
-            ? compute_delta<Float, Cost>(m_ctx, norm_costs, theta, variables)
-            : static_cast<Float>(p.delta);
+            ? compute_delta<Cost>(m_ctx, norm_costs, theta, variables)
+            : static_cast<real>(p.delta);
 
-        const auto pushing_k_factor = static_cast<Float>(p.pushing_k_factor);
+        const auto pushing_k_factor = static_cast<real>(p.pushing_k_factor);
         const auto pushing_objective_amplifier =
-          static_cast<Float>(p.pushing_objective_amplifier);
+          static_cast<real>(p.pushing_objective_amplifier);
 
         const long int w_limit = static_cast<long int>(p.w);
 
@@ -123,7 +119,7 @@ struct solver_functor
         }
 
         bool start_push = false;
-        auto kappa = static_cast<Float>(p.kappa_min);
+        auto kappa = static_cast<real>(p.kappa_min);
 
         Observer obs("img", slv.m, slv.n, p.limit);
 
@@ -138,7 +134,9 @@ struct solver_functor
 
             if (remaining == 0) {
                 store_if_better(
-                  x, original_costs.results(x, cost_constant), i);
+                  x,
+                  original_costs.results(x, cost_constant),
+                  i);
                 best_remaining = remaining;
                 start_push = true;
                 break;
@@ -150,8 +148,8 @@ struct solver_functor
             }
 
             if (i > w_limit)
-                kappa += kappa_step * std::pow(static_cast<Float>(remaining) /
-                                                 static_cast<Float>(slv.m),
+                kappa += kappa_step * std::pow(static_cast<real>(remaining) /
+                                                 static_cast<real>(slv.m),
                                                alpha);
 
             if (kappa > kappa_max) {
@@ -180,7 +178,8 @@ struct solver_functor
 
                 if (remaining == 0)
                     store_if_better(x,
-                                    original_costs.results(x, cost_constant),
+                                    original_costs.results(
+                                      x, cost_constant),
                                     -push * p.pushing_iteration_limit - 1);
 
                 if (is_timelimit_reached())
@@ -200,8 +199,8 @@ struct solver_functor
 
                     if (iter > p.w)
                         kappa +=
-                          kappa_step * std::pow(static_cast<Float>(remaining) /
-                                                  static_cast<Float>(slv.m),
+                          kappa_step * std::pow(static_cast<real>(remaining) /
+                                                  static_cast<real>(slv.m),
                                                 alpha);
 
                     if (kappa > kappa_max)
@@ -249,7 +248,7 @@ private:
         }
     }
 
-    void store_if_better(const bit_array& x, double current, long int i)
+    void store_if_better(const bit_array& x, real current, long int i)
     {
         if (is_better_solution<Mode>(current, m_best.value)) {
             m_best.x = x;
@@ -261,7 +260,7 @@ private:
     }
 };
 
-template<typename Solver, typename Float, typename Mode, typename Cost>
+template<typename Solver, typename Mode, typename Cost>
 inline result
 solve_problem(const context& ctx, const problem& pb)
 {
@@ -277,25 +276,25 @@ solve_problem(const context& ctx, const problem& pb)
         random_engine rng(init_random_generator_seed(ctx));
 
         auto cost = Cost(pb.objective, variables);
-        auto cost_constant = pb.objective.value;
+        auto cost_constant = static_cast<real>(pb.objective.value);
 
         switch (ctx.parameters.observer) {
         case solver_parameters::observer_type::pnm: {
             using obs = pnm_observer;
 
-            solver_functor<Solver, Float, Mode, Cost, obs> slv(ctx, rng);
+            solver_functor<Solver, Mode, Cost, obs> slv(ctx, rng);
             ret = slv(constraints, variables, cost, cost_constant);
         } break;
         case solver_parameters::observer_type::file: {
             using obs = file_observer;
 
-            solver_functor<Solver, Float, Mode, Cost, obs> slv(ctx, rng);
+            solver_functor<Solver, Mode, Cost, obs> slv(ctx, rng);
             ret = slv(constraints, variables, cost, cost_constant);
         } break;
         default: {
             using obs = none_observer;
 
-            solver_functor<Solver, Float, Mode, Cost, obs> slv(ctx, rng);
+            solver_functor<Solver, Mode, Cost, obs> slv(ctx, rng);
             ret = slv(constraints, variables, cost, cost_constant);
             break;
         }

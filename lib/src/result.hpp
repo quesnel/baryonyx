@@ -44,7 +44,7 @@ struct raw_result
     {}
 
     raw_result(const bit_array& x_,
-               double value_,
+               real value_,
                double duration_,
                long int loop_)
       : x(x_)
@@ -59,14 +59,14 @@ struct raw_result
                double duration_,
                long int loop_)
       : x(x_)
-      , value(itm::bad_value<Mode, double>())
+      , value(itm::bad_value<Mode>())
       , duration(duration_)
       , loop(loop_)
       , remaining_constraints(remaining_constraints_)
     {}
 
     bit_array x;
-    double value = itm::bad_value<Mode, double>();
+    real value = itm::bad_value<Mode>();
     double duration = 0.0;
     std::size_t hash = 0;
     long int loop = 0;

@@ -37,19 +37,19 @@
 namespace baryonyx {
 namespace itm {
 
-template<typename Mode, typename Float>
+template<typename Mode>
 struct exhaustive_solver
 {
     struct item
     {
-        Float r = 0.0;
+        real r = 0.0;
         int factor = 0;
         int variable = 0;
         int result = 0;
 
         item() noexcept = default;
 
-        constexpr item(Float r_, int factor_, int variable_) noexcept
+        constexpr item(real r_, int factor_, int variable_) noexcept
           : r(r_)
           , factor(factor_)
           , variable(variable_)
@@ -166,15 +166,15 @@ struct exhaustive_solver
           k, start_it_flat_constraints, nb_solution, bk_min, bk_max);
     }
 
-    static Float init_z() noexcept
+    static real init_z() noexcept
     {
         if constexpr (std::is_same_v<Mode, minimize_tag>)
-            return +std::numeric_limits<Float>::infinity();
+            return +std::numeric_limits<real>::infinity();
         else
-            return -std::numeric_limits<Float>::infinity();
+            return -std::numeric_limits<real>::infinity();
     }
 
-    bool is_best_solution(Float z, Float old_z) const noexcept
+    bool is_best_solution(real z, real old_z) const noexcept
     {
         if constexpr (std::is_same_v<Mode, minimize_tag>)
             return z < old_z;
@@ -196,7 +196,7 @@ struct exhaustive_solver
             items[i].result = 0;
         }
 
-        Float z_best = 0;
+        real z_best = 0;
         auto best = 0;
         auto start_solution = it_constraint->start;
 
@@ -207,7 +207,7 @@ struct exhaustive_solver
         for (auto i = 1; i != it_constraint->solutions; ++i) {
             start_solution = it_constraint->start + (i * r_size);
 
-            Float z = 0;
+            real z = 0;
             for (int j = 0; j != r_size; ++j)
                 if (flat_constraints[start_solution + j])
                     z += reduced_cost[j].value;

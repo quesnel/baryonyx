@@ -29,12 +29,11 @@
 namespace baryonyx {
 namespace itm {
 
-template<typename Float, typename Mode, typename Cost, bool debug>
+template<typename Mode, typename Cost, bool debug>
 struct solver_inequalities_Zcoeff : debug_logger<debug>
 {
     using logger = debug_logger<debug>;
     using mode_type = Mode;
-    using float_type = Float;
     using cost_type = Cost;
 
     static inline const int maximum_factor_exhaustive_solver = 10;
@@ -43,7 +42,7 @@ struct solver_inequalities_Zcoeff : debug_logger<debug>
 
     struct rc_data
     {
-        Float value;
+        real value;
         int id;
         int f;
 
@@ -81,15 +80,15 @@ struct solver_inequalities_Zcoeff : debug_logger<debug>
     };
 
     sparse_matrix<int> ap;
-    std::unique_ptr<Float[]> P;
+    std::unique_ptr<real[]> P;
     std::unique_ptr<int[]> A;
     std::unique_ptr<rc_data[]> R;
     std::unique_ptr<subsolver_type[]> Z;
     std::unique_ptr<bound_factor[]> b;
-    std::unique_ptr<Float[]> pi;
+    std::unique_ptr<real[]> pi;
 
-    branch_and_bound_solver<Mode, Float> bb;
-    exhaustive_solver<Mode, Float> ex;
+    branch_and_bound_solver<Mode> bb;
+    exhaustive_solver<Mode> ex;
 
     const cost_type& c;
     int m;
@@ -103,12 +102,12 @@ struct solver_inequalities_Zcoeff : debug_logger<debug>
       : logger("solver_inequalities_Zcoeff")
       , rng(rng_)
       , ap(csts, m_, n_)
-      , P(std::make_unique<Float[]>(ap.size()))
+      , P(std::make_unique<real[]>(ap.size()))
       , A(std::make_unique<int[]>(ap.size()))
       , R(std::make_unique<rc_data[]>(compute_reduced_costs_vector_size(csts)))
       , Z(std::make_unique<subsolver_type[]>(m_))
       , b(std::make_unique<bound_factor[]>(m_))
-      , pi(std::make_unique<Float[]>(m_))
+      , pi(std::make_unique<real[]>(m_))
       , c(c_)
       , m(m_)
       , n(n_)
@@ -192,8 +191,8 @@ struct solver_inequalities_Zcoeff : debug_logger<debug>
     {
         logger::log("reset-solver\n");
 
-        std::fill_n(P.get(), ap.length(), Float{ 0 });
-        std::fill_n(pi.get(), m, Float{ 0 });
+        std::fill_n(P.get(), ap.length(), real{ 0 });
+        std::fill_n(pi.get(), m, real{ 0 });
     }
 
     int factor(int value) const noexcept
@@ -226,22 +225,22 @@ struct solver_inequalities_Zcoeff : debug_logger<debug>
         return b[constraint].max;
     }
 
-    Float compute_sum_A_pi(int variable) const
+    real compute_sum_A_pi(int variable) const
     {
-        Float ret{ 0 };
+        real ret{ 0 };
 
         sparse_matrix<int>::const_col_iterator ht, hend;
         std::tie(ht, hend) = ap.column(variable);
 
         for (; ht != hend; ++ht)
-            ret += std::abs(static_cast<Float>(A[ht->value])) * pi[ht->row];
+            ret += std::abs(static_cast<real>(A[ht->value])) * pi[ht->row];
 
         return ret;
     }
 
     void decrease_preference(sparse_matrix<int>::row_iterator begin,
                              sparse_matrix<int>::row_iterator end,
-                             Float theta) noexcept
+                             real theta) noexcept
     {
         for (; begin != end; ++begin)
             P[begin->value] *= theta;
@@ -262,11 +261,11 @@ struct solver_inequalities_Zcoeff : debug_logger<debug>
         int r_size = 0;
 
         for (; begin != end; ++begin) {
-            Float sum_a_pi_p = 0;
+            real sum_a_pi_p = 0;
 
             for (auto [first, last] = ap.column(begin->column); first != last;
                  ++first) {
-                auto a = std::abs(static_cast<Float>(A[first->value]));
+                auto a = std::abs(static_cast<real>(A[first->value]));
                 sum_a_pi_p += a * (pi[first->row] + P[first->value]);
             }
 
@@ -293,12 +292,12 @@ struct solver_inequalities_Zcoeff : debug_logger<debug>
     }
 
     template<typename Xtype>
-    Float local_compute_reduced_cost(int variable, const Xtype& x) noexcept
+    real local_compute_reduced_cost(int variable, const Xtype& x) noexcept
     {
-        Float sum_a_pi_p = 0;
+        real sum_a_pi_p = 0;
 
         for (auto [ht, hte] = ap.column(variable); ht != hte; ++ht) {
-            auto a = std::abs(static_cast<Float>(A[ht->value]));
+            auto a = std::abs(static_cast<real>(A[ht->value]));
             sum_a_pi_p += a * (pi[ht->row] + P[ht->value]);
         }
 
@@ -349,12 +348,12 @@ struct solver_inequalities_Zcoeff : debug_logger<debug>
                       int k,
                       int selected,
                       int r_size,
-                      const Float kappa,
-                      const Float delta)
+                      const real kappa,
+                      const real delta)
     {
-        constexpr Float one{ 1 };
-        constexpr Float two{ 2 };
-        constexpr Float middle{ (two + one) / two };
+        constexpr real one{ 1 };
+        constexpr real two{ 2 };
+        constexpr real middle{ (two + one) / two };
 
         const auto old_pi = pi[k];
 
@@ -442,10 +441,10 @@ struct solver_inequalities_Zcoeff : debug_logger<debug>
     bool push_and_compute_update_row(Xtype& x,
                                      Iterator first,
                                      Iterator last,
-                                     Float kappa,
-                                     Float delta,
-                                     Float theta,
-                                     Float obj_amp)
+                                     real kappa,
+                                     real delta,
+                                     real theta,
+                                     real obj_amp)
     {
         auto at_least_one_pi_changed{ false };
 
@@ -468,7 +467,7 @@ struct solver_inequalities_Zcoeff : debug_logger<debug>
                 R[i].value +=
                   obj_amp * c((std::get<0>(it) + R[i].id)->column, x);
 
-            Float pi_change;
+            real pi_change;
             int selected;
 
             switch (Z[k]) {
@@ -510,9 +509,9 @@ struct solver_inequalities_Zcoeff : debug_logger<debug>
     bool compute_update_row(Xtype& x,
                             Iterator first,
                             Iterator last,
-                            Float kappa,
-                            Float delta,
-                            Float theta)
+                            real kappa,
+                            real delta,
+                            real theta)
     {
         auto at_least_one_pi_changed{ false };
 
@@ -526,7 +525,7 @@ struct solver_inequalities_Zcoeff : debug_logger<debug>
             const auto r_size =
               compute_reduced_costs(std::get<0>(it), std::get<1>(it), x);
 
-            Float pi_change;
+            real pi_change;
             int selected = -2;
 
             switch (Z[k]) {
@@ -564,74 +563,59 @@ struct solver_inequalities_Zcoeff : debug_logger<debug>
     }
 };
 
-template<typename Float, typename Mode, typename Cost>
+template<typename Mode, typename Cost>
 static result
 solve_or_optimize(const context& ctx, const problem& pb, bool is_optimization)
 {
     if (ctx.parameters.debug) {
-        using Solver = solver_inequalities_Zcoeff<Float, Mode, Cost, true>;
+        using Solver = solver_inequalities_Zcoeff<Mode, Cost, true>;
 
         return is_optimization
-                 ? optimize_problem<Solver, Float, Mode, Cost>(ctx, pb)
-                 : solve_problem<Solver, Float, Mode, Cost>(ctx, pb);
+                 ? optimize_problem<Solver, Mode, Cost>(ctx, pb)
+                 : solve_problem<Solver, Mode, Cost>(ctx, pb);
     } else {
-        using Solver = solver_inequalities_Zcoeff<Float, Mode, Cost, false>;
+        using Solver = solver_inequalities_Zcoeff<Mode, Cost, false>;
 
         return is_optimization
-                 ? optimize_problem<Solver, Float, Mode, Cost>(ctx, pb)
-                 : solve_problem<Solver, Float, Mode, Cost>(ctx, pb);
+                 ? optimize_problem<Solver, Mode, Cost>(ctx, pb)
+                 : solve_problem<Solver, Mode, Cost>(ctx, pb);
     }
 }
 
-template<typename Float, typename Mode>
+template<typename Mode>
 static result
 select_cost(const context& ctx, const problem& pb, bool is_optimization)
 {
     return pb.objective.qelements.empty()
-             ? solve_or_optimize<Float,
-                                 Mode,
-                                 baryonyx::itm::default_cost_type<Float>>(
+             ? solve_or_optimize<Mode,
+                                 baryonyx::itm::default_cost_type>(
                  ctx, pb, is_optimization)
-             : solve_or_optimize<Float,
-                                 Mode,
-                                 baryonyx::itm::quadratic_cost_type<Float>>(
+             : solve_or_optimize<Mode,
+                                 baryonyx::itm::quadratic_cost_type>(
                  ctx, pb, is_optimization);
 }
 
-template<typename Float>
 static result
 select_mode(const context& ctx, const problem& pb, bool is_optimization)
 {
     const auto m = static_cast<int>(pb.type);
 
-    return m == 0 ? select_cost<Float, mode_sel<0>>(ctx, pb, is_optimization)
-                  : select_cost<Float, mode_sel<1>>(ctx, pb, is_optimization);
+    return m == 0 ? select_cost<mode_sel<0>>(ctx, pb, is_optimization)
+                  : select_cost<mode_sel<1>>(ctx, pb, is_optimization);
 }
 
-static result
-select_float(const context& ctx, const problem& pb, bool is_optimization)
-{
-    const auto f = static_cast<int>(ctx.parameters.float_type);
-
-    if (f == 0)
-        return select_mode<float_sel<0>>(ctx, pb, is_optimization);
-    else if (f == 1)
-        return select_mode<float_sel<1>>(ctx, pb, is_optimization);
-    else
-        return select_mode<float_sel<2>>(ctx, pb, is_optimization);
-}
 result
 solve_inequalities_Z(const context& ctx, const problem& pb)
 {
     info(ctx, "  - solve_inequalities_Z\n");
-    return select_float(ctx, pb, false);
+    return select_mode(ctx, pb, false);
 }
 
 result
 optimize_inequalities_Z(const context& ctx, const problem& pb)
 {
     info(ctx, "  - optimize_inequalities_Z\n");
-    return select_float(ctx, pb, true);
+    return select_mode(ctx, pb, true);
 }
 
 } // namespace itm

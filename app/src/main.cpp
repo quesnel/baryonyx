@@ -70,13 +70,11 @@ solver_started_cb(const baryonyx::solver_parameters& params)
     fmt::print(" * Global parameters:\n"
                "  - limit: {}\n"
                "  - time-limit: {:.10g}s\n"
-               "  - floating-point-type: {}\n"
                "  - print-level: {}\n"
                "  - auto-tune: {}\n"
                "  - observation: {}\n",
                params.limit,
                params.time_limit,
-               params.float_type,
                params.print_level,
                params.mode,
                params.observer);
@@ -579,19 +577,6 @@ assign_parameter(baryonyx::solver_parameters& params,
             return command_line_status::time_limit_error;
         else
             params.time_limit = *v <= 0.0 ? -1.0 : *v;
-
-    } else if (is_equal(name, "floating-point-type")) {
-        if (value == "float")
-            params.float_type =
-              baryonyx::solver_parameters::floating_point_type::float_type;
-        else if (value == "double")
-            params.float_type =
-              baryonyx::solver_parameters::floating_point_type::double_type;
-        else if (value == "longdouble")
-            params.float_type = baryonyx::solver_parameters::
-              floating_point_type::longdouble_type;
-        else
-            return command_line_status::floating_point_type_error;
 
     } else if (is_equal(name, "observer-type")) {
         if (value == "none")

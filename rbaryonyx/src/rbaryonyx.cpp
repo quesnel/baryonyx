@@ -209,21 +209,6 @@ get_init_policy(int type)
     }
 }
 
-static baryonyx::solver_parameters::floating_point_type
-get_floating_point_type(int type)
-{
-    namespace bx = baryonyx;
-
-    switch (type) {
-    case 0:
-        return bx::solver_parameters::floating_point_type::float_type;
-    case 2:
-        return bx::solver_parameters::floating_point_type::longdouble_type;
-    default:
-        return bx::solver_parameters::floating_point_type::double_type;
-    }
-}
-
 static baryonyx::solver_parameters::storage_type
 get_storage_type(int type)
 {
@@ -331,12 +316,6 @@ convert_result(const baryonyx::result& res, bool minimize)
 //'
 //' @param init_policy_random the type percentage of random in the init_policy.
 //'
-//' @param float_type the type of real used into the solver. Default is to
-//'     use the C/C++ double representation.
-//'    - 0: float
-//'    - 1: double
-//'    - 2: longdouble
-//'
 //' @param storage_type the type of solution storage. Default is to store
 //'     the best solution.
 //'    - 0: stores only the best solution found.
@@ -387,7 +366,6 @@ solve_01lp_problem(std::string file_path,
                    int pushing_iteration_limit = 50,
                    int init_policy = 0,
                    double init_policy_random = 0.5,
-                   int float_type = 1,
                    int storage_type = 1,
                    bool verbose = true) noexcept
 
@@ -426,7 +404,6 @@ solve_01lp_problem(std::string file_path,
         params.order = get_constrait_order(constraint_order);
         params.cost_norm = get_cost_norm(norm);
         params.init_policy = get_init_policy(init_policy);
-        params.float_type = get_floating_point_type(float_type);
         params.storage = get_storage_type(storage_type);
 
         baryonyx::context_set_solver_parameters(ctx, params);
@@ -481,12 +458,6 @@ solve_01lp_problem(std::string file_path,
 //'    - 2: l1-norm
 //'    - 3: l2-norm
 //'    - 4: infinity-norm
-//'
-//' @param float_type the type of real used into the solver. Default is to
-//'     use the C/C++ double representation.
-//'    - 0: float
-//'    - 1: double
-//'    - 2: longdouble
 //'
 //' @param storage_type the type of solution storage. Default is to store
 //'     the best solution.
@@ -546,7 +517,6 @@ optimize_01lp_problem(std::string file_path,
                       double init_kappa_improve_start = 0,
                       double init_kappa_improve_increase = 0.02,
                       double init_kappa_improve_stop = 0.2,
-                      int float_type = 1,
                       int storage_type = 1,
                       bool verbose = true) noexcept
 {
@@ -597,7 +567,6 @@ optimize_01lp_problem(std::string file_path,
         params.pre_order = get_pre_constraint_order(pre_constraint_order);
         params.order = get_constrait_order(constraint_order);
         params.cost_norm = get_cost_norm(norm);
-        params.float_type = get_floating_point_type(float_type);
         params.storage = get_storage_type(storage_type);
 
         baryonyx::context_set_solver_parameters(ctx, params);

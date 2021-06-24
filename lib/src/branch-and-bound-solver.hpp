@@ -189,13 +189,13 @@ private:
     }
 };
 
-template<typename Mode, typename Float>
+template<typename Mode>
 struct branch_and_bound_solver
 {
     struct item
     {
-        Float r = 0.0;
-        Float sum_z = 0.0;
+        real r = 0.0;
+        real sum_z = 0.0;
         int factor = 0;
         int original_factor = 0;
         int variable = 0;
@@ -203,7 +203,7 @@ struct branch_and_bound_solver
 
         item() noexcept = default;
 
-        constexpr item(Float r_, int factor_, int variable_) noexcept
+        constexpr item(real r_, int factor_, int variable_) noexcept
           : r(r_)
           , factor(factor_)
           , variable(variable_)
@@ -212,11 +212,11 @@ struct branch_and_bound_solver
         constexpr bool operator<(const item& other) const noexcept
         {
             if constexpr (std::is_same_v<Mode, minimize_tag>)
-                return (r / static_cast<Float>(factor)) <
-                       (other.r / static_cast<Float>(factor));
+                return (r / static_cast<real>(factor)) <
+                       (other.r / static_cast<real>(factor));
             else
-                return (other.r / static_cast<Float>(factor)) <
-                       (r / static_cast<Float>(factor));
+                return (other.r / static_cast<real>(factor)) <
+                       (r / static_cast<real>(factor));
         }
     };
 
@@ -224,7 +224,7 @@ struct branch_and_bound_solver
     {
         node() noexcept = default;
 
-        constexpr node(Float _sumr, int _sumfactor, unsigned _level) noexcept
+        constexpr node(real _sumr, int _sumfactor, unsigned _level) noexcept
           : z(init_z())
           , sumr(_sumr)
           , sumfactor(_sumfactor)
@@ -232,8 +232,8 @@ struct branch_and_bound_solver
         {}
 
         unsigned int variables = 0u;
-        Float z = 0.0;
-        Float sumr = 0.0;
+        real z = 0.0;
+        real sumr = 0.0;
         int sumfactor = 0;
         unsigned level = 0u;
     };
@@ -241,8 +241,8 @@ struct branch_and_bound_solver
     shared_subvector subvector;
     std::vector<item> items;
     std::vector<node> nodes;
-    Float upper_bound;
-    Float lower_bound;
+    real upper_bound;
+    real lower_bound;
     unsigned int solution;
     int b_min;
     int b_max;
@@ -255,22 +255,22 @@ struct branch_and_bound_solver
         subvector.reserve(max_variables * 1024u);
     }
 
-    static Float init_z() noexcept
+    static real init_z() noexcept
     {
         if constexpr (std::is_same_v<Mode, minimize_tag>)
-            return +std::numeric_limits<Float>::infinity();
+            return +std::numeric_limits<real>::infinity();
         else
-            return -std::numeric_limits<Float>::infinity();
+            return -std::numeric_limits<real>::infinity();
     }
 
-    static Float compute_lower_bound() noexcept
+    static real compute_lower_bound() noexcept
     {
         return init_z();
     }
 
-    Float compute_upper_bound() noexcept
+    real compute_upper_bound() noexcept
     {
-        Float ret = 0;
+        real ret = 0;
 
         if constexpr (std::is_same_v<Mode, minimize_tag>) {
             for (size_t i = 0, e = items.size(); i != e; ++i)
@@ -285,7 +285,7 @@ struct branch_and_bound_solver
         return ret;
     }
 
-    bool is_best_solution(Float node_z) const noexcept
+    bool is_best_solution(real node_z) const noexcept
     {
         if constexpr (std::is_same_v<Mode, minimize_tag>)
             return node_z < lower_bound;
@@ -295,7 +295,7 @@ struct branch_and_bound_solver
 
     void make_init_node_0()
     {
-        nodes.emplace_back(Float{ 0 }, 0, 0u);
+        nodes.emplace_back(real{ 0 }, 0, 0u);
         nodes.back().variables = subvector.emplace();
         nodes.back().z = items[1].sum_z;
 
@@ -329,7 +329,7 @@ struct branch_and_bound_solver
         if (level + 1 < subvector.element_size())
             node_0.z += items[level + 1].sum_z;
 
-        const Float sumr = node_0.sumr;
+        const real sumr = node_0.sumr;
         const int sumfactor = node_0.sumfactor;
         const unsigned int variables = node_0.variables;
 
@@ -369,7 +369,7 @@ struct branch_and_bound_solver
         if (level + 1 < subvector.element_size())
             node_0.z += items[level + 1].sum_z;
 
-        const Float sumr = node_0.sumr;
+        const real sumr = node_0.sumr;
         const int sumfactor = node_0.sumfactor;
         const unsigned int variables = node_0.variables;
 

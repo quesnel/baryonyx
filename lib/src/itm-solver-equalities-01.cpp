@@ -27,20 +27,19 @@
 namespace baryonyx {
 namespace itm {
 
-template<typename Float, typename Mode, typename Cost, bool debug>
+template<typename Mode, typename Cost, bool debug>
 struct solver_equalities_01coeff : debug_logger<debug>
 {
     using logger = debug_logger<debug>;
     using mode_type = Mode;
-    using float_type = Float;
     using cost_type = Cost;
 
     random_engine& rng;
 
     struct rc_data
     {
-        Float value; ///< Reduced cost value.
-        int id;      ///< Index in ap.row() vector.
+        real value; ///< Reduced cost value.
+        int id;     ///< Index in ap.row() vector.
 
         constexpr bool is_negative_factor() const noexcept
         {
@@ -56,10 +55,10 @@ struct solver_equalities_01coeff : debug_logger<debug>
     using bound_factor = int;
 
     sparse_matrix<int> ap;
-    std::unique_ptr<Float[]> P;
+    std::unique_ptr<real[]> P;
     std::unique_ptr<rc_data[]> R;
     std::unique_ptr<bound_factor[]> b;
-    std::unique_ptr<Float[]> pi;
+    std::unique_ptr<real[]> pi;
 
     const cost_type& c;
     int m;
@@ -73,10 +72,10 @@ struct solver_equalities_01coeff : debug_logger<debug>
       : logger("solver_equalities_01coeff")
       , rng(rng_)
       , ap(csts, m_, n_)
-      , P(std::make_unique<Float[]>(ap.size()))
+      , P(std::make_unique<real[]>(ap.size()))
       , R(std::make_unique<rc_data[]>(compute_reduced_costs_vector_size(csts)))
       , b(std::make_unique<bound_factor[]>(m_))
-      , pi(std::make_unique<Float[]>(m_))
+      , pi(std::make_unique<real[]>(m_))
       , c(c_)
       , m(m_)
       , n(n_)
@@ -98,8 +97,8 @@ struct solver_equalities_01coeff : debug_logger<debug>
 
     void reset() noexcept
     {
-        std::fill_n(P.get(), ap.length(), Float{ 0 });
-        std::fill_n(pi.get(), m, Float{ 0 });
+        std::fill_n(P.get(), ap.length(), real{ 0 });
+        std::fill_n(pi.get(), m, real{ 0 });
     }
 
     int factor(int /*value*/) const noexcept
@@ -122,9 +121,9 @@ struct solver_equalities_01coeff : debug_logger<debug>
         return b[constraint];
     }
 
-    Float compute_sum_A_pi(int variable) const
+    real compute_sum_A_pi(int variable) const
     {
-        Float ret{ 0 };
+        real ret{ 0 };
 
         sparse_matrix<int>::const_col_iterator ht, hend;
         std::tie(ht, hend) = ap.column(variable);
@@ -137,7 +136,7 @@ struct solver_equalities_01coeff : debug_logger<debug>
 
     void decrease_preference(sparse_matrix<int>::row_iterator begin,
                              sparse_matrix<int>::row_iterator end,
-                             Float theta) noexcept
+                             real theta) noexcept
     {
         for (; begin != end; ++begin)
             P[begin->value] *= theta;
@@ -151,8 +150,8 @@ struct solver_equalities_01coeff : debug_logger<debug>
         int r_size = 0;
 
         for (; begin != end; ++begin) {
-            Float sum_a_pi = 0;
-            Float sum_a_p = 0;
+            real sum_a_pi = 0;
+            real sum_a_p = 0;
 
             auto ht = ap.column(begin->column);
 
@@ -185,10 +184,10 @@ struct solver_equalities_01coeff : debug_logger<debug>
     bool push_and_compute_update_row(Xtype& x,
                                      Iterator first,
                                      Iterator last,
-                                     Float kappa,
-                                     Float delta,
-                                     Float theta,
-                                     Float objective_amplifier)
+                                     real kappa,
+                                     real delta,
+                                     real theta,
+                                     real objective_amplifier)
     {
         auto at_least_one_pi_changed{ false };
 
@@ -233,9 +232,9 @@ struct solver_equalities_01coeff : debug_logger<debug>
     bool compute_update_row(Xtype& x,
                             Iterator first,
                             Iterator last,
-                            Float kappa,
-                            Float delta,
-                            Float theta)
+                            real kappa,
+                            real delta,
+                            real theta)
     {
         auto at_least_one_pi_changed{ false };
 
@@ -270,75 +269,57 @@ struct solver_equalities_01coeff : debug_logger<debug>
     }
 };
 
-template<typename Float, typename Mode, typename Cost>
+template<typename Mode, typename Cost>
 static result
 solve_or_optimize(const context& ctx, const problem& pb, bool is_optimization)
 {
     if (ctx.parameters.debug) {
-        using Solver = solver_equalities_01coeff<Float, Mode, Cost, true>;
+        using Solver = solver_equalities_01coeff<Mode, Cost, true>;
 
-        return is_optimization
-                 ? optimize_problem<Solver, Float, Mode, Cost>(ctx, pb)
-                 : solve_problem<Solver, Float, Mode, Cost>(ctx, pb);
+        return is_optimization ? optimize_problem<Solver, Mode, Cost>(ctx, pb)
+                               : solve_problem<Solver, Mode, Cost>(ctx, pb);
     } else {
-        using Solver = solver_equalities_01coeff<Float, Mode, Cost, false>;
+        using Solver = solver_equalities_01coeff<Mode, Cost, false>;
 
-        return is_optimization
-                 ? optimize_problem<Solver, Float, Mode, Cost>(ctx, pb)
-                 : solve_problem<Solver, Float, Mode, Cost>(ctx, pb);
+        return is_optimization ? optimize_problem<Solver, Mode, Cost>(ctx, pb)
+                               : solve_problem<Solver, Mode, Cost>(ctx, pb);
     }
 }
 
-template<typename Float, typename Mode>
+template<typename Mode>
 static result
 select_cost(const context& ctx, const problem& pb, bool is_optimization)
 {
     return pb.objective.qelements.empty()
-             ? solve_or_optimize<Float,
-                                 Mode,
-                                 baryonyx::itm::default_cost_type<Float>>(
+             ? solve_or_optimize<Mode,
+                                 baryonyx::itm::default_cost_type>(
                  ctx, pb, is_optimization)
-             : solve_or_optimize<Float,
-                                 Mode,
-                                 baryonyx::itm::quadratic_cost_type<Float>>(
+             : solve_or_optimize<Mode,
+                                 baryonyx::itm::quadratic_cost_type>(
                  ctx, pb, is_optimization);
 }
 
-template<typename Float>
 static result
 select_mode(const context& ctx, const problem& pb, bool is_optimization)
 {
     const auto m = static_cast<int>(pb.type);
 
-    return m == 0 ? select_cost<Float, mode_sel<0>>(ctx, pb, is_optimization)
-                  : select_cost<Float, mode_sel<1>>(ctx, pb, is_optimization);
-}
-
-static result
-select_float(const context& ctx, const problem& pb, bool is_optimization)
-{
-    const auto f = static_cast<int>(ctx.parameters.float_type);
-
-    if (f == 0)
-        return select_mode<float_sel<0>>(ctx, pb, is_optimization);
-    else if (f == 1)
-        return select_mode<float_sel<1>>(ctx, pb, is_optimization);
-    else
-        return select_mode<float_sel<2>>(ctx, pb, is_optimization);
+    return m == 0 ? select_cost<mode_sel<0>>(ctx, pb, is_optimization)
+                  : select_cost<mode_sel<1>>(ctx, pb, is_optimization);
 }
 
 result
 solve_equalities_01(const context& ctx, const problem& pb)
 {
     info(ctx, "  - solve_equalities_01\n");
-    return select_float(ctx, pb, false);
+    return select_mode(ctx, pb, false);
 }
 
 result
 optimize_equalities_01(const context& ctx, const problem& pb)
 {
     info(ctx, "  - optimize_equalities_01\n");
-    return select_float(ctx, pb, true);
+    return select_mode(ctx, pb, true);
 }
 
 } // namespace itm
