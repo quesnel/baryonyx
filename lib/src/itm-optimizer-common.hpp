@@ -162,7 +162,7 @@ private:
             value = ctx.choose_sol_dist(ctx.rng);
         } while (value < 0 || value > 1);
 
-        return static_cast<int>(m_size * value);
+        return static_cast<int>(static_cast<real>(m_size) * value);
     }
 
 public:
@@ -320,7 +320,7 @@ public:
     }
 
     bool can_be_inserted([[maybe_unused]] const std::size_t hash,
-                         const double value) const noexcept
+                         const real value) const noexcept
     {
         m_indices_reader lock(m_indices_mutex);
 
@@ -500,18 +500,18 @@ struct best_solution_recorder
 
     void mutation(local_context& ctx, bit_array& x)
     {
-        if (ctx.value_p_dist.mean() == 0.0 && ctx.value_p_dist.stddev() == 0.0)
+        if (ctx.value_p_dist.mean() == 0 && ctx.value_p_dist.stddev() == 0)
             return;
 
         real val_p, var_p;
 
         do {
             var_p = ctx.variable_p_dist(ctx.rng);
-        } while (var_p <= 0.0 || var_p >= 1.0);
+        } while (var_p <= 0 || var_p >= 1);
 
         do {
             val_p = ctx.value_p_dist(ctx.rng);
-        } while (val_p < 0.0 || val_p > 1.0);
+        } while (val_p < 0 || val_p > 1);
 
         to_log(stdout,
                7u,
