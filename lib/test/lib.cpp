@@ -36,10 +36,10 @@
 #include <numeric>
 
 template<typename R>
-std::tuple<double, int>
+std::tuple<baryonyx::real, int>
 sum(const R& r, int r_size, int result)
 {
-    double sumr{ 0 };
+    baryonyx::real sumr{ 0 };
     int sumf{ 0 };
 
     for (int i = 0, e = std::min(r_size - 1, result); i <= e; ++i) {
