@@ -85,8 +85,8 @@ struct context
 template<typename... Args>
 void
 to_log([[maybe_unused]] std::FILE* os,
-       [[maybe_unused]] const std::string_view fmt,
-       [[maybe_unused]] const Args&... args)
+       [[maybe_unused]] fmt::format_string<Args...> fmt,
+       [[maybe_unused]] Args&&... args)
 {
 #ifdef BARYONYX_ENABLE_LOG
 #ifdef BARYONYX_ENABLE_DEBUG
@@ -99,8 +99,8 @@ template<typename... Args>
 void
 to_log([[maybe_unused]] std::FILE* os,
        [[maybe_unused]] unsigned indent,
-       [[maybe_unused]] const std::string_view fmt,
-       [[maybe_unused]] const Args&... args)
+       [[maybe_unused]] fmt::format_string<Args...> fmt,
+       [[maybe_unused]] Args&&... args)
 {
 #ifdef BARYONYX_ENABLE_LOG
 #ifdef BARYONYX_ENABLE_DEBUG

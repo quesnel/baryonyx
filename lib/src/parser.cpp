@@ -319,7 +319,7 @@ public:
 
     void print(const std::string_view msg) const
     {
-        fmt::print(msg);
+        fmt::print("{}", msg);
         for (int i = 0; i < stream_buffer_size; ++i)
             fmt::print("[{}: ({})]", i, buffer_ptr[i]);
         fmt::print("\n");

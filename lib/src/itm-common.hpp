@@ -1526,22 +1526,22 @@ struct debug_logger
     }
 
     template<typename... Args>
-    void log([[maybe_unused]] const std::string_view fmt,
-             [[maybe_unused]] const Args&... args) const noexcept
+    void log([[maybe_unused]] fmt::format_string<Args...> fmt,
+             [[maybe_unused]] Args&&... args) const noexcept
     {
         if constexpr (debug) {
-            fmt::print(ofs, fmt, args...);
+            fmt::print(ofs, fmt, std::forward<Args>(args)...);
         }
     }
 
     template<typename... Args>
     void log([[maybe_unused]] unsigned indent,
-             [[maybe_unused]] const std::string_view fmt,
-             [[maybe_unused]] const Args&... args) const noexcept
+             [[maybe_unused]] fmt::format_string<Args...> fmt,
+             [[maybe_unused]] Args&&... args) const noexcept
     {
         if constexpr (debug) {
             fmt::print(ofs, "{:{}}", "", indent);
-            fmt::print(ofs, fmt, args...);
+            fmt::print(ofs, fmt, std::forward<Args>(args)...);
         }
     }
 };
