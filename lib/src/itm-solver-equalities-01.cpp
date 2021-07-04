@@ -291,11 +291,9 @@ static result
 select_cost(const context& ctx, const problem& pb, bool is_optimization)
 {
     return pb.objective.qelements.empty()
-             ? solve_or_optimize<Mode,
-                                 baryonyx::itm::default_cost_type>(
+             ? solve_or_optimize<Mode, baryonyx::itm::default_cost_type>(
                  ctx, pb, is_optimization)
-             : solve_or_optimize<Mode,
-                                 baryonyx::itm::quadratic_cost_type>(
+             : solve_or_optimize<Mode, baryonyx::itm::quadratic_cost_type>(
                  ctx, pb, is_optimization);
 }
 

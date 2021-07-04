@@ -24,6 +24,8 @@
 #include "itm-optimizer-common.hpp"
 #include "itm-solver-common.hpp"
 
+#include <cstring>
+
 namespace baryonyx {
 namespace itm {
 
@@ -53,12 +55,6 @@ struct solver_inequalities_101coeff_buffered : debug_logger<debug>
         }
     };
 
-    struct rc_size
-    {
-        int r_size;
-        int c_size;
-    };
-
     struct bound_factor
     {
         int min;
@@ -66,14 +62,25 @@ struct solver_inequalities_101coeff_buffered : debug_logger<debug>
         int negative_factor;
     };
 
+    struct computation_buffer
+    {
+        real pi;      // pi update
+        real d;       // delta difference to apply to P matrix
+        int k;        // Constraint id
+        int selected; // -1: unselect all, >= R_size: select all
+
+        // true if select_variable use the loop, false if select_variable
+        // function use the negative coefficient function.
+        bool use_loop;
+    };
+
     sparse_matrix<int> ap;
     std::unique_ptr<real[]> P;
-    std::unique_ptr<int[]> A;
+    std::unique_ptr<std::int8_t[]> A;
     std::unique_ptr<rc_data[]> R;
     std::unique_ptr<bound_factor[]> b;
     std::unique_ptr<real[]> pi;
-
-    std::unique_ptr<std::tuple<real, real>[]> sum_ap;
+    std::vector<computation_buffer> buffer;
 
     const cost_type& c;
     int m;
@@ -89,22 +96,23 @@ struct solver_inequalities_101coeff_buffered : debug_logger<debug>
       , rng(rng_)
       , ap(csts, m_, n_)
       , P(std::make_unique<real[]>(ap.size()))
-      , A(std::make_unique<int[]>(ap.size()))
-      , R(std::make_unique<rc_data[]>(compute_reduced_costs_vector_size(csts)))
+      , A(std::make_unique<std::int8_t[]>(ap.size()))
+      , R(std::make_unique<rc_data[]>(ap.size()))
       , b(std::make_unique<bound_factor[]>(m_))
       , pi(std::make_unique<real[]>(m_))
-      , sum_ap(std::make_unique<std::tuple<real, real>[]>(n_))
       , c(c_)
       , m(m_)
       , n(n_)
     {
+        buffer.reserve(static_cast<size_t>(m));
+
         int id = 0;
-        for (int i = 0; i != m; ++i) {
+        for (int i = 0, e = length(csts); i != e; ++i) {
             int lower = 0, upper = 0;
 
             for (const auto& cst : csts[i].elements) {
                 bx_ensures(std::abs(cst.factor) == 1);
-                A[id++] = cst.factor;
+                A[id++] = static_cast<std::int8_t>(cst.factor);
 
                 if (cst.factor > 0)
                     upper++;
@@ -119,13 +127,19 @@ struct solver_inequalities_101coeff_buffered : debug_logger<debug>
                 b[i].min = std::max(-lower, csts[i].min);
                 b[i].max = std::min(upper, csts[i].max);
             }
+
+            b[i].negative_factor = lower;
+
+            bx_ensures(b[i].min <= b[i].max);
+            bx_ensures(upper + lower == length(csts[i].elements));
         }
     }
 
     void reset() noexcept
     {
-        std::fill_n(P.get(), ap.length(), real{ 0 });
-        std::fill_n(pi.get(), m, real{ 0 });
+        std::memset(P.get(), 0, sizeof(real) * ap.length());
+        std::memset(pi.get(), 0, sizeof(real) * m);
+        std::memset(R.get(), 0, sizeof(computation_buffer) * m);
     }
 
     int factor(int value) const noexcept
@@ -143,235 +157,347 @@ struct solver_inequalities_101coeff_buffered : debug_logger<debug>
         return b[constraint].max;
     }
 
-    int bound_init(int constraint) const
+    int bound_init(int constraint) const noexcept
     {
         return bound_init(constraint, Mode());
     }
 
-    int bound_init(int constraint, minimize_tag) const
+    int bound_init(int constraint, minimize_tag) const noexcept
     {
         return b[constraint].min;
     }
 
-    int bound_init(int constraint, maximize_tag) const
+    int bound_init(int constraint, maximize_tag) const noexcept
     {
         return b[constraint].max;
     }
 
-    real compute_sum_A_pi(int variable) const
+    real compute_sum_A_pi(int variable) const noexcept
     {
         real ret{ 0 };
 
-        sparse_matrix<int>::const_col_iterator ht, hend;
-        std::tie(ht, hend) = ap.column(variable);
+        auto h = ap.column(variable);
 
-        for (; ht != hend; ++ht)
-            ret += pi[ht->row];
+        for (; std::get<0>(h) != std::get<1>(h); ++std::get<0>(h))
+            ret += pi[std::get<0>(h)->row];
 
         return ret;
     }
 
-    //
-    // Compute the reduced costs and return the size of the newly R vector.
-    //
-    template<typename Xtype>
-    rc_size compute_reduced_costs(sparse_matrix<int>::row_iterator begin,
-                                  sparse_matrix<int>::row_iterator end,
-                                  const Xtype& x) noexcept
+    template<typename ConstraintIterator>
+    void decrease_preference(ConstraintIterator first,
+                             ConstraintIterator last,
+                             const real theta) noexcept
     {
-        int r_size = 0;
-        int c_size = 0;
+        for (; first != last; ++first) {
+            const int k = constraint(first);
+            auto [row_first, row_last] = ap.row(k);
 
-        for (; begin != end; ++begin) {
-            real sum_a_pi = 0;
-            real sum_a_p = 0;
-
-            auto ht = ap.column(begin->column);
-
-            for (; std::get<0>(ht) != std::get<1>(ht); ++std::get<0>(ht)) {
-                auto a = static_cast<real>(A[std::get<0>(ht)->value]);
-
-                sum_a_pi += a * pi[std::get<0>(ht)->row];
-                sum_a_p += a * P[std::get<0>(ht)->value];
+            for (; row_first != row_last; ++row_first) {
+                P[row_first->value] *= theta;
             }
-
-            R[r_size].id = r_size;
-            R[r_size].value = c(begin->column, x) - sum_a_pi - sum_a_p;
-            R[r_size].f = A[begin->value];
-
-            if (R[r_size].is_negative()) {
-                R[r_size].value = -R[r_size].value;
-                ++c_size;
-            }
-
-            ++r_size;
         }
-
-        return { r_size, c_size };
     }
 
-    int select_variables(const rc_size& sizes, int bkmin, int bkmax)
+    template<typename Xtype, typename ConstraintIterator>
+    void compute_reduced_costs(Xtype& x,
+                               ConstraintIterator first,
+                               ConstraintIterator last) noexcept
     {
-        if (bkmin == bkmax)
-            return std::min(bkmin + sizes.c_size, sizes.r_size) - 1;
+        for (; first != last; ++first) {
+            const int k = constraint(first);
+            auto [row_first, row_last] = ap.row(k);
+            int i = 0;
 
-        bkmin += sizes.c_size;
-        bkmax = std::min(bkmax + sizes.c_size, sizes.r_size);
+            for (; row_first != row_last; ++row_first) {
+                real sum_a_pi = Zero;
+                real sum_a_p = Zero;
 
-        for (int i = bkmin; i <= bkmax; ++i)
-            if (stop_iterating<Mode>(R[i].value, rng))
-                return i - 1;
+                auto [cbegin, cend] = ap.column(row_first->column);
 
-        return bkmax - 1;
+                for (; cbegin != cend; ++cbegin) {
+                    //auto a = static_cast<real>(A[cbegin->value]);
+                    sum_a_pi += /*a **/ pi[cbegin->row];
+                    sum_a_p += /*a **/ P[cbegin->value];
+                }
+
+                R[row_first->value].id = i++;
+                R[row_first->value].value =
+                  A[row_first->value] *
+                  ((c(row_first->column, x) - sum_a_pi - sum_a_p));
+                R[row_first->value].f = A[row_first->value];
+            }
+        }
+    }
+
+    template<typename ConstraintIterator>
+    void sort_reduced_costs(ConstraintIterator first,
+                            ConstraintIterator last) noexcept
+    {
+        for (; first != last; ++first) {
+            const int k = constraint(first);
+            auto [row_first, row_last] = ap.row(k);
+            const auto length = row_last - row_first;
+
+            calculator_sort<Mode>(
+              &R[row_first->value], &R[row_first->value] + length, rng);
+        }
+    }
+
+    template<typename Xtype, typename ConstraintIterator>
+    void compute_objective_amplifier(Xtype& x,
+                                     ConstraintIterator first,
+                                     ConstraintIterator last,
+                                     const real obj_amp) noexcept
+    {
+        for (; first != last; ++first) {
+            const int k = constraint(first);
+            auto [row_first, row_last] = ap.row(k);
+
+            for (; row_first != row_last; ++row_first)
+                R[row_first->value].value += obj_amp * c(row_first->column, x);
+        }
+    }
+
+    template<typename ConstraintIterator>
+    void select_variables(ConstraintIterator first,
+                          ConstraintIterator last,
+                          const real kappa,
+                          const real delta) noexcept
+    {
+        for (; first != last; ++first) {
+            const int k = constraint(first);
+            auto [row_first, row_last] = ap.row(k);
+            auto first_copy = row_first;
+
+            bx_expects(row_last - row_first > 0);
+            bx_expects(row_last - row_first < INT_MAX);
+
+            const int row_length = static_cast<int>(row_last - row_first);
+            int sum = 0;
+            int selected = -1;
+            int classic_selected = -1;
+            int i = 0;
+            bool found_a_solution = b[k].min <= sum && sum <= b[k].max;
+
+            for (; first_copy != row_last; ++first_copy, ++i) {
+                sum += R[first_copy->value].f;
+
+                if (b[k].min <= sum && sum <= b[k].max) {
+                    selected = i;
+                    found_a_solution = true;
+                }
+
+                if (found_a_solution &&
+                    stop_iterating<Mode>(R[first_copy->value].value, rng))
+                    break;
+            }
+
+            // Classic algorithm use in Bastert et al. A Generalized Wedelin
+            // Heuristic for Integer Programming in INFORMS Journal on
+            // Computing.
+
+            if (b[k].min == b[k].max) {
+                classic_selected =
+                  std::min(b[k].min + b[k].negative_factor, row_length) - 1;
+            } else {
+                int bkmin = b[k].min + b[k].negative_factor;
+                int bkmax =
+                  std::min(b[k].max + b[k].negative_factor, row_length);
+
+                classic_selected = bkmax - 1;
+                first_copy = row_first + bkmin;
+                for (int i = bkmin; i <= bkmax; ++i, ++first_copy) {
+                    if (stop_iterating<Mode>(R[first_copy->value].value,
+                                             rng)) {
+                        classic_selected = i - 1;
+                        break;
+                    }
+                }
+            }
+
+            real pi = 0;
+            real d = delta;
+
+            if (selected > classic_selected) {
+                found_a_solution = true;
+            } else {
+                found_a_solution = false;
+                selected = classic_selected;
+            }
+
+            if (selected < 0) {
+                d +=
+                  (kappa / (One - kappa)) * (R[row_first->value].value * Two);
+            } else if (selected + 1 >= row_length) {
+                d += (kappa / (One - kappa)) *
+                     (R[row_first->value].value * Middle);
+            } else {
+                pi = (R[row_first->value + selected].value +
+                      R[row_first->value + selected + 1].value) /
+                     Two;
+
+                d += (kappa / (One - kappa)) *
+                     (R[row_first->value + selected + 1].value -
+                      R[row_first->value + selected].value);
+            }
+
+            buffer.emplace_back(pi, d, k, selected, found_a_solution);
+        }
+    }
+
+    void print_PI() const
+    {
+        fmt::print("PI");
+
+        for (int i = 0; i < m; ++i)
+            fmt::print(" {} ({})", pi[i], i);
+
+        fmt::print("\n");
+    }
+
+    template<typename Iterator>
+    void print_R(Iterator first, Iterator last) const
+    {
+        fmt::print("R");
+
+        for (; first != last; ++first)
+            fmt::print(" [{}, {}, {}]",
+                       R[first->value].value,
+                       R[first->value].id,
+                       R[first->value].f);
+
+        fmt::print("\n");
+    }
+
+    template<typename Xtype>
+    void affect(Xtype& x) noexcept
+    {
+        // print_PI();
+
+        for (auto& elem : buffer) {
+            // fmt::print("\nAffect: pi:{} d:{} k:{} select:{} use_loop: {}\n",
+            //           elem.pi,
+            //           elem.d,
+            //           elem.k,
+            //           elem.selected,
+            //           elem.use_loop);
+
+            pi[elem.k] += elem.pi;
+
+            auto [row_first, row_last] = ap.row(elem.k);
+            // print_R(row_first, row_last);
+
+            auto first = row_first;
+            int i = 0;
+
+            for (; first != row_last && i <= elem.selected; ++i, ++first) {
+                const auto var = row_first + R[first->value].id;
+
+                if (elem.use_loop) {
+                    x.set(var->column);
+                    P[var->value] +=
+                      R[first->value].is_negative_factor() ? -elem.d : elem.d;
+                } else {
+                    if (R[first->value].is_negative_factor()) {
+                        x.unset(var->column);
+                        P[var->value] -= elem.d;
+                    } else {
+                        x.set(var->column);
+                        P[var->value] += elem.d;
+                    }
+                }
+            }
+
+            for (; first != row_last; ++first) {
+                const auto var = row_first + R[first->value].id;
+
+                if (elem.use_loop) {
+                    x.unset(var->column);
+                    P[var->value] +=
+                      R[first->value].is_negative_factor() ? -elem.d : +elem.d;
+                } else {
+                    if (R[first->value].is_negative_factor()) {
+                        x.set(var->column);
+                        P[var->value] += elem.d;
+                    } else {
+                        x.unset(var->column);
+                        P[var->value] -= elem.d;
+                    }
+                }
+            }
+
+            bx_expects(is_valid_constraint(*this, elem.k, x));
+        }
     }
 
     template<typename Xtype, typename Iterator>
-    bool push_and_compute_update_row(Xtype& /*x*/,
+    bool push_and_compute_update_row(Xtype& x,
                                      Iterator first,
                                      Iterator last,
                                      real kappa,
                                      real delta,
                                      real theta,
-                                     real /*obj_amp*/)
+                                     real obj_amp) noexcept
     {
         logger::log("push-update-row {} {} {}\n", kappa, delta, theta);
 
-        for (int i = 0; i != n; ++i)
-            sum_ap[i] =
-              std::make_tuple(static_cast<real>(0), static_cast<real>(0));
+        buffer.clear();
 
-        std::transform(
-          P.get(),
-          P.get() + ap.length(),
-          P.get(),
-          std::bind(std::multiplies<real>(), theta, std::placeholders::_1));
+        if (theta != One)
+            decrease_preference(first, last, theta);
 
-        for (auto it = first; it != last; ++it) {
-            auto k = constraint(it);
+        compute_reduced_costs(x, first, last);
 
-            sparse_matrix<int>::row_iterator rit, ret;
-            std::tie(rit, ret) = ap.row(k);
+        if (obj_amp != One)
+            compute_objective_amplifier(x, first, last, obj_amp);
 
-            for (; rit != ret; ++rit) {
-                if (std::get<0>(sum_ap[rit->column]) == 0 &&
-                    std::get<1>(sum_ap[rit->column]) == 0) {
-                    sparse_matrix<int>::const_col_iterator ht, hend;
-                    std::tie(ht, hend) = ap.column(rit->column);
+        sort_reduced_costs(first, last);
+        select_variables(first, last, kappa, delta);
 
-                    for (; ht != hend; ++ht) {
-                        auto f = A[ht->value];
-                        auto a = static_cast<real>(f);
+        //@TODO sort buffer structure according to the pi values for examples?
+        std::sort(buffer.begin(),
+                  buffer.end(),
+                  [](const auto& left, const auto& right) {
+                      return left.pi > right.pi;
+                  });
 
-                        std::get<0>(sum_ap[rit->column]) += a * pi[ht->row];
-                        std::get<1>(sum_ap[rit->column]) += a * P[ht->value];
-                    }
-                }
-            }
-        }
+        // std::shuffle(buffer.begin(), buffer.end(), rng);
+        affect(x);
 
         return false;
-
-        // for (auto ct = first; ct != last; ++ct) {
-        //    auto k = constraint(ct);
-        //    const auto it = ap.row(k);
-
-        //    //
-        //    // Before sort and select variables, we apply the push method:
-        //    // for each reduces cost, we had the cost multiply with an
-        //    // objective amplifier.
-        //    //
-
-        //    //for (int i = 0; i != sizes.r_size; ++i)
-        //    //    R[i].value += obj_amp * c[(std::get<0>(it) +
-        //    R[i].id)->column];
-
-        //    calculator_sort(R.get(), R.get() + sizes.r_size, rng, Mode());
-
-        //    int selected = select_variables(sizes, b[k].min, b[k].max);
-
-        //    affect(*this,
-        //           x,
-        //           std::get<0>(it),
-        //           k,
-        //           selected,
-        //           sizes.r_size,
-        //           kappa,
-        //           delta);
-        //}
     }
 
     template<typename Xtype, typename Iterator>
-    bool compute_update_row(Xtype& /*x*/,
+    bool compute_update_row(Xtype& x,
                             Iterator first,
                             Iterator last,
                             real kappa,
                             real delta,
-                            real theta)
+                            real theta) noexcept
     {
-        logger::log("update-row {} {} {}\n", kappa, delta, theta);
+        logger::log("push-update-row {} {} {}\n", kappa, delta, theta);
 
-        for (int i = 0; i != n; ++i)
-            sum_ap[i] =
-              std::make_tuple(static_cast<real>(0), static_cast<real>(0));
+        buffer.clear();
 
-        std::transform(
-          P.get(),
-          P.get() + ap.length(),
-          P.get(),
-          std::bind(std::multiplies<real>(), theta, std::placeholders::_1));
+        if (theta != One)
+            decrease_preference(first, last, theta);
 
-        for (auto it = first; it != last; ++it) {
-            auto k = constraint(it);
+        compute_reduced_costs(x, first, last);
+        sort_reduced_costs(first, last);
+        select_variables(first, last, kappa, delta);
 
-            sparse_matrix<int>::row_iterator rit, ret;
-            std::tie(rit, ret) = ap.row(k);
+        //@TODO sort buffer structure according to the pi values for examples?
+        std::sort(buffer.begin(),
+                  buffer.end(),
+                  [](const auto& left, const auto& right) {
+                      return left.pi > right.pi;
+                  });
 
-            for (; rit != ret; ++rit) {
-                if (std::get<0>(sum_ap[rit->column]) == 0 &&
-                    std::get<1>(sum_ap[rit->column]) == 0) {
-                    sparse_matrix<int>::const_col_iterator ht, hend;
-                    std::tie(ht, hend) = ap.column(rit->column);
-
-                    for (; ht != hend; ++ht) {
-                        auto f = A[ht->value];
-                        auto a = static_cast<real>(f);
-
-                        std::get<0>(sum_ap[rit->column]) += a * pi[ht->row];
-                        std::get<1>(sum_ap[rit->column]) += a * P[ht->value];
-                    }
-                }
-            }
-        }
+        // std::shuffle(buffer.begin(), buffer.end(), rng);
+        affect(x);
 
         return false;
-
-        // for (auto ct = first; ct != last; ++ct) {
-        //    auto k = constraint(ct);
-        //    const auto it = ap.row(k);
-
-        //    //
-        //    // Before sort and select variables, we apply the push method:
-        //    // for each reduces cost, we had the cost multiply with an
-        //    // objective amplifier.
-        //    //
-
-        //    //for (int i = 0; i != sizes.r_size; ++i)
-        //    //    R[i].value += obj_amp * c[(std::get<0>(it) +
-        //    R[i].id)->column];
-
-        //    calculator_sort(R.get(), R.get() + sizes.r_size, rng, Mode());
-
-        //    int selected = select_variables(sizes, b[k].min, b[k].max);
-
-        //    affect(*this,
-        //           x,
-        //           std::get<0>(it),
-        //           k,
-        //           selected,
-        //           sizes.r_size,
-        //           kappa,
-        //           delta);
-        //}
     }
 };
 
@@ -398,11 +524,9 @@ static result
 select_cost(const context& ctx, const problem& pb, bool is_optimization)
 {
     return pb.objective.qelements.empty()
-             ? solve_or_optimize<Mode,
-                                 baryonyx::itm::default_cost_type>(
+             ? solve_or_optimize<Mode, baryonyx::itm::default_cost_type>(
                  ctx, pb, is_optimization)
-             : solve_or_optimize<Mode,
-                                 baryonyx::itm::quadratic_cost_type>(
+             : solve_or_optimize<Mode, baryonyx::itm::quadratic_cost_type>(
                  ctx, pb, is_optimization);
 }
 

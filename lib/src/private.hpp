@@ -73,7 +73,6 @@ struct context
     {}
 
     solver_parameters parameters;
-    std::string method;
 
     solver_started_cb start;
     solver_updated_cb update;
@@ -300,10 +299,7 @@ alert(const context& ctx,
 
 template<typename Arg1, typename... Args>
 void
-crit(const context& ctx,
-     const char* fmt,
-     const Arg1& arg1,
-     const Args&... args)
+crit(const context& ctx, const char* fmt, const Arg1& arg1, const Args&... args)
 {
 #ifdef BARYONYX_ENABLE_LOG
     if (!is_loggable(ctx.log_priority, 2))
@@ -368,10 +364,7 @@ notice(const context& ctx,
 
 template<typename Arg1, typename... Args>
 void
-info(const context& ctx,
-     const char* fmt,
-     const Arg1& arg1,
-     const Args&... args)
+info(const context& ctx, const char* fmt, const Arg1& arg1, const Args&... args)
 {
 #ifdef BARYONYX_ENABLE_LOG
     if (!is_loggable(ctx.log_priority, 6))

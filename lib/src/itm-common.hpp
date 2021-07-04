@@ -44,6 +44,11 @@ namespace baryonyx {
 // We statically define this PRNG for all subsystems in Baryonyx.
 using random_engine = std::default_random_engine;
 
+constexpr real Zero{ 0 };
+constexpr real One{ 1 };
+constexpr real Two{ 2 };
+constexpr real Middle{ (One + Two) / Two };
+
 namespace itm {
 
 struct maximize_tag
@@ -421,7 +426,8 @@ affect(Solver& slv,
 
             if (slv.R[i].is_negative_factor()) {
                 x.unset(var->column);
-                slv.P[var->value] -= d;
+                // slv.P[var->value] -= d;
+                slv.P[var->value] = -d;
             } else {
                 x.set(var->column);
                 slv.P[var->value] += d;
@@ -522,10 +528,7 @@ struct bounds_printer
     }
 
     template<typename SolverT>
-    real add_bound(const SolverT& slv,
-                             int j,
-                             real sum_a_pi,
-                             minimize_tag)
+    real add_bound(const SolverT& slv, int j, real sum_a_pi, minimize_tag)
     {
         if (slv.c[j] - sum_a_pi < 0)
             return slv.c[j] - sum_a_pi;
@@ -534,10 +537,7 @@ struct bounds_printer
     }
 
     template<typename SolverT>
-    real add_bound(const SolverT& slv,
-                             int j,
-                             real sum_a_pi,
-                             maximize_tag)
+    real add_bound(const SolverT& slv, int j, real sum_a_pi, maximize_tag)
     {
         if (slv.c[j] - sum_a_pi > 0)
             return slv.c[j] - sum_a_pi;
@@ -565,8 +565,7 @@ struct bounds_printer
                 info(ctx,
                      "  - Lower bound: {}   (gap: {}%)\n",
                      bestlb,
-                     static_cast<real>(100.) * (bestub - bestlb) /
-                       bestub);
+                     static_cast<real>(100.) * (bestub - bestlb) / bestub);
         }
     }
 
@@ -590,8 +589,7 @@ struct bounds_printer
                 info(ctx,
                      "  - Upper bound: {}   (gap: {}%)\n",
                      bestub,
-                     static_cast<real>(100.) * (bestlb - bestub) /
-                       bestlb);
+                     static_cast<real>(100.) * (bestlb - bestub) / bestlb);
         }
     }
 
@@ -1129,8 +1127,8 @@ struct default_cost_type
         return linear_elements[index];
     }
 
-    real operator()(int index, [[maybe_unused]] const bit_array& x) const
-      noexcept
+    real operator()(int index,
+                    [[maybe_unused]] const bit_array& x) const noexcept
     {
         return linear_elements[index];
     }
@@ -1257,18 +1255,16 @@ struct quadratic_cost_type
                                            begin->first,
                                            std::distance(r.begin(), r.end()));
 
-                    random_epsilon_unique(
-                      begin, end, rng, begin->first, value);
+                    random_epsilon_unique(begin, end, rng, begin->first, value);
                 }
             }
 
             // Reorder the vector according to the variable index, so,
             // it restores the initial order.
 
-            std::sort(
-              r.begin(), r.end(), [](const auto& lhs, const auto& rhs) {
-                  return lhs.second < rhs.second;
-              });
+            std::sort(r.begin(), r.end(), [](const auto& lhs, const auto& rhs) {
+                return lhs.second < rhs.second;
+            });
         }
 
         {
