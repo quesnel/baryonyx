@@ -49,7 +49,8 @@ using real = double;
 #elif BARYONYX_FLOATINGPOINT_TYPE == 2
 using real = long double;
 #else
-#error "Bad value for BARYONYX_FLOATINGPOINT_TYPE: Must be equal to 0, 1 or 2 for respectively (float, double, long double"
+#error                                                                         \
+  "Bad value for BARYONYX_FLOATINGPOINT_TYPE: Must be equal to 0, 1 or 2 for respectively (float, double, long double"
 #endif
 #else
 using real = float;
@@ -459,6 +460,7 @@ struct BX_EXPORT solver_parameters
     observer_type observer{ observer_type::none };
     storage_type storage{ storage_type::one };
     solver_type solver{ solver_type::bastert };
+    bool use_buffer_solver{ false }; ///< Experimental solver for -1 0 1
     bool debug{ false };
 };
 
@@ -491,23 +493,6 @@ using context_ptr = std::unique_ptr<context, void (*)(context*)>;
 
 BX_EXPORT context_ptr
 make_context(int verbose_level = 6);
-
-/**
- * @brief Assign baryonyx internal parameters.
- *
- * @details This function is used to provide internal parameters to Baryonyx
- *     library and to ensures a stable API and ABI (for example extends the
- *     solver without change in @c solver_parameters). Normally, this function
- *     is not used.
- *
- * @param ctx Baryonyx's internal state.
- * @param name The name of the parameters.
- * @param value A string representation of the parameters.
- */
-BX_EXPORT void
-context_set_parameters(const context_ptr& ctx,
-                       const std::string& name,
-                       std::string value);
 
 /**
  * @brief Affects parameters to the solver.

@@ -37,17 +37,6 @@ const fmt::text_style context::message_style[] = {
 };
 
 void
-context_set_parameters(const context_ptr& ctx,
-                       const std::string& name,
-                       std::string value)
-{
-    if (name == "method")
-        ctx->method = std::move(value);
-    else
-        warning(*ctx, "context: unknown variable {}.\n", name);
-}
-
-void
 context_set_solver_parameters(const context_ptr& ctx,
                               const solver_parameters& params)
 {
@@ -88,8 +77,8 @@ context_set_solver_parameters(const context_ptr& ctx,
           std::clamp(params.init_crossover_solution_selection_mean, 0.0, 1.0);
 
     if (std::isfinite(params.init_crossover_solution_selection_stddev))
-        ctx->parameters.init_crossover_solution_selection_stddev = std::clamp(
-          params.init_crossover_solution_selection_stddev, 0.0, 1.0);
+        ctx->parameters.init_crossover_solution_selection_stddev =
+          std::clamp(params.init_crossover_solution_selection_stddev, 0.0, 1.0);
 
     if (std::isfinite(params.init_mutation_variable_mean))
         ctx->parameters.init_mutation_variable_mean =
@@ -113,9 +102,8 @@ context_set_solver_parameters(const context_ptr& ctx,
     ctx->parameters.seed = params.seed;
     ctx->parameters.thread = params.thread;
 
-    ctx->parameters.limit = (params.limit <= 0)
-                              ? std::numeric_limits<long int>::max()
-                              : params.limit;
+    ctx->parameters.limit =
+      (params.limit <= 0) ? std::numeric_limits<long int>::max() : params.limit;
 
     if (params.print_level >= 0)
         ctx->parameters.print_level = params.print_level;
@@ -167,6 +155,7 @@ context_set_solver_parameters(const context_ptr& ctx,
     ctx->parameters.observer = params.observer;
     ctx->parameters.storage = params.storage;
     ctx->parameters.solver = params.solver;
+    ctx->parameters.use_buffer_solver = params.use_buffer_solver;
     ctx->parameters.debug = params.debug;
 }
 

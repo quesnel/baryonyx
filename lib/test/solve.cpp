@@ -54,8 +54,7 @@ is_essentially_equal(const T v1, const T v2, const T epsilon)
 int
 get_variable(const baryonyx::result& r, std::string variable_name)
 {
-    for (int i = 0, e = static_cast<int>(r.affected_vars.values.size());
-         i != e;
+    for (int i = 0, e = static_cast<int>(r.affected_vars.values.size()); i != e;
          ++i)
         if (r.affected_vars.names[i] == variable_name)
             return i;
@@ -74,6 +73,7 @@ main()
 {
     using namespace boost::ut;
 
+#if 0
     "test_preprocessor"_test = [] {
         auto ctx = baryonyx::make_context(4);
 
@@ -82,8 +82,7 @@ main()
         {
             auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/prepro.lp");
             baryonyx::solver_parameters params;
-            params.cost_norm =
-              baryonyx::solver_parameters::cost_norm_type::loo;
+            params.cost_norm = baryonyx::solver_parameters::cost_norm_type::loo;
             baryonyx::context_set_solver_parameters(ctx, params);
 
             fmt::print("{}", pb);
@@ -304,6 +303,21 @@ main()
         expect(result.status == baryonyx::result_status::success);
     };
 
+    "test_assignment_problem_with_buffer"_test = [] {
+        auto ctx = baryonyx::make_context(4);
+
+        auto pb =
+          baryonyx::make_problem(ctx, EXAMPLES_DIR "/assignment_problem_1.lp");
+
+        baryonyx::solver_parameters params;
+        params.use_buffer_solver = true;
+        baryonyx::context_set_solver_parameters(ctx, params);
+
+        auto result = baryonyx::solve(ctx, pb);
+
+        expect(result.status == baryonyx::result_status::success);
+    };
+
     "test_assignment_problem_random_coast"_test = [] {
         auto ctx = baryonyx::make_context(4);
 
@@ -335,12 +349,61 @@ main()
         }
     };
 
+    "test_assignment_problem_random_coast_with_buffer"_test = [] {
+        auto ctx = baryonyx::make_context(4);
+
+        baryonyx::solver_parameters params;
+        params.limit = 1000000;
+        params.theta = 0.5;
+        params.delta = 0.2;
+        params.kappa_step = 10e-4;
+        params.kappa_max = 10.0;
+        params.alpha = 0.0;
+        params.w = 20;
+        params.use_buffer_solver = true;
+        baryonyx::context_set_solver_parameters(ctx, params);
+
+        for (int i{ 0 }, e{ 10 }; i != e; ++i) {
+            auto pb = baryonyx::make_problem(
+              ctx, EXAMPLES_DIR "/assignment_problem_1.lp");
+
+            std::random_device rd;
+            std::mt19937 gen(rd());
+            std::uniform_int_distribution<> dis(1, 100);
+
+            for (auto& elem : pb.objective.elements)
+                elem.factor = dis(gen);
+
+            auto result = baryonyx::solve(ctx, pb);
+
+            expect(result.status == baryonyx::result_status::success);
+            expect(baryonyx::is_valid_solution(pb, result) == true);
+        }
+    };
+
     "test_negative_coeff"_test = [] {
         auto ctx = baryonyx::make_context(4);
         auto pb =
           baryonyx::make_problem(ctx, EXAMPLES_DIR "/negative-coeff.lp");
 
         baryonyx::solver_parameters params;
+        params.use_buffer_solver = false;
+        params.limit = 50;
+        baryonyx::context_set_solver_parameters(ctx, params);
+
+        auto result = baryonyx::solve(ctx, pb);
+
+        expect(result.status == baryonyx::result_status::success);
+        expect(baryonyx::is_valid_solution(pb, result) == true);
+    };
+
+    "test_negative_coeff_buffer"_test = [] {
+        auto ctx = baryonyx::make_context(4);
+        auto pb =
+          baryonyx::make_problem(ctx, EXAMPLES_DIR "/negative-coeff.lp");
+
+        baryonyx::solver_parameters params;
+        params.use_buffer_solver = true;
         params.limit = 50;
         baryonyx::context_set_solver_parameters(ctx, params);
 
@@ -363,9 +426,25 @@ main()
         auto result = baryonyx::solve(ctx, pb);
 
         expect(result.status == baryonyx::result_status::success);
-        expect(result.affected_vars.names.size() +
-                 result.variable_name.size() ==
-               4);
+        expect(
+          result.affected_vars.names.size() + result.variable_name.size() == 4);
+    };
+
+    "test_negative_coeff2_with_buffer"_test = [] {
+        auto ctx = baryonyx::make_context(4);
+
+        auto pb =
+          baryonyx::make_problem(ctx, EXAMPLES_DIR "/negative-coeff2.lp");
+
+        baryonyx::solver_parameters params;
+        params.use_buffer_solver = true;
+        baryonyx::context_set_solver_parameters(ctx, params);
+
+        auto result = baryonyx::solve(ctx, pb);
+
+        expect(result.status == baryonyx::result_status::success);
+        expect(
+          result.affected_vars.names.size() + result.variable_name.size() == 4);
     };
 
     "test_negative_coeff3"_test = [] {
@@ -384,7 +463,27 @@ main()
         expect(result.status == baryonyx::result_status::success);
         expect(baryonyx::is_valid_solution(pb, result) == true);
     };
+#endif
 
+    "test_negative_coeff3_with_buffer"_test = [] {
+        auto ctx = baryonyx::make_context(4);
+
+        auto pb =
+          baryonyx::make_problem(ctx, EXAMPLES_DIR "/negative-coeff3.lp");
+        expect(pb);
+
+        baryonyx::solver_parameters params;
+        params.limit = 10000;
+        params.use_buffer_solver = true;
+        baryonyx::context_set_solver_parameters(ctx, params);
+
+        auto result = baryonyx::solve(ctx, pb);
+
+        expect(result.status == baryonyx::result_status::success);
+        expect(baryonyx::is_valid_solution(pb, result) == true);
+    };
+
+#if 0
     "test_negative_coeff4"_test = [] {
         auto ctx = baryonyx::make_context(4);
 
@@ -463,8 +562,7 @@ main()
 
         for (int i = 0; i != 8; ++i) {
             for (int j = 0; j != 8; ++j)
-                fmt::print("{} ",
-                           result.solutions.back().variables[j * 8 + i]);
+                fmt::print("{} ", result.solutions.back().variables[j * 8 + i]);
 
             fmt::print("\n");
         }
@@ -538,8 +636,7 @@ main()
         params.kappa_min = 0.3;
         params.kappa_step = 1e-10;
         params.kappa_max = 1.0;
-        params.order =
-          baryonyx::solver_parameters::constraint_order::reversing;
+        params.order = baryonyx::solver_parameters::constraint_order::reversing;
         baryonyx::context_set_solver_parameters(ctx, params);
 
         auto result = baryonyx::solve(ctx, pb);
@@ -637,6 +734,7 @@ main()
                 expect(baryonyx::is_valid_solution(pb, result) == true);
         }
     };
+#endif
 
 #if 0
     "test_bibd1n"_test = [] {
