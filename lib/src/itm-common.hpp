@@ -426,8 +426,7 @@ affect(Solver& slv,
 
             if (slv.R[i].is_negative_factor()) {
                 x.unset(var->column);
-                // slv.P[var->value] -= d;
-                slv.P[var->value] = -d;
+                slv.P[var->value] -= d;
             } else {
                 x.set(var->column);
                 slv.P[var->value] += d;
@@ -913,12 +912,17 @@ struct compute_order
 
 template<typename Cost>
 inline real
-compute_delta(const context& ctx, const Cost& c, real theta, int n)
+compute_delta(const context& ctx,
+              const Cost& c,
+              real kappa_step,
+              real theta,
+              int n)
 {
     info(ctx, "  - delta not defined, compute it:\n");
 
     const auto mini = c.min(n);
-    const auto ret = mini - theta * mini;
+    const auto temp = mini - theta * mini;
+    const auto ret = temp <= 0 ? kappa_step : temp;
 
     info(ctx,
          "    - delta={} (min normalized cost:{} / theta: {})\n",
@@ -1082,10 +1086,9 @@ struct default_cost_type
         real min = std::numeric_limits<real>::max();
 
         for (int i = 0; i != n; ++i)
-            if (linear_elements[i])
-                min = std::min(min, std::abs(linear_elements[i]));
+            min = std::min(min, std::abs(linear_elements[i]));
 
-        return min;
+        return min == std::numeric_limits<real>::max() ? Zero : min;
     }
 
     void make_l1_norm(int n)
@@ -1255,16 +1258,18 @@ struct quadratic_cost_type
                                            begin->first,
                                            std::distance(r.begin(), r.end()));
 
-                    random_epsilon_unique(begin, end, rng, begin->first, value);
+                    random_epsilon_unique(
+                      begin, end, rng, begin->first, value);
                 }
             }
 
             // Reorder the vector according to the variable index, so,
             // it restores the initial order.
 
-            std::sort(r.begin(), r.end(), [](const auto& lhs, const auto& rhs) {
-                return lhs.second < rhs.second;
-            });
+            std::sort(
+              r.begin(), r.end(), [](const auto& lhs, const auto& rhs) {
+                  return lhs.second < rhs.second;
+              });
         }
 
         {

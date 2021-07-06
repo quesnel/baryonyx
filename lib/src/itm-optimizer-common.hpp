@@ -533,10 +533,10 @@ struct best_solution_recorder
     }
 
     real reinit(local_context& ctx,
-                  const bool /*is_solution*/,
-                  const real kappa_min,
-                  const real kappa_max,
-                  bit_array& x)
+                const bool /*is_solution*/,
+                const real kappa_min,
+                const real kappa_max,
+                bit_array& x)
     {
         to_log(stdout, 3u, "- reinitinialization thread {}.\n", ctx.thread_id);
 
@@ -644,9 +644,9 @@ struct optimize_functor
         const auto alpha = static_cast<real>(p.alpha);
         const auto theta = static_cast<real>(p.theta);
         const auto delta =
-          p.delta < 0
-            ? compute_delta<Cost>(m_ctx, norm_costs, theta, variables)
-            : static_cast<real>(p.delta);
+          p.delta < 0 ? compute_delta<Cost>(
+                          m_ctx, norm_costs, kappa_step, theta, variables)
+                      : static_cast<real>(p.delta);
 
         const auto pushing_k_factor = static_cast<real>(p.pushing_k_factor);
         const auto pushing_objective_amplifier =
