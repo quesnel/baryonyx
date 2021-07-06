@@ -77,9 +77,9 @@ struct solver_functor
         const auto alpha = static_cast<real>(p.alpha);
         const auto theta = static_cast<real>(p.theta);
         const auto delta =
-          p.delta < 0
-            ? compute_delta<Cost>(m_ctx, norm_costs, theta, variables)
-            : static_cast<real>(p.delta);
+          p.delta < 0 ? compute_delta<Cost>(
+                          m_ctx, norm_costs, kappa_step, theta, variables)
+                      : static_cast<real>(p.delta);
 
         const auto pushing_k_factor = static_cast<real>(p.pushing_k_factor);
         const auto pushing_objective_amplifier =
@@ -134,9 +134,7 @@ struct solver_functor
 
             if (remaining == 0) {
                 store_if_better(
-                  x,
-                  original_costs.results(x, cost_constant),
-                  i);
+                  x, original_costs.results(x, cost_constant), i);
                 best_remaining = remaining;
                 start_push = true;
                 break;
@@ -178,8 +176,7 @@ struct solver_functor
 
                 if (remaining == 0)
                     store_if_better(x,
-                                    original_costs.results(
-                                      x, cost_constant),
+                                    original_costs.results(x, cost_constant),
                                     -push * p.pushing_iteration_limit - 1);
 
                 if (is_timelimit_reached())
