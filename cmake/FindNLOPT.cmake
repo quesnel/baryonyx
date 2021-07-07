@@ -27,7 +27,7 @@ set(NLOPT_DEFINITIONS ${PC_NLOPT_CFLAGS_OTHER})
 
 # Include directories
 find_path(NLOPT_INCLUDE_DIRS
-    NAMES nlopt.hpp
+    NAMES nlopt.h
     HINTS ${PC_NLOPT_INCLUDEDIR}
     PATHS "${CMAKE_INSTALL_PREFIX}/include")
 
@@ -47,4 +47,3 @@ find_package_handle_standard_args(NLOPT
     FAIL_MESSAGE  DEFAULT_MSG
     REQUIRED_VARS NLOPT_INCLUDE_DIRS NLOPT_LIBRARIES
     VERSION_VAR   NLOPT_VERSION)
-

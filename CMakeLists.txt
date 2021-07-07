@@ -12,11 +12,14 @@ add_library(threads INTERFACE IMPORTED)
 set_property(TARGET threads PROPERTY
   INTERFACE_LINK_LIBRARIES ${CMAKE_THREAD_LIBS_INIT})
 
-find_package(NLOPT)
-if (NLOPT_FOUND)
-  add_library(nlopt INTERFACE IMPORTED)
-  set_property(TARGET nlopt PROPERTY
-    INTERFACE_LINK_LIBRARIES ${NLOPT_LIBRARIES})
+find_package(NLopt)
+if (NOT NLopt_FOUND)
+    find_package(NLOPT)
+    if (NLOPT_FOUND)
+    add_library(NLopt::nlopt INTERFACE IMPORTED)
+    set_property(TARGET NLopt::nlopt PROPERTY
+        INTERFACE_LINK_LIBRARIES ${NLOPT_LIBRARIES})
+    endif ()
 endif ()
 
 add_definitions(-DFMT_HEADER_ONLY)
