@@ -707,10 +707,13 @@ private:
              "- Preprocessing finishes (size: {})\n",
              to_string(bx::memory_consumed_size(memory_consumed(copy))));
 
-        // #ifdef BARYONYX_ENABLE_DEBUG
-        std::ofstream ofs("preprocessed.lp");
-        ofs << copy;
-        // #endif
+        if (ctx.parameters.debug) {
+            if (std::FILE* ofs = std::fopen("preprocessed.lp", "w"); ofs) {
+                info(ctx, "- Write file preprocessed.lp");
+                fmt::print(ofs, "{}", copy);
+                std::fclose(ofs);
+            }
+        }
 
         return copy;
     }

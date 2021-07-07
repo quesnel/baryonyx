@@ -21,40 +21,8 @@
  */
 
 #include "problem.hpp"
-#include "utils.hpp"
-
-#include <fmt/format.h>
-#include <fmt/ostream.h>
-
-#include <deque>
-#include <istream>
-#include <limits>
 
 namespace baryonyx {
-
-/**
- * Write @e lp problem into a stream.
- *
- */
-std::ostream&
-operator<<(std::ostream& os, const problem& p)
-{
-    fmt::print(os, "{}", p);
-
-    return os;
-}
-
-/**
- * Write @e lp problem into a stream.
- *
- */
-std::ostream&
-operator<<(std::ostream& os, const raw_problem& p)
-{
-    fmt::print(os, "{}", p);
-
-    return os;
-}
 
 void
 clear(raw_problem& pb)
