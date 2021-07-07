@@ -27,11 +27,9 @@
 #include "utils.hpp"
 
 #ifdef BARYONYX_HAVE_NLOPT
-#include <nlopt.hpp>
+#include <nlopt.h>
 #include <utility>
-#endif
 
-#ifdef BARYONYX_HAVE_NLOPT
 enum param
 {
     param_theta = 0,
@@ -54,9 +52,10 @@ struct nlopt_data
 };
 
 static double
-nlopt_optimize_fun(const std::vector<double>& x,
-                   std::vector<double>& /*grad*/,
-                   void* data_orig)
+nlopt_optimize_fun(unsigned /*n*/,
+                   const double* x,
+                   double* /*grad*/,
+                   void* data_orig) noexcept
 {
     try {
         auto* data = reinterpret_cast<nlopt_data*>(data_orig);
@@ -98,26 +97,28 @@ optimize(const baryonyx::context& ctx, const baryonyx::problem& pb)
 
     nlopt_data data(internal, pb);
 
-    const std::vector<double> low{ 0, 0.0001, 0.0, 1e-7, 0 };
-    const std::vector<double> up{ 1, 0.1, 0.5, 0.01, 1 };
-    std::vector<double> x{ 0.5, 0.001, 0.1, 0.001, 0.5 };
+    double low[5] = { 0.0, 0.0001, 0.0, 1e-7, 0.0 };
+    double up[5] = { 1.0, 0.1, 0.5, 0.01, 1.0 };
+    double x[5] = { 0.5, 0.001, 0.1, 0.001, 0.5 };
 
-    nlopt::opt opt(nlopt::LN_NELDERMEAD, 5);
-    opt.set_maxtime(3600);
-    opt.set_vector_storage(100);
-    opt.set_lower_bounds(low);
-    opt.set_upper_bounds(up);
-    opt.set_min_objective(nlopt_optimize_fun, reinterpret_cast<void*>(&data));
+    nlopt_opt opt = nlopt_create(NLOPT_LN_NELDERMEAD, 5u);
 
-    //
+    nlopt_set_maxtime(opt, 3600.0);
+    nlopt_set_vector_storage(opt, 100u);
+    nlopt_set_lower_bounds(opt, low);
+    nlopt_set_upper_bounds(opt, up);
+    nlopt_set_min_objective(
+      opt, nlopt_optimize_fun, reinterpret_cast<void*>(&data));
+
     // Seems interesting to loop over:
     // - more time-limit
     // - more loop-limit
     // - more optimization algorithms.
-    //
 
     double value;
-    auto result = opt.optimize(x, value);
+    auto result = nlopt_optimize(opt, x, &value);
+
+    nlopt_destroy(opt);
 
     if (result >= 1 || result == -4) {
         baryonyx::notice(
@@ -151,21 +152,27 @@ optimize(const baryonyx::context& ctx, const baryonyx::problem& pb)
 namespace baryonyx {
 namespace itm {
 
+#ifdef BARYONYX_HAVE_NLOPT
 result
 nlopt_optimize(const context& ctx, const problem& pb)
 {
     notice(ctx, "- auto-tune parameters (nlopt) starts\n");
 
-#ifdef BARYONYX_HAVE_NLOPT
     return ::optimize(ctx, pb);
+}
 #else
+result
+nlopt_optimize(const context& ctx, const problem& pb)
+{
+    notice(ctx, "- auto-tune parameters (nlopt) starts\n");
+
     error(ctx,
           "  Baryonyx does not have nlopt. Toggle to manual parameters "
           "optimization.\n");
 
     return manual_optimize(ctx, pb);
-#endif
 }
+#endif
 
 } // namespace itm
 } // namespace baryonyx
