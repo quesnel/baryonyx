@@ -64,6 +64,18 @@ struct solver_inequalities_101coeff_buffered : debug_logger<debug>
 
     struct computation_buffer
     {
+        computation_buffer(const real pi_,
+                           const real d_,
+                           const int k_,
+                           const int selected_,
+                           bool use_loop_)
+          : pi(pi_)
+          , d(d_)
+          , k(k_)
+          , selected(selected_)
+          , use_loop(use_loop_)
+        {}
+
         real pi;      // pi update
         real d;       // delta difference to apply to P matrix
         int k;        // Constraint id
