@@ -185,12 +185,6 @@ preprocess(const context& ctx, const raw_problem& pb_);
 raw_problem
 make_problem(const context& ctx, std::istream& is) noexcept;
 
-std::ostream&
-operator<<(std::ostream& os, const problem& p);
-
-std::ostream&
-operator<<(std::ostream& os, const raw_problem& p);
-
 /**
  * @brief Affect a variable to the @c pb problem.
  * @details Build a new @c problem from an original
