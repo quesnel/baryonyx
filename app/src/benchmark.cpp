@@ -36,7 +36,7 @@
 
 #include <fmt/color.h>
 #include <fmt/format.h>
-#include <fmt/ostream.h>
+#include <fmt/os.h>
 
 #include <cmath>
 #include <utility>
@@ -218,8 +218,7 @@ struct bench
             return m_objective_type;
         }
 
-        void set_objective_type(
-          baryonyx::objective_function_type type) noexcept
+        void set_objective_type(baryonyx::objective_function_type type) noexcept
         {
             m_objective_type = type;
         }
@@ -305,32 +304,33 @@ struct bench
         return true;
     }
 
-    void save_header(std::ostream& os, std::string name)
+    void save_header(fmt::buffered_file& os, std::string name)
     {
-        fmt::print(os, "file");
+        os.print("file");
 
         for (const auto& elem : solvers)
-            fmt::print(os, ",{}", elem.name());
-        fmt::print(os, ",{}\n", name);
+            os.print(",{}", elem.name());
+
+        os.print(",{}\n", name);
     }
 
-    void save(std::ostream& os,
+    void save(fmt::buffered_file& os,
               std::string name,
               const std::vector<element>& c)
     {
         save_header(os, name);
 
         for (std::size_t i{ 0 }, e{ models.size() }; i != e; ++i) {
-            fmt::print(os, "{},", models[i].name());
+            os.print("{},", models[i].name());
 
             for (std::size_t j{ 0 }, end_j{ solvers.size() }; j != end_j; ++j)
-                fmt::print(os, "{:.10g},", array(i, j));
+                os.print("{:.10g},", array(i, j));
 
-            fmt::print(os, "{:.10g}\n", c[i].solution);
+            os.print("{:.10g}\n", c[i].solution);
         }
     }
 
-    void save_stats(std::ostream& os,
+    void save_stats(fmt::buffered_file& os,
                     std::string name,
                     const std::vector<element>& c)
     {
@@ -371,21 +371,21 @@ struct bench
                           return lhs.position < rhs.position;
                       });
 
-            fmt::print(os, "{}", models[i].name());
+            os.print("{}", models[i].name());
             for (size_t j{ 0 }, end_j{ line.size() }; j != end_j; ++j)
-                fmt::print(os, ",{}", line[j].rank);
-            fmt::print(os, "\n");
+                os.print(",{}", line[j].rank);
+            os.print("\n");
         }
 
-        fmt::print(os, "mean");
+        os.print("mean");
         for (size_t j{ 0 }, end_j{ line.size() }; j != end_j; ++j) {
             stats[j].value = static_cast<double>(stats[j].rank) /
                              static_cast<double>(models.size());
             stats[j].position = j;
 
-            fmt::print(os, ",{}", stats[j].value);
+            os.print(",{}", stats[j].value);
         }
-        fmt::print(os, "\n");
+        os.print("\n");
 
         std::sort(std::begin(stats),
                   std::end(stats),
@@ -409,10 +409,10 @@ struct bench
                       return lhs.position < rhs.position;
                   });
 
-        fmt::print(os, "rank");
+        os.print("rank");
         for (size_t i{ 0 }, e = stats.size(); i != e; ++i)
-            fmt::print(os, ",{}", stats[i].rank);
-        fmt::print(os, "\n");
+            os.print(",{}", stats[i].rank);
+        os.print("\n");
     }
 
     benchmark_result load(std::istream& is)
@@ -448,11 +448,11 @@ struct bench
                     } else if (begin + 1 != end) {
                         if (!push_back_solver(std::string_view(
                               buffer.data() + begin, end - begin)))
-                            return solver_name_error{ std::string(
-                                                        buffer.data() + begin,
-                                                        end - begin),
-                                                      1,
-                                                      begin };
+                            return solver_name_error{
+                                std::string(buffer.data() + begin, end - begin),
+                                1,
+                                begin
+                            };
                     } else {
                         return solver_name_error{
                             std::string(buffer.data() + begin), 1, begin
@@ -659,8 +659,7 @@ try_benchmark(const baryonyx::context_ptr& ctx,
         } catch (const baryonyx::postcondition_failure& e) {
             fmt::print(stderr, "internal failure: {}\n", e.what());
         } catch (const baryonyx::numeric_cast_failure& e) {
-            fmt::print(
-              stderr, "numeric cast internal failure: {}\n", e.what());
+            fmt::print(stderr, "numeric cast internal failure: {}\n", e.what());
         } catch (const baryonyx::file_access_failure& e) {
             fmt::print(stderr,
                        "file `{}' fail {}: {}\n",
@@ -751,21 +750,19 @@ try_benchmark(const baryonyx::context_ptr& ctx,
         }
     }
 
-    {
-        std::ofstream ofs(filepath);
-        if (!ofs.is_open())
-            return open_result_file_error{ filepath, errno };
-
+    try {
+        auto ofs = fmt::buffered_file{ filepath, "w" };
         b.save(ofs, name, current);
+    } catch (...) {
+        return open_result_file_error{ filepath, errno };
     }
 
-    {
-        auto stats_file_name = make_stats_file_name(filepath);
-        std::ofstream ofs(stats_file_name);
-        if (!ofs.is_open())
-            return open_stats_file_error{ stats_file_name, errno };
-
+    auto stats_file_name = make_stats_file_name(filepath);
+    try {
+        auto ofs = fmt::buffered_file{ stats_file_name, "w" };
         b.save_stats(ofs, name, current);
+    } catch (...) {
+        return open_stats_file_error{ stats_file_name, errno };
     }
 
     b.show_to_console(current, name);

@@ -31,7 +31,6 @@
 #include <boost/ut.hpp>
 
 #include <fmt/format.h>
-#include <fmt/ostream.h>
 
 #include <fstream>
 #include <map>
@@ -174,9 +173,9 @@ main()
 
             expect(result.solutions.back().value > 6.0);
 
-            fmt::print(ss, "{}", result);
-            if (!ss.good())
-                expect(ss.good());
+            auto str = fmt::format("{}", result);
+            ss << str;
+            expect(ss.good());
         }
 
         {
@@ -216,9 +215,9 @@ main()
             r = result.solutions.back().value;
             expect(result.solutions.back().value < 1156908);
 
-            fmt::print(ss, "{}", result);
-            if (!ss.good())
-                expect(ss.good());
+            auto str = fmt::format("{}", result);
+            ss << str;
+            expect(ss.good());
         }
 
         {

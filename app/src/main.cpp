@@ -25,16 +25,12 @@
 
 #include "main.hpp"
 
+#include <fmt/chrono.h>
 #include <fmt/color.h>
 #include <fmt/format.h>
-#include <fmt/ostream.h>
+#include <fmt/os.h>
 
-#include <chrono>
-#include <fstream>
-#include <iomanip>
 #include <limits>
-#include <sstream>
-#include <string>
 #include <tuple>
 #include <utility>
 
@@ -644,11 +640,11 @@ assign_parameter(baryonyx::solver_parameters& params,
             params.order =
               baryonyx::solver_parameters::constraint_order::random_sorting;
         else if (value == "infeasibility-decr")
-            params.order = baryonyx::solver_parameters::constraint_order::
-              infeasibility_decr;
+            params.order =
+              baryonyx::solver_parameters::constraint_order::infeasibility_decr;
         else if (value == "infeasibility-incr")
-            params.order = baryonyx::solver_parameters::constraint_order::
-              infeasibility_incr;
+            params.order =
+              baryonyx::solver_parameters::constraint_order::infeasibility_incr;
         else if (value == "lagrangian-decr")
             params.order =
               baryonyx::solver_parameters::constraint_order::lagrangian_decr;
@@ -659,8 +655,7 @@ assign_parameter(baryonyx::solver_parameters& params,
             params.order =
               baryonyx::solver_parameters::constraint_order::pi_sign_change;
         else if (value == "cycle")
-            params.order =
-              baryonyx::solver_parameters::constraint_order::cycle;
+            params.order = baryonyx::solver_parameters::constraint_order::cycle;
         else
             return command_line_status::constraint_order_error;
 
@@ -729,8 +724,7 @@ assign_parameter(baryonyx::solver_parameters& params,
         else if (value == "l2")
             params.cost_norm = baryonyx::solver_parameters::cost_norm_type::l2;
         else if (value == "loo")
-            params.cost_norm =
-              baryonyx::solver_parameters::cost_norm_type::loo;
+            params.cost_norm = baryonyx::solver_parameters::cost_norm_type::loo;
         else
             return command_line_status::norm_error;
 
@@ -1029,7 +1023,7 @@ resume(const baryonyx::raw_problem& pb) noexcept
 }
 
 static void
-resume(const baryonyx::raw_problem& pb, std::ostream& os) noexcept
+resume(const baryonyx::raw_problem& pb, fmt::buffered_file& os) noexcept
 {
     int real{ 0 }, general{ 0 }, binary{ 0 };
 
@@ -1047,99 +1041,90 @@ resume(const baryonyx::raw_problem& pb, std::ostream& os) noexcept
         }
     }
 
-    fmt::print(os,
-               "\\ objective : {}\n"
-               "\\ mode: {}\n"
-               "\\ variables: {}/{}/{} (real/general/binary)\n"
-               "\\ constraints: {}/{}/{} (equal/greater/less)\n",
-               (pb.type == baryonyx::objective_function_type::maximize
-                  ? "maximize"
-                  : "minimize"),
-               (pb.objective.qelements.empty() ? "linear" : "quadratic"),
-               real,
-               general,
-               binary,
-               pb.equal_constraints.size(),
-               pb.greater_constraints.size(),
-               pb.less_constraints.size());
+    os.print("\\ objective : {}\n"
+             "\\ mode: {}\n"
+             "\\ variables: {}/{}/{} (real/general/binary)\n"
+             "\\ constraints: {}/{}/{} (equal/greater/less)\n",
+             (pb.type == baryonyx::objective_function_type::maximize
+                ? "maximize"
+                : "minimize"),
+             (pb.objective.qelements.empty() ? "linear" : "quadratic"),
+             real,
+             general,
+             binary,
+             pb.equal_constraints.size(),
+             pb.greater_constraints.size(),
+             pb.less_constraints.size());
 }
 
 static void
-resume(const baryonyx::result& result, std::ostream& os) noexcept
+resume(const baryonyx::result& result, fmt::buffered_file& os) noexcept
 {
-    fmt::print(os,
-               "\\ solver................: {}\n"
-               "\\ constraints...........: {}\n"
-               "\\ variables.............: {}\n"
-               "\\ duration..............: {:f}\n"
-               "\\ loop..................: {}\n"
-               "\\ status................: ",
-               result.method,
-               result.constraints,
-               result.variables,
-               result.duration,
-               result.loop);
+    os.print("\\ solver................: {}\n"
+             "\\ constraints...........: {}\n"
+             "\\ variables.............: {}\n"
+             "\\ duration..............: {:f}\n"
+             "\\ loop..................: {}\n"
+             "\\ status................: ",
+             result.method,
+             result.constraints,
+             result.variables,
+             result.duration,
+             result.loop);
 
     switch (result.status) {
     case baryonyx::result_status::internal_error:
-        fmt::print(os, "internal error reported\n");
+        os.print("internal error reported\n");
         break;
     case baryonyx::result_status::uninitialized:
-        fmt::print(os, "uninitialized\n");
+        os.print("uninitialized\n");
         break;
     case baryonyx::result_status::success:
-        fmt::print(os, "solution found\n");
+        os.print("solution found\n");
 
         if (result.solutions.empty()) // Baryonyx ensures solutions are not
             break;                    // empty.
 
-        fmt::print(os,
-                   "\\ value.................: {:f}\n"
-                   "\\ other value...........: ",
-                   result.solutions.back().value);
+        os.print("\\ value.................: {:f}\n"
+                 "\\ other value...........: ",
+                 result.solutions.back().value);
 
         for (const auto& elem : result.solutions)
-            fmt::print(os, "{} ", elem.value);
-        fmt::print(os, "\n");
-        fmt::print(os, "\\ variables.............: \n");
+            os.print("{} ", elem.value);
+        os.print("\n");
+        os.print("\\ variables.............: \n");
 
-        for (std::size_t i{ 0 }, e{ result.affected_vars.names.size() };
-             i != e;
+        for (std::size_t i{ 0 }, e{ result.affected_vars.names.size() }; i != e;
              ++i)
-            fmt::print(os,
-                       "{}={}\n",
-                       result.affected_vars.names[i],
-                       (result.affected_vars.values[i] ? 1 : 0));
+            os.print("{}={}\n",
+                     result.affected_vars.names[i],
+                     (result.affected_vars.values[i] ? 1 : 0));
 
         for (std::size_t i{ 0 }, e{ result.solutions.back().variables.size() };
              i != e;
              ++i)
-            fmt::print(os,
-                       "{}={}\n",
-                       result.variable_name[i],
-                       (result.solutions.back().variables[i] ? 1 : 0));
+            os.print("{}={}\n",
+                     result.variable_name[i],
+                     (result.solutions.back().variables[i] ? 1 : 0));
 
         break;
     case baryonyx::result_status::time_limit_reached:
-        fmt::print(os,
-                   "time limit reached\n"
-                   "\\ remaining constraints.: {}\n",
-                   result.remaining_constraints);
+        os.print("time limit reached\n"
+                 "\\ remaining constraints.: {}\n",
+                 result.remaining_constraints);
         break;
     case baryonyx::result_status::kappa_max_reached:
-        fmt::print(os,
-                   "kappa max reached\n"
-                   "\\ remaining constraints.: {}\n",
-                   result.remaining_constraints);
+        os.print("kappa max reached\n"
+                 "\\ remaining constraints.: {}\n",
+                 result.remaining_constraints);
         break;
     case baryonyx::result_status::limit_reached:
-        fmt::print(os,
-                   "limit reached\n"
-                   "\\ remaining constraints.: {}\n",
-                   result.remaining_constraints);
+        os.print("limit reached\n"
+                 "\\ remaining constraints.: {}\n",
+                 result.remaining_constraints);
         break;
     case baryonyx::result_status::empty_context:
-        fmt::print(os, "context uninitialized\n");
+        os.print("context uninitialized\n");
         break;
     }
 }
@@ -1147,10 +1132,45 @@ resume(const baryonyx::result& result, std::ostream& os) noexcept
 static inline auto
 solve_or_optimize(const baryonyx::context_ptr& ctx,
                   const baryonyx::raw_problem& pb,
-                  bool with_optimization) -> baryonyx::result
+                  bool with_optimization)
 {
     return with_optimization ? baryonyx::optimize(ctx, pb)
                              : baryonyx::solve(ctx, pb);
+}
+
+static inline auto
+solve_or_optimize(const std::string& filename,
+                  const baryonyx::context_ptr& ctx,
+                  const baryonyx::raw_problem& pb,
+                  bool with_optimization)
+{
+    baryonyx::result ret;
+    try {
+        fmt::buffered_file ofs(filename, "w");
+        resume(pb, ofs);
+
+        auto t = std::time(nullptr);
+        ofs.print("\\ solver starts: {:%Y-%m-%d} %X\n", fmt::localtime(t));
+
+        ret = with_optimization ? baryonyx::optimize(ctx, pb)
+                                : baryonyx::solve(ctx, pb);
+
+        t = std::time(nullptr);
+
+        ofs.print("\\ solver finishes: {:%Y-%m-%d %X}\n", fmt::localtime(t));
+
+        if (ret.status == baryonyx::result_status::success) {
+            ofs.print("\\ Solution found: {:f}\n", ret.solutions.back().value);
+            resume(ret, ofs);
+        } else {
+            ofs.print("\\ Solution not found. Missing constraints: {}\n",
+                      ret.remaining_constraints);
+        }
+    } catch (...) {
+        fmt::print(stderr, "Fail to open file {}\n", filename);
+    }
+
+    return ret;
 }
 
 int
@@ -1225,36 +1245,8 @@ main(int argc, const char* argv[])
                     }
 
                     resume(pb);
-                    std::ofstream ofs(filename);
-
-                    auto now = std::chrono::system_clock::now();
-                    auto in_time_t = std::chrono::system_clock::to_time_t(now);
-                    resume(pb, ofs);
-
-                    fmt::print(ofs,
-                               "\\ solver starts: \n",
-                               std::put_time(std::localtime(&in_time_t),
-                                             "%Y-%m-%d %X"));
-
-                    auto ret = solve_or_optimize(ctx, pb, params.optimize);
-                    in_time_t = std::chrono::system_clock::to_time_t(now);
-
-                    fmt::print(ofs,
-                               "\\ solver finishes: {}\n",
-                               std::put_time(std::localtime(&in_time_t),
-                                             "%Y-%m-%d %X"));
-
-                    if (ret.status == baryonyx::result_status::success) {
-                        fmt::print(ofs,
-                                   "\\ Solution found: {:f}\n",
-                                   ret.solutions.back().value);
-                        resume(ret, ofs);
-                    } else {
-                        fmt::print(ofs,
-                                   "\\ Solution not found. Missing "
-                                   "constraints: {}\n",
-                                   ret.remaining_constraints);
-                    }
+                    auto ret =
+                      solve_or_optimize(filename, ctx, pb, params.optimize);
                 } catch (const baryonyx::precondition_failure& e) {
                     fmt::print(stderr, "internal failure: {}\n", e.what());
                 } catch (const baryonyx::postcondition_failure& e) {
@@ -1288,7 +1280,7 @@ main(int argc, const char* argv[])
             }
         } else {
             auto filename = fmt::format("baryonyx-{}.res", get_pid());
-            std::ofstream ofs(filename);
+            auto ofs = fmt::buffered_file(filename, "w");
 
             for (auto& elem : params.filenames) {
                 auto pb = baryonyx::make_problem(ctx, elem);
@@ -1298,24 +1290,22 @@ main(int argc, const char* argv[])
                 }
 
                 try {
-                    fmt::print(ofs, "{} ", elem);
+                    ofs.print("{} ", elem);
 
                     auto ret = solve_or_optimize(ctx, pb, params.optimize);
 
                     if (ret.status == baryonyx::result_status::success) {
-                        fmt::print(ofs,
-                                   "{:f} {}s ",
-                                   ret.solutions.back().value,
-                                   ret.duration);
+                        ofs.print("{:f} {}s ",
+                                  ret.solutions.back().value,
+                                  ret.duration);
 
                         for (const auto& sol : ret.solutions)
-                            fmt::print(ofs, "{} ", sol.value);
-                        fmt::print(ofs, "\n");
+                            ofs.print("{} ", sol.value);
+                        ofs.print("\n");
 
                     } else {
-                        fmt::print(ofs, "No solution found.\n");
+                        ofs.print("No solution found.\n");
                     }
-                    ofs.flush();
                 } catch (const baryonyx::precondition_failure& e) {
                     fmt::print(stderr, "internal failure: {}\n", e.what());
                 } catch (const baryonyx::postcondition_failure& e) {

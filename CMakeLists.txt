@@ -22,8 +22,9 @@ if (NOT NLopt_FOUND)
     endif ()
 endif ()
 
-add_definitions(-DFMT_HEADER_ONLY)
-include_directories(${CMAKE_SOURCE_DIR}/external/fmt/include)
+option(FMT_INSTALL "Enable install for fmt project" ON)
+add_subdirectory(external/fmt)
+
 include_directories(${CMAKE_SOURCE_DIR}/external/ut/include)
 
 enable_testing()

@@ -78,6 +78,7 @@ target_include_directories(libbaryonyx PUBLIC
 target_link_libraries(libbaryonyx
   PRIVATE
   threads
+  fmt
   $<$<BOOL:${NLOPT_FOUND}>:nlopt>)
 
 set_target_properties(libbaryonyx PROPERTIES
@@ -176,7 +177,7 @@ function(baryonyx_add_test test_name)
     src
     ${CMAKE_CURRENT_BINARY_DIR})
 
-  target_link_libraries(${test_name} libbaryonyx threads)
+  target_link_libraries(${test_name} PRIVATE libbaryonyx threads fmt)
 
   add_test(${test_name} ${test_name})
 endfunction()
