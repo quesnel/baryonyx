@@ -25,6 +25,7 @@
 
 #include <baryonyx/core>
 
+#include <algorithm>
 #include <utility>
 
 #include <fmt/color.h>
