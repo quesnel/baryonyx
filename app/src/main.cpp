@@ -339,7 +339,7 @@ help() noexcept
       "file_name.csv\n\n"
       "  --debug                       Enable a debug mode\n"
       "Parameter list for in the middle heuristic\n"
-      " * Global parameters"
+      " * Global parameters\n"
       "  - limit: integer ]-oo, +oo[ in loop number\n"
       "  - time-limit: real [0, +oo[ in seconds\n"
       "  - floating-point-type: float double longdouble\n"
