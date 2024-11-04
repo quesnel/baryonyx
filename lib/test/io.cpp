@@ -28,11 +28,61 @@
 #include <fstream>
 #include <map>
 #include <numeric>
-#include <sstream>
+#include <streambuf>
+#include <string_view>
 
 #include <baryonyx/core-compare>
 #include <baryonyx/core>
 #include <utility>
+
+class membuf : public std::streambuf
+{
+private:
+    using ios_base = std::ios_base;
+
+protected:
+    pos_type seekoff(off_type off,
+                     ios_base::seekdir dir,
+                     [[maybe_unused]] ios_base::openmode which =
+                       ios_base::in | ios_base::out) override
+    {
+        if (dir == ios_base::cur)
+            gbump(static_cast<int>(off));
+        else if (dir == ios_base::end)
+            setg(eback(), egptr() + off, egptr());
+        else if (dir == ios_base::beg)
+            setg(eback(), eback() + off, egptr());
+        return gptr() - eback();
+    }
+
+    pos_type seekpos(pos_type sp, ios_base::openmode which) override
+    {
+        return seekoff(sp - pos_type(off_type(0)), ios_base::beg, which);
+    }
+
+public:
+    membuf(const char* data, size_t size) noexcept
+    {
+        auto p = const_cast<char*>(data);
+        this->setg(p, p, p + size);
+    }
+
+    membuf(std::string_view buffer) noexcept
+      : membuf(buffer.data(), buffer.size())
+    {
+    }
+};
+
+struct imemstream
+  : private virtual membuf
+  , public std::istream
+{
+    imemstream(std::string_view buffer) noexcept
+      : membuf(buffer)
+      , std::istream(static_cast<std::streambuf*>(this))
+    {
+    }
+};
 
 int
 main()
@@ -41,8 +91,8 @@ main()
 
     "named objective"_test = [] {
         const char* example = "maximize\n"
-            "x0: +x1 + 2x2 + 3x3 - 100\n"
-            "end\n";
+                              "x0: +x1 + 2x2 + 3x3 - 100\n"
+                              "end\n";
 
         auto ctx = baryonyx::make_context(4);
         std::istringstream iss(example);
@@ -62,8 +112,8 @@ main()
 
     "no-named objective"_test = [] {
         const char* example = "maximize\n"
-            "st: x1 + x2 + x3 = 1\n"
-            "end\n";
+                              "st: x1 + x2 + x3 = 1\n"
+                              "end\n";
 
         auto ctx = baryonyx::make_context(4);
         std::istringstream iss(example);
@@ -649,9 +699,10 @@ main()
             expect(pb.vars.names.size() == 16);
             expect(pb.vars.values.size() == 16);
 
-            std::stringstream ss;
-            ss << pb;
+            fmt::memory_buffer buffer;
+            fmt::format_to(std::back_inserter(buffer), "{}", pb);
 
+            imemstream ss(std::string_view(buffer.data(), buffer.size()));
             auto pb2 = baryonyx::make_problem(*ctx, ss);
 
             expect(pb == pb2);
