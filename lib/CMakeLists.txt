@@ -67,7 +67,7 @@ target_compile_options(libbaryonyx
       -pipe -march=native
       $<$<CONFIG:Debug>:-Og -Wall -Wextra>>
   $<$<CXX_COMPILER_ID:MSVC>:
-      /EHsc /bigobj
+      /EHsc /bigobj /utf-8
       $<$<CONFIG:Debug>:/Od /W3 /Zi>>)
 
 target_include_directories(libbaryonyx PUBLIC
@@ -157,7 +157,7 @@ function(baryonyx_add_test test_name)
         -pipe -march=native
         $<$<CONFIG:Debug>:-Og -Wall -Wextra>>
     $<$<CXX_COMPILER_ID:MSVC>:
-        /EHsc /bigobj
+        /EHsc /bigobj /utf-8
         $<$<CONFIG:Debug>:/Od /W3 /Zi>>)
 
   target_compile_definitions(${test_name}
