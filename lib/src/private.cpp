@@ -25,7 +25,7 @@
 
 namespace baryonyx {
 
-const fmt::text_style context::message_style[] = {
+constexpr fmt::text_style context::message_style[] = {
     (fmt::emphasis::bold | fmt::fg(fmt::terminal_color::red)), // emerg
     (fmt::emphasis::bold | fmt::fg(fmt::terminal_color::red)), // alert
     (fmt::emphasis::bold | fmt::fg(fmt::terminal_color::red)), // crit
@@ -77,8 +77,8 @@ context_set_solver_parameters(const context_ptr& ctx,
           std::clamp(params.init_crossover_solution_selection_mean, 0.0, 1.0);
 
     if (std::isfinite(params.init_crossover_solution_selection_stddev))
-        ctx->parameters.init_crossover_solution_selection_stddev =
-          std::clamp(params.init_crossover_solution_selection_stddev, 0.0, 1.0);
+        ctx->parameters.init_crossover_solution_selection_stddev = std::clamp(
+          params.init_crossover_solution_selection_stddev, 0.0, 1.0);
 
     if (std::isfinite(params.init_mutation_variable_mean))
         ctx->parameters.init_mutation_variable_mean =
@@ -102,8 +102,9 @@ context_set_solver_parameters(const context_ptr& ctx,
     ctx->parameters.seed = params.seed;
     ctx->parameters.thread = params.thread;
 
-    ctx->parameters.limit =
-      (params.limit <= 0) ? std::numeric_limits<long int>::max() : params.limit;
+    ctx->parameters.limit = (params.limit <= 0)
+                              ? std::numeric_limits<long int>::max()
+                              : params.limit;
 
     if (params.print_level >= 0)
         ctx->parameters.print_level = params.print_level;

@@ -23,6 +23,7 @@
 #ifndef ORG_VLEPROJECT_BARYONYX_LIB_PRIVATE_RESULT_HPP
 #define ORG_VLEPROJECT_BARYONYX_LIB_PRIVATE_RESULT_HPP
 
+#include <baryonyx/core-out>
 #include <baryonyx/core>
 
 #include "itm-common.hpp"
@@ -41,7 +42,8 @@ struct raw_result
 
     raw_result(int variables)
       : x(variables)
-    {}
+    {
+    }
 
     raw_result(const bit_array& x_,
                real value_,
@@ -52,7 +54,8 @@ struct raw_result
       , duration(duration_)
       , loop(loop_)
       , remaining_constraints(0)
-    {}
+    {
+    }
 
     raw_result(const bit_array& x_,
                int remaining_constraints_,
@@ -63,7 +66,8 @@ struct raw_result
       , duration(duration_)
       , loop(loop_)
       , remaining_constraints(remaining_constraints_)
-    {}
+    {
+    }
 
     bit_array x;
     real value = itm::bad_value<Mode>();
@@ -145,7 +149,8 @@ struct best_solution_writer
 
     best_solution_writer(const result& res_)
       : res(res_)
-    {}
+    {
+    }
 };
 
 std::ostream&
@@ -157,26 +162,27 @@ template<>
 struct fmt::formatter<baryonyx::result>
 {
     constexpr auto parse(format_parse_context& ctx)
+      -> format_parse_context::iterator
     {
         return ctx.begin();
     }
 
-    template<typename FormatContext>
-    auto format(const baryonyx::result& result, FormatContext& ctx)
+    auto format(const baryonyx::result& result, format_context& ctx) const
+      -> format_context::iterator
     {
-        fmt::format_to(ctx.out(),
-                            "\\ solver................: {}\n"
-                            "\\ constraints...........: {}\n"
-                            "\\ variables.............: {}\n"
-                            "\\ duration..............: {}s\n"
-                            "\\ loop..................: {}\n"
-                            "\\ status................: {}\n",
-                            result.method,
-                            result.constraints,
-                            result.variables,
-                            result.duration,
-                            result.loop,
-                            result.status);
+        format_to(ctx.out(),
+                  "\\ solver................: {}\n"
+                  "\\ constraints...........: {}\n"
+                  "\\ variables.............: {}\n"
+                  "\\ duration..............: {}s\n"
+                  "\\ loop..................: {}\n"
+                  "\\ status................: {}\n",
+                  result.method,
+                  result.constraints,
+                  result.variables,
+                  result.duration,
+                  result.loop,
+                  result.status);
 
         if (result.status == baryonyx::result_status::success) {
             if (!result.solutions.empty()) {

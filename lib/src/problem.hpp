@@ -319,7 +319,7 @@ write_bounds(FormatContext& ctx, const Problem& p)
 }
 
 template<typename FormatContext, typename Problem>
-void
+constexpr void
 write_problem(FormatContext& ctx, const Problem& p)
 {
     if (p.vars.names.empty())
@@ -381,12 +381,14 @@ template<>
 struct fmt::formatter<baryonyx::problem>
 {
     constexpr auto parse(format_parse_context& ctx)
+      -> format_parse_context::iterator
     {
         return ctx.begin();
     }
 
-    template<typename FormatContext>
-    auto format(const baryonyx::problem& pb, FormatContext& ctx)
+    constexpr auto format(const baryonyx::problem& pb,
+                          format_context& ctx) const
+      -> format_context::iterator
     {
         write_problem(ctx, pb);
         return ctx.out();
@@ -401,8 +403,9 @@ struct fmt::formatter<baryonyx::raw_problem>
         return ctx.begin();
     }
 
-    template<typename FormatContext>
-    auto format(const baryonyx::raw_problem& pb, FormatContext& ctx)
+    constexpr auto format(const baryonyx::raw_problem& pb,
+                          format_context& ctx) const
+      -> format_context::iterator
     {
         write_problem(ctx, pb);
         return ctx.out();
