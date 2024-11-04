@@ -85,7 +85,7 @@ struct problem
         return ret;
     }
 
-    int coefficient_type() noexcept
+    int coefficient_type() const noexcept
     {
         int eq = coefficient_type(equal_constraints);
         int le = coefficient_type(less_constraints);
@@ -94,7 +94,7 @@ struct problem
         return std::max(eq, std::max(le, ge));
     }
 
-    problem_solver_type which_problem_type() noexcept
+    problem_solver_type which_problem_type() const noexcept
     {
         auto coefficient = coefficient_type();
 
