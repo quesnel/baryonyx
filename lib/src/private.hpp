@@ -70,7 +70,8 @@ struct context
 
     context(int verbose_level = 6)
       : log_priority(convert_verbose_level(verbose_level))
-    {}
+    {
+    }
 
     solver_parameters parameters;
 
@@ -115,18 +116,19 @@ is_loggable(context::message_type current_level, int level) noexcept
     return static_cast<int>(current_level) >= level;
 }
 
-template<typename... Args>
-void
-log(FILE* out, int style, const char* fmt, const Args&... args)
+template<typename S, typename... Args>
+constexpr void
+log(FILE* out, int style, const S& s, Args&&... args)
 {
-    fmt::print(out, context::message_style[style], fmt, args...);
+    fmt::vprint(
+      out, context::message_style[style], s, fmt::make_format_args(args...));
 }
 
 template<typename... Args>
 void
 log(FILE* out, int style, const char* msg)
 {
-    fmt::print(out, context::message_style[style], msg);
+    fmt::print(out, context::message_style[style], "{}", msg);
 }
 
 template<typename T>
@@ -142,7 +144,8 @@ struct sink
 {
     template<typename... Args>
     sink(const Args&...)
-    {}
+    {
+    }
 };
 
 }
@@ -299,7 +302,10 @@ alert(const context& ctx,
 
 template<typename Arg1, typename... Args>
 void
-crit(const context& ctx, const char* fmt, const Arg1& arg1, const Args&... args)
+crit(const context& ctx,
+     const char* fmt,
+     const Arg1& arg1,
+     const Args&... args)
 {
 #ifdef BARYONYX_ENABLE_LOG
     if (!is_loggable(ctx.log_priority, 2))
@@ -364,7 +370,10 @@ notice(const context& ctx,
 
 template<typename Arg1, typename... Args>
 void
-info(const context& ctx, const char* fmt, const Arg1& arg1, const Args&... args)
+info(const context& ctx,
+     const char* fmt,
+     const Arg1& arg1,
+     const Args&... args)
 {
 #ifdef BARYONYX_ENABLE_LOG
     if (!is_loggable(ctx.log_priority, 6))

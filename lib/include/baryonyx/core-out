@@ -31,8 +31,7 @@ template<>
 struct fmt::formatter<baryonyx::file_format_error_tag>
   : fmt::formatter<string_view>
 {
-    template<typename FormatContext>
-    auto format(baryonyx::file_format_error_tag c, FormatContext& ctx)
+    auto format(baryonyx::file_format_error_tag c, format_context& ctx) const
     {
         string_view name = "unknown";
 
@@ -92,8 +91,7 @@ template<>
 struct fmt::formatter<baryonyx::problem_definition_error_tag>
   : fmt::formatter<string_view>
 {
-    template<typename FormatContext>
-    auto format(baryonyx::problem_definition_error_tag c, FormatContext& ctx)
+    auto format(baryonyx::problem_definition_error_tag c, format_context& ctx) const
     {
         string_view name = "unknown";
 
@@ -122,8 +120,7 @@ struct fmt::formatter<baryonyx::problem_definition_error_tag>
 template<>
 struct fmt::formatter<baryonyx::result_status> : fmt::formatter<string_view>
 {
-    template<typename FormatContext>
-    auto format(baryonyx::result_status c, FormatContext& ctx)
+    auto format(baryonyx::result_status c, format_context& ctx) const
     {
         string_view name = "unknown";
 
@@ -159,9 +156,8 @@ template<>
 struct fmt::formatter<baryonyx::solver_parameters::pre_constraint_order>
   : fmt::formatter<string_view>
 {
-    template<typename FormatContext>
     auto format(baryonyx::solver_parameters::pre_constraint_order c,
-                FormatContext& ctx)
+                format_context& ctx) const
     {
         string_view name = "unknown";
 
@@ -218,9 +214,8 @@ template<>
 struct fmt::formatter<baryonyx::solver_parameters::init_policy_type>
   : fmt::formatter<string_view>
 {
-    template<typename FormatContext>
     auto format(baryonyx::solver_parameters::init_policy_type c,
-                FormatContext& ctx)
+                format_context& ctx) const
     {
         string_view name = "unknown";
 
@@ -244,9 +239,8 @@ template<>
 struct fmt::formatter<baryonyx::solver_parameters::constraint_order>
   : fmt::formatter<string_view>
 {
-    template<typename FormatContext>
     auto format(baryonyx::solver_parameters::constraint_order c,
-                FormatContext& ctx)
+                format_context& ctx) const
     {
         string_view name = "unknown";
 
@@ -288,9 +282,8 @@ template<>
 struct fmt::formatter<baryonyx::solver_parameters::cost_norm_type>
   : fmt::formatter<string_view>
 {
-    template<typename FormatContext>
     auto format(baryonyx::solver_parameters::cost_norm_type c,
-                FormatContext& ctx)
+                format_context& ctx) const
     {
         string_view name = "unknown";
 
@@ -320,8 +313,7 @@ template<>
 struct fmt::formatter<baryonyx::solver_parameters::mode_type>
   : fmt::formatter<string_view>
 {
-    template<typename FormatContext>
-    auto format(baryonyx::solver_parameters::mode_type c, FormatContext& ctx)
+    auto format(baryonyx::solver_parameters::mode_type c, format_context& ctx) const
     {
         using underlying_type =
           std::underlying_type<baryonyx::solver_parameters::mode_type>::type;
@@ -360,9 +352,8 @@ template<>
 struct fmt::formatter<baryonyx::solver_parameters::preprocessor_options>
   : fmt::formatter<string_view>
 {
-    template<typename FormatContext>
     auto format(baryonyx::solver_parameters::preprocessor_options c,
-                FormatContext& ctx)
+                format_context& ctx) const
     {
         string_view name = "unknown";
 
@@ -383,9 +374,8 @@ template<>
 struct fmt::formatter<baryonyx::solver_parameters::observer_type>
   : fmt::formatter<string_view>
 {
-    template<typename FormatContext>
     auto format(baryonyx::solver_parameters::observer_type c,
-                FormatContext& ctx)
+                format_context& ctx) const
     {
         string_view name = "unknown";
 
@@ -409,8 +399,7 @@ template<>
 struct fmt::formatter<baryonyx::solver_parameters::solver_type>
   : fmt::formatter<string_view>
 {
-    template<typename FormatContext>
-    auto format(baryonyx::solver_parameters::solver_type c, FormatContext& ctx)
+    auto format(baryonyx::solver_parameters::solver_type c, format_context& ctx) const
     {
         string_view name = "unknown";
 
@@ -431,9 +420,8 @@ template<>
 struct fmt::formatter<baryonyx::solver_parameters::storage_type>
   : fmt::formatter<string_view>
 {
-    template<typename FormatContext>
     auto format(baryonyx::solver_parameters::storage_type c,
-                FormatContext& ctx)
+                format_context& ctx) const
     {
         string_view name = "unknown";
 
@@ -448,6 +436,30 @@ struct fmt::formatter<baryonyx::solver_parameters::storage_type>
             name = "five";
             break;
         }
+
+        return formatter<string_view>::format(name, ctx);
+    }
+};
+
+template<>
+struct fmt::formatter<baryonyx::solver_error_tag>
+    : fmt::formatter<string_view>
+{
+    auto format(baryonyx::solver_error_tag c, format_context& ctx) const
+    {
+        string_view name = "unknown";
+
+        switch (c) {
+        case baryonyx::solver_error_tag::no_solver_available:
+            name = "no solver available";
+            break;
+        case baryonyx::solver_error_tag::unrealisable_constraint:
+            name = "unrealisable constraint";
+            break;
+        case baryonyx::solver_error_tag::not_enough_memory:
+            name = "not enough memory";
+            break;
+        } 
 
         return formatter<string_view>::format(name, ctx);
     }

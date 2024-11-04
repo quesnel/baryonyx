@@ -25,6 +25,7 @@
 
 #include "main.hpp"
 
+#include <fmt/chrono.h>
 #include <fmt/color.h>
 #include <fmt/format.h>
 #include <fmt/ostream.h>
@@ -274,7 +275,8 @@ struct get_param
       : argv(argv_)
       , argc(argc_)
       , i(0)
-    {}
+    {
+    }
 
     constexpr std::optional<std::string_view> operator()(
       int arg_position,
@@ -566,7 +568,8 @@ assign_parameter(baryonyx::solver_parameters& params,
                  std::string_view value)
 {
     if (is_equal(name, "limit", 'l')) {
-        if (auto v = assign(value, -1L, (std::numeric_limits<long int>::max)());
+        if (auto v =
+              assign(value, -1L, (std::numeric_limits<long int>::max)());
             !v)
             return command_line_status::limit_error;
         else
@@ -711,7 +714,8 @@ assign_parameter(baryonyx::solver_parameters& params,
             params.alpha = *v;
 
     } else if (is_equal(name, "w")) {
-        if (auto v = assign_d(value, 0.0, (std::numeric_limits<double>::max)());
+        if (auto v =
+              assign_d(value, 0.0, (std::numeric_limits<double>::max)());
             !v)
             return command_line_status::w_error;
         else
@@ -1232,17 +1236,15 @@ main(int argc, const char* argv[])
                     resume(pb, ofs);
 
                     fmt::print(ofs,
-                               "\\ solver starts: \n",
-                               std::put_time(std::localtime(&in_time_t),
-                                             "%Y-%m-%d %X"));
+                               "\\ solver starts: {:%Y-%m-%d %X}\n",
+                               fmt::localtime(in_time_t));
 
                     auto ret = solve_or_optimize(ctx, pb, params.optimize);
                     in_time_t = std::chrono::system_clock::to_time_t(now);
 
                     fmt::print(ofs,
-                               "\\ solver finishes: {}\n",
-                               std::put_time(std::localtime(&in_time_t),
-                                             "%Y-%m-%d %X"));
+                               "\\ solver finishes: {:%Y-%m-%d %X}\n",
+                               fmt::localtime(in_time_t));
 
                     if (ret.status == baryonyx::result_status::success) {
                         fmt::print(ofs,
