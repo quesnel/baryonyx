@@ -86,6 +86,29 @@ struct raw_result
         return remaining_constraints == 0;
     }
 
+    bool is_other_better_solution(real other_value) const noexcept
+    {
+        if (x.empty())
+            return true;
+
+        if (remaining_constraints > 0)
+            return true;
+
+        return itm::is_better_solution<Mode>(other_value, value);
+    }
+
+    bool is_other_better_solution(
+      int other_remaining_constraints) const noexcept
+    {
+        if (x.empty())
+            return true;
+
+        if (remaining_constraints == 0)
+            return false;
+
+        return other_remaining_constraints < remaining_constraints;
+    }
+
     void swap(raw_result& other) noexcept
     {
         x.swap(other.x);

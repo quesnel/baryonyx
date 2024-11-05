@@ -1,6 +1,7 @@
 add_executable(app src/main.cpp src/main.hpp src/benchmark.cpp)
 
-target_link_libraries(app libbaryonyx threads)
+target_link_libraries(app libbaryonyx threads
+    $<$<BOOL:${NLOPT_FOUND}>:${NLOPT_LIBRARIES}>)
 
 set_target_properties(app PROPERTIES
   OUTPUT_NAME "baryonyx-${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}"

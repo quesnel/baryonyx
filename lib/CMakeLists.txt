@@ -73,12 +73,13 @@ target_compile_options(libbaryonyx
 target_include_directories(libbaryonyx PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/>)
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/>
+  $<$<BOOL:${NLOPT_FOUND}>:${NLOPT_INCLUDE_DIRS}>)
 
 target_link_libraries(libbaryonyx
   PRIVATE
   threads
-  $<$<BOOL:${NLOPT_FOUND}>:nlopt>)
+  $<$<BOOL:${NLOPT_FOUND}>:${NLOPT_LIBRARIES}>)
 
 set_target_properties(libbaryonyx PROPERTIES
   OUTPUT_NAME "baryonyx-${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}"
@@ -176,7 +177,8 @@ function(baryonyx_add_test test_name)
     src
     ${CMAKE_CURRENT_BINARY_DIR})
 
-  target_link_libraries(${test_name} libbaryonyx threads)
+  target_link_libraries(${test_name} libbaryonyx threads
+      $<$<BOOL:${NLOPT_FOUND}>:${NLOPT_LIBRARIES}>)
 
   add_test(${test_name} ${test_name})
 endfunction()

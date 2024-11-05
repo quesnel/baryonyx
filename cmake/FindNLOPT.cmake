@@ -33,7 +33,7 @@ find_path(NLOPT_INCLUDE_DIRS
 
 # Libraries
 find_library(NLOPT_LIBRARIES
-    NAMES nlopt nlopt_cxx
+    NAMES libnlopt.dylib nlopt nlopt_cxx
     HINTS ${PC_NLOPT_LIBDIR})
 
 message(STATUS "In: ${NLOPT_LIBRARIES}")
