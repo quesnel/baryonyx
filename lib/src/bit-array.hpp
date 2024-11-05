@@ -42,7 +42,7 @@ namespace baryonyx {
 class bit_array_impl
 {
 public:
-    using underlying_type = std::size_t;
+    using underlying_type = std::uint64_t;
 
     static inline constexpr size_t k_one = underlying_type{ 1 };
     static inline constexpr size_t k_ones =
@@ -55,7 +55,8 @@ public:
     bit_array_impl()
       : m_size(0)
       , m_block_size(0)
-    {}
+    {
+    }
 
     bit_array_impl(int size)
       : m_size(size)
@@ -77,7 +78,8 @@ public:
       : m_size(other.m_size)
       , m_block_size(other.m_block_size)
       , m_data(std::move(other.m_data))
-    {}
+    {
+    }
 
     bit_array_impl& operator=(const bit_array_impl& other)
     {
@@ -316,7 +318,8 @@ public:
 
     bit_array(int size)
       : bit_array_impl(size)
-    {}
+    {
+    }
 
     bit_array(const bit_array& other) = default;
     bit_array(bit_array&& other) = default;
@@ -346,7 +349,8 @@ public:
 
     value_bit_array(int size)
       : bit_array_impl(size)
-    {}
+    {
+    }
 
     value_bit_array(const value_bit_array& other) = default;
     value_bit_array(value_bit_array&& other) = default;
@@ -393,17 +397,36 @@ swap(value_bit_array<Value1, Value2>& lhs,
 template<int Value1, int Value2>
 struct value_bit_array_hash
 {
-    std::size_t operator()(const value_bit_array<Value1, Value2>& array) const
-      noexcept
+    std::size_t operator()(
+      const value_bit_array<Value1, Value2>& array) const noexcept
     {
-        std::size_t ret{ 0 };
+        using underlying_t = bit_array_impl::underlying_type;
 
-        for (int i = 0, e = array.block_size(); i != e; ++i)
-            ret ^=
-              std::hash<bit_array_impl::underlying_type>()(array.block(i)) +
-              0x9e3779b9 + (ret << 6) + (ret >> 2);
+        std::size_t seed = array.block_size();
 
-        return ret;
+        static_assert(std::is_same_v<underlying_t, std::uint64_t> or
+                      std::is_same_v<underlying_t, std::uint32_t>);
+
+        if constexpr (std::is_same_v<underlying_t, std::uint64_t>) {
+            for (int i = 0, e = array.block_size(); i != e; ++i) {
+                seed ^= array.block(i);
+                seed ^= (seed >> 33);
+                seed *= 0xff51afd7ed558ccd;
+                seed ^= (seed >> 33);
+                seed *= 0xc4ceb9fe1a85ec53;
+                seed ^= (seed >> 33);
+            }
+        } else {
+            for (int i = 0, e = array.block_size(); i != e; ++i) {
+                std::uint32_t x = array.block(i);
+                x = ((x >> 16) ^ x) * 0x45d9f3b;
+                x = ((x >> 16) ^ x) * 0x45d9f3b;
+                x = (x >> 16) ^ x;
+                seed ^= x + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+            }
+        }
+
+        return seed;
     }
 };
 
@@ -411,14 +434,33 @@ struct bit_array_hash
 {
     std::size_t operator()(const bit_array& array) const noexcept
     {
-        std::size_t ret{ 0 };
+        using underlying_t = bit_array_impl::underlying_type;
 
-        for (int i = 0, e = array.block_size(); i != e; ++i)
-            ret ^=
-              std::hash<bit_array_impl::underlying_type>()(array.block(i)) +
-              0x9e3779b9 + (ret << 6) + (ret >> 2);
+        std::size_t seed = array.block_size();
 
-        return ret;
+        static_assert(std::is_same_v<underlying_t, std::uint64_t> or
+                      std::is_same_v<underlying_t, std::uint32_t>);
+
+        if constexpr (std::is_same_v<underlying_t, std::uint64_t>) {
+            for (int i = 0, e = array.block_size(); i != e; ++i) {
+                seed ^= array.block(i);
+                seed ^= (seed >> 33);
+                seed *= 0xff51afd7ed558ccd;
+                seed ^= (seed >> 33);
+                seed *= 0xc4ceb9fe1a85ec53;
+                seed ^= (seed >> 33);
+            }
+        } else {
+            for (int i = 0, e = array.block_size(); i != e; ++i) {
+                std::uint32_t x = array.block(i);
+                x = ((x >> 16) ^ x) * 0x45d9f3b;
+                x = ((x >> 16) ^ x) * 0x45d9f3b;
+                x = (x >> 16) ^ x;
+                seed ^= x + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+            }
+        }
+
+        return seed;
     }
 };
 

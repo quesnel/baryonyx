@@ -30,17 +30,15 @@
 #include <atomic>
 #include <chrono>
 #include <functional>
-#include <future>
+#include <mutex>
 #include <set>
 #include <shared_mutex>
 #include <thread>
-#include <utility>
 #include <vector>
 
 #include "itm-common.hpp"
 #include "private.hpp"
 #include "result.hpp"
-#include "sparse-matrix.hpp"
 #include "utils.hpp"
 
 namespace baryonyx {
@@ -94,16 +92,15 @@ struct local_context
       , init_kappa_improve_stop(
           static_cast<real>(ctx.parameters.init_kappa_improve_stop))
       , thread_id(thread_id_)
-    {}
+    {
+    }
 };
 
 template<typename Cost, typename Mode>
 class storage
 {
 private:
-    mutable std::shared_mutex m_indices_mutex;
-    using m_indices_writer = std::unique_lock<std::shared_mutex>;
-    using m_indices_reader = std::shared_lock<std::shared_mutex>;
+    mutable std::shared_mutex mutex;
 
     std::vector<int> m_indices;
     std::vector<raw_result<Mode>> m_data;
@@ -119,7 +116,8 @@ private:
         bound_indices(int first_, int last_)
           : first(first_)
           , last(last_)
-        {}
+        {
+        }
 
         int first;
         int last;
@@ -127,7 +125,7 @@ private:
 
     bound_indices indices_bound() const noexcept
     {
-        m_indices_reader lock{ m_indices_mutex };
+        std::shared_lock<std::shared_mutex> lock{ mutex };
 
         return bound_indices{ m_indices.front(), m_indices.back() };
     }
@@ -140,7 +138,7 @@ private:
                         const long int loop,
                         const int remaining_constraints) noexcept
     {
-        m_indices_reader lock{ m_indices_mutex };
+        std::unique_lock<std::shared_mutex> lock{ mutex };
 
         m_data[id].x = x;
         m_data[id].value = value;
@@ -150,12 +148,12 @@ private:
         m_data[id].remaining_constraints = remaining_constraints;
     }
 
-    int choose_a_bad_solution(local_context& ctx)
+    int choose_a_bad_solution(local_context& ctx) const
     {
         return ctx.bad_solution_choose(ctx.rng);
     }
 
-    int choose_a_solution(local_context& ctx)
+    int choose_a_solution(local_context& ctx) const
     {
         real value;
         do {
@@ -251,21 +249,21 @@ public:
                 const double duration,
                 const long int loop) noexcept
     {
-        to_log(stdout,
-               5u,
-               "- insert advance {} (hash: {}) {}s in {} loops\n",
-               remaining_constraints,
-               hash,
-               duration,
-               loop);
+        // to_log(stdout,
+        //        5u,
+        //        "- insert advance {} (hash: {}) {}s in {} loops\n",
+        //        remaining_constraints,
+        //        hash,
+        //        duration,
+        //        loop);
 
         int id_to_delete = m_indices[choose_a_bad_solution(ctx)];
 
-        to_log(stdout,
-               5u,
-               "- delete {} ({})\n",
-               id_to_delete,
-               m_data[id_to_delete].value);
+        // to_log(stdout,
+        //        5u,
+        //        "- delete {} ({})\n",
+        //        id_to_delete,
+        //        m_data[id_to_delete].value);
 
         replace_result(id_to_delete,
                        x,
@@ -285,21 +283,21 @@ public:
                 const double duration,
                 const long int loop) noexcept
     {
-        to_log(stdout,
-               5u,
-               "- insert solution {} (hash: {}) {}s in {} loops\n",
-               value,
-               hash,
-               duration,
-               loop);
+        // to_log(stdout,
+        //        5u,
+        //        "- insert solution {} (hash: {}) {}s in {} loops\n",
+        //        value,
+        //        hash,
+        //        duration,
+        //        loop);
 
         int id_to_delete = m_indices[choose_a_bad_solution(ctx)];
 
-        to_log(stdout,
-               5u,
-               "- delete {} ({})\n",
-               id_to_delete,
-               m_data[id_to_delete].value);
+        // to_log(stdout,
+        //        5u,
+        //        "- delete {} ({})\n",
+        //        id_to_delete,
+        //        m_data[id_to_delete].value);
 
         replace_result(id_to_delete, x, value, duration, hash, loop, 0);
 
@@ -309,7 +307,7 @@ public:
     bool can_be_inserted(const std::size_t hash,
                          const int constraints) const noexcept
     {
-        m_indices_reader lock(m_indices_mutex);
+        std::shared_lock<std::shared_mutex> lock(mutex);
 
         for (int i = 0; i != m_size; ++i)
             if (m_data[i].remaining_constraints == constraints &&
@@ -322,7 +320,7 @@ public:
     bool can_be_inserted([[maybe_unused]] const std::size_t hash,
                          const real value) const noexcept
     {
-        m_indices_reader lock(m_indices_mutex);
+        std::shared_lock<std::shared_mutex> lock(mutex);
 
         for (int i = 0; i != m_size; ++i)
             if (m_data[i].remaining_constraints == 0 &&
@@ -349,7 +347,7 @@ public:
                   double& duration,
                   long int& loop) const noexcept
     {
-        m_indices_reader lock(m_indices_mutex);
+        std::shared_lock<std::shared_mutex> lock(mutex);
         int id = m_indices.front();
 
         constraints_remaining = m_data[id].remaining_constraints;
@@ -379,8 +377,6 @@ public:
 
     void crossover(local_context& ctx, bit_array& x)
     {
-        m_indices_reader lock(m_indices_mutex);
-
         if (ctx.crossover_bastert_insertion(ctx.rng)) {
             int first = m_indices[choose_a_solution(ctx)];
             std::bernoulli_distribution b(0.5);
@@ -388,11 +384,11 @@ public:
             if (b(ctx.rng)) {
                 if (b(ctx.rng)) {
                     crossover(ctx, x, m_data[first].x, m_bastert);
-                    to_log(stdout,
-                           7u,
-                           "- crossover between {} ({}) and bastert\n",
-                           first,
-                           m_data[first].value);
+                    // to_log(stdout,
+                    //        7u,
+                    //        "- crossover between {} ({}) and bastert\n",
+                    //        first,
+                    //        m_data[first].value);
                 } else {
                     m_data[first].x = m_bastert;
                 }
@@ -400,11 +396,11 @@ public:
                 init_with_random(m_random, ctx.rng, x.size(), 0.5);
                 if (b(ctx.rng)) {
                     crossover(ctx, x, m_data[first].x, m_random);
-                    to_log(stdout,
-                           7u,
-                           "- crossover between {} ({}) and random\n",
-                           first,
-                           m_data[first].value);
+                    // to_log(stdout,
+                    //        7u,
+                    //        "- crossover between {} ({}) and random\n",
+                    //        first,
+                    //        m_data[first].value);
                 } else {
                     m_data[first].x = m_random;
                 }
@@ -416,21 +412,13 @@ public:
                 second = m_indices[choose_a_solution(ctx)];
 
             crossover(ctx, x, m_data[first].x, m_data[second].x);
-
-            to_log(stdout,
-                   7u,
-                   "- crossover between {} ({}) and {} ({})\n",
-                   first,
-                   m_data[first].value,
-                   second,
-                   m_data[second].value);
         }
     }
 
 private:
     void sort() noexcept
     {
-        m_indices_writer lock{ m_indices_mutex };
+        std::unique_lock<std::shared_mutex> lock{ mutex };
 
         std::sort(
           std::begin(m_indices), std::end(m_indices), [this](int i1, int i2) {
@@ -439,28 +427,28 @@ private:
               const real value_1 = this->m_data[i1].value;
               const real value_2 = this->m_data[i2].value;
 
+              if (cst_1 == 0 and cst_2 == 0)
+                  return is_better_solution<Mode>(value_1, value_2);
+
               if (cst_1 < cst_2)
                   return true;
-
-              if (cst_1 == cst_2)
-                  return is_better_solution<Mode>(value_1, value_2);
 
               return false;
           });
 
-#ifdef BARYONYX_ENABLE_DEBUG
-        to_log(stdout, 3u, "- Solutions init population:\n");
-        for (int i = 0; i != m_size; ++i) {
-            to_log(stdout,
-                   5u,
-                   "- {} id {} value {} constraint {} hash {}\n",
-                   i,
-                   m_indices[i],
-                   m_data[m_indices[i]].value,
-                   m_data[m_indices[i]].remaining_constraints,
-                   m_data[m_indices[i]].hash);
-        }
-#endif
+        // #ifdef BARYONYX_ENABLE_DEBUG
+        //         to_log(stdout, 3u, "- Solutions init population:\n");
+        //         for (int i = 0; i != m_size; ++i) {
+        //             to_log(stdout,
+        //                    5u,
+        //                    "- {} id {} value {} constraint {} hash {}\n",
+        //                    i,
+        //                    m_indices[i],
+        //                    m_data[m_indices[i]].value,
+        //                    m_data[m_indices[i]].remaining_constraints,
+        //                    m_data[m_indices[i]].hash);
+        //         }
+        // #endif
     }
 };
 
@@ -513,19 +501,19 @@ struct best_solution_recorder
             val_p = ctx.value_p_dist(ctx.rng);
         } while (val_p < 0 || val_p > 1);
 
-        to_log(stdout,
-               7u,
-               "- mutation variables {}% with "
-               " {}% of set\n",
-               var_p,
-               val_p);
+        // to_log(stdout,
+        //        7u,
+        //        "- mutation variables {}% with "
+        //        " {}% of set\n",
+        //        var_p,
+        //        val_p);
 
         std::bernoulli_distribution dist_var_p(var_p);
         std::bernoulli_distribution dist_value_p(val_p);
 
         for (int i = 0, e = x.size(); i != e; ++i) {
             if (dist_var_p(ctx.rng)) {
-                to_log(stdout, 9u, "- mutate variable {}\n", i);
+                // to_log(stdout, 9u, "- mutate variable {}\n", i);
 
                 x.set(i, dist_value_p(ctx.rng));
             }
@@ -538,7 +526,8 @@ struct best_solution_recorder
                 const real kappa_max,
                 bit_array& x)
     {
-        to_log(stdout, 3u, "- reinitinialization thread {}.\n", ctx.thread_id);
+        // to_log(stdout, 3u, "- reinitinialization thread {}.\n",
+        // ctx.thread_id);
 
         real kappa = kappa_min;
 
@@ -547,12 +536,12 @@ struct best_solution_recorder
             kappa = kappa_min +
                     (kappa_max - kappa_min) * m_kappa_append[ctx.thread_id];
 
-            to_log(stdout, 5u, "- improve with kappa {}\n", kappa);
+            // to_log(stdout, 5u, "- improve with kappa {}\n", kappa);
         } else {
             m_kappa_append[ctx.thread_id] = ctx.init_kappa_improve_start;
             crossover(ctx, x);
 
-            to_log(stdout, 5u, "- crossover\n");
+            // to_log(stdout, 5u, "- crossover\n");
         }
 
         mutation(ctx, x);
@@ -622,7 +611,8 @@ struct optimize_functor
       , m_local_ctx{ ctx, thread_id, seed }
       , m_call_number{ 0 }
       , m_thread_id{ thread_id }
-    {}
+    {
+    }
 
     void operator()(const std::atomic_bool& stop_task,
                     best_solution_recorder<Cost, Mode>& best_recorder,
@@ -663,7 +653,7 @@ struct optimize_functor
         compute_order compute(p.order, variables);
         bool is_a_solution = false;
 
-        while (!stop_task.load()) {
+        while (not stop_task.load()) {
             ++m_call_number;
             const auto kappa_start = static_cast<real>(best_recorder.reinit(
               m_local_ctx, is_a_solution, kappa_min, kappa_max, x));
@@ -844,19 +834,18 @@ optimize_problem(const context& ctx, const problem& pb)
     do {
         std::this_thread::sleep_for(std::chrono::seconds{ 1L });
 
+        auto call_number = 0L;
+        for (auto i = 0u; i != thread; ++i)
+            call_number += functors[i].m_call_number;
+
+        int constraints_remaining;
+        long int loop;
+        real value;
+        double duration;
+
+        best_recorder.get_best(constraints_remaining, value, duration, loop);
+
         if (ctx.update) {
-            auto call_number = 0L;
-            for (auto i = 0u; i != thread; ++i)
-                call_number += functors[i].m_call_number;
-
-            int constraints_remaining;
-            long int loop;
-            real value;
-            double duration;
-
-            best_recorder.get_best(
-              constraints_remaining, value, duration, loop);
-
             ctx.update(
               constraints_remaining, value, loop, duration, call_number);
         }
@@ -864,11 +853,12 @@ optimize_problem(const context& ctx, const problem& pb)
         end = std::chrono::steady_clock::now();
     } while (!is_time_limit(ctx.parameters.time_limit, start, end));
 
+    info(ctx, "Stop computation - shutdown workers\n");
     stop_task.store(true);
-
     for (auto& t : pool)
         t.join();
 
+    info(ctx, "Get best soluation\n");
     r.strings = pb.strings;
     r.affected_vars = pb.affected_vars;
     r.variable_name = pb.vars.names;
