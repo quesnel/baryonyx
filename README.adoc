@@ -156,14 +156,6 @@ option to the command line:
 baryonyx-0.5 -o file.lp
 ....
 
-To run baryonyx into the heuristic model (i trying to valid all
-constraints and optimize the solution), add a `-o` or `--optimize`
-option to the command line:
-
-....
-baryonyx-0.5 -o file.lp
-....
-
 The Baryonyx solver have many parameters. Some parameters are global,
 some specific for the optimization algorithms.
 
