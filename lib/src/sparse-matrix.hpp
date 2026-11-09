@@ -28,9 +28,9 @@
 #include <algorithm>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "debug.hpp"
-#include "fixed-array.hpp"
 
 namespace baryonyx {
 
@@ -68,9 +68,9 @@ public:
     };
 
 protected:
-    using vector_access = fixed_array<int>;
-    using row_vector_access = fixed_array<row_value>;
-    using col_vector_access = fixed_array<col_value>;
+    using vector_access = std::vector<int>;
+    using row_vector_access = std::vector<row_value>;
+    using col_vector_access = std::vector<col_value>;
 
     vector_access m_rows_access;
     vector_access m_cols_access;
@@ -87,16 +87,16 @@ public:
     explicit sparse_matrix(const std::vector<Constraint>& csts,
                            const int rows,
                            const int cols)
-      : m_rows_access(rows + 1)
-      , m_cols_access(cols + 1)
+      : m_rows_access(static_cast<std::size_t>(rows) + 1u, 0)
+      , m_cols_access(static_cast<std::size_t>(cols) + 1u, 0)
     {
         int elem = 0;
 
         for (int i = 0, e = rows; i != e; ++i)
             elem += static_cast<int>(csts[i].elements.size());
 
-        row_vector_access(elem).swap(m_rows_values);
-        col_vector_access(elem).swap(m_cols_values);
+        m_rows_values.resize(static_cast<std::size_t>(elem));
+        m_cols_values.resize(static_cast<std::size_t>(elem));
 
         //
         // First, we build a vector of access to all elements in the matrix
@@ -129,7 +129,10 @@ public:
             for (const auto& fct_elem : csts[i].elements)
                 accessors.emplace_back(i, fct_elem.variable_index, fct_elem);
 
-        fixed_array<int> rinit(rows, 0);
+        if (accessors.empty())
+            return;
+
+        std::vector<int> rinit(static_cast<std::size_t>(rows), 0);
         int row = accessors[0].row;
         int nb_row = 0;
         for (int i = 0; i != elem; ++i) {
@@ -157,7 +160,7 @@ public:
           accessors.end(),
           [](const auto& lhs, const auto& rhs) { return lhs.col < rhs.col; });
 
-        fixed_array<int> cinit(cols, 0);
+        std::vector<int> cinit(static_cast<std::size_t>(cols), 0);
         int col = accessors[0].col;
         int nb_col = 0;
 

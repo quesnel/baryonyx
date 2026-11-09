@@ -23,10 +23,10 @@
 #include "bit-array.hpp"
 #include "branch-and-bound-solver.hpp"
 #include "exhaustive-solver.hpp"
-#include "fixed-2darray.hpp"
-#include "fixed-array.hpp"
+#include "itm-common.hpp"
 #include "memory.hpp"
 #include "pnm.hpp"
+#include "sparse-matrix.hpp"
 
 #include <boost/ut.hpp>
 
@@ -86,104 +86,6 @@ main()
 
         auto checked_size = baryonyx::numeric_cast<unsigned int>(v.size());
         expect(0 == checked_size);
-    };
-
-    "check_fixed_array"_test = [] {
-        baryonyx::fixed_array<int> a(10);
-
-        expect(a.size() == 10);
-
-        std::iota(a.begin(), a.end(), 1);
-
-        expect(a[0] == 1);
-        expect(a[1] == 2);
-        expect(a[2] == 3);
-        expect(a[3] == 4);
-        expect(a[4] == 5);
-        expect(a[5] == 6);
-        expect(a[6] == 7);
-        expect(a[7] == 8);
-        expect(a[8] == 9);
-        expect(a[9] == 10);
-
-        {
-            baryonyx::fixed_array<int> copy(a);
-
-            std::iota(copy.rbegin(), copy.rend(), 1);
-            expect(copy[9] == 1);
-            expect(copy[8] == 2);
-            expect(copy[7] == 3);
-            expect(copy[6] == 4);
-            expect(copy[5] == 5);
-            expect(copy[4] == 6);
-            expect(copy[3] == 7);
-            expect(copy[2] == 8);
-            expect(copy[1] == 9);
-            expect(copy[0] == 10);
-        }
-
-        baryonyx::fixed_array<int> b(a);
-
-        expect(a.data() != b.data());
-
-        baryonyx::fixed_array<int> c(std::move(a));
-
-        expect(a.data() == nullptr);
-        expect(b.data() != c.data());
-
-        baryonyx::fixed_array<double> d(15, 3.0);
-
-        expect(d[0] == 3.0);
-        expect(d[7] == 3.0);
-        expect(d[14] == 3.0);
-
-        baryonyx::fixed_array<double> e;
-
-        std::swap(d, e);
-
-        expect(!d);
-        expect(e[0] == 3.0);
-        expect(e[7] == 3.0);
-        expect(e[14] == 3.0);
-
-        baryonyx::fixed_array<double> x(1000, 123.0);
-        if (x) {
-            for (int i{ 0 }; i < 1000; ++i)
-                expect(x[i] == 123.0);
-
-            auto it = std::find_if_not(
-              x.begin(), x.end(), [](double v) { return v == 123.0; });
-
-            expect(it == x.end());
-        }
-    };
-
-    "check_fixed_2darray"_test = [] {
-        baryonyx::fixed_2darray<int> a(static_cast<size_t>(2),
-                                       static_cast<size_t>(10));
-
-        expect(a.size() == 20);
-        expect(a.rows() == 2);
-        expect(a.columns() == 10);
-
-        std::iota(a.begin(), a.end(), 0);
-
-        expect(a.data()[0] == 0);
-        expect(a.data()[19] == 19);
-
-        std::iota(a.rbegin(), a.rend(), 0);
-
-        expect(a.data()[0] == 19);
-        expect(a.data()[19] == 0);
-
-        expect(a(0, 0) == 19);
-        expect(a(1, 9) == 0);
-
-        a(0, 1) = 100;
-        a(1, 0) = 200;
-
-        expect(a.data()[1] == 100);
-        expect(a.data()[10] == 200);
     };
 
     "test_subvector_api()"_test = [] {
@@ -528,6 +430,52 @@ main()
                 expect(r == 1.0);
             }
         }
+    };
+
+    "check_generate_seed"_test = [] {
+        baryonyx::random_engine rng(42);
+
+        const auto seeds = baryonyx::itm::generate_seed(rng, 256u);
+        expect(seeds.size() == 256u);
+
+        auto sorted = seeds;
+        std::ranges::sort(sorted);
+        expect(std::ranges::adjacent_find(sorted) == sorted.end());
+
+        expect(baryonyx::itm::generate_seed(rng, 0u).empty());
+    };
+
+    "check_sparse_matrix"_test = [] {
+        struct cst
+        {
+            std::vector<baryonyx::function_element> elements;
+        };
+
+        // Row 0: x0 + x2, row 1: x1 + x2. The matrix stores indices into the
+        // row-ordered elements so both views must reference the same cells.
+        const std::vector<cst> csts{ { { { 1, 0 }, { 1, 2 } } },
+                                     { { { 1, 1 }, { 1, 2 } } } };
+
+        baryonyx::sparse_matrix<int> m(csts, 2, 3);
+        expect(m.length() == 4);
+
+        auto [rb, re] = m.row(1);
+        expect(std::distance(rb, re) == 2);
+        expect(rb->column == 1 && (rb + 1)->column == 2);
+
+        auto [cb, ce] = m.column(2);
+        expect(std::distance(cb, ce) == 2);
+        expect(cb->row == 0 && (cb + 1)->row == 1);
+        expect(cb->value == 1 && (cb + 1)->value == 3);
+
+        auto [c0b, c0e] = m.column(0);
+        expect(std::distance(c0b, c0e) == 1);
+
+        const std::vector<cst> empty_rows(2);
+        baryonyx::sparse_matrix<int> empty(empty_rows, 2, 3);
+        expect(empty.length() == 0);
+        auto [eb, ee] = empty.column(1);
+        expect(eb == ee);
     };
 
     "check_pnm_iterator"_test = [] {

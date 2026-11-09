@@ -1449,32 +1449,24 @@ init_random_generator_seed(const context& ctx) noexcept
 }
 
 /**
- * Generates an array with unique seed value.
+ * Generates @c count distinct seeds so that no two threads share a random
+ * sequence.
  */
-inline std::unique_ptr<random_engine::result_type[]>
-generate_seed(random_engine& rng, unsigned thread_id)
+inline std::vector<random_engine::result_type>
+generate_seed(random_engine& rng, unsigned count)
 {
     using type = random_engine::result_type;
-
-    auto ret = std::make_unique<type[]>(thread_id);
 
     std::uniform_int_distribution<type> dst(std::numeric_limits<type>::min(),
                                             std::numeric_limits<type>::max());
 
-    ret[0] = numeric_cast<type>(dst(rng));
+    std::vector<type> ret;
+    ret.reserve(count);
 
-    for (unsigned i = 1; i != thread_id; ++i) {
-        ret[i] = numeric_cast<type>(dst(rng));
-
-        unsigned j = i - 1;
-        while (j > 0) {
-            if (ret[j] == ret[i]) {
-                ret[j] = numeric_cast<type>(dst(rng));
-                j = i;
-            }
-
-            --j;
-        }
+    while (ret.size() != count) {
+        const auto seed = dst(rng);
+        if (std::ranges::find(ret, seed) == ret.end())
+            ret.push_back(seed);
     }
 
     return ret;

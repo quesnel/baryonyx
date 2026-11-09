@@ -19,8 +19,6 @@ set(private_baryonyx_source
  src/debug.hpp
  src/dynarray.hpp
  src/exhaustive-solver.hpp
- src/fixed-2darray.hpp
- src/fixed-array.hpp
  src/itm-common.hpp
  src/itm.hpp
  src/itm-optimizer-common.hpp
