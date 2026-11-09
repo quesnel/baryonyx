@@ -85,8 +85,9 @@ set_target_properties(libbaryonyx PROPERTIES
   OUTPUT_NAME "baryonyx-${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}"
   POSITION_INDEPENDENT_CODE ON
   CXX_VISIBILITY_PRESET hidden
-  VISIBILITY_INLINES_HIDDEN ON
-  CXX_STANDARD 20)
+  VISIBILITY_INLINES_HIDDEN ON)
+
+target_compile_features(libbaryonyx PUBLIC cxx_std_20)
 
 if (CLANG_TIDY_EXE)
   set_target_properties(libbaryonyx PROPERTIES
@@ -149,8 +150,7 @@ function(baryonyx_add_test test_name)
   add_executable(${test_name} ${ARGN})
 
   set_target_properties(${test_name} PROPERTIES
-    COMPILE_DEFINITIONS EXAMPLES_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}/test\"
-    CXX_STANDARD 20)
+    COMPILE_DEFINITIONS EXAMPLES_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}/test\")
 
   target_compile_options(${test_name} BEFORE
     PRIVATE

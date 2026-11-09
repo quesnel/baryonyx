@@ -11,5 +11,6 @@ Description: This package provides function to solve and to optimize
 License: MIT + file LICENSE
 Imports: Rcpp (>= 0.12.10)
 LinkingTo: Rcpp
+SystemRequirements: C++20, baryonyx (>= 0.5)
 RoxygenNote: 6.1.1
 LazyLoad: yes

@@ -4,8 +4,7 @@ target_link_libraries(app libbaryonyx threads
     $<$<BOOL:${NLOPT_FOUND}>:${NLOPT_LIBRARIES}>)
 
 set_target_properties(app PROPERTIES
-  OUTPUT_NAME "baryonyx-${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}"
-  CXX_STANDARD 20)
+  OUTPUT_NAME "baryonyx-${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}")
 
 target_compile_options(app
   PRIVATE

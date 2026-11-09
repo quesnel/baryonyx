@@ -6,6 +6,7 @@ project(baryonyx VERSION 0.5.0 LANGUAGES CXX)
 include(GNUInstallDirs)
 
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
+set(CMAKE_CXX_EXTENSIONS OFF)
 
 find_package(Threads REQUIRED)
 add_library(threads INTERFACE IMPORTED)
