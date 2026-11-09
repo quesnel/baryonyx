@@ -502,7 +502,7 @@ constexpr const std::string_view command_line_status_string[] = {
     "success",
     "unknown",
     "parameter_missing",
-    "verbose"
+    "verbose",
     "limit",
     "time_limit",
     "floating_point_type",
@@ -539,6 +539,9 @@ constexpr const std::string_view command_line_status_string[] = {
     "thread",
     "seed"
 };
+
+static_assert(std::size(command_line_status_string) ==
+              static_cast<std::size_t>(command_line_status::seed_error) + 1);
 
 constexpr std::string_view
 to_string(command_line_status s) noexcept
@@ -936,12 +939,15 @@ parse(int argc, const char* argv[])
         }
 
         if (auto opt = get(i, "--verbose", "-v"); opt) {
-            if (auto v = ::assign(*opt, 0, 6); v) {
+            if (auto v = ::assign(*opt, 0, 7); v) {
                 ret.verbose = *v;
             } else {
                 ret.parse_status = command_line_status::verbose_error;
                 return ret;
             }
+
+            i = get.i;
+            continue;
         }
 
         if (auto opt = get(i, "--check", "-C"); opt) {
