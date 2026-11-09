@@ -5,33 +5,39 @@ on:
     branches: [ master, test ]
   pull_request:
     branches: [ master, test ]
+  workflow_dispatch:
 
-env:
-  CC: clang
-  CXX: clang++
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
-    runs-on: macos-latest
+    runs-on: macos-26
+    timeout-minutes: 60
     strategy:
+      fail-fast: false
       matrix:
         BUILD_TYPE: [Debug, Release]
 
     steps:
-    - name: Checkout repository and submodule
-      uses: actions/checkout@v2
+    - name: Checkout repository and submodules
+      uses: actions/checkout@v7
       with:
         submodules: recursive
 
     - name: Install dependencies
-      run: brew install nlopt
+      run: brew install ninja nlopt
 
     - name: Configure CMake
-      run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{matrix.BUILD_TYPE}}
+      run: cmake -B ${{ github.workspace }}/build -G Ninja -DCMAKE_BUILD_TYPE=${{ matrix.BUILD_TYPE }}
 
     - name: Build
-      run: cmake --build ${{github.workspace}}/build --config ${{matrix.BUILD_TYPE}}
+      run: cmake --build ${{ github.workspace }}/build
 
     - name: Test
-      working-directory: ${{github.workspace}}/build
-      run: ctest -C ${{matrix.BUILD_TYPE}} --rerun-failed --output-on-failure
+      working-directory: ${{ github.workspace }}/build
+      run: ctest --output-on-failure -j 4

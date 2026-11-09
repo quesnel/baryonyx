@@ -5,34 +5,49 @@ on:
     branches: [ master, test ]
   pull_request:
     branches: [ master, test ]
+  workflow_dispatch:
 
-env:
-  CC: gcc-10
-  CXX: g++-10
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
     strategy:
+      fail-fast: false
       matrix:
         BUILD_TYPE: [Debug, Release]
-      
+        COMPILER:
+          - { CC: gcc-13, CXX: g++-13 }
+          - { CC: gcc-14, CXX: g++-14 }
+          - { CC: clang-18, CXX: clang++-18 }
+
+    env:
+      CC: ${{ matrix.COMPILER.CC }}
+      CXX: ${{ matrix.COMPILER.CXX }}
+
     steps:
-    - name: Checkout repository and submodule
-      uses: actions/checkout@v2
+    - name: Checkout repository and submodules
+      uses: actions/checkout@v7
       with:
         submodules: recursive
 
     - name: Install dependencies
-      run: sudo apt-get install build-essential cmake libnlopt-cxx-dev
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y ninja-build libnlopt-dev
 
     - name: Configure CMake
-      run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{matrix.BUILD_TYPE}}
+      run: cmake -B ${{ github.workspace }}/build -G Ninja -DCMAKE_BUILD_TYPE=${{ matrix.BUILD_TYPE }}
 
     - name: Build
-      run: cmake --build ${{github.workspace}}/build --config ${{matrix.BUILD_TYPE}}
+      run: cmake --build ${{ github.workspace }}/build
 
     - name: Test
-      working-directory: ${{github.workspace}}/build
-      run: ctest -C ${{matrix.BUILD_TYPE}}
-      
+      working-directory: ${{ github.workspace }}/build
+      run: ctest --output-on-failure -j 4

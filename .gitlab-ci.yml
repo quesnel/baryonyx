@@ -6,12 +6,9 @@ variables:
 build:
   stage: build
   before_script:
-    - apt update && apt -y install cmake g++ ninja-build
+    - apt-get update && apt-get -y install cmake g++ ninja-build libnlopt-dev
   script:
-    - mkdir build && cd build
-    - cmake -G Ninja ..
-    - ninja
-    - ninja install
-    - ctest -V -R testio
-    - ctest -V -R testlib
-    - ctest -V -R testsolver
+    - cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+    - cmake --build build
+    - cmake --install build
+    - ctest --test-dir build --output-on-failure -j 4
