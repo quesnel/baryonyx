@@ -193,7 +193,7 @@ struct fmt::formatter<baryonyx::result>
     auto format(const baryonyx::result& result, format_context& ctx) const
       -> format_context::iterator
     {
-        format_to(ctx.out(),
+        fmt::format_to(ctx.out(),
                   "\\ solver................: {}\n"
                   "\\ constraints...........: {}\n"
                   "\\ variables.............: {}\n"

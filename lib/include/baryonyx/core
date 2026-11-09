@@ -23,6 +23,7 @@
 #ifndef ORG_VLEPROJECT_BARYONYX_SOLVER_CORE
 #define ORG_VLEPROJECT_BARYONYX_SOLVER_CORE
 
+#include <algorithm>
 #include <array>
 #include <forward_list>
 #include <functional>

@@ -36,7 +36,9 @@
 #include "private.hpp"
 #include "utils.hpp"
 
+#include <cerrno>
 #include <climits>
+#include <cstdlib>
 
 constexpr char
 to_lower(const char c) noexcept
@@ -564,11 +566,30 @@ read_real(const std::string_view buf) noexcept
         return std::numeric_limits<double>::infinity();
 
     double result = 0.0;
+
+#if defined(__cpp_lib_to_chars)
     const auto* const end = buf.data() + buf.size();
     const auto [ptr, ec] = std::from_chars(buf.data(), end, result);
 
     if (ec != std::errc{} || ptr != end || std::isnan(result))
         return std::nullopt;
+#else
+    // libc++ before LLVM 20 (AppleClang) lacks floating-point from_chars.
+    constexpr std::size_t max_length = 128;
+    if (buf.empty() || buf.size() >= max_length)
+        return std::nullopt;
+
+    char buffer[max_length];
+    std::copy_n(buf.data(), buf.size(), buffer);
+    buffer[buf.size()] = '\0';
+
+    char* end = nullptr;
+    errno = 0;
+    result = std::strtod(buffer, &end);
+
+    if (errno == ERANGE || end != buffer + buf.size() || std::isnan(result))
+        return std::nullopt;
+#endif
 
     return result;
 }

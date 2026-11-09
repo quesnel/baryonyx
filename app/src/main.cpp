@@ -42,6 +42,7 @@
 #include <cassert>
 #include <cctype>
 #include <cstring>
+#include <ctime>
 
 #ifndef _WIN32
 #include <unistd.h>
@@ -62,6 +63,21 @@ get_pid() noexcept
     return ::GetCurrentProcessId();
 }
 #endif
+
+static std::tm
+local_time_now() noexcept
+{
+    const auto now =
+      std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+
+    std::tm tm{};
+#ifdef _WIN32
+    ::localtime_s(&tm, &now);
+#else
+    ::localtime_r(&now, &tm);
+#endif
+    return tm;
+}
 
 static void
 solver_started_cb(const baryonyx::solver_parameters& params)
@@ -1231,20 +1247,17 @@ main(int argc, const char* argv[])
                     resume(pb);
                     std::ofstream ofs(filename);
 
-                    auto now = std::chrono::system_clock::now();
-                    auto in_time_t = std::chrono::system_clock::to_time_t(now);
                     resume(pb, ofs);
 
                     fmt::print(ofs,
                                "\\ solver starts: {:%Y-%m-%d %X}\n",
-                               fmt::localtime(in_time_t));
+                               local_time_now());
 
                     auto ret = solve_or_optimize(ctx, pb, params.optimize);
-                    in_time_t = std::chrono::system_clock::to_time_t(now);
 
                     fmt::print(ofs,
                                "\\ solver finishes: {:%Y-%m-%d %X}\n",
-                               fmt::localtime(in_time_t));
+                               local_time_now());
 
                     if (ret.status == baryonyx::result_status::success) {
                         fmt::print(ofs,

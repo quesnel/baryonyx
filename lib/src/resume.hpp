@@ -87,7 +87,7 @@ struct fmt::formatter<baryonyx::resume>
         const auto constraints{ std::accumulate(
           res.constraints.begin(), res.constraints.end(), 0) };
 
-        return format_to(ctx.out(),
+        return fmt::format_to(ctx.out(),
                          "Problem statistics:\n"
                          "  * type: undefined\n"
                          "  * variables: {}\n"
