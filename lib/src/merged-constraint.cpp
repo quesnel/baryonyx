@@ -294,6 +294,35 @@ improve_memory_usage(std::vector<merged_constraint>& csts)
                   });
 }
 
+// The solvers assume each row can reach its bounds with 0-1 variables; a row
+// that cannot would break that invariant at the first update instead of
+// being reported.
+static void
+check_satisfiable(const context& ctx,
+                  const std::vector<merged_constraint>& csts)
+{
+    for (const auto& cst : csts) {
+        long long lower = 0;
+        long long upper = 0;
+
+        for (const auto& elem : cst.elements)
+            (elem.factor < 0 ? lower : upper) += elem.factor;
+
+        if (upper < cst.min || cst.max < lower) {
+            error(ctx,
+                  "Constraint {}: bounds [{}, {}] cannot be reached with 0-1 "
+                  "variables (reachable range [{}, {}]).\n",
+                  cst.id,
+                  cst.min,
+                  cst.max,
+                  lower,
+                  upper);
+
+            throw solver_failure(solver_error_tag::unrealisable_constraint);
+        }
+    }
+}
+
 std::vector<merged_constraint>
 make_merged_constraints(const context& ctx, const problem& pb)
 {
@@ -338,6 +367,8 @@ make_merged_constraints(const context& ctx, const problem& pb)
          "  - problem memory used: {}\n",
          original_nb - static_cast<int>(ret.size()),
          to_string(memory_consumed_size(memory_consumed(pb))));
+
+    check_satisfiable(ctx, ret);
 
     return ret;
 }

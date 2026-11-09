@@ -27,6 +27,7 @@
 #include "utils.hpp"
 
 #include <fstream>
+#include <optional>
 #include <set>
 
 /**
@@ -135,6 +136,21 @@ struct node_result_compare
 
 using problem_set = std::multiset<node, node_result_compare>;
 
+// Fixing a variable during the split can leave a constraint unreachable: that
+// branch holds no solution and is pruned instead of aborting the search.
+static std::optional<baryonyx::result>
+try_optimize(const baryonyx::context& ctx, const baryonyx::problem& pb)
+{
+    try {
+        return baryonyx::itm::optimize(ctx, pb);
+    } catch (const baryonyx::solver_failure& e) {
+        if (e.failure() != baryonyx::solver_error_tag::unrealisable_constraint)
+            throw;
+    }
+
+    return std::nullopt;
+}
+
 static baryonyx::result
 optimize(const baryonyx::context& ctx, const baryonyx::problem& pb)
 {
@@ -167,23 +183,19 @@ optimize(const baryonyx::context& ctx, const baryonyx::problem& pb)
         auto sp =
           baryonyx::split(internal_ctx, it->problem, annoying_variable);
 
-        auto ret0 = baryonyx::itm::optimize(internal_ctx, std::get<0>(sp));
-        if (is_best(internal_ctx, ret0, best, it->problem.type))
-            best = ret0;
+        for (auto* sub : { &std::get<0>(sp), &std::get<1>(sp) }) {
+            auto ret = try_optimize(internal_ctx, *sub);
+            if (!ret)
+                continue;
 
-        jobs.emplace(std::get<0>(sp),
-                     ret0 ? ret0.solutions.back().value : 0,
-                     ret0.remaining_constraints,
-                     ret0.annoying_variable);
+            if (is_best(internal_ctx, *ret, best, it->problem.type))
+                best = *ret;
 
-        auto ret1 = baryonyx::itm::optimize(internal_ctx, std::get<1>(sp));
-        if (is_best(internal_ctx, ret1, best, it->problem.type))
-            best = ret1;
-
-        jobs.emplace(std::get<1>(sp),
-                     ret1 ? ret1.solutions.back().value : 0,
-                     ret1.remaining_constraints,
-                     ret1.annoying_variable);
+            jobs.emplace(*sub,
+                         *ret ? ret->solutions.back().value : 0,
+                         ret->remaining_constraints,
+                         ret->annoying_variable);
+        }
 
         jobs.erase(it);
 

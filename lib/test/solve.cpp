@@ -257,6 +257,54 @@ main()
         expect(!!result);
     };
 
+    "test_unrealisable_constraint"_test = [] {
+        auto unrealisable = [](const baryonyx::context_ptr& ctx,
+                               const baryonyx::raw_problem& pb,
+                               auto&& run) {
+            try {
+                run(ctx, pb);
+            } catch (const baryonyx::solver_failure& e) {
+                return e.failure() ==
+                       baryonyx::solver_error_tag::unrealisable_constraint;
+            }
+            return false;
+        };
+
+        auto solve = [](const auto& ctx, const auto& pb) {
+            return baryonyx::solve(ctx, pb);
+        };
+        auto optimize = [](const auto& ctx, const auto& pb) {
+            return baryonyx::optimize(ctx, pb);
+        };
+
+        const char* str_pb = "minimize\n"
+                             "x + y + z\n"
+                             "st\n"
+                             "x + y + z = 5\n"
+                             "x + y >= 1\n"
+                             "binary\n"
+                             "x y z\n"
+                             "end\n";
+
+        for (auto pp : { baryonyx::solver_parameters::preprocessor_options::none,
+                         baryonyx::solver_parameters::preprocessor_options::all }) {
+            auto ctx = baryonyx::make_context(4);
+            baryonyx::solver_parameters params;
+            params.preprocessor = pp;
+            baryonyx::context_set_solver_parameters(ctx, params);
+
+            std::istringstream iss(str_pb);
+            auto pb = baryonyx::make_problem(*ctx, iss);
+
+            expect(unrealisable(ctx, pb, solve));
+            expect(unrealisable(ctx, pb, optimize));
+        }
+
+        auto ctx = baryonyx::make_context(4);
+        auto sudoku = baryonyx::make_problem(ctx, EXAMPLES_DIR "/sudoku.lp");
+        expect(unrealisable(ctx, sudoku, solve));
+    };
+
     "test_real_cost"_test = [] {
         auto ctx = baryonyx::make_context(4);
 
