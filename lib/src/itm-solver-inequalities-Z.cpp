@@ -288,25 +288,6 @@ struct solver_inequalities_Zcoeff : debug_logger<debug>
         return c(variable, x) - sum_a_pi_p;
     }
 
-    int select_variables_101(const int r_size, int bkmin, int bkmax)
-    {
-        int sum = 0;
-        int best = -2;
-
-        for (int i = -1; i < r_size; ++i) {
-            if (bkmin <= sum && sum <= bkmax)
-                best = i;
-
-            if (best != -2 && i - 1 < r_size &&
-                stop_iterating<Mode>(R[i + 1].value))
-                break;
-
-            sum += R[i + 1].f;
-        }
-
-        return best;
-    }
-
     int select_variables(const int r_size, int bkmin, int bkmax)
     {
         int sum = 0;
@@ -316,8 +297,10 @@ struct solver_inequalities_Zcoeff : debug_logger<debug>
             if (bkmin <= sum && sum <= bkmax)
                 best = i;
 
-            if (best != -2 && i - 1 < r_size &&
-                stop_iterating<Mode>(R[i + 1].value))
+            if (i + 1 == r_size)
+                break;
+
+            if (best != -2 && stop_iterating<Mode>(R[i + 1].value))
                 break;
 
             sum += R[i + 1].f;
@@ -477,7 +460,7 @@ struct solver_inequalities_Zcoeff : debug_logger<debug>
             case subsolver_type::linear:
             default:
                 calculator_sort<Mode>(R.get(), R.get() + r_size, rng);
-                selected = select_variables_101(r_size, b[k].min, b[k].max);
+                selected = select_variables(r_size, b[k].min, b[k].max);
                 break;
             }
 
@@ -534,7 +517,7 @@ struct solver_inequalities_Zcoeff : debug_logger<debug>
                 break;
             case subsolver_type::linear:
                 calculator_sort<Mode>(R.get(), R.get() + r_size, rng);
-                selected = select_variables_101(r_size, b[k].min, b[k].max);
+                selected = select_variables(r_size, b[k].min, b[k].max);
                 break;
             }
 
