@@ -156,6 +156,12 @@ main()
         s.remove(id3);
         s.remove(id2);
         s.remove(id);
+
+        // Elements of 5 bytes store the free list links at unaligned offsets.
+        expect(s.emplace() == id);
+        expect(s.emplace() == id2);
+        expect(s.emplace() == id3);
+        expect(s.size() == 3u * 5u);
     };
 
     "subvector_4096_16"_test = [] {

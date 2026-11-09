@@ -32,6 +32,7 @@
 #include "utils.hpp"
 
 #include <cstdint>
+#include <cstring>
 
 namespace baryonyx {
 namespace itm {
@@ -93,8 +94,9 @@ public:
         if (m_free_list_head != npos) {
             new_position = m_free_list_head;
 
-            m_free_list_head =
-              *(reinterpret_cast<size_type*>(&m_container[new_position]));
+            std::memcpy(&m_free_list_head,
+                        &m_container[new_position],
+                        sizeof(size_type));
 
         } else {
             new_position = static_cast<size_type>(m_container.size());
@@ -146,7 +148,9 @@ public:
     {
         check_index(i);
 
-        *(reinterpret_cast<size_type*>(&m_container[i])) = m_free_list_head;
+        // Elements are not aligned for size_type: the free list link is
+        // copied byte-wise into the removed element.
+        std::memcpy(&m_container[i], &m_free_list_head, sizeof(size_type));
         m_free_list_head = i;
     }
 
