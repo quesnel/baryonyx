@@ -254,10 +254,6 @@ struct solver_inequalities_Zcoeff : debug_logger<debug>
                               sparse_matrix<int>::row_iterator end,
                               const Xtype& x) noexcept
     {
-        // to_log(
-        //  debug_os, "  compute-reduced-cost {}\n", std::distance(begin,
-        //  end));
-
         int r_size = 0;
 
         for (; begin != end; ++begin) {
@@ -273,20 +269,8 @@ struct solver_inequalities_Zcoeff : debug_logger<debug>
             R[r_size].f = A[begin->value];
             R[r_size].value = c(begin->column, x) - sum_a_pi_p;
 
-            // to_log(debug_os,
-            //       4u,
-            //       "Compute: {} = {} - {} - {}\n",
-            //       r_size,
-            //       c(begin->column, x),
-            //       sum_pi,
-            //       sum_p);
-
-            // to_log(debug_os, 4u, "{}x{}\n", R[r_size].f, R[r_size].value);
-
             ++r_size;
         }
-
-        // to_log(debug_os, "\n");
 
         return r_size;
     }

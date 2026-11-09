@@ -442,7 +442,7 @@ private:
         for (int i = 0, e = bx::length(pb.vars.values); i != e; ++i) {
             if (pb.vars.values[i].min == pb.vars.values[i].max) {
                 debug(ctx,
-                      "      - variable {} is affected in bound.\n",
+                      "      - variable {} is affected to {} in bound.\n",
                       pb.vars.names[i],
                       (pb.vars.values[i].min != 0));
 

@@ -249,21 +249,7 @@ public:
                 const double duration,
                 const long int loop) noexcept
     {
-        // to_log(stdout,
-        //        5u,
-        //        "- insert advance {} (hash: {}) {}s in {} loops\n",
-        //        remaining_constraints,
-        //        hash,
-        //        duration,
-        //        loop);
-
         int id_to_delete = m_indices[choose_a_bad_solution(ctx)];
-
-        // to_log(stdout,
-        //        5u,
-        //        "- delete {} ({})\n",
-        //        id_to_delete,
-        //        m_data[id_to_delete].value);
 
         replace_result(id_to_delete,
                        x,
@@ -283,21 +269,7 @@ public:
                 const double duration,
                 const long int loop) noexcept
     {
-        // to_log(stdout,
-        //        5u,
-        //        "- insert solution {} (hash: {}) {}s in {} loops\n",
-        //        value,
-        //        hash,
-        //        duration,
-        //        loop);
-
         int id_to_delete = m_indices[choose_a_bad_solution(ctx)];
-
-        // to_log(stdout,
-        //        5u,
-        //        "- delete {} ({})\n",
-        //        id_to_delete,
-        //        m_data[id_to_delete].value);
 
         replace_result(id_to_delete, x, value, duration, hash, loop, 0);
 
@@ -384,11 +356,6 @@ public:
             if (b(ctx.rng)) {
                 if (b(ctx.rng)) {
                     crossover(ctx, x, m_data[first].x, m_bastert);
-                    // to_log(stdout,
-                    //        7u,
-                    //        "- crossover between {} ({}) and bastert\n",
-                    //        first,
-                    //        m_data[first].value);
                 } else {
                     m_data[first].x = m_bastert;
                 }
@@ -396,11 +363,6 @@ public:
                 init_with_random(m_random, ctx.rng, x.size(), 0.5);
                 if (b(ctx.rng)) {
                     crossover(ctx, x, m_data[first].x, m_random);
-                    // to_log(stdout,
-                    //        7u,
-                    //        "- crossover between {} ({}) and random\n",
-                    //        first,
-                    //        m_data[first].value);
                 } else {
                     m_data[first].x = m_random;
                 }
@@ -435,20 +397,6 @@ private:
 
               return false;
           });
-
-        // #ifdef BARYONYX_ENABLE_DEBUG
-        //         to_log(stdout, 3u, "- Solutions init population:\n");
-        //         for (int i = 0; i != m_size; ++i) {
-        //             to_log(stdout,
-        //                    5u,
-        //                    "- {} id {} value {} constraint {} hash {}\n",
-        //                    i,
-        //                    m_indices[i],
-        //                    m_data[m_indices[i]].value,
-        //                    m_data[m_indices[i]].remaining_constraints,
-        //                    m_data[m_indices[i]].hash);
-        //         }
-        // #endif
     }
 };
 
@@ -501,20 +449,11 @@ struct best_solution_recorder
             val_p = ctx.value_p_dist(ctx.rng);
         } while (val_p < 0 || val_p > 1);
 
-        // to_log(stdout,
-        //        7u,
-        //        "- mutation variables {}% with "
-        //        " {}% of set\n",
-        //        var_p,
-        //        val_p);
-
         std::bernoulli_distribution dist_var_p(var_p);
         std::bernoulli_distribution dist_value_p(val_p);
 
         for (int i = 0, e = x.size(); i != e; ++i) {
             if (dist_var_p(ctx.rng)) {
-                // to_log(stdout, 9u, "- mutate variable {}\n", i);
-
                 x.set(i, dist_value_p(ctx.rng));
             }
         }
@@ -526,22 +465,15 @@ struct best_solution_recorder
                 const real kappa_max,
                 bit_array& x)
     {
-        // to_log(stdout, 3u, "- reinitinialization thread {}.\n",
-        // ctx.thread_id);
-
         real kappa = kappa_min;
 
         if (m_kappa_append[ctx.thread_id] < ctx.init_kappa_improve_stop) {
             m_kappa_append[ctx.thread_id] += ctx.init_kappa_improve_increase;
             kappa = kappa_min +
                     (kappa_max - kappa_min) * m_kappa_append[ctx.thread_id];
-
-            // to_log(stdout, 5u, "- improve with kappa {}\n", kappa);
         } else {
             m_kappa_append[ctx.thread_id] = ctx.init_kappa_improve_start;
             crossover(ctx, x);
-
-            // to_log(stdout, 5u, "- crossover\n");
         }
 
         mutation(ctx, x);

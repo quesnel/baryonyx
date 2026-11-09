@@ -25,6 +25,7 @@
 
 #include <baryonyx/core>
 
+#include <algorithm>
 #include <utility>
 
 #include <fmt/color.h>
@@ -69,446 +70,95 @@ struct context
     message_type log_priority = context::message_type::info;
 };
 
-template<typename... Args>
-void
-to_log([[maybe_unused]] std::FILE* os,
-       [[maybe_unused]] fmt::format_string<Args...> fmt,
-       [[maybe_unused]] Args&&... args)
-{
-#ifdef BARYONYX_ENABLE_LOG
-#ifdef BARYONYX_ENABLE_DEBUG
-    fmt::print(os, fmt, args...);
-#endif
-#endif
-}
-
-template<typename... Args>
-void
-to_log([[maybe_unused]] std::FILE* os,
-       [[maybe_unused]] unsigned indent,
-       [[maybe_unused]] fmt::format_string<Args...> fmt,
-       [[maybe_unused]] Args&&... args)
-{
-#ifdef BARYONYX_ENABLE_LOG
-#ifdef BARYONYX_ENABLE_DEBUG
-    fmt::print(os, "{:{}}", "", indent);
-    fmt::print(os, fmt, args...);
-#endif
-#endif
-}
-
-inline bool
-is_loggable(context::message_type current_level, int level) noexcept
-{
-    return static_cast<int>(current_level) >= level;
-}
-
-template<typename S, typename... Args>
-constexpr void
-log(FILE* out, int style, const S& s, Args&&... args)
-{
-    fmt::vprint(
-      out, context::message_style[style], s, fmt::make_format_args(args...));
-}
-
-template<typename... Args>
-void
-log(FILE* out, int style, const char* msg)
-{
-    fmt::print(out, context::message_style[style], "{}", msg);
-}
-
-template<typename T>
-void
-log(FILE* out, int style, const T& msg)
-{
-    fmt::print(out, context::message_style[style], "{}", msg);
-}
-
 namespace detail {
 
-struct sink
-{
-    template<typename... Args>
-    sink(const Args&...)
-    {
-    }
-};
-
-}
-
-template<typename... Args>
+template<context::message_type Level, typename... Args>
 void
-emerg(const context& ctx, const char* fmt, const Args&... args)
-{
-#ifdef BARYONYX_ENABLE_LOG
-    if (!is_loggable(ctx.log_priority, 0))
-        return;
-
-    log(stderr, 0, fmt, args...);
-#else
-    detail::sink(ctx, fmt, args...);
-#endif
-}
-
-template<typename... Args>
-void
-alert(const context& ctx, const char* fmt, const Args&... args)
-{
-#ifdef BARYONYX_ENABLE_LOG
-    if (!is_loggable(ctx.log_priority, 1))
-        return;
-
-    log(stderr, 1, fmt, args...);
-#else
-    detail::sink(ctx, fmt, args...);
-#endif
-}
-
-template<typename... Args>
-void
-crit(const context& ctx, const char* fmt, const Args&... args)
-{
-#ifdef BARYONYX_ENABLE_LOG
-    if (!is_loggable(ctx.log_priority, 2))
-        return;
-
-    log(stderr, 2, fmt, args...);
-#else
-    detail::sink(ctx, fmt, args...);
-#endif
-}
-
-template<typename... Args>
-void
-error(const context& ctx, const char* fmt, const Args&... args)
-{
-#ifdef BARYONYX_ENABLE_LOG
-    if (!is_loggable(ctx.log_priority, 3))
-        return;
-
-    log(stderr, 3, fmt, args...);
-#else
-    detail::sink(ctx, fmt, args...);
-#endif
-}
-
-template<typename... Args>
-void
-warning(const context& ctx, const char* fmt, const Args&... args)
-{
-#ifdef BARYONYX_ENABLE_LOG
-    if (!is_loggable(ctx.log_priority, 4))
-        return;
-
-    log(stderr, 4, fmt, args...);
-#else
-    detail::sink(ctx, fmt, args...);
-#endif
-}
-
-template<typename... Args>
-void
-notice(const context& ctx, const char* fmt, const Args&... args)
-{
-#ifdef BARYONYX_ENABLE_LOG
-    if (!is_loggable(ctx.log_priority, 5))
-        return;
-
-    log(stdout, 5, fmt, args...);
-#else
-    detail::sink(ctx, fmt, args...);
-#endif
-}
-
-template<typename... Args>
-void
-info(const context& ctx, const char* fmt, const Args&... args)
-{
-#ifdef BARYONYX_ENABLE_LOG
-    if (!is_loggable(ctx.log_priority, 6))
-        return;
-
-    log(stdout, 6, fmt, args...);
-#else
-    detail::sink(ctx, fmt, args...);
-#endif
-}
-
-template<typename... Args>
-void
-debug(const context& ctx, const char* fmt, const Args&... args)
-{
-#ifdef BARYONYX_ENABLE_LOG
-#ifdef BARYONYX_ENABLE_DEBUG
-    if (!is_loggable(ctx.log_priority, 7))
-        return;
-
-    log(stdout, 7, fmt, args...);
-#else
-    detail::sink(ctx, fmt, args...);
-#endif
-#else
-    detail::sink(ctx, fmt, args...);
-#endif
-}
-
-template<typename Arg1, typename... Args>
-void
-emerg(const context& ctx,
-      const char* fmt,
-      const Arg1& arg1,
-      const Args&... args)
-{
-#ifdef BARYONYX_ENABLE_LOG
-    if (!is_loggable(ctx.log_priority, 0))
-        return;
-
-    log(stderr, 0, fmt, arg1, args...);
-#else
-    detail::sink(ctx, fmt, arg1, args...);
-#endif
-}
-
-template<typename Arg1, typename... Args>
-void
-alert(const context& ctx,
-      const char* fmt,
-      const Arg1& arg1,
-      const Args&... args)
-{
-#ifdef BARYONYX_ENABLE_LOG
-    if (!is_loggable(ctx.log_priority, 1))
-        return;
-
-    log(stderr, 1, fmt, arg1, args...);
-#else
-    detail::sink(ctx, fmt, arg1, args...);
-#endif
-}
-
-template<typename Arg1, typename... Args>
-void
-crit(const context& ctx,
-     const char* fmt,
-     const Arg1& arg1,
-     const Args&... args)
-{
-#ifdef BARYONYX_ENABLE_LOG
-    if (!is_loggable(ctx.log_priority, 2))
-        return;
-
-    log(stderr, 2, fmt, arg1, args...);
-#else
-    detail::sink(ctx, fmt, arg1, args...);
-#endif
-}
-
-template<typename Arg1, typename... Args>
-void
-error(const context& ctx,
-      const char* fmt,
-      const Arg1& arg1,
-      const Args&... args)
-{
-#ifdef BARYONYX_ENABLE_LOG
-    if (!is_loggable(ctx.log_priority, 3))
-        return;
-
-    log(stderr, 3, fmt, arg1, args...);
-#else
-    detail::sink(ctx, fmt, arg1, args...);
-#endif
-}
-
-template<typename Arg1, typename... Args>
-void
-warning(const context& ctx,
-        const char* fmt,
-        const Arg1& arg1,
-        const Args&... args)
-{
-#ifdef BARYONYX_ENABLE_LOG
-    if (!is_loggable(ctx.log_priority, 4))
-        return;
-
-    log(stderr, 4, fmt, arg1, args...);
-#else
-    detail::sink(ctx, fmt, arg1, args...);
-#endif
-}
-
-template<typename Arg1, typename... Args>
-void
-notice(const context& ctx,
-       const char* fmt,
-       const Arg1& arg1,
-       const Args&... args)
-{
-#ifdef BARYONYX_ENABLE_LOG
-    if (!is_loggable(ctx.log_priority, 5))
-        return;
-
-    log(stdout, 5, fmt, arg1, args...);
-#else
-    detail::sink(ctx, fmt, arg1, args...);
-#endif
-}
-
-template<typename Arg1, typename... Args>
-void
-info(const context& ctx,
-     const char* fmt,
-     const Arg1& arg1,
-     const Args&... args)
-{
-#ifdef BARYONYX_ENABLE_LOG
-    if (!is_loggable(ctx.log_priority, 6))
-        return;
-
-    log(stdout, 6, fmt, arg1, args...);
-#else
-    detail::sink(ctx, fmt, arg1, args...);
-#endif
-}
-
-template<typename Arg1, typename... Args>
-void
-debug(const context& ctx,
-      const char* fmt,
-      const Arg1& arg1,
-      const Args&... args)
-{
-#ifdef BARYONYX_ENABLE_LOG
-#ifdef BARYONYX_ENABLE_DEBUG
-    if (!is_loggable(ctx.log_priority, 7))
-        return;
-
-    log(stdout, 7, fmt, arg1, args...);
-#else
-    detail::sink(ctx, fmt, arg1, args...);
-#endif
-#else
-    detail::sink(ctx, fmt, arg1, args...);
-#endif
-}
-
-////////////////////////////////////////////////
-
-template<typename T>
-void
-emerg(const context& ctx, const T& msg)
-{
-#ifdef BARYONYX_ENABLE_LOG
-    if (!is_loggable(ctx.log_priority, 0))
-        return;
-
-    log(stderr, 0, msg);
-#else
-    detail::sink(ctx, msg);
-#endif
-}
-
-template<typename T>
-void
-alert(const context& ctx, const T& msg)
-{
-#ifdef BARYONYX_ENABLE_LOG
-    if (!is_loggable(ctx.log_priority, 1))
-        return;
-
-    log(stderr, 1, msg);
-#else
-    detail::sink(ctx, msg);
-#endif
-}
-
-template<typename T>
-void
-crit(const context& ctx, const T& msg)
-{
-#ifdef BARYONYX_ENABLE_LOG
-    if (!is_loggable(ctx.log_priority, 2))
-        return;
-
-    log(stderr, 2, msg);
-#else
-    detail::sink(ctx, msg);
-#endif
-}
-
-template<typename T>
-void
-error(const context& ctx, const T& msg)
-{
-#ifdef BARYONYX_ENABLE_LOG
-    if (!is_loggable(ctx.log_priority, 3))
-        return;
-
-    log(stderr, 3, msg);
-#else
-    detail::sink(ctx, msg);
-#endif
-}
-
-template<typename T>
-void
-warning(const context& ctx, const T& msg)
-{
-#ifdef BARYONYX_ENABLE_LOG
-    if (!is_loggable(ctx.log_priority, 4))
-        return;
-
-    log(stderr, 4, msg);
-#else
-    detail::sink(ctx, msg);
-#endif
-}
-
-template<typename T>
-void
-notice(const context& ctx, const T& msg)
-{
-#ifdef BARYONYX_ENABLE_LOG
-    if (!is_loggable(ctx.log_priority, 5))
-        return;
-
-    log(stdout, 5, msg);
-#else
-    detail::sink(ctx, msg);
-#endif
-}
-
-template<typename T>
-void
-info(const context& ctx, const T& msg)
-{
-#ifdef BARYONYX_ENABLE_LOG
-    if (!is_loggable(ctx.log_priority, 6))
-        return;
-
-    log(stdout, 6, msg);
-#else
-    detail::sink(ctx, msg);
-#endif
-}
-
-template<typename T>
-void
-debug(const context& ctx, const T& msg)
+log([[maybe_unused]] const context& ctx,
+     [[maybe_unused]] fmt::format_string<Args...> fmt,
+     [[maybe_unused]] Args&&... args)
 {
 #ifdef BARYONYX_ENABLE_LOG
 #ifndef BARYONYX_ENABLE_DEBUG
-    if (!is_loggable(ctx.log_priority, 7))
+    if constexpr (Level == context::message_type::debug)
+        return;
+#endif
+
+    if (ctx.log_priority < Level)
         return;
 
-    log(stdout, 7, msg);
-#else
-    detail::sink(ctx, msg);
+    auto* out = Level <= context::message_type::warning ? stderr : stdout;
+    fmt::print(out,
+               context::message_style[static_cast<int>(Level)],
+               fmt,
+               std::forward<Args>(args)...);
 #endif
-#else
-    detail::sink(ctx, msg);
-#endif
+}
+
+} // namespace detail
+
+template<typename... Args>
+void
+emerg(const context& ctx, fmt::format_string<Args...> fmt, Args&&... args)
+{
+    detail::log<context::message_type::emerg>(
+      ctx, fmt, std::forward<Args>(args)...);
+}
+
+template<typename... Args>
+void
+alert(const context& ctx, fmt::format_string<Args...> fmt, Args&&... args)
+{
+    detail::log<context::message_type::alert>(
+      ctx, fmt, std::forward<Args>(args)...);
+}
+
+template<typename... Args>
+void
+crit(const context& ctx, fmt::format_string<Args...> fmt, Args&&... args)
+{
+    detail::log<context::message_type::crit>(
+      ctx, fmt, std::forward<Args>(args)...);
+}
+
+template<typename... Args>
+void
+error(const context& ctx, fmt::format_string<Args...> fmt, Args&&... args)
+{
+    detail::log<context::message_type::err>(
+      ctx, fmt, std::forward<Args>(args)...);
+}
+
+template<typename... Args>
+void
+warning(const context& ctx, fmt::format_string<Args...> fmt, Args&&... args)
+{
+    detail::log<context::message_type::warning>(
+      ctx, fmt, std::forward<Args>(args)...);
+}
+
+template<typename... Args>
+void
+notice(const context& ctx, fmt::format_string<Args...> fmt, Args&&... args)
+{
+    detail::log<context::message_type::notice>(
+      ctx, fmt, std::forward<Args>(args)...);
+}
+
+template<typename... Args>
+void
+info(const context& ctx, fmt::format_string<Args...> fmt, Args&&... args)
+{
+    detail::log<context::message_type::info>(
+      ctx, fmt, std::forward<Args>(args)...);
+}
+
+template<typename... Args>
+void
+debug(const context& ctx, fmt::format_string<Args...> fmt, Args&&... args)
+{
+    detail::log<context::message_type::debug>(
+      ctx, fmt, std::forward<Args>(args)...);
 }
 
 } // namespace baryonyx
