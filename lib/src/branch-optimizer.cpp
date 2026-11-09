@@ -29,6 +29,7 @@
 #include <fstream>
 #include <optional>
 #include <set>
+#include <utility>
 
 /**
  * @brief Return true if lhs is better to rhs.
@@ -136,13 +137,18 @@ struct node_result_compare
 
 using problem_set = std::multiset<node, node_result_compare>;
 
-// Fixing a variable during the split can leave a constraint unreachable: that
-// branch holds no solution and is pruned instead of aborting the search.
-static std::optional<baryonyx::result>
-try_optimize(const baryonyx::context& ctx, const baryonyx::problem& pb)
+// Fixing a variable can make the sub-problem infeasible: that branch holds no
+// solution and is pruned instead of aborting the search.
+static std::optional<std::pair<baryonyx::problem, baryonyx::result>>
+try_branch(const baryonyx::context& ctx,
+           const baryonyx::problem& pb,
+           int variable,
+           bool value)
 {
     try {
-        return baryonyx::itm::optimize(ctx, pb);
+        auto sub = baryonyx::affect(ctx, pb, variable, value);
+        auto ret = baryonyx::itm::optimize(ctx, sub);
+        return std::make_pair(std::move(sub), std::move(ret));
     } catch (const baryonyx::solver_failure& e) {
         if (e.failure() != baryonyx::solver_error_tag::unrealisable_constraint)
             throw;
@@ -170,31 +176,36 @@ optimize(const baryonyx::context& ctx, const baryonyx::problem& pb)
                  best.remaining_constraints,
                  best.annoying_variable);
 
-    int annoying_variable = best.annoying_variable;
-
     do {
         auto it = jobs.begin();
+        const int variable = it->annoying_variable;
+
+        if (variable < 0 ||
+            variable >= baryonyx::length(it->problem.vars.names)) {
+            jobs.erase(it);
+            continue;
+        }
 
         baryonyx::notice(internal_ctx,
                          "  - branch-optimization splits on {} (id: {})\n",
-                         it->problem.vars.names[it->annoying_variable],
-                         it->annoying_variable);
+                         it->problem.vars.names[variable],
+                         variable);
 
-        auto sp =
-          baryonyx::split(internal_ctx, it->problem, annoying_variable);
-
-        for (auto* sub : { &std::get<0>(sp), &std::get<1>(sp) }) {
-            auto ret = try_optimize(internal_ctx, *sub);
-            if (!ret)
+        for (bool value : { true, false }) {
+            auto branch =
+              try_branch(internal_ctx, it->problem, variable, value);
+            if (!branch)
                 continue;
 
-            if (is_best(internal_ctx, *ret, best, it->problem.type))
-                best = *ret;
+            auto& [sub, ret] = *branch;
 
-            jobs.emplace(*sub,
-                         *ret ? ret->solutions.back().value : 0,
-                         ret->remaining_constraints,
-                         ret->annoying_variable);
+            if (is_best(internal_ctx, ret, best, it->problem.type))
+                best = ret;
+
+            jobs.emplace(std::move(sub),
+                         ret ? ret.solutions.back().value : 0,
+                         ret.remaining_constraints,
+                         ret.annoying_variable);
         }
 
         jobs.erase(it);

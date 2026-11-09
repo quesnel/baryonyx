@@ -23,9 +23,16 @@
 #include "problem.hpp"
 #include "utils.hpp"
 
+#include <algorithm>
+#include <functional>
+#include <optional>
+#include <random>
 #include <sstream>
+#include <string>
 
 #include <boost/ut.hpp>
+
+#include <fmt/format.h>
 
 #include <baryonyx/core>
 
@@ -38,6 +45,101 @@ get_variable(const std::vector<std::string_view>& variable_names,
             return i;
 
     return -1;
+}
+
+// Returns the best objective value over every 0-1 assignment, or nullopt when
+// no assignment satisfies the constraints.
+template<typename Problem>
+static std::optional<double>
+brute_force(const Problem& pb)
+{
+    const int n = baryonyx::length(pb.vars.names);
+    std::optional<double> best;
+
+    auto valid = [](const auto& csts, const std::vector<int>& x, auto op) {
+        for (const auto& cst : csts) {
+            int sum = 0;
+            for (const auto& elem : cst.elements)
+                sum += elem.factor * x[elem.variable_index];
+            if (!op(sum, cst.value))
+                return false;
+        }
+        return true;
+    };
+
+    std::vector<int> x(n);
+    for (unsigned mask = 0; mask != (1u << n); ++mask) {
+        bool in_bounds = true;
+        for (int i = 0; i != n; ++i) {
+            x[i] = (mask >> i) & 1u;
+            in_bounds = in_bounds && pb.vars.values[i].min <= x[i] &&
+                        x[i] <= pb.vars.values[i].max;
+        }
+
+        if (!in_bounds)
+            continue;
+
+        if (!valid(pb.equal_constraints, x, std::equal_to<>{}) ||
+            !valid(pb.greater_constraints, x, std::greater_equal<>{}) ||
+            !valid(pb.less_constraints, x, std::less_equal<>{}))
+            continue;
+
+        double value = pb.objective.value;
+        for (const auto& elem : pb.objective.elements)
+            value += elem.factor * x[elem.variable_index];
+        for (const auto& elem : pb.objective.qelements)
+            value += elem.factor * x[elem.variable_index_a] *
+                     x[elem.variable_index_b];
+
+        if (!best || value < *best)
+            best = value;
+    }
+
+    return best;
+}
+
+static std::string
+random_problem(std::mt19937& rng)
+{
+    std::uniform_int_distribution<int> factor(-2, 2);
+    std::uniform_int_distribution<int> rhs(-2, 3);
+    std::uniform_int_distribution<int> kind(0, 2);
+    std::uniform_int_distribution<int> var(0, 5);
+    std::uniform_int_distribution<int> length(1, 4);
+    std::bernoulli_distribution fixed(0.1);
+
+    auto term = [](int f, int v) {
+        return fmt::format("{}{} x{} ", f < 0 ? "- " : "+ ", std::abs(f), v);
+    };
+
+    std::string ret = "minimize\n";
+    for (int v = 0; v != 6; ++v)
+        if (int f = factor(rng); f != 0)
+            ret += term(f, v);
+    ret += "+ [ 2 x0 * x1 ] / 2\nst\n";
+
+    for (int c = 0; c != 4; ++c) {
+        std::vector<int> used;
+        for (int i = 0, e = length(rng); i != e; ++i) {
+            int v = var(rng);
+            if (std::ranges::find(used, v) != used.end())
+                continue;
+            used.push_back(v);
+
+            int f = factor(rng);
+            ret += term(f == 0 ? 1 : f, v);
+        }
+        constexpr const char* ops[] = { "=", ">=", "<=" };
+        ret += fmt::format("{} {}\n", ops[kind(rng)], rhs(rng));
+    }
+
+    ret += "bounds\n";
+    for (int v = 0; v != 6; ++v)
+        if (fixed(rng))
+            ret += fmt::format("x{} = {}\n", v, v % 2);
+
+    ret += "general\nx0 x1 x2 x3 x4 x5\nend\n";
+    return ret;
 }
 
 int
@@ -323,6 +425,188 @@ main()
 
             expect(p1.vars.names.size() == static_cast<size_t>(0));
             expect(p1.affected_vars.names.size() == static_cast<size_t>(23));
+        }
+    };
+
+    "test_unrealisable_problems"_test = [] {
+        auto unrealisable = [](const char* str_pb) {
+            auto ctx = baryonyx::make_context(4);
+            std::istringstream iss(str_pb);
+            auto pb = baryonyx::make_problem(*ctx, iss);
+
+            try {
+                baryonyx::preprocess(*ctx, pb);
+            } catch (const baryonyx::solver_failure& e) {
+                return e.failure() ==
+                       baryonyx::solver_error_tag::unrealisable_constraint;
+            }
+
+            return false;
+        };
+
+        // The first constraint fixes every variable to 1, which violates the
+        // second one.
+        expect(unrealisable("minimize\n-x1 + x3\nst\n"
+                            "x1 + x2 + x3 = 3\nx1 + x2 = 1\n"
+                            "binary\nx1 x2 x3\nend\n"));
+
+        expect(unrealisable("minimize\nx + y\nst\nx + y <= -1\n"
+                            "binary\nx y\nend\n"));
+
+        expect(unrealisable("minimize\nx + y\nst\nx + y >= 3\n"
+                            "binary\nx y\nend\n"));
+
+        expect(unrealisable(
+          "minimize\nx + y\nst\nx + y <= 0\n"
+          "bounds\nx >= 1\nx <= 1\nbinary\ny\ngeneral\nx\nend\n"));
+
+        expect(unrealisable("minimize\nx + y\nst\nx + y >= 1\n"
+                            "bounds\nx >= 2\nbinary\ny\ngeneral\nx\nend\n"));
+
+        expect(unrealisable("minimize\nx + y + z\nst\n2 x = 1\ny + z >= 1\n"
+                            "binary\nx y z\nend\n"));
+    };
+
+    "test_propagation"_test = [] {
+        auto ctx = baryonyx::make_context(4);
+
+        const char* str_pb = "minimize\n"
+                             "a + b + c + d + e + f\n"
+                             "st\n"
+                             "c1: 2 a >= 1\n"
+                             "c2: b - c = 1\n"
+                             "c3: d + e + f >= 1\n"
+                             "c4: d + e - f <= 1\n"
+                             "bounds\n"
+                             "d >= 1\n"
+                             "binary\n"
+                             "a b c e f\n"
+                             "general\n"
+                             "d\n"
+                             "end\n";
+
+        std::istringstream iss(str_pb);
+        auto pb = baryonyx::make_problem(*ctx, iss);
+        auto pb_pp = baryonyx::preprocess(*ctx, pb);
+
+        auto value_of = [&](std::string_view name) {
+            for (std::size_t i = 0; i != pb_pp.affected_vars.names.size(); ++i)
+                if (pb_pp.affected_vars.names[i] == name)
+                    return static_cast<int>(pb_pp.affected_vars.values[i]);
+            return -1;
+        };
+
+        expect(value_of("a") == 1);
+        expect(value_of("b") == 1);
+        expect(value_of("c") == 0);
+        expect(value_of("d") == 1);
+
+        // d = 1 satisfies c3 and leaves e - f <= 0 in c4.
+        expect(pb_pp.vars.names.size() == 2u);
+        expect(pb_pp.less_constraints.size() == 1u);
+        expect(pb_pp.greater_constraints.size() == 0u);
+        expect(pb_pp.equal_constraints.size() == 0u);
+        expect(pb_pp.objective.value == 3.0);
+    };
+
+    "test_quadratic_objective_cleaning"_test = [] {
+        auto ctx = baryonyx::make_context(4);
+
+        const char* str_pb = "minimize\n"
+                             "x + y + [ 2 a * b + 4 c * d ] / 2\n"
+                             "st\n"
+                             "x + y >= 1\n"
+                             "c <= 0\n"
+                             "binary\n"
+                             "x y a b c d\n"
+                             "end\n";
+
+        std::istringstream iss(str_pb);
+        auto pb = baryonyx::make_problem(*ctx, iss);
+        auto pb_pp = baryonyx::preprocess(*ctx, pb);
+
+        // a and b only appear in a product: their best value depends on each
+        // other, so they stay in the problem. c = 0 cancels the c * d product.
+        expect(pb_pp.vars.names.size() == 5u);
+        expect(pb_pp.affected_vars.names.size() == 1u);
+        expect(pb_pp.affected_vars.names[0] == "c");
+
+        expect(pb_pp.objective.qelements.size() == 1u);
+        expect(pb_pp.objective.qelements[0].factor == 1.0);
+        expect(pb_pp.objective.elements.size() == 2u);
+        expect(pb_pp.objective.value == 0.0);
+    };
+
+    "test_split_on_unrealisable_side"_test = [] {
+        auto ctx = baryonyx::make_context(4);
+
+        const char* str_pb = "minimize\n"
+                             "x + y + z\n"
+                             "st\n"
+                             "x + y + z >= 2\n"
+                             "x + y + z <= 2\n"
+                             "y + z <= 1\n"
+                             "binary\n"
+                             "x y z\n"
+                             "end\n";
+
+        std::istringstream iss(str_pb);
+        auto raw = baryonyx::make_problem(*ctx, iss);
+        auto pb = baryonyx::unpreprocess(*ctx, raw);
+
+        auto x = get_variable(pb.vars.names, "x");
+        expect(x >= 0);
+
+        auto pb_1 = baryonyx::affect(*ctx, pb, x, true);
+        expect(pb_1.vars.names.size() == 2u);
+
+        expect(throws<baryonyx::solver_failure>(
+          [&] { baryonyx::affect(*ctx, pb, x, false); }));
+    };
+
+    "test_random_problems_against_brute_force"_test = [] {
+        auto ctx = baryonyx::make_context(2);
+        std::mt19937 rng(20261109);
+
+        for (int i = 0; i != 2000; ++i) {
+            const auto str = random_problem(rng);
+            std::istringstream iss(str);
+            auto pb = baryonyx::make_problem(*ctx, iss);
+            for (auto& v : pb.vars.values)
+                v.max = std::min(v.max, 1);
+
+            const auto expected = brute_force(pb);
+
+            try {
+                const auto pp = baryonyx::preprocess(*ctx, pb);
+                const auto got = brute_force(pp);
+                expect(got == expected)
+                  << str << "expected:" << expected.value_or(-999)
+                  << "got:" << got.value_or(-999);
+
+                if (pp.vars.names.empty())
+                    continue;
+
+                const auto origin =
+                  get_variable(pb.vars.names, pp.vars.names[0]);
+
+                for (int value : { 0, 1 }) {
+                    auto fixed = pb;
+                    fixed.vars.values[origin].min = value;
+                    fixed.vars.values[origin].max = value;
+                    const auto expected_fixed = brute_force(fixed);
+
+                    try {
+                        const auto af =
+                          baryonyx::affect(*ctx, pp, 0, value == 1);
+                        expect(brute_force(af) == expected_fixed) << str;
+                    } catch (const baryonyx::solver_failure&) {
+                        expect(!expected_fixed.has_value()) << str;
+                    }
+                }
+            } catch (const baryonyx::solver_failure&) {
+                expect(!expected.has_value()) << str;
+            }
         }
     };
 }
