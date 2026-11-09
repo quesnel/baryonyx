@@ -559,7 +559,7 @@ struct variable_value
     {}
 
     int min{ 0 };
-    int max{ std::numeric_limits<int>::infinity() };
+    int max{ std::numeric_limits<int>::max() };
     variable_type type{ variable_type::real };
 };
 

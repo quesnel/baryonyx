@@ -23,7 +23,11 @@
 #include <baryonyx/core>
 
 #include <algorithm>
+#include <array>
+#include <charconv>
+#include <cmath>
 #include <fstream>
+#include <limits>
 #include <optional>
 #include <string>
 #include <unordered_map>
@@ -33,7 +37,12 @@
 #include "utils.hpp"
 
 #include <climits>
-#include <cstring>
+
+constexpr char
+to_lower(const char c) noexcept
+{
+    return (c >= 'A' && c <= 'Z') ? static_cast<char>(c - 'A' + 'a') : c;
+}
 
 constexpr bool
 are_equal(const std::string_view lhs, const std::string_view rhs) noexcept
@@ -41,11 +50,8 @@ are_equal(const std::string_view lhs, const std::string_view rhs) noexcept
     if (rhs.size() != lhs.size())
         return false;
 
-    std::string_view::size_type i = 0;
-    std::string_view::size_type e = lhs.size();
-
-    for (; i != e; ++i)
-        if (std::tolower(lhs[i]) != std::tolower(rhs[i]))
+    for (std::string_view::size_type i = 0, e = lhs.size(); i != e; ++i)
+        if (to_lower(lhs[i]) != to_lower(rhs[i]))
             return false;
 
     return true;
@@ -64,11 +70,17 @@ starts_with_operator(const std::string_view str) noexcept
 }
 
 constexpr bool
+is_digit(const int c) noexcept
+{
+    return c >= static_cast<int>('0') && c <= static_cast<int>('9');
+}
+
+constexpr bool
 is_char_name(const int c) noexcept
 {
     if ((c >= static_cast<int>('a') && c <= static_cast<int>('z')) ||
         (c >= static_cast<int>('A') && c <= static_cast<int>('Z')) ||
-        (c >= static_cast<int>('0') && c <= static_cast<int>('9')))
+        is_digit(c))
         return true;
 
     switch (c) {
@@ -104,15 +116,14 @@ starts_with_name(const std::string_view str) noexcept
 constexpr bool
 is_number(const int c) noexcept
 {
-    return (c >= static_cast<int>('0') && c <= static_cast<int>('9')) ||
-           c == '.' || c == 'e' || c == 'E' || c == '-' || c == '+';
+    return is_digit(c) || c == '.' || c == 'e' || c == 'E' || c == '-' ||
+           c == '+';
 }
 
 constexpr bool
 starts_with_a_number(const int c) noexcept
 {
-    return (c >= static_cast<int>('0') && c <= static_cast<int>('9')) ||
-           c == '.' || c == '-' || c == '+';
+    return is_digit(c) || c == '.' || c == '-' || c == '+';
 }
 
 constexpr bool
@@ -125,7 +136,7 @@ starts_with_number(const std::string_view str) noexcept
         if (are_equal(str, "infinity") || are_equal(str, "inf"))
             return true;
 
-    return is_number(str[0]);
+    return starts_with_a_number(str[0]);
 }
 
 constexpr bool
@@ -148,25 +159,33 @@ is_separator(const int c) noexcept
     }
 }
 
-static const std::string_view keywords[] = {
-    "binary", "binaries", "bin", "bound",   "bounds", "general", "generals",
-    "gen",    "end",      "st",  "subject", "sush",   "s.t.",    "st."
+constexpr std::string_view keywords[] = {
+    "binary",  "binaries", "bin",  "bound", "bounds", "general",
+    "generals", "gen",     "end",  "st",    "subject", "such",
+    "s.t.",    "s.t",      "st."
 };
 
 constexpr bool
 is_keyword(const std::string_view str) noexcept
 {
-    // std::find_if is not constexpr in C++17
-    // return std::find_if(std::begin(array),
-    //                     std::end(array),
-    //                     std::bind(are_equal, std::placeholders::_1, str)) !=
-    //        std::end(array);
-
     for (auto i : keywords)
         if (are_equal(i, str))
             return true;
 
     return false;
+}
+
+constexpr bool
+is_variable_name(const std::string_view str) noexcept
+{
+    if (!starts_with_name(str) || is_keyword(str))
+        return false;
+
+    for (const char c : str)
+        if (!is_char_name(c))
+            return false;
+
+    return true;
 }
 
 struct operator_token
@@ -186,7 +205,7 @@ struct real_token
 {
     constexpr real_token() noexcept = default;
 
-    constexpr real_token(double value_, int read_)
+    constexpr real_token(double value_, int read_) noexcept
       : value(value_)
       , read(read_)
     {}
@@ -212,39 +231,12 @@ struct function_element_token
     int read = 0;
 };
 
-struct sub_bound_token
-{
-    constexpr sub_bound_token() noexcept = default;
-
-    constexpr sub_bound_token(double value_,
-                              int read_,
-                              baryonyx::operator_type op_) noexcept
-      : value(value_)
-      , read(read_)
-      , op(op_)
-    {}
-
-    double value = 0;
-    int read = 0;
-    baryonyx::operator_type op = baryonyx::operator_type::equal;
-};
-
+/// A bound statement only updates the sides it mentions: `x <= 4` keeps the
+/// current lower bound of `x`.
 struct bound_token
 {
-    constexpr bound_token() noexcept = default;
-
-    constexpr bound_token(double min_,
-                          double max_,
-                          std::string_view name_,
-                          int read_) noexcept
-      : min(min_)
-      , max(max_)
-      , name(name_)
-      , read(read_)
-    {}
-
-    double min = 0.0;
-    double max = std::numeric_limits<int>::infinity();
+    std::optional<double> min;
+    std::optional<double> max;
     std::string_view name;
     int read = 0;
 };
@@ -265,6 +257,13 @@ struct raw_problem_status
     }
 };
 
+/// Splits the input stream into LP tokens and keeps a look-ahead window of
+/// `stream_buffer_size` tokens.
+///
+/// Tokens are views into a ring of `stream_buffer_size` words read from the
+/// stream. A new word always overwrites the oldest one, which is no longer
+/// referenced by the window. A view removed by `pop_front` must therefore
+/// never be used afterwards.
 class stream_buffer
 {
 public:
@@ -281,52 +280,21 @@ public:
 
     void pop_front()
     {
-        auto tmp = buffer_ptr[0];
-
-        buffer_ptr[0] = buffer_ptr[1];
-        buffer_ptr[1] = buffer_ptr[2];
-        buffer_ptr[2] = buffer_ptr[3];
-        buffer_ptr[3] = buffer_ptr[4];
-        buffer_ptr[4] = buffer_ptr[5];
-        buffer_ptr[5] = buffer_ptr[6];
-        buffer_ptr[6] = buffer_ptr[7];
-        buffer_ptr[7] = buffer_ptr[8];
-        buffer_ptr[8] = buffer_ptr[9];
-        buffer_ptr[9] = tmp;
-
-        do_push_back(1);
+        pop_front(1);
     }
 
     void pop_front(int size)
     {
         bx_expects(size >= 1 && size < stream_buffer_size);
 
-        auto tmp = buffer_ptr[0];
-
-        buffer_ptr[0] = buffer_ptr[(size + 0) % stream_buffer_size];
-        buffer_ptr[1] = buffer_ptr[(size + 1) % stream_buffer_size];
-        buffer_ptr[2] = buffer_ptr[(size + 2) % stream_buffer_size];
-        buffer_ptr[3] = buffer_ptr[(size + 3) % stream_buffer_size];
-        buffer_ptr[4] = buffer_ptr[(size + 4) % stream_buffer_size];
-        buffer_ptr[5] = buffer_ptr[(size + 5) % stream_buffer_size];
-        buffer_ptr[6] = buffer_ptr[(size + 6) % stream_buffer_size];
-        buffer_ptr[7] = buffer_ptr[(size + 7) % stream_buffer_size];
-        buffer_ptr[8] = buffer_ptr[(size + 8) % stream_buffer_size];
-        buffer_ptr[9] = tmp;
+        std::copy(buffer_ptr.begin() + size,
+                  buffer_ptr.end(),
+                  buffer_ptr.begin());
 
         do_push_back(size);
     }
 
-    void print(const std::string_view msg) const
-    {
-        fmt::print("{}", msg);
-        for (int i = 0; i < stream_buffer_size; ++i)
-            fmt::print("[{}: ({})]", i, buffer_ptr[i]);
-        fmt::print("\n");
-    }
-
-    const std::array<std::string_view, stream_buffer_size> array() const
-      noexcept
+    const string_view_array& array() const noexcept
     {
         return buffer_ptr;
     }
@@ -346,106 +314,107 @@ public:
         return buffer_ptr[2];
     }
 
-    std::string_view fourth() const noexcept
-    {
-        return buffer_ptr[3];
-    }
-
-    unsigned line() const noexcept
-    {
-        return 0u;
-    }
-
-    unsigned column() const noexcept
-    {
-        return 0u;
-    }
-
 private:
     struct stream_token
     {
-        char buffer[512] = { '\0' };
+        std::string buffer;
         std::size_t current = 0;
     };
 
-    std::array<std::string_view, stream_buffer_size> buffer_ptr;
+    string_view_array buffer_ptr;
     std::array<stream_token, stream_buffer_size> token;
     std::istream& is;
     int current_token_buffer = 0;
 
     void do_push_back(int size)
     {
-        bx_expects(size > 0 && size <= stream_buffer_size);
-
         for (int i = stream_buffer_size - size; i < stream_buffer_size; ++i)
             buffer_ptr[i] = next_token();
     }
 
-    std::string_view next_token() noexcept
+    bool read_word(std::string& word)
     {
-        if (token[current_token_buffer]
-              .buffer[token[current_token_buffer].current] == '\0') {
-            current_token_buffer =
-              (current_token_buffer + 1) % stream_buffer_size;
-            if (!is.good())
-                return std::string_view();
+        word.clear();
 
-            token[current_token_buffer].buffer[0] = '\0';
-            while (is >> token[current_token_buffer].buffer) {
-                if (token[current_token_buffer].buffer[0] == '\\') {
-                    is.ignore(std::numeric_limits<std::streamsize>::max(),
-                              '\n');
-                    continue;
-                }
-
-                if (token[current_token_buffer].buffer[0] == '\0')
-                    continue;
-
-                break;
+        while (is >> word) {
+            const auto comment = word.find('\\');
+            if (comment != std::string::npos) {
+                is.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                word.erase(comment);
             }
 
+            if (!word.empty())
+                return true;
+        }
+
+        word.clear();
+        return false;
+    }
+
+    std::string_view next_token()
+    {
+        if (token[current_token_buffer].current >=
+            token[current_token_buffer].buffer.size()) {
+            current_token_buffer =
+              (current_token_buffer + 1) % stream_buffer_size;
+
             token[current_token_buffer].current = 0;
-            if (token[current_token_buffer].buffer[0] == '\0')
+            if (!read_word(token[current_token_buffer].buffer))
                 return std::string_view();
         }
 
-        if (token[current_token_buffer]
-              .buffer[token[current_token_buffer].current] == '\0')
-            return std::string_view();
+        auto& tok = token[current_token_buffer];
+        const std::string_view word = tok.buffer;
+        const std::size_t start = tok.current++;
 
-        bool starts_with_number =
-          starts_with_a_number(token[current_token_buffer]
-                                 .buffer[token[current_token_buffer].current]);
+        if (is_separator(word[start]))
+            return word.substr(start, 1);
 
-        std::size_t start = token[current_token_buffer].current++;
+        const bool is_numeric = starts_with_a_number(word[start]);
 
-        if (is_separator(token[current_token_buffer].buffer[start]))
-            return std::string_view(&token[current_token_buffer].buffer[start],
-                                    1);
+        for (; tok.current < word.size(); ++tok.current) {
+            const char c = word[tok.current];
 
-        if (token[current_token_buffer]
-              .buffer[token[current_token_buffer].current] == '\0')
-            return std::string_view(&token[current_token_buffer].buffer[start],
-                                    1);
+            const bool is_exponent_sign =
+              is_numeric && (c == '-' || c == '+') &&
+              (word[tok.current - 1] == 'e' || word[tok.current - 1] == 'E');
 
-        while (token[current_token_buffer]
-                 .buffer[token[current_token_buffer].current] != '\0') {
-            if (is_separator(token[current_token_buffer]
-                               .buffer[token[current_token_buffer].current]))
+            if (is_exponent_sign)
+                continue;
+
+            if (is_separator(c))
                 break;
 
-            if (starts_with_number &&
-                !is_number(token[current_token_buffer]
-                             .buffer[token[current_token_buffer].current]))
+            if (is_numeric && !is_number(c))
                 break;
-
-            ++token[current_token_buffer].current;
         }
 
-        return std::string_view(&token[current_token_buffer].buffer[start],
-                                token[current_token_buffer].current - start);
+        return word.substr(start, tok.current - start);
     }
 };
+
+std::optional<int>
+to_int_exact(const double value) noexcept
+{
+    if (!std::isfinite(value) || value != std::trunc(value) ||
+        value < static_cast<double>(std::numeric_limits<int>::min()) ||
+        value > static_cast<double>(std::numeric_limits<int>::max()))
+        return std::nullopt;
+
+    return static_cast<int>(value);
+}
+
+int
+to_int_saturated(const double value) noexcept
+{
+    if (value <= static_cast<double>(std::numeric_limits<int>::min()))
+        return std::numeric_limits<int>::min();
+
+    if (value >= static_cast<double>(std::numeric_limits<int>::max()))
+        return std::numeric_limits<int>::max();
+
+    return static_cast<int>(value);
+}
 
 struct problem_parser
 {
@@ -463,7 +432,7 @@ struct problem_parser
             it != m_cache_variable.end())
             return it->second;
 
-        if (m_cache_variable.size() > baryonyx::to_unsigned(INT_MAX))
+        if (m_cache_variable.size() >= baryonyx::to_unsigned(INT_MAX))
             return -1;
 
         auto size = static_cast<int>(m_cache_variable.size());
@@ -478,43 +447,75 @@ struct problem_parser
         return size;
     }
 
-    int get_variable(const std::string_view value) const noexcept
-    {
-        if (auto it = m_cache_variable.find(value);
-            it != m_cache_variable.end())
-            return it->second;
-
-        return -1;
-    }
-
     [[nodiscard]] bool append_to_objective(const function_element_token& elem)
     {
         if (elem.name.empty()) {
             m_problem.objective.value += elem.factor;
             return true;
+        }
+
+        auto id = get_or_assign_variable(elem.name);
+        if (id == -1)
+            return false;
+
+        auto it = std::find_if(
+          std::begin(m_problem.objective.elements),
+          std::end(m_problem.objective.elements),
+          [id](const auto& elem) { return elem.variable_index == id; });
+
+        if (it == std::end(m_problem.objective.elements))
+            m_problem.objective.elements.emplace_back(elem.factor, id);
+        else
+            it->factor += elem.factor;
+
+        return true;
+    }
+
+    void append_to_quadratic_objective(int id1, int id2, double factor)
+    {
+        auto it = std::find_if(m_problem.objective.qelements.begin(),
+                               m_problem.objective.qelements.end(),
+                               [id1, id2](const auto& elem) {
+                                   return (elem.variable_index_a == id1 &&
+                                           elem.variable_index_b == id2) ||
+                                          (elem.variable_index_a == id2 &&
+                                           elem.variable_index_b == id1);
+                               });
+
+        if (it == m_problem.objective.qelements.end()) {
+            auto& ret = m_problem.objective.qelements.emplace_back();
+            ret.factor = factor;
+            ret.variable_index_a = id1;
+            ret.variable_index_b = id2;
         } else {
-            auto id = get_or_assign_variable(elem.name);
-            if (id == -1)
-                return false;
-
-            auto it = std::find_if(
-              std::begin(m_problem.objective.elements),
-              std::end(m_problem.objective.elements),
-              [id](const auto& elem) { return elem.variable_index == id; });
-
-            if (it == std::end(m_problem.objective.elements))
-                m_problem.objective.elements.emplace_back(elem.factor, id);
-            else
-                it->factor += elem.factor;
-
-            return true;
+            it->factor += factor;
         }
     }
 
-    [[nodiscard]] bool set_boolean_variable(
-      const std::string_view value) noexcept
+    [[nodiscard]] bool append_to_constraint(
+      std::vector<baryonyx::objective_function_element>& elements,
+      const function_element_token& elem)
     {
-        auto id = get_variable(value);
+        auto id = get_or_assign_variable(elem.name);
+        if (id == -1)
+            return false;
+
+        auto it = std::find_if(
+          elements.begin(), elements.end(), [id](const auto& elem) {
+              return elem.variable_index == id;
+          });
+
+        if (it == elements.end())
+            elements.emplace_back(elem.factor, id);
+        else
+            it->factor += elem.factor;
+
+        return true;
+    }
+
+    [[nodiscard]] bool set_boolean_variable(const std::string_view value)
+    {
+        auto id = get_or_assign_variable(value);
         if (id < 0)
             return false;
 
@@ -525,10 +526,9 @@ struct problem_parser
         return true;
     }
 
-    [[nodiscard]] bool set_integer_variable(
-      const std::string_view value) noexcept
+    [[nodiscard]] bool set_integer_variable(const std::string_view value)
     {
-        auto id = get_variable(value);
+        auto id = get_or_assign_variable(value);
         if (id < 0)
             return false;
 
@@ -537,92 +537,61 @@ struct problem_parser
         return true;
     }
 
-    [[nodiscard]] bool set_bound_variable(bound_token bound)
+    /// Bounds are rounded inward (`ceil` for the lower bound, `floor` for the
+    /// upper bound) because the solver only handles integer variables.
+    [[nodiscard]] bool set_bound_variable(const bound_token& bound)
     {
-        auto id = get_variable(bound.name);
+        auto id = get_or_assign_variable(bound.name);
         if (id < 0)
             return false;
 
-        // We only use a binary/integer solver.
-        // m_problem.vars.values[id].min = bound.min;
-        // m_problem.vars.values[id].max = bound.max;
+        if (bound.min)
+            m_problem.vars.values[id].min =
+              to_int_saturated(std::ceil(*bound.min));
 
-        m_problem.vars.values[id].min =
-          (bound.min == -std::numeric_limits<double>::infinity()
-             ? std::numeric_limits<int>::min()
-             : static_cast<int>(bound.min));
-
-        m_problem.vars.values[id].max =
-          (bound.max == std::numeric_limits<double>::infinity()
-             ? std::numeric_limits<int>::max()
-             : static_cast<int>(bound.max));
+        if (bound.max)
+            m_problem.vars.values[id].max =
+              to_int_saturated(std::floor(*bound.max));
 
         return true;
     }
 };
 
-// constexpr copy_n problem
 std::optional<double>
 read_real(const std::string_view buf) noexcept
 {
-    if (buf.size() >= 3 && are_equal(buf, "inf"))
+    if (are_equal(buf, "inf") || are_equal(buf, "infinity"))
         return std::numeric_limits<double>::infinity();
 
-    constexpr std::size_t max_digits = 320;
-    if (buf.size() > max_digits)
+    double result = 0.0;
+    const auto* const end = buf.data() + buf.size();
+    const auto [ptr, ec] = std::from_chars(buf.data(), end, result);
+
+    if (ec != std::errc{} || ptr != end || std::isnan(result))
         return std::nullopt;
 
-    char buffer[max_digits] = { '\0' };
-    std::copy_n(buf.data(), buf.size(), std::begin(buffer));
-    buffer[buf.size()] = '\0';
-
-    double result = 0;
-    if (auto read = std::sscanf(buffer, "%lf", &result); read > 0)
-        return result;
-    else
-        return std::nullopt;
+    return result;
 }
 
-// constexpr
 std::optional<real_token>
-read_real(const std::string_view buf_1, const std::string_view buf_2) noexcept
+read_signed_real(const std::string_view buf_1,
+                 const std::string_view buf_2) noexcept
 {
-    std::optional<double> value_opt;
+    if (buf_1 == "-" || buf_1 == "+") {
+        const double sign = buf_1 == "-" ? -1.0 : 1.0;
 
-    if (buf_1 == "-") {
-        value_opt = read_real(buf_2);
-        if (!value_opt)
-            return real_token(-1.0, 1);
-        else
-            return real_token(-1.0 * *value_opt, 2);
+        if (auto value = read_real(buf_2); value)
+            return real_token(sign * *value, 2);
+
+        return std::nullopt;
     }
 
-    if (buf_1 == "+") {
-        value_opt = read_real(buf_2);
-        if (!value_opt)
-            return real_token(1.0, 1);
-        else
-            return real_token(*value_opt, 2);
-    }
+    if (auto value = read_real(buf_1); value)
+        return real_token(*value, 1);
 
-    value_opt = read_real(buf_1);
-    if (!value_opt)
-        return real_token(1.0, 0);
-
-    return real_token(*value_opt, 1);
+    return std::nullopt;
 }
 
-// constexpr
-std::optional<std::string_view>
-read_name(const std::string_view buf) noexcept
-{
-    return std::find_if_not(std::begin(buf), std::end(buf), is_char_name) ==
-               std::end(buf)
-             ? std::make_optional(buf)
-             : std::nullopt;
-}
-
-// constexpr
 std::optional<operator_token>
 read_operator(const std::string_view buf_1,
               const std::string_view buf_2) noexcept
@@ -651,318 +620,126 @@ read_operator(const std::string_view buf_1,
     return std::nullopt;
 }
 
-constexpr bool
-is_objective_function(const std::string_view buf) noexcept
-{
-    return !buf.empty() && !is_keyword(buf) &&
-           (buf == "+" || buf == "-" || is_number(buf[0]) ||
-            is_char_name(buf[0]));
-}
-
-std::optional<function_element_token>
-read_quadratic_element(const std::string_view buf_1,
-                       const std::string_view buf_2,
-                       const std::string_view buf_3) noexcept
-{
-    auto value_opt = read_real(buf_1, buf_2);
-    if (!value_opt)
-        return std::nullopt;
-
-    std::string_view to_read;
-    switch (value_opt->read) {
-    case 0:
-        to_read = buf_1;
-        break;
-    case 1:
-        to_read = buf_2;
-        break;
-    default:
-        to_read = buf_3;
-        break;
-    }
-
-    if (is_keyword(to_read) || !starts_with_name(to_read))
-        return std::nullopt;
-
-    auto name_opt = read_name(to_read);
-    if (!name_opt.has_value())
-        return std::nullopt;
-
-    return function_element_token(
-      value_opt->value, *name_opt, value_opt->read + 1);
-}
-
-raw_problem_status
-read_quadratic_element(stream_buffer& buf,
-                       problem_parser& p,
-                       double sign_factor) noexcept
-{
-    if (buf.first() != "[")
-        return baryonyx::file_format_error_tag::bad_objective_quadratic;
-
-    buf.pop_front();
-
-    while (!buf.first().empty() && buf.first() != "]") {
-        function_element_token fct;
-
-        if (auto fct_opt =
-              read_quadratic_element(buf.first(), buf.second(), buf.third());
-            !fct_opt)
-            return baryonyx::file_format_error_tag::bad_objective_quadratic;
-        else
-            fct = *fct_opt;
-
-        buf.pop_front(fct.read);
-
-        if (buf.first() == "*") {
-            auto name_opt = read_name(buf.second());
-            if (!name_opt.has_value())
-                return baryonyx::file_format_error_tag::
-                  bad_objective_quadratic;
-
-            auto id1 = p.get_or_assign_variable(fct.name);
-            auto id2 = p.get_or_assign_variable(*name_opt);
-
-            if (id1 == -1 || id2 == -1)
-                return baryonyx::file_format_error_tag::too_many_variables;
-
-            auto it = std::find_if(p.m_problem.objective.qelements.begin(),
-                                   p.m_problem.objective.qelements.end(),
-                                   [id1, id2](const auto& elem) {
-                                       return (elem.variable_index_a == id1 &&
-                                               elem.variable_index_b == id2) ||
-                                              (elem.variable_index_a == id2 &&
-                                               elem.variable_index_b == id1);
-                                   });
-            if (it == p.m_problem.objective.qelements.end()) {
-                auto& ret = p.m_problem.objective.qelements.emplace_back();
-                ret.factor = fct.factor * sign_factor / 2.0;
-                ret.variable_index_a = id1;
-                ret.variable_index_b = id2;
-            } else {
-                it->factor += fct.factor * sign_factor / 2.0;
-            }
-
-            buf.pop_front(2);
-        } else if (buf.first() == "^" || buf.first() == "^2") {
-            if (buf.first() == "^" && buf.second() == "2")
-                buf.pop_front(2);
-            else
-                buf.pop_front(1);
-
-            auto id = p.get_or_assign_variable(fct.name);
-            if (id == -1)
-                return baryonyx::file_format_error_tag::too_many_variables;
-
-            auto it = std::find_if(p.m_problem.objective.qelements.begin(),
-                                   p.m_problem.objective.qelements.end(),
-                                   [id](const auto& elem) {
-                                       return elem.variable_index_a == id &&
-                                              elem.variable_index_b == id;
-                                   });
-
-            if (it == p.m_problem.objective.qelements.end()) {
-                auto& ret = p.m_problem.objective.qelements.emplace_back();
-                ret.factor = fct.factor * sign_factor / 2.0;
-                ret.variable_index_a = id;
-                ret.variable_index_b = id;
-            } else {
-                it->factor += fct.factor * sign_factor / 2.0;
-            }
-        }
-    }
-
-    buf.pop_front();
-
-    if (buf.first() == "/" && buf.second() == "2")
-        buf.pop_front(2);
-    else if (buf.first() == "/2")
-        buf.pop_front(1);
-    else
-        return baryonyx::file_format_error_tag::bad_objective_quadratic;
-
-    return baryonyx::file_format_error_tag::success;
-}
-
-// constexpr
+/// Reads `[sign] [number] [name]`. Without a name the element is a constant
+/// term, which requires a number.
 std::optional<function_element_token>
 read_function_element(const std::string_view buf_1,
                       const std::string_view buf_2,
                       const std::string_view buf_3) noexcept
 {
-    auto value_opt = read_real(buf_1, buf_2);
-    if (!value_opt)
-        return std::nullopt;
+    const std::array<std::string_view, 3> tokens{ buf_1, buf_2, buf_3 };
 
-    std::string_view to_read;
+    double factor = 1.0;
+    std::size_t read = 0;
 
-    switch (value_opt->read) {
-    case 0:
-        to_read = buf_1;
-        break;
-    case 1:
-        to_read = buf_2;
-        break;
-    default:
-        to_read = buf_3;
-        break;
+    if (tokens[0] == "-" || tokens[0] == "+") {
+        factor = tokens[0] == "-" ? -1.0 : 1.0;
+        ++read;
     }
 
-    if (!is_keyword(to_read) && starts_with_name(to_read)) {
-        auto name_opt = read_name(to_read);
-        if (!name_opt.has_value())
-            return std::nullopt;
+    bool has_number = false;
+    if (auto value = read_real(tokens[read]); value) {
+        factor *= *value;
+        has_number = true;
+        ++read;
+    }
 
+    if (read < tokens.size() && is_variable_name(tokens[read]))
         return function_element_token(
-          value_opt->value, *name_opt, value_opt->read + 1);
-    } else {
+          factor, tokens[read], static_cast<int>(read + 1));
+
+    if (has_number)
         return function_element_token(
-          value_opt->value, std::string_view(), value_opt->read);
-    }
-}
+          factor, std::string_view(), static_cast<int>(read));
 
-std::optional<sub_bound_token>
-read_left_bound_token(const std::string_view buf_1,
-                      const std::string_view buf_2,
-                      const std::string_view buf_3,
-                      const std::string_view buf_4) noexcept
-{
-    double value = 0.0;
-    double negative = 1.0;
-
-    if (buf_1 == "+" || buf_1 == "-") {
-        if (buf_1 == "-")
-            negative = -1.0;
-
-        if (auto value_opt = read_real(buf_2); value_opt)
-            value = *value_opt;
-        else
-            return std::nullopt;
-
-        if (auto operator_token = read_operator(buf_3, buf_4); operator_token)
-            return sub_bound_token(
-              value * negative, operator_token->read + 2, operator_token->op);
-        else
-            return std::nullopt;
-    } else {
-        if (auto value_opt = read_real(buf_1); value_opt)
-            value = *value_opt;
-        else
-            return std::nullopt;
-
-        if (auto operator_token = read_operator(buf_2, buf_3); operator_token)
-            return sub_bound_token(
-              value * negative, operator_token->read + 1, operator_token->op);
-        else
-            return std::nullopt;
-    }
-}
-
-std::optional<sub_bound_token>
-read_right_bound_token(const std::string_view buf_1,
-                       const std::string_view buf_2,
-                       const std::string_view buf_3,
-                       const std::string_view buf_4) noexcept
-{
-    double negative = 1.0;
-    baryonyx::operator_type op = baryonyx::operator_type::equal;
-
-    if (auto operator_token = read_operator(buf_1, buf_2); operator_token) {
-        op = operator_token->op;
-        if (operator_token->read == 1) {
-            if (buf_2 == "+" || buf_2 == "-") {
-                if (buf_2 == "-")
-                    negative = -1.0;
-
-                if (auto value_opt = read_real(buf_3); value_opt)
-                    return sub_bound_token(negative * *value_opt, 3, op);
-                else
-                    return std::nullopt;
-            } else {
-                if (auto value_opt = read_real(buf_2); value_opt)
-                    return sub_bound_token(negative * *value_opt, 2, op);
-                else
-                    return std::nullopt;
-            }
-        } else {
-            if (buf_3 == "+" || buf_3 == "-") {
-                if (buf_3 == "-")
-                    negative = -1.0;
-
-                if (auto value_opt = read_real(buf_4); value_opt)
-                    return sub_bound_token(negative * *value_opt, 4, op);
-                else
-                    return std::nullopt;
-            } else {
-                if (auto value_opt = read_real(buf_3); value_opt)
-                    return sub_bound_token(negative * *value_opt, 3, op);
-                else
-                    return std::nullopt;
-            }
-        }
-    } else
-        return std::nullopt;
+    return std::nullopt;
 }
 
 std::optional<bound_token>
 read_bound(const stream_buffer::string_view_array& tokens) noexcept
 {
+    const auto apply = [](bound_token& bound,
+                          baryonyx::operator_type op,
+                          double value,
+                          bool variable_on_left) {
+        switch (op) {
+        case baryonyx::operator_type::equal:
+            bound.min = value;
+            bound.max = value;
+            break;
+        case baryonyx::operator_type::less:
+            (variable_on_left ? bound.max : bound.min) = value;
+            break;
+        case baryonyx::operator_type::greater:
+            (variable_on_left ? bound.min : bound.max) = value;
+            break;
+        }
+    };
+
+    bound_token bound;
+    std::size_t read = 0;
+
     if (starts_with_number(tokens[0])) {
-        auto left_opt =
-          read_left_bound_token(tokens[0], tokens[1], tokens[2], tokens[3]);
-        if (!left_opt)
+        auto value = read_signed_real(tokens[0], tokens[1]);
+        if (!value)
             return std::nullopt;
+        read += static_cast<std::size_t>(value->read);
 
-        int read = left_opt->read;
-
-        auto name_opt = read_name(tokens[read]);
-        if (!name_opt)
+        auto op = read_operator(tokens[read], tokens[read + 1]);
+        if (!op)
             return std::nullopt;
+        read += static_cast<std::size_t>(op->read);
 
-        ++read;
-
-        if (!starts_with_operator(tokens[read]))
-            return bound_token(left_opt->value,
-                               std::numeric_limits<double>::infinity(),
-                               *name_opt,
-                               read + 1);
-
-        auto right_opt = read_right_bound_token(
-          tokens[read], tokens[read + 1], tokens[read + 2], tokens[read + 3]);
-        if (!right_opt)
+        if (!is_variable_name(tokens[read]))
             return std::nullopt;
+        bound.name = tokens[read++];
 
-        if (left_opt->value > right_opt->value)
-            return std::nullopt;
+        apply(bound, op->op, value->value, false);
+    } else if (is_variable_name(tokens[0])) {
+        bound.name = tokens[read++];
 
-        return bound_token(left_opt->value,
-                           right_opt->value,
-                           *name_opt,
-                           read + right_opt->read);
-    }
-
-    if (starts_with_name(tokens[0])) {
-        auto name_opt = read_name(tokens[0]);
-        if (!name_opt)
-            return std::nullopt;
-
-        if (starts_with_operator(tokens[1])) {
-            auto right_opt = read_right_bound_token(
-              tokens[1], tokens[2], tokens[3], tokens[4]);
-            if (!right_opt)
-                return std::nullopt;
-
-            return bound_token(
-              0.0, right_opt->value, *name_opt, 1 + right_opt->read);
+        if (are_equal(tokens[read], "free")) {
+            bound.min = -std::numeric_limits<double>::infinity();
+            bound.max = std::numeric_limits<double>::infinity();
+            bound.read = static_cast<int>(read + 1);
+            return bound;
         }
 
-        return bound_token(-std::numeric_limits<double>::infinity(),
-                           +std::numeric_limits<double>::infinity(),
-                           *name_opt,
-                           1);
+        if (!starts_with_operator(tokens[read])) {
+            bound.min = -std::numeric_limits<double>::infinity();
+            bound.max = std::numeric_limits<double>::infinity();
+            bound.read = static_cast<int>(read);
+            return bound;
+        }
+    } else {
+        return std::nullopt;
     }
 
-    return std::nullopt;
+    if (starts_with_operator(tokens[read])) {
+        auto op = read_operator(tokens[read], tokens[read + 1]);
+        if (!op)
+            return std::nullopt;
+        read += static_cast<std::size_t>(op->read);
+
+        auto value = read_signed_real(tokens[read], tokens[read + 1]);
+        if (!value)
+            return std::nullopt;
+        read += static_cast<std::size_t>(value->read);
+
+        apply(bound, op->op, value->value, true);
+    }
+
+    if (bound.min && *bound.min == std::numeric_limits<double>::infinity())
+        return std::nullopt;
+
+    if (bound.max && *bound.max == -std::numeric_limits<double>::infinity())
+        return std::nullopt;
+
+    if (bound.min && bound.max && *bound.min > *bound.max)
+        return std::nullopt;
+
+    bound.read = static_cast<int>(read);
+    return bound;
 }
 
 std::optional<baryonyx::objective_function_type>
@@ -980,19 +757,6 @@ read_objective_type(const std::string_view token) noexcept
 }
 
 constexpr int
-try_read_objective_label(const std::string_view first,
-                         const std::string_view second) noexcept
-{
-    if (is_keyword(first))
-        return 0;
-
-    if (are_equal(second, ":"))
-        return 2;
-
-    return 0;
-}
-
-constexpr int
 read_subject_to(const std::string_view buf_1,
                 const std::string_view buf_2,
                 const std::string_view buf_3) noexcept
@@ -1005,7 +769,7 @@ read_subject_to(const std::string_view buf_1,
         if (are_equal(buf_2, "to"))
             return are_equal(buf_3, ":") ? 3 : 2;
 
-    if (are_equal(buf_1, "sush"))
+    if (are_equal(buf_1, "such"))
         if (are_equal(buf_2, "that"))
             return are_equal(buf_3, ":") ? 3 : 2;
 
@@ -1061,10 +825,66 @@ starts_with_quadratic(const std::string_view buf_1,
            (buf_1 == "-" && buf_2 == "[");
 }
 
+/// Reads `[ q_1 + q_2 ... ] / 2` where each term is `[c] x * y` or `[c] x ^ 2`.
 raw_problem_status
-parse([[maybe_unused]] const baryonyx::context& ctx,
-      stream_buffer& buf,
-      problem_parser& p) noexcept
+read_quadratic_objective(stream_buffer& buf,
+                         problem_parser& p,
+                         const double sign_factor)
+{
+    if (buf.first() != "[")
+        return baryonyx::file_format_error_tag::bad_objective_quadratic;
+
+    buf.pop_front();
+
+    while (!buf.first().empty() && buf.first() != "]") {
+        const auto fct =
+          read_function_element(buf.first(), buf.second(), buf.third());
+        if (!fct || fct->name.empty())
+            return baryonyx::file_format_error_tag::bad_objective_quadratic;
+
+        const auto id1 = p.get_or_assign_variable(fct->name);
+        if (id1 == -1)
+            return baryonyx::file_format_error_tag::too_many_variables;
+
+        const double factor = fct->factor * sign_factor / 2.0;
+        buf.pop_front(fct->read);
+
+        if (buf.first() == "*") {
+            if (!is_variable_name(buf.second()))
+                return baryonyx::file_format_error_tag::
+                  bad_objective_quadratic;
+
+            const auto id2 = p.get_or_assign_variable(buf.second());
+            if (id2 == -1)
+                return baryonyx::file_format_error_tag::too_many_variables;
+
+            p.append_to_quadratic_objective(id1, id2, factor);
+            buf.pop_front(2);
+        } else if (buf.first() == "^" && buf.second() == "2") {
+            p.append_to_quadratic_objective(id1, id1, factor);
+            buf.pop_front(2);
+        } else {
+            return baryonyx::file_format_error_tag::bad_objective_quadratic;
+        }
+    }
+
+    if (buf.first() != "]")
+        return baryonyx::file_format_error_tag::bad_objective_quadratic;
+
+    buf.pop_front();
+
+    if (buf.first() == "/" && buf.second() == "2")
+        buf.pop_front(2);
+    else if (buf.first() == "/2")
+        buf.pop_front(1);
+    else
+        return baryonyx::file_format_error_tag::bad_objective_quadratic;
+
+    return baryonyx::file_format_error_tag::success;
+}
+
+raw_problem_status
+read_objective(stream_buffer& buf, problem_parser& p)
 {
     if (auto obj_type = read_objective_type(buf.first()); !obj_type)
         return baryonyx::file_format_error_tag::bad_objective_function_type;
@@ -1073,10 +893,13 @@ parse([[maybe_unused]] const baryonyx::context& ctx,
 
     buf.pop_front();
 
-    if (auto read = try_read_objective_label(buf.first(), buf.second()); read)
-        buf.pop_front(read);
+    if (buf.first() == ":")
+        buf.pop_front();
 
-    while (!is_keyword(buf.first())) {
+    if (is_variable_name(buf.first()) && buf.second() == ":")
+        buf.pop_front(2);
+
+    while (!buf.first().empty() && !is_keyword(buf.first())) {
         if (starts_with_quadratic(buf.first(), buf.second())) {
             double factor = 1.0;
 
@@ -1087,162 +910,227 @@ parse([[maybe_unused]] const baryonyx::context& ctx,
                 buf.pop_front();
             }
 
-            if (auto ret = read_quadratic_element(buf, p, factor); !ret)
+            if (auto ret = read_quadratic_objective(buf, p, factor); !ret)
                 return ret;
+
             continue;
         }
 
-        if (auto elem =
-              read_function_element(buf.first(), buf.second(), buf.third());
-            elem) {
-            if (!p.append_to_objective(*elem))
-                return baryonyx::file_format_error_tag::too_many_variables;
+        auto elem =
+          read_function_element(buf.first(), buf.second(), buf.third());
+        if (!elem)
+            return baryonyx::file_format_error_tag::bad_objective;
 
-            buf.pop_front(elem->read);
-            continue;
-        }
+        if (!p.append_to_objective(*elem))
+            return baryonyx::file_format_error_tag::too_many_variables;
 
-        return baryonyx::file_format_error_tag::bad_objective;
+        buf.pop_front(elem->read);
     }
+
+    return baryonyx::file_format_error_tag::success;
+}
+
+/// The coefficients and the right-hand side are stored as integers. Since the
+/// variables and the coefficients are integers, the left-hand side is an
+/// integer and a fractional right-hand side can be rounded without changing
+/// the feasible set: `floor` for `<=`, `ceil` for `>=`.
+std::optional<int>
+round_constraint_value(const baryonyx::operator_type op, const double value)
+{
+    switch (op) {
+    case baryonyx::operator_type::less:
+        return to_int_exact(std::floor(value));
+    case baryonyx::operator_type::greater:
+        return to_int_exact(std::ceil(value));
+    case baryonyx::operator_type::equal:
+        return to_int_exact(value);
+    }
+
+    return std::nullopt;
+}
+
+raw_problem_status
+read_constraint(stream_buffer& buf, problem_parser& p, int id)
+{
+    std::string_view label;
+    std::vector<baryonyx::objective_function_element> terms;
+    double constant = 0.0;
+
+    if (is_variable_name(buf.first()) && buf.second() == ":") {
+        label = p.m_problem.strings->append(buf.first());
+        buf.pop_front(2);
+    }
+
+    do {
+        auto elem =
+          read_function_element(buf.first(), buf.second(), buf.third());
+        if (!elem)
+            return baryonyx::file_format_error_tag::bad_constraint;
+
+        if (elem->name.empty())
+            constant += elem->factor;
+        else if (!p.append_to_constraint(terms, *elem))
+            return baryonyx::file_format_error_tag::too_many_variables;
+
+        buf.pop_front(elem->read);
+    } while (!buf.first().empty() && !starts_with_operator(buf.first()));
+
+    if (terms.empty())
+        return baryonyx::file_format_error_tag::bad_constraint;
+
+    std::vector<baryonyx::function_element> elements;
+    elements.reserve(terms.size());
+    for (const auto& term : terms) {
+        const auto factor = to_int_exact(term.factor);
+        if (!factor)
+            return baryonyx::file_format_error_tag::bad_constraint;
+
+        elements.emplace_back(*factor, term.variable_index);
+    }
+
+    auto operator_opt = read_operator(buf.first(), buf.second());
+    if (!operator_opt)
+        return baryonyx::file_format_error_tag::bad_constraint;
+    buf.pop_front(operator_opt->read);
+
+    auto value_opt = read_signed_real(buf.first(), buf.second());
+    if (!value_opt)
+        return baryonyx::file_format_error_tag::bad_constraint;
+    buf.pop_front(value_opt->read);
+
+    if (starts_with_operator(buf.first()))
+        return baryonyx::file_format_error_tag::bad_constraint;
+
+    auto value =
+      round_constraint_value(operator_opt->op, value_opt->value - constant);
+    if (!value)
+        return baryonyx::file_format_error_tag::bad_constraint;
+
+    switch (operator_opt->op) {
+    case baryonyx::operator_type::equal:
+        p.m_problem.equal_constraints.emplace_back(
+          label, std::move(elements), *value, id);
+        break;
+    case baryonyx::operator_type::greater:
+        p.m_problem.greater_constraints.emplace_back(
+          label, std::move(elements), *value, id);
+        break;
+    case baryonyx::operator_type::less:
+        p.m_problem.less_constraints.emplace_back(
+          label, std::move(elements), *value, id);
+        break;
+    }
+
+    return baryonyx::file_format_error_tag::success;
+}
+
+raw_problem_status
+read_constraints(stream_buffer& buf, problem_parser& p)
+{
+    int constraint_next_id = 0;
+
+    while (!buf.first().empty() && !is_keyword(buf.first())) {
+        if (constraint_next_id == INT_MAX)
+            return baryonyx::file_format_error_tag::too_many_constraints;
+
+        if (auto ret = read_constraint(buf, p, constraint_next_id); !ret)
+            return ret;
+
+        ++constraint_next_id;
+    }
+
+    return baryonyx::file_format_error_tag::success;
+}
+
+raw_problem_status
+read_bounds_section(stream_buffer& buf, problem_parser& p)
+{
+    while (!buf.first().empty() && !is_keyword(buf.first())) {
+        auto bound_opt = read_bound(buf.array());
+        if (!bound_opt)
+            return baryonyx::file_format_error_tag::bad_bound;
+
+        if (!p.set_bound_variable(*bound_opt))
+            return baryonyx::file_format_error_tag::too_many_variables;
+
+        buf.pop_front(bound_opt->read);
+    }
+
+    return baryonyx::file_format_error_tag::success;
+}
+
+template<typename Function>
+raw_problem_status
+read_variables_section(stream_buffer& buf,
+                       const baryonyx::file_format_error_tag error,
+                       Function set_variable)
+{
+    while (!buf.first().empty() && !is_keyword(buf.first())) {
+        if (!is_variable_name(buf.first()))
+            return error;
+
+        if (!set_variable(buf.first()))
+            return baryonyx::file_format_error_tag::too_many_variables;
+
+        buf.pop_front();
+    }
+
+    return baryonyx::file_format_error_tag::success;
+}
+
+raw_problem_status
+parse([[maybe_unused]] const baryonyx::context& ctx,
+      stream_buffer& buf,
+      problem_parser& p)
+{
+    if (auto ret = read_objective(buf, p); !ret)
+        return ret;
 
     if (auto read = read_subject_to(buf.first(), buf.second(), buf.third());
         read) {
         buf.pop_front(read);
-        int constraint_next_id = 0;
 
-        while (!buf.first().empty() && !is_keyword(buf.first())) {
-            std::string_view label;
-            int value;
-            std::vector<baryonyx::function_element> elements;
+        if (auto ret = read_constraints(buf, p); !ret)
+            return ret;
+    }
 
-            if (starts_with_name(buf.first()) && buf.second() == ":") {
-                label = p.m_problem.strings->append(buf.first());
-                buf.pop_front(2);
-            }
+    for (;;) {
+        if (auto read = read_bounds(buf.first(), buf.second()); read) {
+            buf.pop_front(read);
 
-            auto elem =
-              read_function_element(buf.first(), buf.second(), buf.third());
-            if (!elem)
-                return baryonyx::file_format_error_tag::bad_constraint;
+            if (auto ret = read_bounds_section(buf, p); !ret)
+                return ret;
 
-            {
-                auto id = p.get_or_assign_variable(elem->name);
-                if (id == -1)
-                    return baryonyx::file_format_error_tag::too_many_variables;
-
-                auto it = std::find_if(
-                  elements.begin(), elements.end(), [id](const auto& elem) {
-                      return elem.variable_index == id;
-                  });
-
-                if (it == elements.end())
-                    elements.emplace_back(static_cast<int>(elem->factor), id);
-                else
-                    it->factor += static_cast<int>(elem->factor);
-            }
-
-            buf.pop_front(elem->read);
-
-            while (!buf.first().empty() &&
-                   !starts_with_operator(buf.first())) {
-                elem = read_function_element(
-                  buf.first(), buf.second(), buf.third());
-                if (!elem)
-                    return baryonyx::file_format_error_tag::bad_constraint;
-
-                {
-                    auto id = p.get_or_assign_variable(elem->name);
-                    if (id == -1)
-                        return baryonyx::file_format_error_tag::
-                          too_many_variables;
-
-                    auto it =
-                      std::find_if(elements.begin(),
-                                   elements.end(),
-                                   [id](const auto& elem) {
-                                       return elem.variable_index == id;
-                                   });
-
-                    if (it == elements.end())
-                        elements.emplace_back(static_cast<int>(elem->factor),
-                                              id);
-                    else
-                        it->factor += static_cast<int>(elem->factor);
-                }
-
-                if (elements.back().variable_index == -1)
-                    return baryonyx::file_format_error_tag::too_many_variables;
-
-                buf.pop_front(elem->read);
-            }
-
-            auto operator_opt = read_operator(buf.first(), buf.second());
-            if (!operator_opt)
-                return baryonyx::file_format_error_tag::bad_constraint;
-            buf.pop_front(operator_opt->read);
-
-            auto value_opt = read_real(buf.first(), buf.second());
-            if (!value_opt)
-                return baryonyx::file_format_error_tag::bad_constraint;
-            value = static_cast<int>(value_opt->value);
-            buf.pop_front(value_opt->read);
-
-            switch (operator_opt->op) {
-            case baryonyx::operator_type::equal:
-                p.m_problem.equal_constraints.emplace_back(
-                  label, std::move(elements), value, constraint_next_id++);
-                break;
-            case baryonyx::operator_type::greater:
-                p.m_problem.greater_constraints.emplace_back(
-                  label, std::move(elements), value, constraint_next_id++);
-                break;
-            case baryonyx::operator_type::less:
-                p.m_problem.less_constraints.emplace_back(
-                  label, std::move(elements), value, constraint_next_id++);
-                break;
-            }
+            continue;
         }
 
-        if (p.m_problem.equal_constraints.size() +
-              p.m_problem.greater_constraints.size() +
-              p.m_problem.less_constraints.size() >
-            baryonyx::to_unsigned(INT_MAX))
-            return baryonyx::file_format_error_tag::too_many_constraints;
-    }
+        if (auto read = read_binary(buf.first(), buf.second()); read) {
+            buf.pop_front(read);
 
-    if (auto read = read_bounds(buf.first(), buf.second()); read) {
-        buf.pop_front(read);
+            if (auto ret = read_variables_section(
+                  buf,
+                  baryonyx::file_format_error_tag::bad_binary,
+                  [&p](auto name) { return p.set_boolean_variable(name); });
+                !ret)
+                return ret;
 
-        while (!is_keyword(buf.first())) {
-            auto bound_opt = read_bound(buf.array());
-            if (!bound_opt)
-                return baryonyx::file_format_error_tag::bad_bound;
-
-            if (!p.set_bound_variable(*bound_opt))
-                return baryonyx::file_format_error_tag::bad_bound;
-
-            buf.pop_front(bound_opt->read);
+            continue;
         }
-    }
 
-    if (auto read = read_binary(buf.first(), buf.second()); read) {
-        buf.pop_front(read);
+        if (auto read = read_general(buf.first(), buf.second()); read) {
+            buf.pop_front(read);
 
-        while (!is_keyword(buf.first()))
-            if (!p.set_boolean_variable(buf.first()))
-                return baryonyx::file_format_error_tag::bad_binary;
-            else
-                buf.pop_front();
-    }
+            if (auto ret = read_variables_section(
+                  buf,
+                  baryonyx::file_format_error_tag::bad_general,
+                  [&p](auto name) { return p.set_integer_variable(name); });
+                !ret)
+                return ret;
 
-    if (auto read = read_general(buf.first(), buf.second()); read) {
-        buf.pop_front(read);
+            continue;
+        }
 
-        while (!is_keyword(buf.first()))
-            if (!p.set_integer_variable(buf.first()))
-                return baryonyx::file_format_error_tag::bad_general;
-            else
-                buf.pop_front();
+        break;
     }
 
     if (auto read = read_end(buf.first(), buf.second()); read) {

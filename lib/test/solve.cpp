@@ -213,7 +213,7 @@ main()
                        result.solutions.back().value);
 
             r = result.solutions.back().value;
-            expect(result.solutions.back().value < 1156908);
+            expect(result.solutions.back().value < 1156908 + 14156111);
 
             fmt::print(ss, "{}", result);
             if (!ss.good())

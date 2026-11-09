@@ -677,6 +677,230 @@ main()
         expect(pb.vars.values[2].max == std::numeric_limits<int>::max());
     };
 
+    const auto parse = [](std::string_view str) {
+        auto ctx = baryonyx::make_context(0);
+        std::istringstream iss{ std::string(str) };
+        return baryonyx::make_problem(*ctx, iss);
+    };
+
+    const auto status = [&parse](std::string_view str) {
+        return parse(str).status;
+    };
+
+    using baryonyx::file_format_error_tag;
+
+    "parser long variable name"_test = [&parse] {
+        const std::string name(2048, 'x');
+        const auto pb = parse("minimize\n" + name + "\nst\n" + name +
+                              " >= 1\nend\n");
+        expect(pb);
+        expect((pb.vars.names.size() == 1_ul) >> fatal);
+        expect(pb.vars.names[0] == name);
+    };
+
+    "parser comments"_test = [&parse] {
+        const auto pb = parse("\\ header comment\n"
+                              "minimize\n"
+                              "x + y \\ trailing comment\n"
+                              "st\n"
+                              "c1: x + y >= 1\\glued comment\n"
+                              "end\n"
+                              "\\ last comment");
+        expect(pb);
+        expect(pb.objective.elements.size() == 2_ul);
+        expect(pb.greater_constraints.size() == 1_ul);
+    };
+
+    "parser scientific notation"_test = [&parse] {
+        const auto pb = parse("minimize\n"
+                              "1e-1 x + 2.5E+1 y - 3e2\n"
+                              "end\n");
+        expect(pb);
+        expect((pb.objective.elements.size() == 2_ul) >> fatal);
+        expect(pb.objective.elements[0].factor == 0.1_d);
+        expect(pb.objective.elements[1].factor == 25.0_d);
+        expect(pb.objective.value == -300.0_d);
+    };
+
+    "parser names looking like numbers"_test = [&parse] {
+        const auto pb = parse("minimize\n"
+                              "information + nancy + 2 infinite\n"
+                              "end\n");
+        expect(pb);
+        expect((pb.objective.elements.size() == 3_ul) >> fatal);
+        expect(pb.vars.names[0] == "information");
+        expect(pb.vars.names[1] == "nancy");
+        expect(pb.vars.names[2] == "infinite");
+        expect(pb.objective.elements[2].factor == 2.0_d);
+        expect(pb.objective.value == 0.0_d);
+    };
+
+    "parser spaced quadratic"_test = [&parse] {
+        const auto pb = parse("minimize\n"
+                              "+ [ 2 alpha * beta + 4 gamma ^ 2 "
+                              "- 6 delta * epsilon ] / 2\n"
+                              "end\n");
+        expect(pb);
+        expect((pb.objective.qelements.size() == 3_ul) >> fatal);
+        expect((pb.vars.names.size() == 5_ul) >> fatal);
+        expect(pb.vars.names[0] == "alpha");
+        expect(pb.vars.names[1] == "beta");
+        expect(pb.vars.names[2] == "gamma");
+        expect(pb.vars.names[3] == "delta");
+        expect(pb.vars.names[4] == "epsilon");
+        expect(pb.objective.qelements[0].factor == 1.0_d);
+        expect(pb.objective.qelements[1].factor == 2.0_d);
+        expect(pb.objective.qelements[1].variable_index_a == 2_i);
+        expect(pb.objective.qelements[1].variable_index_b == 2_i);
+        expect(pb.objective.qelements[2].factor == -3.0_d);
+    };
+
+    "parser bad quadratic"_test = [&status] {
+        expect(status("minimize\n[ x ] /2\nend\n") ==
+               file_format_error_tag::bad_objective_quadratic);
+        expect(status("minimize\n[ x ^ 3 ] /2\nend\n") ==
+               file_format_error_tag::bad_objective_quadratic);
+        expect(status("minimize\n[ x * y \nend\n") ==
+               file_format_error_tag::bad_objective_quadratic);
+    };
+
+    "parser objective type with colon"_test = [&parse] {
+        const auto pb = parse("max: 3 x\nend\n");
+        expect(pb);
+        expect(pb.type == baryonyx::objective_function_type::maximize);
+        expect(pb.objective.elements.size() == 1_ul);
+    };
+
+    "parser subject to variants"_test = [&parse] {
+        for (const auto* st : { "st", "s.t", "s.t.", "st.", "subject to",
+                                "such that", "Such That:" }) {
+            const auto pb =
+              parse(fmt::format("minimize\nx\n{}\nx >= 1\nend\n", st));
+            expect(pb) << st;
+            expect(pb.vars.names.size() == 1_ul) << st;
+            expect(pb.greater_constraints.size() == 1_ul) << st;
+        }
+    };
+
+    "parser unterminated objective"_test = [&status] {
+        expect(status("minimize\nx + y") == file_format_error_tag::bad_end);
+        expect(status("minimize\nx + y <= 3\nend\n") ==
+               file_format_error_tag::bad_objective);
+        expect(status("minimize\nx - \nend\n") ==
+               file_format_error_tag::bad_objective);
+    };
+
+    "parser bounds"_test = [&parse] {
+        const auto pb = parse("minimize\n"
+                              "a + b + c + d + e + f + g + h\n"
+                              "bounds\n"
+                              "a >= 2\n"
+                              "b = 3\n"
+                              "c free\n"
+                              "2 <= d\n"
+                              "e <= 4\n"
+                              "e >= -1\n"
+                              "-inf <= f <= 1e30\n"
+                              "5 >= g\n"
+                              "0.5 <= h <= 7.5\n"
+                              "end\n");
+        expect(pb);
+        expect((pb.vars.values.size() == 8_ul) >> fatal);
+
+        const auto& v = pb.vars.values;
+        constexpr int int_min = std::numeric_limits<int>::min();
+        constexpr int int_max = std::numeric_limits<int>::max();
+
+        expect(v[0].min == 2_i && v[0].max == int_max);
+        expect(v[1].min == 3_i && v[1].max == 3_i);
+        expect(v[2].min == int_min && v[2].max == int_max);
+        expect(v[3].min == 2_i && v[3].max == int_max);
+        expect(v[4].min == -1_i && v[4].max == 4_i);
+        expect(v[5].min == int_min && v[5].max == int_max);
+        expect(v[6].min == 0_i && v[6].max == 5_i);
+        expect(v[7].min == 1_i && v[7].max == 7_i);
+    };
+
+    "parser bad bounds"_test = [&status] {
+        expect(status("minimize\nx\nbounds\n3 <= x <= 1\nend\n") ==
+               file_format_error_tag::bad_bound);
+        expect(status("minimize\nx\nbounds\nx <= \nend\n") ==
+               file_format_error_tag::bad_bound);
+        expect(status("minimize\nx\nbounds\nx >= inf\nend\n") ==
+               file_format_error_tag::bad_bound);
+    };
+
+    "parser constant in constraint"_test = [&parse] {
+        const auto pb = parse("minimize\nx + y\nst\nx + 2 + y - 1 <= 5\nend\n");
+        expect(pb);
+        expect(pb.vars.names.size() == 2_ul);
+        expect((pb.less_constraints.size() == 1_ul) >> fatal);
+        expect(pb.less_constraints[0].elements.size() == 2_ul);
+        expect(pb.less_constraints[0].value == 4_i);
+    };
+
+    "parser non integer constraint"_test = [&parse, &status] {
+        expect(status("minimize\nx\nst\n2.5 x >= 1\nend\n") ==
+               file_format_error_tag::bad_constraint);
+        expect(status("minimize\nx\nst\nx = 2.5\nend\n") ==
+               file_format_error_tag::bad_constraint);
+        expect(status("minimize\nx\nst\nx >= 1e20\nend\n") ==
+               file_format_error_tag::bad_constraint);
+
+        const auto pb =
+          parse("minimize\nx\nst\nx >= 2.5\nx <= 2.5\n0.5 x + 0.5 x = 1\nend\n");
+        expect(pb);
+        expect((pb.greater_constraints.size() == 1_ul) >> fatal);
+        expect(pb.greater_constraints[0].value == 3_i);
+        expect((pb.less_constraints.size() == 1_ul) >> fatal);
+        expect(pb.less_constraints[0].value == 2_i);
+        expect((pb.equal_constraints.size() == 1_ul) >> fatal);
+        expect((pb.equal_constraints[0].elements.size() == 1_ul) >> fatal);
+        expect(pb.equal_constraints[0].elements[0].factor == 1_i);
+    };
+
+    "parser bad constraints"_test = [&status] {
+        expect(status("minimize\nx\nst\n-5 <= x + y <= 5\nend\n") ==
+               file_format_error_tag::bad_constraint);
+        expect(status("minimize\nx\nst\nx + y <= 5 <= 6\nend\n") ==
+               file_format_error_tag::bad_constraint);
+        expect(status("minimize\nx\nst\nx <= y\nend\n") ==
+               file_format_error_tag::bad_constraint);
+        expect(status("minimize\nx\nst\nc1: 2 <= 3\nend\n") ==
+               file_format_error_tag::bad_constraint);
+        expect(status("minimize\nx\nst\nx + - <= 3\nend\n") ==
+               file_format_error_tag::bad_constraint);
+    };
+
+    "parser sections in any order"_test = [&parse] {
+        const auto pb = parse("minimize\n"
+                              "x + y + z\n"
+                              "st\n"
+                              "x + y + z >= 1\n"
+                              "general\n"
+                              "y\n"
+                              "binary\n"
+                              "x w\n"
+                              "bounds\n"
+                              "y <= 4\n"
+                              "end\n");
+        expect(pb);
+        expect((pb.vars.values.size() == 4_ul) >> fatal);
+        expect(pb.vars.values[0].type == baryonyx::variable_type::binary);
+        expect(pb.vars.values[1].type == baryonyx::variable_type::general);
+        expect(pb.vars.values[1].max == 4_i);
+        expect(pb.vars.values[2].type == baryonyx::variable_type::real);
+        expect(pb.vars.names[3] == "w");
+        expect(pb.vars.values[3].type == baryonyx::variable_type::binary);
+    };
+
+    "parser bad end"_test = [&status] {
+        expect(status("minimize\nx\nend\nx\n") ==
+               file_format_error_tag::bad_end_of_file);
+        expect(status("minimize\nx\nbinary\n<=\nend\n") ==
+               file_format_error_tag::bad_binary);
+    };
+
     "assignment_problem 0"_test = [] {
         auto ctx = baryonyx::make_context(4);
         std::ifstream ifs;
