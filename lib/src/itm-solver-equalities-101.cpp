@@ -172,7 +172,7 @@ struct solver_equalities_101coeff : debug_logger<debug>
             auto ht = ap.column(begin->column);
 
             for (; std::get<0>(ht) != std::get<1>(ht); ++std::get<0>(ht)) {
-                auto a = static_cast<real>(A[std::get<0>(ht)->value]);
+                auto a = static_cast<real>(std::get<0>(ht)->factor);
 
                 sum_a_pi += a * pi[std::get<0>(ht)->row];
                 sum_a_p += a * P[std::get<0>(ht)->value];

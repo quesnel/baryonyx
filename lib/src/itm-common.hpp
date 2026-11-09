@@ -82,9 +82,7 @@ template<typename Solver, typename Xtype>
 bool
 is_valid_constraint(const Solver& slv, int k, const Xtype& x)
 {
-    typename sparse_matrix<int>::const_row_iterator it, et;
-
-    std::tie(it, et) = slv.ap.row(k);
+    auto [it, et] = slv.ap.row(k);
     int v = 0;
 
     for (; it != et; ++it)
@@ -892,8 +890,7 @@ struct compute_order
         m_order.clear();
 
         for (int k = 0, e = solver.m; k != e; ++k) {
-            sparse_matrix<int>::const_row_iterator it, et;
-            std::tie(it, et) = solver.ap.row(k);
+            auto [it, et] = solver.ap.row(k);
             int v = 0;
 
             for (; it != et; ++it)

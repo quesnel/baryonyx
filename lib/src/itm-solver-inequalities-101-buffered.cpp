@@ -86,7 +86,7 @@ struct solver_inequalities_101coeff_buffered : debug_logger<debug>
         bool use_loop;
     };
 
-    sparse_matrix<int> ap;
+    sparse_matrix<> ap;
     std::unique_ptr<real[]> P;
     std::unique_ptr<std::int8_t[]> A;
     std::unique_ptr<rc_data[]> R;

@@ -67,7 +67,7 @@ struct solver_inequalities_101coeff : debug_logger<debug>
         int negative_factor;
     };
 
-    sparse_matrix<int> ap;
+    sparse_matrix<> ap;
     std::unique_ptr<real[]> P;
     value_bit_array<-1, 1> A;
     std::unique_ptr<rc_data[]> R;
@@ -170,7 +170,7 @@ struct solver_inequalities_101coeff : debug_logger<debug>
     {
         real ret{ 0 };
 
-        sparse_matrix<int>::const_col_iterator ht, hend;
+        sparse_matrix<>::const_col_iterator ht, hend;
         std::tie(ht, hend) = ap.column(variable);
 
         for (; ht != hend; ++ht)
@@ -184,8 +184,8 @@ struct solver_inequalities_101coeff : debug_logger<debug>
     // preference values for the current row. > 0 will keep former decision in
     // mind.
     //
-    void decrease_preference(sparse_matrix<int>::row_iterator begin,
-                             sparse_matrix<int>::row_iterator end,
+    void decrease_preference(sparse_matrix<>::row_iterator begin,
+                             sparse_matrix<>::row_iterator end,
                              real theta) noexcept
     {
         for (; begin != end; ++begin)
@@ -196,8 +196,8 @@ struct solver_inequalities_101coeff : debug_logger<debug>
     // Compute the reduced costs and return the size of the newly R vector.
     //
     template<typename Xtype>
-    rc_size compute_reduced_costs(sparse_matrix<int>::row_iterator begin,
-                                  sparse_matrix<int>::row_iterator end,
+    rc_size compute_reduced_costs(sparse_matrix<>::row_iterator begin,
+                                  sparse_matrix<>::row_iterator end,
                                   const Xtype& x) noexcept
     {
         int r_size = 0;

@@ -193,7 +193,7 @@ struct solver_random_inequalities_101coeff
 
                 auto [col_begin, col_end] = ap.column(it->column);
                 for (; col_begin != col_end; ++col_begin)
-                    sum_a_p += static_cast<real>(A[col_begin->value]) *
+                    sum_a_p += static_cast<real>(col_begin->factor) *
                                P[col_begin->value];
 
                 R[r_size].id = r_size;

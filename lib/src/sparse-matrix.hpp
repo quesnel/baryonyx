@@ -25,34 +25,45 @@
 
 #include <baryonyx/core>
 
-#include <algorithm>
-#include <memory>
-#include <string>
+#include <tuple>
+#include <type_traits>
 #include <vector>
 
 #include "debug.hpp"
 
 namespace baryonyx {
 
-template<typename Index>
+namespace details {
+
+template<typename Factor>
+struct sparse_col_value
+{
+    int value = -1;
+    int row = -1;
+    Factor factor{};
+};
+
+template<>
+struct sparse_col_value<void>
+{
+    int value = -1;
+    int row = -1;
+};
+
+} // namespace details
+
+/**
+ * Compressed row and column views over the same non-zero cells.
+ *
+ * When `Factor` is not `void`, the column view also stores the coefficient of
+ * each cell so that column scans in the solvers avoid an indirect load.
+ */
+template<typename Factor = void>
 class sparse_matrix
 {
 public:
     using size_type = std::size_t;
-    using index_type = Index;
-
-    struct col_value
-    {
-        col_value() = default;
-
-        col_value(int value_, int row_)
-          : value(value_)
-          , row(row_)
-        {}
-
-        int value = -1;
-        int row = -1;
-    };
+    using col_value = details::sparse_col_value<Factor>;
 
     struct row_value
     {
@@ -83,6 +94,11 @@ public:
     using const_row_iterator = typename row_vector_access::const_iterator;
     using const_col_iterator = typename col_vector_access::const_iterator;
 
+    /**
+     * Builds both the row-major and the column-major views in O(nnz + rows +
+     * cols). Inside a column, cells are ordered by increasing row then by
+     * position in the row.
+     */
     template<typename Constraint>
     explicit sparse_matrix(const std::vector<Constraint>& csts,
                            const int rows,
@@ -90,107 +106,48 @@ public:
       : m_rows_access(static_cast<std::size_t>(rows) + 1u, 0)
       , m_cols_access(static_cast<std::size_t>(cols) + 1u, 0)
     {
-        int elem = 0;
+        bx_expects(rows >= 0 && cols >= 0);
+        bx_expects(static_cast<size_type>(rows) <= csts.size());
 
-        for (int i = 0, e = rows; i != e; ++i)
-            elem += static_cast<int>(csts[i].elements.size());
+        for (int r = 0; r != rows; ++r) {
+            const auto& elements = csts[r].elements;
+            m_rows_access[r + 1] =
+              m_rows_access[r] + static_cast<int>(elements.size());
 
-        m_rows_values.resize(static_cast<std::size_t>(elem));
-        m_cols_values.resize(static_cast<std::size_t>(elem));
-
-        //
-        // First, we build a vector of access to all elements in the matrix
-        // different to 0. Then, we sort accessors according to the column id
-        // then we assign a unique identifier for each accessors and then we
-        // sort accessors according to the row id. This code enable the
-        // construction of the r_rows_values with pointers to the
-        // r_cols_values.
-        //
-
-        struct access
-        {
-            access() = default;
-
-            access(int row_, int col_, function_element fct_)
-              : row(row_)
-              , col(col_)
-              , fct(fct_)
-            {}
-
-            int row;
-            int col;
-            int id;
-            function_element fct;
-        };
-
-        std::vector<access> accessors;
-        accessors.reserve(elem);
-        for (int i = 0; i != rows; ++i)
-            for (const auto& fct_elem : csts[i].elements)
-                accessors.emplace_back(i, fct_elem.variable_index, fct_elem);
-
-        if (accessors.empty())
-            return;
-
-        std::vector<int> rinit(static_cast<std::size_t>(rows), 0);
-        int row = accessors[0].row;
-        int nb_row = 0;
-        for (int i = 0; i != elem; ++i) {
-            if (row != accessors[i].row) {
-                rinit[row] = nb_row;
-                nb_row = 0;
-                row = accessors[i].row;
+            for (const auto& elem : elements) {
+                bx_expects(elem.variable_index >= 0 &&
+                           elem.variable_index < cols);
+                ++m_cols_access[elem.variable_index + 1];
             }
-            ++nb_row;
-
-            accessors[i].id = i;
-            m_rows_values[i] = { i, accessors[i].col };
         }
 
-        rinit[row] = nb_row; /* Be sure to affect the good number of elements
-                                for this constaints. */
+        for (int c = 0; c != cols; ++c)
+            m_cols_access[c + 1] += m_cols_access[c];
 
-        for (int i = 0; i != rows; ++i)
-            bx_assert(rinit[i] == static_cast<int>(csts[i].elements.size()));
+        const auto nnz = static_cast<std::size_t>(m_rows_access.back());
+        m_rows_values.reserve(nnz);
+        m_cols_values.resize(nnz);
 
-        // We sort the accessors to improve memory friendly access.
+        std::vector<int> col_cursor(m_cols_access.begin(),
+                                    m_cols_access.end() - 1);
 
-        std::stable_sort(
-          accessors.begin(),
-          accessors.end(),
-          [](const auto& lhs, const auto& rhs) { return lhs.col < rhs.col; });
-
-        std::vector<int> cinit(static_cast<std::size_t>(cols), 0);
-        int col = accessors[0].col;
-        int nb_col = 0;
-
-        for (int i = 0; i != elem; ++i) {
-            if (col != accessors[i].col) {
-                cinit[col] = nb_col;
-                nb_col = 0;
-                col = accessors[i].col;
+        int id = 0;
+        for (int r = 0; r != rows; ++r) {
+            for (const auto& elem : csts[r].elements) {
+                m_rows_values.emplace_back(id, elem.variable_index);
+                auto& cell = m_cols_values[col_cursor[elem.variable_index]++];
+                cell.value = id;
+                cell.row = r;
+                if constexpr (!std::is_void_v<Factor>)
+                    cell.factor = static_cast<Factor>(elem.factor);
+                ++id;
             }
-            ++nb_col;
-
-            m_cols_values[i] = { m_rows_values[accessors[i].id].value,
-                                 accessors[i].row };
         }
-
-        cinit[col] = nb_col; /* Be sure to affect the good number of elements
-                                for this constaints. */
-
-        m_rows_access[0] = 0;
-        for (int i = 0; i != rows; ++i)
-            m_rows_access[i + 1] = m_rows_access[i] + rinit[i];
-
-        m_cols_access[0] = 0;
-        for (int i = 0; i != cols; ++i)
-            m_cols_access[i + 1] = m_cols_access[i] + cinit[i];
     }
 
     std::tuple<row_iterator, row_iterator> row(int row) noexcept
     {
-        bx_expects(m_is_valid_index(row, 0));
+        bx_expects(m_is_valid_row(row));
 
         row_iterator begin = m_rows_values.begin() + m_rows_access[row];
         row_iterator end = m_rows_values.begin() + m_rows_access[row + 1];
@@ -200,7 +157,7 @@ public:
 
     std::tuple<col_iterator, col_iterator> column(int col) noexcept
     {
-        bx_expects(m_is_valid_index(0, col));
+        bx_expects(m_is_valid_column(col));
 
         col_iterator begin = m_cols_values.begin() + m_cols_access[col];
         col_iterator end = m_cols_values.begin() + m_cols_access[col + 1];
@@ -211,7 +168,7 @@ public:
     std::tuple<const_row_iterator, const_row_iterator> row(int row) const
       noexcept
     {
-        bx_expects(m_is_valid_index(row, 0));
+        bx_expects(m_is_valid_row(row));
 
         const_row_iterator begin = m_rows_values.begin() + m_rows_access[row];
         const_row_iterator end =
@@ -223,7 +180,7 @@ public:
     std::tuple<const_col_iterator, const_col_iterator> column(int col) const
       noexcept
     {
-        bx_expects(m_is_valid_index(0, col));
+        bx_expects(m_is_valid_column(col));
 
         const_col_iterator begin = m_cols_values.begin() + m_cols_access[col];
         const_col_iterator end =
@@ -243,12 +200,16 @@ public:
     }
 
 private:
-    bool m_is_valid_index(index_type row, index_type col) const noexcept
+    bool m_is_valid_row(int row) const noexcept
+    {
+        return row >= 0 &&
+               static_cast<size_type>(row) + 1u < m_rows_access.size();
+    }
+
+    bool m_is_valid_column(int col) const noexcept
     {
         return col >= 0 &&
-               static_cast<size_type>(col) < (m_cols_access.size() - 1) &&
-               row >= 0 &&
-               static_cast<size_type>(row) < (m_rows_access.size() - 1);
+               static_cast<size_type>(col) + 1u < m_cols_access.size();
     }
 };
 }

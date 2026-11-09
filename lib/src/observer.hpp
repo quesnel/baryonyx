@@ -51,8 +51,8 @@ public:
       , m_pnm(fmt::format("{}-pi.pnm", filename), constraints, loop)
     {}
 
-    template<std::floating_point Float>
-    void make_observation(const sparse_matrix<int>& /*ap*/,
+    template<typename Factor, std::floating_point Float>
+    void make_observation(const sparse_matrix<Factor>& /*ap*/,
                           const Float* /*P*/,
                           const Float* pi)
     {
@@ -86,8 +86,8 @@ public:
       , m_basename(std::move(filename))
     {}
 
-    template<std::floating_point Float>
-    void make_observation(const sparse_matrix<int>& ap,
+    template<typename Factor, std::floating_point Float>
+    void make_observation(const sparse_matrix<Factor>& ap,
                           const Float* P,
                           const Float* /*pi*/)
     {
@@ -131,8 +131,8 @@ public:
       , m_ofs(fmt::format("{}-pi.txt", filename))
     {}
 
-    template<std::floating_point Float>
-    void make_observation(const sparse_matrix<int>& /*ap*/,
+    template<typename Factor, std::floating_point Float>
+    void make_observation(const sparse_matrix<Factor>& /*ap*/,
                           const Float* /*P*/,
                           const Float* pi)
     {
@@ -174,8 +174,8 @@ public:
       , m_value(variables)
     {}
 
-    template<std::floating_point Float>
-    void make_observation(const sparse_matrix<int>& ap,
+    template<typename Factor, std::floating_point Float>
+    void make_observation(const sparse_matrix<Factor>& ap,
                           const Float* P,
                           const Float* /*pi*/)
     {
@@ -210,8 +210,8 @@ public:
       , m_ap_obs(filename, m, n, loop)
     {}
 
-    template<std::floating_point Float>
-    void make_observation(const sparse_matrix<int>& ap,
+    template<typename Factor, std::floating_point Float>
+    void make_observation(const sparse_matrix<Factor>& ap,
                           const Float* P,
                           const Float* pi)
     {
@@ -232,8 +232,8 @@ public:
       , m_ap_obs(filename, m, n, loop)
     {}
 
-    template<std::floating_point Float>
-    void make_observation(const sparse_matrix<int>& ap,
+    template<typename Factor, std::floating_point Float>
+    void make_observation(const sparse_matrix<Factor>& ap,
                           const Float* P,
                           const Float* pi)
     {
@@ -252,8 +252,8 @@ public:
                   long int /*loop*/)
     {}
 
-    template<std::floating_point Float>
-    void make_observation(const sparse_matrix<int>& /*ap*/,
+    template<typename Factor, std::floating_point Float>
+    void make_observation(const sparse_matrix<Factor>& /*ap*/,
                           const Float* /*P*/,
                           const Float* /*pi*/)
     {

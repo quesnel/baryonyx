@@ -233,7 +233,7 @@ struct solver_inequalities_Zcoeff : debug_logger<debug>
         std::tie(ht, hend) = ap.column(variable);
 
         for (; ht != hend; ++ht)
-            ret += std::abs(static_cast<real>(A[ht->value])) * pi[ht->row];
+            ret += std::abs(static_cast<real>(ht->factor)) * pi[ht->row];
 
         return ret;
     }
@@ -261,7 +261,7 @@ struct solver_inequalities_Zcoeff : debug_logger<debug>
 
             for (auto [first, last] = ap.column(begin->column); first != last;
                  ++first) {
-                auto a = std::abs(static_cast<real>(A[first->value]));
+                auto a = std::abs(static_cast<real>(first->factor));
                 sum_a_pi_p += a * (pi[first->row] + P[first->value]);
             }
 
@@ -281,7 +281,7 @@ struct solver_inequalities_Zcoeff : debug_logger<debug>
         real sum_a_pi_p = 0;
 
         for (auto [ht, hte] = ap.column(variable); ht != hte; ++ht) {
-            auto a = std::abs(static_cast<real>(A[ht->value]));
+            auto a = std::abs(static_cast<real>(ht->factor));
             sum_a_pi_p += a * (pi[ht->row] + P[ht->value]);
         }
 

@@ -457,10 +457,10 @@ main()
             std::vector<baryonyx::function_element> elements;
         };
 
-        // Row 0: x0 + x2, row 1: x1 + x2. The matrix stores indices into the
-        // row-ordered elements so both views must reference the same cells.
-        const std::vector<cst> csts{ { { { 1, 0 }, { 1, 2 } } },
-                                     { { { 1, 1 }, { 1, 2 } } } };
+        // Row 0: 2x0 + 3x2, row 1: -x1 + 4x2. The matrix stores indices into
+        // the row-ordered elements so both views must reference the same cells.
+        const std::vector<cst> csts{ { { { 2, 0 }, { 3, 2 } } },
+                                     { { { -1, 1 }, { 4, 2 } } } };
 
         baryonyx::sparse_matrix<int> m(csts, 2, 3);
         expect(m.length() == 4);
@@ -473,9 +473,18 @@ main()
         expect(std::distance(cb, ce) == 2);
         expect(cb->row == 0 && (cb + 1)->row == 1);
         expect(cb->value == 1 && (cb + 1)->value == 3);
+        expect(cb->factor == 3 && (cb + 1)->factor == 4);
 
         auto [c0b, c0e] = m.column(0);
         expect(std::distance(c0b, c0e) == 1);
+
+        static_assert(sizeof(baryonyx::sparse_matrix<>::col_value) ==
+                      2 * sizeof(int));
+
+        const baryonyx::sparse_matrix<> unweighted(csts, 2, 3);
+        auto [ub, ue] = unweighted.column(2);
+        expect(std::distance(ub, ue) == 2);
+        expect(ub->row == 0 && (ub + 1)->value == 3);
 
         const std::vector<cst> empty_rows(2);
         baryonyx::sparse_matrix<int> empty(empty_rows, 2, 3);
