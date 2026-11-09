@@ -159,12 +159,6 @@ operator==(const problem& lhs, const problem& rhs) noexcept
            lhs.type == rhs.type && lhs.problem_type == rhs.problem_type;
 }
 
-inline bool
-operator!=(const problem& lhs, const problem& rhs) noexcept
-{
-    return !(lhs == rhs);
-}
-
 void
 clear(raw_problem& pb);
 

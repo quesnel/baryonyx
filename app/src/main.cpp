@@ -279,12 +279,6 @@ split_argument(const std::string_view param)
                            param.substr(position + 1));
 }
 
-constexpr static bool
-starts_with(std::string_view str, std::string_view to_found) noexcept
-{
-    return !(str.find(to_found));
-}
-
 struct get_param
 {
     constexpr get_param(int argc_, const char** argv_)
@@ -302,11 +296,11 @@ struct get_param
         std::string_view arg(argv[arg_position]);
         i = arg_position;
 
-        if (starts_with(arg, longp) && arg.size() > longp.size() &&
+        if (arg.starts_with(longp) && arg.size() > longp.size() &&
             (arg[longp.size()] == '=' || arg[longp.size()] == ':'))
             return arg.substr(longp.size() + 1);
 
-        if (starts_with(arg, shortp) && arg.size() > shortp.size())
+        if (arg.starts_with(shortp) && arg.size() > shortp.size())
             return arg.substr(shortp.size());
 
         if (arg_position + 1 < argc) {
@@ -397,7 +391,7 @@ help() noexcept
 constexpr static bool
 is_equal(std::string_view name, const char* longf, char shortf = '\0')
 {
-    if (name.compare(0, std::string::npos, longf) == 0)
+    if (name == longf)
         return true;
 
     if (shortf != '\0' && name.size() == 2 && name[1] == shortf)
@@ -546,34 +540,12 @@ constexpr const std::string_view command_line_status_string[] = {
     "seed"
 };
 
-template<typename Integer>
-constexpr typename std::make_unsigned<Integer>::type
-to_unsigned(Integer value)
-{
-    assert(value >= 0 && "Signed to unsigned error: negative value");
-
-    return static_cast<typename std::make_unsigned<Integer>::type>(value);
-}
-
-template<typename Integer>
-constexpr typename std::make_signed<Integer>::type
-to_signed(Integer value)
-{
-    assert(static_cast<std::uintmax_t>(value) <
-             static_cast<std::uintmax_t>(
-               (std::numeric_limits<
-                 typename std::make_signed<Integer>::type>::max)()) &&
-           "Unsigned to signed error: too big unsigned");
-
-    return static_cast<typename std::make_signed<Integer>::type>(value);
-}
-
-constexpr const std::string_view
+constexpr std::string_view
 to_string(command_line_status s) noexcept
 {
-    auto x = static_cast<std::underlying_type<command_line_status>::type>(s);
+    const auto x = static_cast<std::underlying_type_t<command_line_status>>(s);
 
-    assert(x < to_signed(std::size(command_line_status_string)));
+    assert(x >= 0 && std::cmp_less(x, std::size(command_line_status_string)));
 
     return command_line_status_string[x];
 }

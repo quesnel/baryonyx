@@ -71,12 +71,7 @@ make_stats_file_name(std::string_view str)
 constexpr static bool
 have_lp_extension(std::string_view filename)
 {
-    auto pos = filename.rfind('.');
-
-    if (pos == std::string_view::npos)
-        return false;
-
-    return filename.compare(pos, 3, ".lp") == 0;
+    return filename.ends_with(".lp");
 }
 
 static inline int

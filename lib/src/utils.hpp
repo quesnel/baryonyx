@@ -28,7 +28,10 @@
 #include "private.hpp"
 
 #include <chrono>
+#include <concepts>
 #include <functional>
+#include <iterator>
+#include <type_traits>
 #include <utility>
 
 #include <climits>
@@ -38,13 +41,13 @@ namespace baryonyx {
 
 /** Casts nonnegative integer to unsigned.
  */
-template<typename Integer>
-constexpr typename std::make_unsigned<Integer>::type
+template<std::integral Integer>
+constexpr std::make_unsigned_t<Integer>
 to_unsigned(Integer value)
 {
     bx_expects(value >= 0);
 
-    return static_cast<typename std::make_unsigned<Integer>::type>(value);
+    return static_cast<std::make_unsigned_t<Integer>>(value);
 }
 
 /**
@@ -98,51 +101,15 @@ trim(std::string_view s) noexcept
 }
 
 /**
- * @brief Compute the length of the @c container.
- * @details Return the @c size provided by the @c C::size() but cast it into a
- *     @c int. This is a specific baryonyx function, we know that number of
- *         variables and constraints are lower than the @c INT_MAX value.
- *
- * @code
- * std::vector<int> v(z);
- *
- * for (int i = 0, e = length(v); i != e; ++i)
- *     ...
- * @endcode
- *
- * @param c The container to request to size.
- * @tparam T The of container value (must provide a @c size() member).
+ * @brief Size of a container or a C array as an @c int.
+ * @details Baryonyx guarantees that the number of variables and constraints
+ *     is lower than @c INT_MAX, so the narrowing is safe.
  */
 template<class C>
 constexpr int
 length(const C& c) noexcept
 {
-    return static_cast<int>(c.size());
-}
-
-/**
- * @brief Compute the length of the C array.
- * @details Return the size of the C array but cast it into a @c int. This
- * is a specific baryonyx function, we know that number of variables and
- *     constraints are lower than the  @c int max value (INT_MAX).
- *
- * @code
- * int v[150];
- * for (int i = 0, e = length(v); i != e; ++i)
- *     ...
- * @endcode
- *
- * @param v The container to return size.
- * @tparam T The type of the C array.
- * @tparam N The size of the C array.
- */
-template<class T, size_t N>
-constexpr int
-length(const T (&array)[N]) noexcept
-{
-    (void)array;
-
-    return static_cast<int>(N);
+    return static_cast<int>(std::size(c));
 }
 
 template<typename Xtype, typename Ytype>
@@ -157,16 +124,12 @@ linearize(Xtype p1x, Ytype p1y, Xtype p2x, Ytype p2y, Xtype value) noexcept
     return static_cast<Ytype>(std::ceil(m * static_cast<double>(value) + p));
 }
 
-template<typename T>
+template<std::floating_point T>
 inline bool
 is_essentially_equal(const T v1, const T v2, const T epsilon)
 {
-    static_assert(std::is_floating_point<T>::value,
-                  "is_essentially_equal required a float/double "
-                  "as template argument");
-
-    return fabs((v1) - (v2)) <=
-           ((fabs(v1) > fabs(v2) ? fabs(v2) : fabs(v1)) * (epsilon));
+    return std::fabs(v1 - v2) <=
+           std::min(std::fabs(v1), std::fabs(v2)) * epsilon;
 }
 
 /**
@@ -205,67 +168,15 @@ is_time_limit(double limit,
 }
 
 /**
- * @brief @c is_numeric_castable checks if two integer are castable.
+ * @brief Converts the integer @c s into @c Target.
  *
- * @details Checks if the @c arg Source integer is castable into @c Target
- *     template. @c Source and @c Target must be integer. The test
- *     includes the limit of @c Target.
- *
- * @param arg The integer to test.
- * @return true if @c arg is castable to @c Target type.
- *
- * @code
- * int v1 = 10;
- * assert(lp::is_numeric_castable<std::int8_t>(v));
- *
- * int v2 = 278;
- * assert(!lp::is_numeric_castable<std::int8_t>(v2));
- * @endcode
+ * @exception numeric_cast_failure if @c s is out of the @c Target range.
  */
-template<typename Target, typename Source>
-inline bool
-is_numeric_castable(Source arg) noexcept
-{
-    static_assert(std::is_integral<Source>::value, "Integer required.");
-    static_assert(std::is_integral<Target>::value, "Integer required.");
-
-    using arg_traits = std::numeric_limits<Source>;
-    using result_traits = std::numeric_limits<Target>;
-
-    if (result_traits::digits == arg_traits::digits &&
-        result_traits::is_signed == arg_traits::is_signed)
-        return true;
-
-    if (result_traits::digits > arg_traits::digits)
-        return result_traits::is_signed || arg >= 0;
-
-    if (arg_traits::is_signed &&
-        arg < static_cast<Source>(result_traits::min()))
-        return false;
-
-    return arg <= static_cast<Source>(result_traits::max());
-}
-
-/**
- * @brief @c numeric_cast cast @c s to @c Target type.
- *
- * @details Converts the integer type @c Source @c s into the integer type
- *     @c Target. If the value @c s is !castable to @c Target, @c
- *     numeric_cast throws an exception.
- *
- * @param s The integer to cast.
- * @return The cast integer.
- *
- * @code
- * std::vector<double> v(1024);
- * long int index = baryonyx::numeric_cast<long int>(v); // No throw.
- * @endcode
- */
-template<typename Target, typename Source>
-inline Target
+template<std::integral Target, std::integral Source>
+constexpr Target
 numeric_cast(Source s)
 {
-    if (!is_numeric_castable<Target>(s))
+    if (!std::in_range<Target>(s))
         throw numeric_cast_failure();
 
     return static_cast<Target>(s);

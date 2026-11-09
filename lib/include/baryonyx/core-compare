@@ -99,30 +99,6 @@ operator==(const raw_problem& lhs, const raw_problem& rhs) noexcept
 }
 
 inline bool
-operator!=(const variable_value& lhs, const variable_value& rhs) noexcept
-{
-    return !(lhs == rhs);
-}
-
-inline bool
-operator!=(const variables& lhs, const variables& rhs) noexcept
-{
-    return !(lhs == rhs);
-}
-
-inline bool
-operator!=(const function_element& lhs, const function_element& rhs) noexcept
-{
-    return !(lhs == rhs);
-}
-
-inline bool
-operator!=(const constraint& lhs, const constraint& rhs) noexcept
-{
-    return !(lhs == rhs);
-}
-
-inline bool
 operator==(const solution& lhs, const solution& rhs) noexcept
 {
     return lhs.value == rhs.value && lhs.variables == rhs.variables;

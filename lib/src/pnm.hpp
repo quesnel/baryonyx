@@ -24,6 +24,7 @@
 #define ORG_VLEPROJECT_BARYONYX_PNM_HPP
 
 #include <array>
+#include <compare>
 #include <fstream>
 #include <memory>
 
@@ -141,15 +142,8 @@ public:
         return m_colors[2];
     }
 
-    bool operator==(const pnm_iterator_entry& other) const noexcept
-    {
-        return m_colors == other.m_colors;
-    }
-
-    bool operator<(const pnm_iterator_entry& other) const noexcept
-    {
-        return m_colors < other.m_colors;
-    }
+    bool operator==(const pnm_iterator_entry&) const noexcept = default;
+    auto operator<=>(const pnm_iterator_entry&) const noexcept = default;
 
     friend pnm_iterator;
 };
@@ -183,7 +177,7 @@ public:
             return pnm_iterator();
 
         pnm_iterator copy(*this);
-        copy.m_entry.advance();
+        m_entry.advance();
         return copy;
     }
 
@@ -219,20 +213,10 @@ public:
         rhs.m_entry = tmp;
     }
 
-    friend bool operator==(const pnm_iterator& lhs, const pnm_iterator& rhs)
-    {
-        return lhs.m_entry == rhs.m_entry;
-    }
-
-    friend bool operator!=(const pnm_iterator& lhs, const pnm_iterator& rhs)
-    {
-        return !(lhs.m_entry == rhs.m_entry);
-    }
-
-    friend bool operator<(const pnm_iterator& lhs, const pnm_iterator& rhs)
-    {
-        return lhs.m_entry < rhs.m_entry;
-    }
+    friend bool operator==(const pnm_iterator&,
+                           const pnm_iterator&) noexcept = default;
+    friend auto operator<=>(const pnm_iterator&,
+                            const pnm_iterator&) noexcept = default;
 };
 
 class pnm_array

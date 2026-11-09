@@ -27,12 +27,13 @@
 #include <array>
 #include <forward_list>
 #include <functional>
+#include <iterator>
 #include <limits>
 #include <memory>
-#include <numeric>
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 #include <cstdint>
@@ -90,11 +91,7 @@ struct string_buffer
 
     std::size_t size() const noexcept
     {
-        return std::accumulate(
-          m_container.cbegin(),
-          m_container.cend(),
-          0,
-          [](int cumul, const auto& /*elem*/) { return cumul + 1; });
+        return static_cast<std::size_t>(std::ranges::distance(m_container));
     }
 
 private:
@@ -620,7 +617,7 @@ struct constraint
                int value_,
                int id_)
       : label(label_)
-      , elements(elements_)
+      , elements(std::move(elements_))
       , value(value_)
       , id(id_)
     {}

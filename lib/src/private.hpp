@@ -32,19 +32,6 @@
 
 #include <cstdio>
 
-#define bx_stringify_detail(x) #x
-#define bx_stringify(x) bx_stringify_detail(x)
-
-#if defined(__clang__) || defined(__GNUC__)
-#define bx_always_inline __attribute__((always_inline))
-#define bx_likely(x) __builtin_expect(!!(x), 1)
-#define bx_unlikely(x) __builtin_expect(!!(x), 0)
-#else
-#define bx_always_inline
-#define bx_likely(x) (!!(x))
-#define bx_unlikely(x) (!!(x))
-#endif
-
 namespace baryonyx {
 
 struct context

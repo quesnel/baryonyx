@@ -316,7 +316,7 @@ struct fmt::formatter<baryonyx::solver_parameters::mode_type>
     auto format(baryonyx::solver_parameters::mode_type c, format_context& ctx) const
     {
         using underlying_type =
-          std::underlying_type<baryonyx::solver_parameters::mode_type>::type;
+          std::underlying_type_t<baryonyx::solver_parameters::mode_type>;
 
         string_view name = "disabled";
 

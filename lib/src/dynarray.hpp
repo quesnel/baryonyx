@@ -23,12 +23,10 @@
 #ifndef ORG_VLEPROJECT_BARYONYX_SOLVER_DYNARRAY_HPP
 #define ORG_VLEPROJECT_BARYONYX_SOLVER_DYNARRAY_HPP
 
+#include <utility>
 #include <vector>
 
 namespace baryonyx {
-
-template<typename T>
-class dynamic_array_view;
 
 template<typename T>
 class dynamic_array
@@ -129,9 +127,6 @@ public:
         swap(m_size, other.m_size);
     }
 
-    dynamic_array_view<T> row(index_type row);
-    dynamic_array_view<T> row(index_type row) const;
-
     size_t rows() const
     {
         return m_size;
@@ -140,39 +135,6 @@ public:
     size_t cols() const
     {
         return m_line_size;
-    }
-};
-
-template<typename T>
-class dynamic_array_view
-{
-public:
-    using iterator = typename dynamic_array<T>::iterator;
-    using const_iterator = typename dynamic_array<T>::const_iterator;
-    using value_type = typename dynamic_array<T>::value_type;
-    using size_type = typename dynamic_array<T>::size_type;
-    using index_type = typename dynamic_array<T>::difference_type;
-
-private:
-    const_iterator m_first;
-    const_iterator m_last;
-
-public:
-    dynamic_array_view(const_iterator first, const_iterator last)
-      : m_first(first)
-      , m_last(last)
-    {}
-
-    template<typename Integer>
-    value_type operator[](Integer i) const
-    {
-        return *(m_first + i);
-    }
-
-    template<typename Integer>
-    value_type operator[](Integer i)
-    {
-        return *(m_first + i);
     }
 };
 
@@ -218,22 +180,6 @@ dynamic_array<T>::cend() const noexcept
     return m_data.cend();
 }
 
-template<typename T>
-dynamic_array_view<T>
-dynamic_array<T>::row(index_type row)
-{
-    return dynamic_array_view<T>(m_data.begin() + (row * m_line_size),
-                                 m_data.begin() + ((row + 1) * m_line_size));
-}
-
-template<typename T>
-dynamic_array_view<T>
-dynamic_array<T>::row(index_type row) const
-{
-    return dynamic_array_view<T>(m_data.begin() + (row * m_line_size),
-                                 m_data.begin() + ((row + 1) * m_line_size));
-}
-
-} // namespace efyj
+} // namespace baryonyx
 
 #endif

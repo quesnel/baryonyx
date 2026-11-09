@@ -61,42 +61,20 @@ main()
         int large_positive = std::numeric_limits<int>::max();
         int large_negative = std::numeric_limits<int>::min();
 
-        expect(baryonyx::is_numeric_castable<signed char>(small_positive));
-        expect(baryonyx::is_numeric_castable<signed char>(small_negative));
-        expect(!baryonyx::is_numeric_castable<signed char>(large_positive));
-        expect(!baryonyx::is_numeric_castable<signed char>(large_negative));
+        using baryonyx::numeric_cast;
 
-        expect(baryonyx::is_numeric_castable<unsigned char>(small_positive));
-        expect(!baryonyx::is_numeric_castable<unsigned char>(small_negative));
-        expect(!baryonyx::is_numeric_castable<unsigned char>(large_positive));
-        expect(!baryonyx::is_numeric_castable<unsigned char>(large_negative));
+        expect(nothrow([&] { numeric_cast<signed char>(small_positive); }));
+        expect(nothrow([&] { numeric_cast<signed char>(small_negative); }));
+        expect(throws([&] { numeric_cast<signed char>(large_positive); }));
+        expect(throws([&] { numeric_cast<signed char>(large_negative); }));
 
-        expect(baryonyx::is_numeric_castable<signed int>(small_positive));
-        expect(baryonyx::is_numeric_castable<signed int>(small_negative));
-        expect(baryonyx::is_numeric_castable<signed int>(large_positive));
-        expect(baryonyx::is_numeric_castable<signed int>(large_negative));
+        expect(throws([&] { numeric_cast<unsigned char>(small_negative); }));
+        expect(nothrow([&] { numeric_cast<unsigned int>(large_positive); }));
+        expect(throws([&] { numeric_cast<unsigned int>(large_negative); }));
+        expect(nothrow([&] { numeric_cast<long long>(large_negative); }));
+        expect(throws([&] { numeric_cast<std::size_t>(small_negative); }));
 
-        expect(baryonyx::is_numeric_castable<unsigned int>(small_positive));
-        expect(!baryonyx::is_numeric_castable<unsigned int>(small_negative));
-        expect(baryonyx::is_numeric_castable<unsigned int>(large_positive));
-        expect(!baryonyx::is_numeric_castable<unsigned int>(large_negative));
-
-        expect(baryonyx::is_numeric_castable<long long>(small_positive));
-        expect(baryonyx::is_numeric_castable<long long>(large_negative));
-        expect(baryonyx::is_numeric_castable<long long>(small_positive));
-        expect(baryonyx::is_numeric_castable<long long>(large_negative));
-
-        expect(
-          baryonyx::is_numeric_castable<unsigned long long>(small_positive));
-        expect(
-          !baryonyx::is_numeric_castable<unsigned long long>(small_negative));
-        expect(
-          baryonyx::is_numeric_castable<unsigned long long>(large_positive));
-        expect(
-          !baryonyx::is_numeric_castable<unsigned long long>(large_negative));
-
-        expect(!baryonyx::is_numeric_castable<size_t>(small_negative));
-        expect(!baryonyx::is_numeric_castable<size_t>(large_negative));
+        static_assert(numeric_cast<unsigned char>(255) == 255u);
 
         std::vector<int> v;
 
@@ -173,11 +151,8 @@ main()
             for (int i{ 0 }; i < 1000; ++i)
                 expect(x[i] == 123.0);
 
-            auto it = std::find_if_not(x.begin(),
-                                       x.end(),
-                                       std::bind(std::equal_to<double>(),
-                                                 123.0,
-                                                 std::placeholders::_1));
+            auto it = std::find_if_not(
+              x.begin(), x.end(), [](double v) { return v == 123.0; });
 
             expect(it == x.end());
         }
@@ -555,6 +530,28 @@ main()
         }
     };
 
+    "check_pnm_iterator"_test = [] {
+        baryonyx::pnm_array pnm(1, 3);
+        expect((!!pnm) >> fatal);
+
+        auto first = pnm.begin();
+        auto it = first;
+        const auto old = it++;
+
+        expect(old == first);
+        expect(it != first);
+        expect(first < it);
+
+        *old = baryonyx::colormap::rgb{ 1, 2, 3 };
+        *it++ = baryonyx::colormap::rgb{ 4, 5, 6 };
+        *it++ = baryonyx::colormap::rgb{ 7, 8, 9 };
+        expect(it == pnm.end());
+
+        expect(pnm(0, 0)[0] == 1 && pnm(0, 0)[2] == 3);
+        expect(pnm(0, 1)[0] == 4 && pnm(0, 1)[2] == 6);
+        expect(pnm(0, 2)[0] == 7 && pnm(0, 2)[2] == 9);
+    };
+
     "check_observer_pnm"_test = [] {
         {
             std::vector<double> v{ 0,   -1, -3,  -2, 0,    3, 3,
@@ -582,11 +579,8 @@ main()
                                baryonyx::colormap(-1.0f, 1.0f));
                 obs.flush();
 
-                std::transform(
-                  v.begin(),
-                  v.end(),
-                  v.begin(),
-                  std::bind(std::plus<double>(), 0.1, std::placeholders::_1));
+                std::ranges::transform(
+                  v, v.begin(), [](double value) { return value + 0.1; });
             }
         }
     };

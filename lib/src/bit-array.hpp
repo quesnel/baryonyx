@@ -26,8 +26,10 @@
 #include "debug.hpp"
 
 #include <algorithm>
+#include <cstdint>
 #include <limits>
 #include <memory>
+#include <type_traits>
 
 namespace baryonyx {
 
@@ -44,12 +46,12 @@ class bit_array_impl
 public:
     using underlying_type = std::uint64_t;
 
-    static inline constexpr size_t k_one = underlying_type{ 1 };
-    static inline constexpr size_t k_ones =
+    static constexpr underlying_type k_one = 1;
+    static constexpr underlying_type k_ones =
       std::numeric_limits<underlying_type>::max();
-    static inline constexpr size_t k_zeros = underlying_type{ 0 };
+    static constexpr underlying_type k_zeros = 0;
 
-    constexpr static inline int bit_per_block =
+    static constexpr int bit_per_block =
       std::numeric_limits<underlying_type>::digits;
 
     bit_array_impl()
@@ -96,7 +98,7 @@ public:
         return *this;
     }
 
-    bit_array_impl& operator=(bit_array_impl&& other)
+    bit_array_impl& operator=(bit_array_impl&& other) noexcept
     {
         if (this != &other) {
             m_size = other.m_size;
@@ -276,23 +278,8 @@ public:
         if (size() != other.size())
             return false;
 
-        for (int i = 0; i != m_block_size; ++i)
-            if (other.m_data[i] != m_data[i])
-                return false;
-
-        return true;
-    }
-
-    bool operator!=(const bit_array_impl& other) const noexcept
-    {
-        if (size() != other.size())
-            return true;
-
-        for (int i = 0; i != m_block_size; ++i)
-            if (other.m_data[i] != m_data[i])
-                return true;
-
-        return false;
+        return std::equal(
+          m_data.get(), m_data.get() + m_block_size, other.m_data.get());
     }
 
 protected:
@@ -343,7 +330,7 @@ template<int Value1 = 0, int Value2 = 1>
 class value_bit_array : public bit_array_impl
 {
 public:
-    constexpr static inline int return_value[] = { Value1, Value2 };
+    static constexpr int return_value[] = { Value1, Value2 };
 
     value_bit_array() = default;
 
@@ -394,39 +381,34 @@ swap(value_bit_array<Value1, Value2>& lhs,
 // Hash functions
 //
 
+inline std::size_t
+hash_bit_array(const bit_array_impl& array) noexcept
+{
+    static_assert(
+      std::is_same_v<bit_array_impl::underlying_type, std::uint64_t>);
+
+    // Mixing steps of the MurmurHash3 64 bits finalizer.
+    std::size_t seed = static_cast<std::size_t>(array.block_size());
+
+    for (int i = 0, e = array.block_size(); i != e; ++i) {
+        seed ^= array.block(i);
+        seed ^= (seed >> 33);
+        seed *= 0xff51afd7ed558ccd;
+        seed ^= (seed >> 33);
+        seed *= 0xc4ceb9fe1a85ec53;
+        seed ^= (seed >> 33);
+    }
+
+    return seed;
+}
+
 template<int Value1, int Value2>
 struct value_bit_array_hash
 {
     std::size_t operator()(
       const value_bit_array<Value1, Value2>& array) const noexcept
     {
-        using underlying_t = bit_array_impl::underlying_type;
-
-        std::size_t seed = array.block_size();
-
-        static_assert(std::is_same_v<underlying_t, std::uint64_t> or
-                      std::is_same_v<underlying_t, std::uint32_t>);
-
-        if constexpr (std::is_same_v<underlying_t, std::uint64_t>) {
-            for (int i = 0, e = array.block_size(); i != e; ++i) {
-                seed ^= array.block(i);
-                seed ^= (seed >> 33);
-                seed *= 0xff51afd7ed558ccd;
-                seed ^= (seed >> 33);
-                seed *= 0xc4ceb9fe1a85ec53;
-                seed ^= (seed >> 33);
-            }
-        } else {
-            for (int i = 0, e = array.block_size(); i != e; ++i) {
-                std::uint32_t x = array.block(i);
-                x = ((x >> 16) ^ x) * 0x45d9f3b;
-                x = ((x >> 16) ^ x) * 0x45d9f3b;
-                x = (x >> 16) ^ x;
-                seed ^= x + 0x9e3779b9 + (seed << 6) + (seed >> 2);
-            }
-        }
-
-        return seed;
+        return hash_bit_array(array);
     }
 };
 
@@ -434,33 +416,7 @@ struct bit_array_hash
 {
     std::size_t operator()(const bit_array& array) const noexcept
     {
-        using underlying_t = bit_array_impl::underlying_type;
-
-        std::size_t seed = array.block_size();
-
-        static_assert(std::is_same_v<underlying_t, std::uint64_t> or
-                      std::is_same_v<underlying_t, std::uint32_t>);
-
-        if constexpr (std::is_same_v<underlying_t, std::uint64_t>) {
-            for (int i = 0, e = array.block_size(); i != e; ++i) {
-                seed ^= array.block(i);
-                seed ^= (seed >> 33);
-                seed *= 0xff51afd7ed558ccd;
-                seed ^= (seed >> 33);
-                seed *= 0xc4ceb9fe1a85ec53;
-                seed ^= (seed >> 33);
-            }
-        } else {
-            for (int i = 0, e = array.block_size(); i != e; ++i) {
-                std::uint32_t x = array.block(i);
-                x = ((x >> 16) ^ x) * 0x45d9f3b;
-                x = ((x >> 16) ^ x) * 0x45d9f3b;
-                x = (x >> 16) ^ x;
-                seed ^= x + 0x9e3779b9 + (seed << 6) + (seed >> 2);
-            }
-        }
-
-        return seed;
+        return hash_bit_array(array);
     }
 };
 

@@ -640,8 +640,7 @@ struct compute_order
     static solver_parameters::constraint_order next_state(
       solver_parameters::constraint_order current) noexcept
     {
-        using int_type = typename std::underlying_type<
-          solver_parameters::constraint_order>::type;
+        using int_type = std::underlying_type_t<solver_parameters::constraint_order>;
 
         auto int_current = static_cast<int_type>(current);
         auto int_max =
@@ -1482,14 +1481,13 @@ generate_seed(random_engine& rng, unsigned thread_id)
 }
 
 template<int f>
-using real_sel = typename std::conditional<
+using real_sel = std::conditional_t<
   f == 0,
   real,
-  typename std::conditional<f == 1, double, long double>::type>::type;
+  std::conditional_t<f == 1, double, long double>>;
 
 template<int o>
-using mode_sel =
-  typename std::conditional<o == 0, maximize_tag, minimize_tag>::type;
+using mode_sel = std::conditional_t<o == 0, maximize_tag, minimize_tag>;
 
 template<bool debug>
 struct debug_logger

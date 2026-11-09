@@ -27,6 +27,7 @@
 #include "sparse-matrix.hpp"
 
 #include <algorithm>
+#include <concepts>
 #include <fstream>
 #include <memory>
 #include <utility>
@@ -50,17 +51,16 @@ public:
       , m_pnm(fmt::format("{}-pi.pnm", filename), constraints, loop)
     {}
 
-    template<typename Float>
+    template<std::floating_point Float>
     void make_observation(const sparse_matrix<int>& /*ap*/,
                           const Float* /*P*/,
                           const Float* pi)
     {
-        static_assert(std::is_floating_point<Float>::value);
 
         auto it = m_pnm.begin();
         colormap fct(-1.f, +1.f);
 
-        for (int i = 0; i != constraints; ++i)
+        for (int i = 0; i != constraints; ++i, ++it)
             *it = fct(pi[i]);
 
         m_pnm.flush();
@@ -86,12 +86,11 @@ public:
       , m_basename(std::move(filename))
     {}
 
-    template<typename Float>
+    template<std::floating_point Float>
     void make_observation(const sparse_matrix<int>& ap,
                           const Float* P,
                           const Float* /*pi*/)
     {
-        static_assert(std::is_floating_point<Float>::value);
 
         colormap cm(-1.0f, 1.0f);
         pnm_array pnm(constraints, variables);
@@ -132,12 +131,11 @@ public:
       , m_ofs(fmt::format("{}-pi.txt", filename))
     {}
 
-    template<typename Float>
+    template<std::floating_point Float>
     void make_observation(const sparse_matrix<int>& /*ap*/,
                           const Float* /*P*/,
                           const Float* pi)
     {
-        static_assert(std::is_floating_point<Float>::value);
 
         if (m_ofs) {
             if (m_len > 1) {
@@ -176,12 +174,11 @@ public:
       , m_value(variables)
     {}
 
-    template<typename Float>
+    template<std::floating_point Float>
     void make_observation(const sparse_matrix<int>& ap,
                           const Float* P,
                           const Float* /*pi*/)
     {
-        static_assert(std::is_floating_point<Float>::value);
 
         std::ofstream ofs(fmt::format("{}-P-{}.txt", m_basename, m_frame++));
 
@@ -213,12 +210,11 @@ public:
       , m_ap_obs(filename, m, n, loop)
     {}
 
-    template<typename Float>
+    template<std::floating_point Float>
     void make_observation(const sparse_matrix<int>& ap,
                           const Float* P,
                           const Float* pi)
     {
-        static_assert(std::is_floating_point<Float>::value);
 
         m_pi_obs.make_observation(ap, P, pi);
         m_ap_obs.make_observation(ap, P, pi);
@@ -236,12 +232,11 @@ public:
       , m_ap_obs(filename, m, n, loop)
     {}
 
-    template<typename Float>
+    template<std::floating_point Float>
     void make_observation(const sparse_matrix<int>& ap,
                           const Float* P,
                           const Float* pi)
     {
-        static_assert(std::is_floating_point<Float>::value);
 
         m_pi_obs.make_observation(ap, P, pi);
         m_ap_obs.make_observation(ap, P, pi);
@@ -257,12 +252,11 @@ public:
                   long int /*loop*/)
     {}
 
-    template<typename Float>
+    template<std::floating_point Float>
     void make_observation(const sparse_matrix<int>& /*ap*/,
                           const Float* /*P*/,
                           const Float* /*pi*/)
     {
-        static_assert(std::is_floating_point<Float>::value);
     }
 };
 

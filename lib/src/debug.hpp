@@ -25,6 +25,8 @@
 
 #include "private.hpp"
 
+#include <exception>
+#include <source_location>
 #include <stdexcept>
 
 #include <cstdio>
@@ -35,25 +37,21 @@
 // exception or return with message in terminal.
 //
 
-namespace baryonyx {
-namespace details {
+namespace baryonyx::details {
 
-inline void
-print(const char* type,
-      const char* cond,
-      const char* file,
-      const char* line) noexcept
-{
-    fprintf(stderr, "%s [%s] failure at %s: %s\n", type, cond, file, line);
-}
-
-[[noreturn]] inline auto
+[[noreturn]] inline void
 fail_fast(const char* type,
           const char* cond,
-          const char* file,
-          const char* line) -> void
+          const std::source_location location =
+            std::source_location::current())
 {
-    print(type, cond, file, line);
+    std::fprintf(stderr,
+                 "%s [%s] failure at %s:%u in %s\n",
+                 type,
+                 cond,
+                 location.file_name(),
+                 static_cast<unsigned>(location.line()),
+                 location.function_name());
 
 #ifndef BARYONYX_FAIL_FAST
     std::terminate();
@@ -62,43 +60,13 @@ fail_fast(const char* type,
 #endif
 }
 
-struct sink
-{
-    template<typename... Args>
-    sink(const Args&...)
-    {}
-};
-
-} // namespace details
-} // namespace baryonyx
-
-#define BX_CONTRACT_FAIL(type)                                                \
-    baryonyx::details::fail_fast(                                             \
-      type, bx_stringify(cond), __FILE__, bx_stringify(__LINE__))
+} // namespace baryonyx::details
 
 #define BX_CONTRACT_CHECK(type, cond)                                         \
-    (bx_likely(cond)                                                          \
-       ? static_cast<void>(0)                                                 \
-       : baryonyx::details::fail_fast(                                        \
-           type, bx_stringify(cond), __FILE__, bx_stringify(__LINE__)))
-
-#define BX_CONTRACT_CHECK_RETURN_VAL(type, cond, val)                         \
     do {                                                                      \
-        if (bx_unlikely(!(cond))) {                                           \
-            baryonyx::details::print(                                         \
-              type, bx_stringify(cond), __FILE__, bx_stringify(__LINE__));    \
-            return val;                                                       \
-        }                                                                     \
-    } while (0)
-
-#define BX_CONTRACT_CHECK_RETURN(type, cond)                                  \
-    do {                                                                      \
-        if (bx_unlikely(!(cond))) {                                           \
-            baryonyx::details::print(                                         \
-              type, bx_stringify(cond), __FILE__, bx_stringify(__LINE__));    \
-            return;                                                           \
-        }                                                                     \
-    } while (0)
+        if (!(cond)) [[unlikely]]                                             \
+            baryonyx::details::fail_fast(type, #cond);                        \
+    } while (false)
 
 #ifdef BARYONYX_FULL_OPTIMIZATION
 #define bx_expects(cond)
@@ -110,10 +78,6 @@ struct sink
 #define bx_assert(cond) BX_CONTRACT_CHECK("Assertion", cond)
 #endif
 
-#define bx_reach() BX_CONTRACT_FAIL("Reached")
-
-#define bx_return_val_if_fail(cond, val)                                      \
-    BX_CONTRACT_CHECK_RETURN_VAL("Precondition", cond, val)
-#define bx_return_if_fail(cond) BX_CONTRACT_CHECK_RETURN("Precondition", cond)
+#define bx_reach() baryonyx::details::fail_fast("Reached", "unreachable code")
 
 #endif

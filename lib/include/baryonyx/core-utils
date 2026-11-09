@@ -64,7 +64,7 @@ inline constexpr solver_parameters::mode_type operator&(
   solver_parameters::mode_type y)
 {
     using underlying_type =
-      typename std::underlying_type<solver_parameters::mode_type>::type;
+      std::underlying_type_t<solver_parameters::mode_type>;
 
     return static_cast<solver_parameters::mode_type>(
       static_cast<underlying_type>(x) & static_cast<underlying_type>(y));
@@ -74,7 +74,7 @@ inline constexpr solver_parameters::mode_type
 operator|(solver_parameters::mode_type x, solver_parameters::mode_type y)
 {
     using underlying_type =
-      typename std::underlying_type<solver_parameters::mode_type>::type;
+      std::underlying_type_t<solver_parameters::mode_type>;
 
     return static_cast<solver_parameters::mode_type>(
       static_cast<underlying_type>(x) | static_cast<underlying_type>(y));
@@ -84,7 +84,7 @@ inline constexpr solver_parameters::mode_type
 operator^(solver_parameters::mode_type x, solver_parameters::mode_type y)
 {
     using underlying_type =
-      typename std::underlying_type<solver_parameters::mode_type>::type;
+      std::underlying_type_t<solver_parameters::mode_type>;
 
     return static_cast<solver_parameters::mode_type>(
       static_cast<underlying_type>(x) ^ static_cast<underlying_type>(y));
@@ -94,7 +94,7 @@ inline constexpr solver_parameters::mode_type
 operator~(solver_parameters::mode_type x)
 {
     using underlying_type =
-      typename std::underlying_type<solver_parameters::mode_type>::type;
+      std::underlying_type_t<solver_parameters::mode_type>;
 
     return static_cast<solver_parameters::mode_type>(
       ~static_cast<underlying_type>(x));

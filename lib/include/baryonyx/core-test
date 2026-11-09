@@ -24,6 +24,7 @@
 #define ORG_VLEPROJECT_BARYONYX_SOLVER_EXAMPLE_HPP
 
 #include <ostream>
+#include <stdexcept>
 
 namespace baryonyx {
 namespace example {

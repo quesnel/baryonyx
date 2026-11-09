@@ -23,6 +23,7 @@
 #ifndef ORG_VLEPROJECT_BARYONYX_PRIVATE_MEMORY_HPP
 #define ORG_VLEPROJECT_BARYONYX_PRIVATE_MEMORY_HPP
 
+#include <concepts>
 #include <string>
 #include <tuple>
 
@@ -40,13 +41,10 @@ enum class show_size_type
 };
 
 template<typename T>
+  requires std::integral<T> || std::floating_point<T>
 inline std::tuple<double, show_size_type>
 memory_consumed_size(T size) noexcept
 {
-    static_assert(
-      (std::is_integral<T>::value || std::is_floating_point<T>::value),
-      "Integer or real required.");
-
     const auto kb = static_cast<double>(size) / 1024.;
     const auto mb = kb / 1024.;
     const auto gb = mb / 1024.;
