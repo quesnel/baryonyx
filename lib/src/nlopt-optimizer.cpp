@@ -36,7 +36,6 @@ enum param
     param_delta,
     param_kappa_min,
     param_kappa_step,
-    param_init_random,
     param_init_policy_random
 };
 
