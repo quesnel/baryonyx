@@ -25,11 +25,14 @@
 
 #include <boost/ut.hpp>
 
+#include <algorithm>
 #include <fstream>
 #include <map>
 #include <numeric>
 #include <streambuf>
 #include <string_view>
+#include <tuple>
+#include <vector>
 
 #include <baryonyx/core-compare>
 #include <baryonyx/core>
@@ -83,6 +86,82 @@ struct imemstream
     {
     }
 };
+
+struct canonical_problem
+{
+    using constraint_key = std::tuple<std::string,
+                                      std::vector<std::pair<std::string, int>>,
+                                      char,
+                                      int>;
+
+    baryonyx::objective_function_type type;
+    double constant;
+    std::map<std::string, double> linear;
+    std::map<std::pair<std::string, std::string>, double> quadratic;
+    std::map<std::string, std::tuple<int, int, baryonyx::variable_type>>
+      variables;
+    std::vector<constraint_key> constraints;
+
+    bool operator==(const canonical_problem&) const = default;
+};
+
+/// Builds an index-free view of a problem: the writer omits null
+/// coefficients, so a re-read problem may number its variables differently.
+static canonical_problem
+make_canonical(const baryonyx::raw_problem& pb)
+{
+    canonical_problem ret{ pb.type, pb.objective.value, {}, {}, {}, {} };
+
+    const auto name = [&pb](int index) {
+        return std::string(pb.vars.names[static_cast<std::size_t>(index)]);
+    };
+
+    for (const auto& elem : pb.objective.elements)
+        if (elem.factor != 0.0)
+            ret.linear[name(elem.variable_index)] += elem.factor;
+
+    for (const auto& elem : pb.objective.qelements) {
+        if (elem.factor == 0.0)
+            continue;
+
+        auto a = name(elem.variable_index_a);
+        auto b = name(elem.variable_index_b);
+        if (b < a)
+            std::swap(a, b);
+
+        ret.quadratic[{ std::move(a), std::move(b) }] += elem.factor;
+    }
+
+    for (std::size_t i = 0, e = pb.vars.names.size(); i != e; ++i)
+        ret.variables[std::string(pb.vars.names[i])] = { pb.vars.values[i].min,
+                                                         pb.vars.values[i].max,
+                                                         pb.vars.values[i].type };
+
+    const auto add_constraints = [&](const auto& constraints, char op) {
+        for (const auto& cst : constraints) {
+            std::vector<std::pair<std::string, int>> terms;
+            for (const auto& elem : cst.elements)
+                terms.emplace_back(name(elem.variable_index), elem.factor);
+
+            std::sort(terms.begin(), terms.end());
+            ret.constraints.emplace_back(
+              std::string(cst.label), std::move(terms), op, cst.value);
+        }
+    };
+
+    add_constraints(pb.equal_constraints, '=');
+    add_constraints(pb.greater_constraints, '>');
+    add_constraints(pb.less_constraints, '<');
+    std::sort(ret.constraints.begin(), ret.constraints.end());
+
+    return ret;
+}
+
+static std::string
+write_problem(const baryonyx::raw_problem& pb)
+{
+    return fmt::format("{}", pb);
+}
 
 int
 main()
@@ -993,6 +1072,43 @@ main()
             expect(vv.max == 1);
             expect(vv.type == baryonyx::variable_type::binary);
         }
+    };
+
+    "QPLIB_3852 read write read"_test = [] {
+        auto ctx = baryonyx::make_context(0);
+        const auto pb =
+          baryonyx::make_problem(ctx, EXAMPLES_DIR "/QPLIB_3852.lp");
+
+        expect((pb.status == file_format_error_tag::success) >> fatal);
+        expect(pb.type == baryonyx::objective_function_type::maximize);
+        expect(pb.vars.names.size() == 231_ul);
+        expect(pb.objective.elements.size() == 231_ul);
+        expect(pb.objective.qelements.size() == 440_ul);
+        expect(pb.equal_constraints.empty());
+        expect(pb.greater_constraints.empty());
+        expect(pb.less_constraints.empty());
+
+        for (const auto& value : pb.vars.values) {
+            expect(value.type == baryonyx::variable_type::binary);
+            expect(value.min == 0_i);
+            expect(value.max == 1_i);
+        }
+
+        const auto written = write_problem(pb);
+        std::istringstream iss(written);
+        const auto pb2 = baryonyx::make_problem(*ctx, iss);
+
+        expect((pb2.status == file_format_error_tag::success) >> fatal);
+        expect(make_canonical(pb) == make_canonical(pb2));
+
+        const auto rewritten = write_problem(pb2);
+        std::istringstream iss2(rewritten);
+        const auto pb3 = baryonyx::make_problem(*ctx, iss2);
+
+        expect((pb3.status == file_format_error_tag::success) >> fatal);
+        expect(pb2 == pb3);
+        expect(make_canonical(pb2) == make_canonical(pb3));
+        expect(write_problem(pb3) == rewritten);
     };
 
     "vm"_test = [] {
