@@ -255,8 +255,36 @@ main()
         auto pb = baryonyx::make_problem(*ctx, iss);
         expect(pb);
 
+        // Both constraints always hold: the problem has no constraint left
+        // and every variable must still be in the result.
         auto result = baryonyx::solve(ctx, pb);
-        expect(!!result);
+        expect((!!result) >> fatal);
+        expect(baryonyx::is_valid_solution(pb, result));
+        expect(result.solutions.back().value == -5.0);
+    };
+
+    "test_unconstrained_quadratic"_test = [] {
+        // 231 binaries, a quadratic objective and no constraint; 234 is the
+        // optimum proven by HiGHS on a linearization.
+        auto ctx = baryonyx::make_context(0);
+        auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/QPLIB_3852.lp");
+        expect(pb >> fatal);
+
+        auto solved = baryonyx::solve(ctx, pb);
+        expect((!!solved) >> fatal);
+        expect(baryonyx::is_valid_solution(pb, solved));
+        expect(solved.solutions.back().value == 234.0);
+
+        baryonyx::solver_parameters params;
+        params.time_limit = 0.5;
+        params.optimizer =
+          baryonyx::solver_parameters::optimizer_type::restart;
+        baryonyx::context_set_solver_parameters(ctx, params);
+
+        auto optimized = baryonyx::optimize(ctx, pb);
+        expect((!!optimized) >> fatal);
+        expect(baryonyx::is_valid_solution(pb, optimized));
+        expect(optimized.solutions.back().value == 234.0);
     };
 
     "test_unrealisable_constraint"_test = [] {

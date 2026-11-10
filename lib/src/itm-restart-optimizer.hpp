@@ -355,11 +355,16 @@ restart_optimize_problem(const context& ctx, const problem& pb)
     auto constraints{ make_merged_constraints(ctx, pb) };
     if (constraints.empty() || pb.vars.values.empty()) {
         r.status = result_status::success;
-        r.solutions.resize(1);
-        r.solutions.back().value = pb.objective.value;
+        r.solutions.assign(1, unconstrained_solution(pb));
         r.strings = pb.strings;
         r.affected_vars = pb.affected_vars;
         r.variable_name = pb.vars.names;
+        r.variables = length(pb.vars.values);
+        r.remaining_constraints = 0;
+
+        if (ctx.finish)
+            ctx.finish(r);
+
         return r;
     }
 

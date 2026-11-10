@@ -172,6 +172,13 @@ double
 compute_solution(const problem& pb,
                  const std::vector<std::int8_t>& variable_value);
 
+/**
+ * Best assignment of a problem without constraint: optimal for a linear
+ * objective, a local optimum for a quadratic one.
+ */
+solution
+unconstrained_solution(const problem& pb);
+
 problem
 unpreprocess(const context& ctx, const raw_problem& pb_);
 
