@@ -400,6 +400,8 @@ affect(Solver& slv,
 
     auto d = delta;
 
+    // R is expressed for y = 1 - x on negative coefficients (Bastert et al.
+    // 2010, Alg. 3), so the selected side always gains +d whatever the sign.
     if (selected < 0) {
         // slv.pi[k] += slv.R[0].value / two;
         d += (kappa / (one - kappa)) * (slv.R[0].value / two);
@@ -407,13 +409,12 @@ affect(Solver& slv,
         for (int i = 0; i != r_size; ++i) {
             auto var = it + slv.R[i].id;
 
-            if (slv.R[i].is_negative_factor()) {
+            if (slv.R[i].is_negative_factor())
                 x.set(var->column);
-                slv.P[var->value] += d;
-            } else {
+            else
                 x.unset(var->column);
-                slv.P[var->value] -= d;
-            }
+
+            slv.P[var->value] -= d;
         }
     } else if (selected + 1 >= r_size) {
         // slv.pi[k] += slv.R[selected].value * middle;
@@ -422,13 +423,12 @@ affect(Solver& slv,
         for (int i = 0; i != r_size; ++i) {
             auto var = it + slv.R[i].id;
 
-            if (slv.R[i].is_negative_factor()) {
+            if (slv.R[i].is_negative_factor())
                 x.unset(var->column);
-                slv.P[var->value] -= d;
-            } else {
+            else
                 x.set(var->column);
-                slv.P[var->value] += d;
-            }
+
+            slv.P[var->value] += d;
         }
     } else {
         slv.pi[k] +=
@@ -440,25 +440,23 @@ affect(Solver& slv,
         for (; i <= selected; ++i) {
             auto var = it + slv.R[i].id;
 
-            if (slv.R[i].is_negative_factor()) {
+            if (slv.R[i].is_negative_factor())
                 x.unset(var->column);
-                slv.P[var->value] -= d;
-            } else {
+            else
                 x.set(var->column);
-                slv.P[var->value] += d;
-            }
+
+            slv.P[var->value] += d;
         }
 
         for (; i != r_size; ++i) {
             auto var = it + slv.R[i].id;
 
-            if (slv.R[i].is_negative_factor()) {
+            if (slv.R[i].is_negative_factor())
                 x.set(var->column);
-                slv.P[var->value] += d;
-            } else {
+            else
                 x.unset(var->column);
-                slv.P[var->value] -= d;
-            }
+
+            slv.P[var->value] -= d;
         }
     }
 

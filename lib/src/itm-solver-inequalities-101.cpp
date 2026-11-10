@@ -270,9 +270,11 @@ struct solver_inequalities_101coeff : debug_logger<debug>
             const auto sizes =
               compute_reduced_costs(std::get<0>(it), std::get<1>(it), x);
 
-            for (int i = 0; i != sizes.r_size; ++i)
-                R[i].value +=
+            for (int i = 0; i != sizes.r_size; ++i) {
+                const auto cost =
                   obj_amp * c((std::get<0>(it) + R[i].id)->column, x);
+                R[i].value += R[i].is_negative_factor() ? -cost : cost;
+            }
 
             calculator_sort<Mode>(R.get(), R.get() + sizes.r_size, rng);
             int selected = select_variables(sizes, b[k].min, b[k].max);

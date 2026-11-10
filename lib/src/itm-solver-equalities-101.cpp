@@ -230,9 +230,11 @@ struct solver_equalities_101coeff : debug_logger<debug>
             // each reduces cost, we had the cost multiply with an objective
             // amplifier.
 
-            for (int i = 0; i != sizes.r_size; ++i)
-                R[i].value +=
+            for (int i = 0; i != sizes.r_size; ++i) {
+                const auto cost =
                   obj_amp * c((std::get<0>(it) + R[i].id)->column, x);
+                R[i].value += R[i].is_negative_factor() ? -cost : cost;
+            }
 
             calculator_sort<Mode>(R.get(), R.get() + sizes.r_size, rng);
             int selected = select_variables(sizes, b[k].value);
