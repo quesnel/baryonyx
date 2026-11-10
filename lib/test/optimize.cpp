@@ -29,7 +29,6 @@
 #include <fmt/core.h>
 
 #include <fstream>
-#include <numeric>
 
 int
 main()
@@ -42,12 +41,19 @@ main()
 
         baryonyx::solver_parameters params;
         params.delta = 1e-2;
-        params.time_limit = 10.0;
+        params.time_limit = 1.0;
         params.limit = 5000;
         baryonyx::context_set_solver_parameters(ctx, params);
 
         auto result = baryonyx::optimize(ctx, pb);
         expect(result.status != baryonyx::result_status::internal_error);
+        expect((result.status == baryonyx::result_status::success) ==
+               (result.remaining_constraints == 0));
+
+        if (result.status == baryonyx::result_status::success) {
+            pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/bibd1n.lp");
+            expect(baryonyx::is_valid_solution(pb, result));
+        }
     };
 
     "test_optimize_returns_its_solution"_test = [] {
@@ -57,7 +63,7 @@ main()
               ctx, EXAMPLES_DIR "/assignment_problem_1.lp");
 
             baryonyx::solver_parameters params;
-            params.time_limit = 1.0;
+            params.time_limit = 0.5;
             params.seed = seed;
             params.thread = 4;
             baryonyx::context_set_solver_parameters(ctx, params);
@@ -76,12 +82,10 @@ main()
         auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/small4.lp");
 
         baryonyx::solver_parameters params;
-        params.time_limit = 10.0;
+        params.time_limit = 1.0;
         params.limit = 5000;
         params.theta = 0.5;
         params.delta = 0.2;
-        params.kappa_step = 10e-4;
-        params.kappa_max = 10.0;
         params.alpha = 0.0;
         params.w = 20;
         params.pushing_k_factor = 0.9;
@@ -92,24 +96,16 @@ main()
         baryonyx::context_set_solver_parameters(ctx, params);
 
         auto result = baryonyx::optimize(ctx, pb);
-        expect(result.status != baryonyx::result_status::internal_error);
+        expect((result.status == baryonyx::result_status::success) >> fatal);
 
-        if (result.status == baryonyx::result_status::success)
-            fmt::print("solution: {}\n", result.solutions.back().value);
-
-        if (result.status == baryonyx::result_status::success) {
-            pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/small4.lp");
-
-            fmt::print("solutions: {} and value {}\n",
-                       baryonyx::is_valid_solution(pb, result),
-                       baryonyx::compute_solution(pb, result) == 790.0);
-        }
+        pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/small4.lp");
+        expect(baryonyx::is_valid_solution(pb, result));
+        expect(baryonyx::compute_solution(pb, result) == 790.0);
+        expect(result.solutions.back().value == 790.0);
     };
 
     "test_n_queens_problem"_test = [] {
         auto ctx = baryonyx::make_context(4);
-        std::vector<bool> valid_solutions(30, false);
-        std::vector<double> solutions(30, 0.0);
         std::vector<double> cplex_solutions(30, 0.0);
 
         {
@@ -132,56 +128,47 @@ main()
         }
 
         baryonyx::solver_parameters params;
-        params.time_limit = 10.0;
+        params.time_limit = 0.5;
         params.limit = 5000;
         params.theta = 0.5;
         params.delta = 1.0;
-        params.kappa_min = 0.30;
-        params.kappa_step = 1e-2;
-        params.kappa_max = 100.0;
         params.alpha = 1.0;
         params.w = 60;
         params.pushing_k_factor = 0.9;
         params.pushes_limit = 50;
         params.pushing_objective_amplifier = 10;
         params.pushing_iteration_limit = 10;
+        params.thread = 2;
         params.order =
           baryonyx::solver_parameters::constraint_order::random_sorting;
         baryonyx::context_set_solver_parameters(ctx, params);
 
-        for (std::size_t i{ 0 }; i != valid_solutions.size(); ++i) {
+        double total_gap = 0.0;
+
+        for (std::size_t i{ 0 }; i != cplex_solutions.size(); ++i) {
             std::string filepath{ EXAMPLES_DIR "/n-queens/n-queens-problem-" };
             filepath += std::to_string(i);
             filepath += ".lp";
 
             auto pb = baryonyx::make_problem(ctx, filepath);
             auto result = baryonyx::optimize(ctx, pb);
+            expect((result.status == baryonyx::result_status::success) >>
+                   fatal)
+              << filepath;
 
-            valid_solutions[i] = (result.remaining_constraints == 0);
-            if (valid_solutions[i])
-                solutions[i] = result.solutions.back().value;
+            pb = baryonyx::make_problem(ctx, filepath);
+            const auto value = result.solutions.back().value;
+            expect(baryonyx::is_valid_solution(pb, result)) << filepath;
+            expect(baryonyx::compute_solution(pb, result) == value)
+              << filepath;
+            expect(value >= cplex_solutions[i]) << filepath;
+
+            total_gap += (value - cplex_solutions[i]) / cplex_solutions[i];
         }
 
-        auto all_found = std::accumulate(
-          valid_solutions.cbegin(),
-          valid_solutions.cend(),
-          static_cast<std::size_t>(0),
-          [](std::size_t cumul, const auto& elem) -> std::size_t {
-              return elem ? cumul + 1 : cumul;
-          });
-
-        double mean_distance{ 0 };
-
-        for (std::size_t i{ 0 }, e{ solutions.size() }; i != e; ++i) {
-            double distance =
-              ((cplex_solutions[i] - solutions[i]) / cplex_solutions[i]) *
-              100.0;
-
-            mean_distance += distance;
-        }
-
-        fmt::print("mean-distance: {} - all-found: {}\n",
-                   mean_distance,
-                   all_found == valid_solutions.size());
+        const auto mean_gap =
+          100.0 * total_gap / static_cast<double>(cplex_solutions.size());
+        fmt::print("n-queens mean gap to CPLEX: {:.2f}%\n", mean_gap);
+        expect(mean_gap <= 1.0);
     };
 }
