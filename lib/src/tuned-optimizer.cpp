@@ -146,7 +146,7 @@ optimize(const bx::context& ctx, const bx::problem& pb)
     double budget = ctx.parameters.time_limit;
     if (!std::isfinite(budget) || budget <= 0.0) {
         bx::warning(ctx,
-                    "  - auto-tune (manual) needs a time limit: {}s used.\n",
+                    "  - tuned optimizer needs a time limit: {}s used.\n",
                     default_budget);
         budget = default_budget;
     }
@@ -169,9 +169,16 @@ optimize(const bx::context& ctx, const bx::problem& pb)
         ? static_cast<bx::xoshiro256pp::result_type>(ctx.parameters.seed)
         : 1u);
 
+    // The requested settings run with both optimizers, never with the tuned
+    // one, which would recurse.
     std::vector<candidate> pool;
     pool.reserve(static_cast<std::size_t>(candidates));
-    pool.push_back({ ctx.parameters, {} });
+    using optimizer_type = bx::solver_parameters::optimizer_type;
+    for (const auto optimizer :
+         { optimizer_type::genetic, optimizer_type::restart }) {
+        pool.push_back({ ctx.parameters, {} });
+        pool.back().parameters.optimizer = optimizer;
+    }
     while (bx::length(pool) != candidates)
         pool.push_back({ random_parameters(ctx.parameters, rng), {} });
 
@@ -203,7 +210,7 @@ optimize(const bx::context& ctx, const bx::problem& pb)
           });
 
         bx::notice(ctx,
-                   "  - auto-tune (manual) round {}: {} candidates, {:.3g}s "
+                   "  - tuned optimizer round {}: {} candidates, {:.3g}s "
                    "each, best {} with {}\n",
                    round + 1,
                    pool.size(),
@@ -238,9 +245,9 @@ namespace baryonyx {
 namespace itm {
 
 result
-manual_optimize(const baryonyx::context& ctx, const baryonyx::problem& pb)
+tuned_optimize(const baryonyx::context& ctx, const baryonyx::problem& pb)
 {
-    baryonyx::notice(ctx, "- auto-tune parameters (manual) starts\n");
+    baryonyx::notice(ctx, "- tuned optimizer starts\n");
     return ::optimize(ctx, pb);
 }
 

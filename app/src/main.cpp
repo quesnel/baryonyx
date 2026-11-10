@@ -79,6 +79,21 @@ local_time_now() noexcept
     return tm;
 }
 
+static constexpr std::string_view
+to_string(baryonyx::solver_parameters::optimizer_type type) noexcept
+{
+    switch (type) {
+    case baryonyx::solver_parameters::optimizer_type::genetic:
+        return "genetic";
+    case baryonyx::solver_parameters::optimizer_type::restart:
+        return "restart";
+    case baryonyx::solver_parameters::optimizer_type::tuned:
+        return "tuned";
+    }
+
+    return "unknown";
+}
+
 static void
 solver_started_cb(const baryonyx::solver_parameters& params)
 {
@@ -96,10 +111,7 @@ solver_started_cb(const baryonyx::solver_parameters& params)
                params.print_level,
                params.mode,
                params.observer,
-               params.optimizer ==
-                   baryonyx::solver_parameters::optimizer_type::restart
-                 ? "restart"
-                 : "genetic");
+               to_string(params.optimizer));
 
     fmt::print(" * In The Middle parameters:\n"
                "  - preprocessing: {}\n"
@@ -338,7 +350,8 @@ help() noexcept
       "  --disable-preprocessing|-np   Disable preprocessing\n"
       "  --optimize|-O                 Optimize model (default "
       "feasibility search only)\n"
-      "  --auto:[manual,nlopt]|-a      Automatic parameters optimization\n"
+      "  --auto:[nlopt,branch,branch-nlopt]|-a\n"
+      "                                Automatic parameters optimization\n"
       "  --check filename.sol          Check if the solution is correct.\n"
       "\n"
       "  --quiet                       Remove any verbose message\n"
@@ -355,7 +368,7 @@ help() noexcept
       "  - storage-type: one bound five\n"
       "  - print-level: [0, 2]\n"
       "  - buffer-solver: 0 (default) or 1 (experimental -1 0 1 solver)\n"
-      "  - optimizer: genetic (default) or restart\n"
+      "  - optimizer: genetic (default), restart or tuned\n"
       "  - optimizer-warm-start: 0 (default) or 1 (keep pi and P between "
       "optimizer restarts)\n"
       " * In The Middle parameters\n"
@@ -863,6 +876,9 @@ assign_parameter(baryonyx::solver_parameters& params,
         else if (value == "restart")
             params.optimizer =
               baryonyx::solver_parameters::optimizer_type::restart;
+        else if (value == "tuned")
+            params.optimizer =
+              baryonyx::solver_parameters::optimizer_type::tuned;
         else
             return command_line_status::optimizer_error;
 
@@ -945,26 +961,20 @@ parse(int argc, const char* argv[])
         }
 
         if (auto opt = get(i, "--auto", "-a"); opt) {
-            if (*opt == "manual")
-                ret.parameters.mode =
-                  baryonyx::solver_parameters::mode_type::manual;
-            else if (*opt == "nlopt")
+            if (*opt == "nlopt")
                 ret.parameters.mode =
                   baryonyx::solver_parameters::mode_type::nlopt;
             else if (*opt == "branch")
                 ret.parameters.mode =
                   baryonyx::solver_parameters::mode_type::branch;
-            else if (*opt == "branch-manual")
-                ret.parameters.mode =
-                  baryonyx::solver_parameters::mode_type::manual |
-                  baryonyx::solver_parameters::mode_type::branch;
             else if (*opt == "branch-nlopt")
                 ret.parameters.mode =
                   baryonyx::solver_parameters::mode_type::nlopt |
                   baryonyx::solver_parameters::mode_type::branch;
-            else
-                ret.parameters.mode =
-                  baryonyx::solver_parameters::mode_type::none;
+            else {
+                ret.parse_status = command_line_status::unknown_option;
+                return ret;
+            }
 
             i = get.i;
             continue;

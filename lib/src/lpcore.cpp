@@ -115,13 +115,6 @@ optimize(const baryonyx::context_ptr& ctx, const raw_problem& rawpb)
                      ? itm::nlopt_optimize(*ctx, preprocess(*ctx, rawpb))
                      : itm::nlopt_optimize(*ctx, unpreprocess(*ctx, rawpb));
 
-        if ((ctx->parameters.mode & solver_parameters::mode_type::manual) ==
-            solver_parameters::mode_type::manual)
-            return (ctx->parameters.preprocessor ==
-                    solver_parameters::preprocessor_options::all)
-                     ? itm::manual_optimize(*ctx, preprocess(*ctx, rawpb))
-                     : itm::manual_optimize(*ctx, unpreprocess(*ctx, rawpb));
-
         return (ctx->parameters.preprocessor ==
                 solver_parameters::preprocessor_options::all)
                  ? itm::optimize(*ctx, preprocess(*ctx, rawpb))

@@ -136,7 +136,7 @@ main()
         }
     };
 
-    "test_manual_tuning"_test = [] {
+    "test_tuned_optimizer"_test = [] {
         // The tuner runs within the time limit and returns its best result,
         // with the sign of the objective of the problem.
         constexpr std::pair<const char*, double> cases[] = {
@@ -160,7 +160,8 @@ main()
             params.time_limit = 1.0;
             params.seed = 1;
             params.thread = 2;
-            params.mode = baryonyx::solver_parameters::mode_type::manual;
+            params.optimizer =
+              baryonyx::solver_parameters::optimizer_type::tuned;
             baryonyx::context_set_solver_parameters(ctx, params);
 
             const auto start = std::chrono::steady_clock::now();

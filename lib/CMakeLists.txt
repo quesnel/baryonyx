@@ -31,7 +31,6 @@ set(private_baryonyx_source
  src/itm-solver-inequalities-101.cpp
  src/itm-solver-inequalities-Z.cpp
  src/lpcore.cpp
- src/manual-optimizer.cpp
  src/memory.cpp
  src/memory.hpp
  src/merged-constraint.cpp
@@ -51,6 +50,7 @@ set(private_baryonyx_source
  src/result.hpp
  src/resume.hpp
  src/sparse-matrix.hpp
+ src/tuned-optimizer.cpp
  src/utils.hpp)
 
 add_library(libbaryonyx ${public_baryonyx_header} ${private_baryonyx_source})

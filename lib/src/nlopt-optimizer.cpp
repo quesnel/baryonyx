@@ -140,10 +140,10 @@ optimize(const baryonyx::context& ctx, const baryonyx::problem& pb)
         return baryonyx::itm::optimize(internal, pb);
     } else {
         baryonyx::notice(ctx,
-                         "  - nlopt optimization fail. Toggle to manual "
-                         "parameters optimization.\n");
+                         "  - nlopt optimization fail. Toggle to the tuned "
+                         "optimizer.\n");
 
-        return baryonyx::itm::manual_optimize(ctx, pb);
+        return baryonyx::itm::tuned_optimize(ctx, pb);
     }
 }
 #endif
@@ -166,10 +166,10 @@ nlopt_optimize(const context& ctx, const problem& pb)
     notice(ctx, "- auto-tune parameters (nlopt) starts\n");
 
     error(ctx,
-          "  Baryonyx does not have nlopt. Toggle to manual parameters "
-          "optimization.\n");
+          "  Baryonyx does not have nlopt. Toggle to the tuned "
+          "optimizer.\n");
 
-    return manual_optimize(ctx, pb);
+    return tuned_optimize(ctx, pb);
 }
 #endif
 

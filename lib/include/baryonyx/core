@@ -372,7 +372,6 @@ struct BX_EXPORT solver_parameters
     enum class mode_type : unsigned
     {
         none = 0,
-        manual = 1,
         nlopt = 2,
         branch = 4
     };
@@ -408,7 +407,8 @@ struct BX_EXPORT solver_parameters
     enum class optimizer_type
     {
         genetic, ///< Population with crossovers and mutations.
-        restart  ///< Independent restarts adapting the kappa step.
+        restart, ///< Independent restarts adapting the kappa step.
+        tuned    ///< Successive halving over genetic and restart settings.
     };
 
     double time_limit{ -1 }; ///< value <= 0 means infinity time.

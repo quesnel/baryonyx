@@ -120,9 +120,20 @@ solve(const context& ctx, const problem& pb)
  * @return A representation of the result.
  * @throw @c baryonyx::solver_error
  */
+/**
+ * Optimizes with the genetic and restart optimizers tuned by successive
+ * halving (`optimizer=tuned`): half of the time limit compares candidate
+ * settings, the rest runs the best one.
+ */
+result
+tuned_optimize(const context& ctx, const problem& pb);
+
 inline result
 optimize(const context& ctx, const problem& pb)
 {
+    if (ctx.parameters.optimizer == solver_parameters::optimizer_type::tuned)
+        return tuned_optimize(ctx, pb);
+
     if (ctx.parameters.use_buffer_solver) {
         switch (pb.problem_type) {
         case problem_solver_type::equalities_01:
@@ -160,21 +171,6 @@ optimize(const context& ctx, const problem& pb)
 }
 
 /**
- * @brief auto-tune solver parameters to optimize the problem.
- *
- * @details The solver parameters are manually tuned to perform optimization
- *     and to found the best parameters to found the best solution.
- *
- * @param ctx A context.
- * @param pb Problem definition.
- * @return A representation of the result.
- *
- * @throw @c baryonyx::solver_error
- */
-result
-manual_optimize(const context& ctx, const problem& pb);
-
-/**
  * @brief auto-tune solver parameters to optimize the problem using nlopt.
  *
  * @details The solver parameters are tuned to perform optimization and to
@@ -182,7 +178,7 @@ manual_optimize(const context& ctx, const problem& pb);
  * use the @c nlopt library to search best parameters.
  *
  * @note Available if baryonyx is build with nlopt support otherwise, this
- *     function rely to @c manual_optimize.
+ *     function rely to @c tuned_optimize.
  *
  * @param ctx A context.
  * @param pb Problem definition.
@@ -199,7 +195,7 @@ nlopt_optimize(const context& ctx, const problem& pb);
  * @details This optimization function tries to found variable with many
  *     changes during an @c update_row and split the problem in two distinct
  *     problem: variable affected to 0, variable affected to 1. Internally,
- * the problem can use @c optimize, @c manual_optimize or @c nlopt_optimize.
+ * the problem can use @c optimize or @c nlopt_optimize.
  *
  * @param ctx A context.
  * @param pb Problem definition.
