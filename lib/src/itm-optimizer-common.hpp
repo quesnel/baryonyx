@@ -636,7 +636,7 @@ struct optimize_functor
                   compute.push_and_run(slv,
                                        x,
                                        m_local_ctx.rng,
-                                       pushing_k_factor,
+                                       pushing_k_factor * kappa,
                                        delta,
                                        theta,
                                        pushing_objective_amplifier);
