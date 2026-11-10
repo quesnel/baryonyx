@@ -589,6 +589,8 @@ struct optimize_functor
 
         compute_order compute(p.order, variables);
         bool is_a_solution = false;
+        int previous_remaining = INT_MAX;
+        int last_remaining = INT_MAX;
 
         while (not stop_task.load()) {
             std::atomic_ref<long int>(m_call_number)
@@ -597,7 +599,14 @@ struct optimize_functor
               m_local_ctx, is_a_solution, kappa_min, kappa_max, x));
             auto kappa = kappa_start;
 
-            if (!p.optimizer_warm_start)
+            // A restart keeps pi and P while the previous runs keep reducing
+            // the violated constraints: hard instances need more loops than
+            // one run to converge, while a fresh start explores elsewhere
+            // once a run succeeds or stalls.
+            const bool progress =
+              !is_a_solution && last_remaining < previous_remaining;
+
+            if (!p.optimizer_warm_start && !progress)
                 slv.reset();
 
             compute.init(slv, x);
@@ -629,6 +638,9 @@ struct optimize_functor
                 if (kappa > kappa_max)
                     break;
             }
+
+            previous_remaining = last_remaining;
+            last_remaining = remaining;
 
             if (remaining > 0) {
                 if (remaining != INT_MAX)
