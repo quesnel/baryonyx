@@ -188,9 +188,14 @@ main()
         const char* filename = "baryonyx-io-test.sol";
         const auto read = [&](const char* content) {
             std::ofstream(filename) << content;
-            auto r = baryonyx::make_result(ctx, filename);
-            std::remove(filename);
-            return r;
+            try {
+                auto r = baryonyx::make_result(ctx, filename);
+                std::remove(filename);
+                return r;
+            } catch (...) {
+                std::remove(filename);
+                throw;
+            }
         };
 
         // Written by baryonyx when no solution was found.
@@ -207,6 +212,37 @@ main()
         expect(!!other);
         expect(!baryonyx::is_valid_solution(pb, other));
         expect(std::isnan(baryonyx::compute_solution(pb, other)));
+
+        // Blank lines, spaces around names and values and Windows line ends
+        // are accepted.
+        const auto loose = read("\\ comment\n\n  a = 1 \r\n\tb=0\n");
+        expect((!!loose) >> fatal);
+        expect(loose.variable_name.size() == 2u);
+        expect(loose.variable_name[0] == "a");
+        expect(loose.variable_name[1] == "b");
+        expect(loose.solutions.back().variables[0] == 1);
+        expect(loose.solutions.back().variables[1] == 0);
+
+        // Values other than 0 or 1, missing names, duplicated variables and
+        // files without assignment are rejected with their line.
+        const auto failure_line = [&](const char* content) {
+            try {
+                read(content);
+            } catch (const baryonyx::file_format_failure& e) {
+                return e.line();
+            }
+            return -1;
+        };
+
+        expect(failure_line("a=1\nb=\n") == 2);
+        expect(failure_line("a=7\n") == 1);
+        expect(failure_line("a=-1\n") == 1);
+        expect(failure_line("a=1abc\n") == 1);
+        expect(failure_line("=1\n") == 1);
+        expect(failure_line("a\n") == 1);
+        expect(failure_line("\\ c\na=1\na=0\n") == 3);
+        expect(failure_line("") == 0);
+        expect(failure_line("\\ only a comment\n") == 1);
     };
 
     "named objective"_test = [] {

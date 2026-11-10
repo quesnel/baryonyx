@@ -22,14 +22,17 @@
 
 #include "result.hpp"
 #include "private.hpp"
+#include "utils.hpp"
 
 #include <baryonyx/core-utils>
 
+#include <charconv>
 #include <fstream>
-#include <optional>
 #include <string>
-
-#include <cctype>
+#include <string_view>
+#include <system_error>
+#include <unordered_set>
+#include <vector>
 
 namespace baryonyx {
 
@@ -50,99 +53,87 @@ make_result(const baryonyx::context_ptr& ctx, const std::string& filename)
     return result{ result_status::empty_context };
 }
 
-/**
- * @brief Convert a string_view into a integer.
- *
- * @note waiting for std::fron_chars or boost::qi dependencies
- */
-constexpr inline std::optional<int>
-to_int(std::string_view s) noexcept
+namespace {
+
+[[noreturn]] void
+fail(file_format_error_tag tag, int line, std::string_view text)
 {
-    constexpr std::size_t size_limit = 512;
-
-    if (s.size() > size_limit)
-        return std::nullopt;
-
-    char buffer[size_limit + 1] = { '\0' };
-    std::size_t i = 0;
-    std::size_t e = std::min(s.size(), size_limit);
-
-    for (i = 0; i != e; ++i)
-        buffer[i] = s[i];
-
-    int result = 0;
-    if (auto read = std::sscanf(buffer, "%d", &result); read)
-        return result;
-    else
-        return std::nullopt;
+    throw file_format_failure(std::string(text), tag, line, 0);
 }
+
+} // namespace
 
 std::istream&
 operator>>(std::istream& is, result& ret)
 {
+    ret = result{};
     ret.strings = std::make_shared<baryonyx::string_buffer>();
-
     ret.status = result_status::success;
-    ret.solutions.emplace_back();
-    int line{ 0 };
 
-    std::string buffer;
-    while (is.good()) {
-        std::getline(is, buffer);
+    std::unordered_set<std::string_view> names;
+    std::vector<std::int8_t> values;
+    bool no_solution = false;
+    int line = 0;
 
-        if (buffer.empty() && is.eof())
-            return is;
+    for (std::string buffer; std::getline(is, buffer);) {
+        ++line;
 
-        std::string::size_type i{ 0 };
-        std::string::size_type e{ buffer.size() };
+        const auto text = trim(buffer);
+        if (text.empty())
+            continue;
 
-        for (; i != e; ++i)
-            if (!std::isspace(buffer[i]))
-                break;
-
-        if (i != e && buffer[i] == '\\') {
+        if (text.front() == '\\') {
             // Written in place of the assignments when no solution was found.
-            if (buffer.find("Solution not found", i) != std::string::npos) {
-                ret.status = result_status::time_limit_reached;
-                ret.solutions.clear();
-            }
+            if (text.find("Solution not found") != std::string_view::npos)
+                no_solution = true;
             continue;
         }
 
-        auto found = buffer.find('=', 0);
-        if (found == std::string::npos)
-            throw file_format_failure(
-              file_format_error_tag::bad_name, line, 0);
+        const auto equal = text.find('=');
+        if (equal == std::string_view::npos)
+            fail(file_format_error_tag::bad_value, line, text);
 
-        std::string_view left(buffer.data(), found);
-        std::string_view right(buffer.data() + found + 1,
-                               buffer.size() - found);
+        const auto name = trim(text.substr(0, equal));
+        const auto value = trim(text.substr(equal + 1));
 
-        if (auto value = to_int(right); value.has_value()) {
-            if (ret.solutions.empty())
-                ret.solutions.emplace_back();
+        if (name.empty())
+            fail(file_format_error_tag::bad_name, line, text);
 
-            ret.variable_name.emplace_back(ret.strings->append(left));
-            ret.solutions.back().variables.emplace_back(!!(*value));
-        } else {
-            throw file_format_failure(
-              file_format_error_tag::bad_name, line, 0);
-        }
-        ++line;
+        int number = -1;
+        const auto [end, ec] =
+          std::from_chars(value.data(), value.data() + value.size(), number);
+        if (ec != std::errc{} || end != value.data() + value.size() ||
+            (number != 0 && number != 1))
+            fail(file_format_error_tag::bad_value, line, text);
+
+        const auto stored = ret.strings->append(name);
+        if (!names.insert(stored).second)
+            fail(file_format_error_tag::bad_name, line, text);
+
+        ret.variable_name.emplace_back(stored);
+        values.emplace_back(static_cast<std::int8_t>(number));
     }
 
+    if (is.bad())
+        fail(file_format_error_tag::bad_end_of_file, line, "read error");
+
+    if (no_solution) {
+        if (!values.empty())
+            fail(file_format_error_tag::bad_end_of_file,
+                 line,
+                 "assignments in a file without solution");
+
+        ret.variable_name.clear();
+        ret.status = result_status::time_limit_reached;
+        return is;
+    }
+
+    // An empty or truncated file, for example when the run was killed.
+    if (values.empty())
+        fail(file_format_error_tag::bad_end_of_file, line, "no assignment");
+
+    ret.solutions.emplace_back(std::move(values), 0.0);
+
     return is;
-}
-
-inline std::ostream&
-operator<<(std::ostream& os, const best_solution_writer& writer)
-{
-    std::size_t i = 0, e = writer.res.variable_name.size();
-
-    for (; i != e; ++i)
-        os << writer.res.variable_name[i] << ": "
-           << (writer.res.solutions.back().variables[i] ? 1 : 0) << '\n';
-
-    return os;
 }
 }

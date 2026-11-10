@@ -1244,6 +1244,13 @@ check_solution(const baryonyx::context_ptr& ctx,
                    baryonyx::compute_solution(pb, result));
 
         return valid;
+    } catch (const baryonyx::file_format_failure& e) {
+        fmt::print(stderr,
+                   "check failure: {} at line {}: `{}'\n",
+                   e.failure(),
+                   e.line(),
+                   e.element());
+        return false;
     } catch (const std::exception& e) {
         fmt::print(stderr, "check failure: {}\n", e.what());
         return false;

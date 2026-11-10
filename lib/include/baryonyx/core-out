@@ -78,6 +78,9 @@ struct fmt::formatter<baryonyx::file_format_error_tag>
         case baryonyx::file_format_error_tag::bad_name:
             name = "bad_name";
             break;
+        case baryonyx::file_format_error_tag::bad_value:
+            name = "bad_value";
+            break;
         case baryonyx::file_format_error_tag::empty_context:
             name = "empty_context";
             break;

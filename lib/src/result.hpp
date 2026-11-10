@@ -163,21 +163,16 @@ convert(const raw_result<Mode>& source, solution& sol, int variables)
         sol.variables[i] = static_cast<std::int8_t>(source.x[i]);
 }
 
+/**
+ * Reads a solution file: `name=value` lines with a 0 or 1 value, blank lines
+ * and `\\` comments. The comment `Solution not found` written by baryonyx
+ * gives a result without solution.
+ *
+ * @throw @c baryonyx::file_format_failure with the 1-based line number for a
+ *     malformed or duplicated assignment, or a file without assignment.
+ */
 std::istream&
 operator>>(std::istream& is, result& r);
-
-struct best_solution_writer
-{
-    const result& res;
-
-    best_solution_writer(const result& res_)
-      : res(res_)
-    {
-    }
-};
-
-std::ostream&
-operator<<(std::ostream& os, const best_solution_writer& writer);
 
 } // namespace baryonyx
 

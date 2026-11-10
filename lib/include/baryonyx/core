@@ -170,7 +170,8 @@ enum class file_format_error_tag
     bad_constraint,
     too_many_variables,
     too_many_constraints,
-    bad_name, // Mainly use when read result file and report unknown variable.
+    bad_name,  ///< Missing or duplicated variable name in a solution file.
+    bad_value, ///< Value other than 0 or 1 in a solution file.
     empty_context
 };
 
