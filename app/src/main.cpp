@@ -96,70 +96,65 @@ solver_started_cb(const baryonyx::solver_parameters& params)
                params.mode,
                params.observer);
 
-    if (params.solver == baryonyx::solver_parameters::solver_type::bastert) {
-        fmt::print(" * In The Middle parameters:\n"
-                   "  - preprocessing: {}\n"
-                   "  - constraint-order: {}\n"
-                   "  - theta: {:.10g}\n"
-                   "  - delta: {:.10g}\n"
-                   "  - kappa: {:.10g} {:.10g} {:.10g}\n"
-                   "  - alpha: {:.10g}\n"
-                   "  - w: {:.10g}\n"
-                   "  - norm: {}\n",
-                   params.pre_order,
-                   params.order,
-                   params.theta,
-                   params.delta,
-                   params.kappa_min,
-                   params.kappa_step,
-                   params.kappa_max,
-                   params.alpha,
-                   params.w,
-                   params.cost_norm);
+    fmt::print(" * In The Middle parameters:\n"
+               "  - preprocessing: {}\n"
+               "  - constraint-order: {}\n"
+               "  - theta: {:.10g}\n"
+               "  - delta: {:.10g}\n"
+               "  - kappa: {:.10g} {:.10g} {:.10g}\n"
+               "  - alpha: {:.10g}\n"
+               "  - w: {:.10g}\n"
+               "  - norm: {}\n",
+               params.pre_order,
+               params.order,
+               params.theta,
+               params.delta,
+               params.kappa_min,
+               params.kappa_step,
+               params.kappa_max,
+               params.alpha,
+               params.w,
+               params.cost_norm);
 
-        fmt::print(" * Pushes system parameters:\n"
-                   "  - pushes-limit: {}\n"
-                   "  - pushing-objective-amplifier: {:.10g}\n"
-                   "  - pushing-iteration-limit: {}\n"
-                   "  - pushing-k-factor: {:.10g}\n",
-                   params.pushes_limit,
-                   params.pushing_objective_amplifier,
-                   params.pushing_iteration_limit,
-                   params.pushing_k_factor);
+    fmt::print(" * Pushes system parameters:\n"
+               "  - pushes-limit: {}\n"
+               "  - pushing-objective-amplifier: {:.10g}\n"
+               "  - pushing-iteration-limit: {}\n"
+               "  - pushing-k-factor: {:.10g}\n",
+               params.pushes_limit,
+               params.pushing_objective_amplifier,
+               params.pushing_iteration_limit,
+               params.pushing_k_factor);
 
-        fmt::print(" * Solver initialization parameters:\n"
-                   "  - init-policy: {}\n"
-                   "  - init-policy-random: {}\n",
-                   params.init_policy,
-                   params.init_policy_random);
+    fmt::print(" * Solver initialization parameters:\n"
+               "  - init-policy: {}\n"
+               "  - init-policy-random: {}\n",
+               params.init_policy,
+               params.init_policy_random);
 
-        fmt::print(" * Optimizer initialization parameters:\n"
-                   "  - init-population-size: {}\n"
-                   "  - init-crossover-bastert-insertion: {}\n"
-                   "  - init-crossover-solution-selection-mean: {}\n"
-                   "  - init-crossover-solution-selection-stddev: {}\n"
-                   "  - init-mutation-variable-mean: {}\n"
-                   "  - init-mutation-variable-stddev: {}\n"
-                   "  - init-mutation-value-mean: {}\n"
-                   "  - init-mutation-value-stddev: {}\n"
-                   "  - init-kappa-improve-start: {}\n"
-                   "  - init-kappa-improve-increase: {}\n"
-                   "  - init-kappa-improve-stop: {}\n",
-                   params.init_population_size,
-                   params.init_crossover_bastert_insertion,
-                   params.init_crossover_solution_selection_mean,
-                   params.init_crossover_solution_selection_stddev,
-                   params.init_mutation_variable_mean,
-                   params.init_mutation_variable_stddev,
-                   params.init_mutation_value_mean,
-                   params.init_mutation_value_stddev,
-                   params.init_kappa_improve_start,
-                   params.init_kappa_improve_increase,
-                   params.init_kappa_improve_stop);
-    } else {
-        fmt::print(" * Random solvers:\n"
-                   "  - random: bernouilli with p=0.5\n");
-    }
+    fmt::print(" * Optimizer initialization parameters:\n"
+               "  - init-population-size: {}\n"
+               "  - init-crossover-bastert-insertion: {}\n"
+               "  - init-crossover-solution-selection-mean: {}\n"
+               "  - init-crossover-solution-selection-stddev: {}\n"
+               "  - init-mutation-variable-mean: {}\n"
+               "  - init-mutation-variable-stddev: {}\n"
+               "  - init-mutation-value-mean: {}\n"
+               "  - init-mutation-value-stddev: {}\n"
+               "  - init-kappa-improve-start: {}\n"
+               "  - init-kappa-improve-increase: {}\n"
+               "  - init-kappa-improve-stop: {}\n",
+               params.init_population_size,
+               params.init_crossover_bastert_insertion,
+               params.init_crossover_solution_selection_mean,
+               params.init_crossover_solution_selection_stddev,
+               params.init_mutation_variable_mean,
+               params.init_mutation_variable_stddev,
+               params.init_mutation_value_mean,
+               params.init_mutation_value_stddev,
+               params.init_kappa_improve_start,
+               params.init_kappa_improve_increase,
+               params.init_kappa_improve_stop);
 }
 
 static void
@@ -339,9 +334,7 @@ help() noexcept
       "  --optimize|-O                 Optimize model (default "
       "feasibility search only)\n"
       "  --auto:[manual,nlopt]|-a      Automatic parameters optimization\n"
-      "  --check filename.sol          Check if the solution is correct."
-      "  --random                      Use the random solver instead of "
-      "bastert and wedelin\n"
+      "  --check filename.sol          Check if the solution is correct.\n"
       "\n"
       "  --quiet                       Remove any verbose message\n"
       "  --verbose|-v int              Set verbose level\n"
@@ -991,12 +984,6 @@ parse(int argc, const char* argv[])
             }
 
             i = get.i;
-            continue;
-        }
-
-        if (arg == "--random") {
-            ret.parameters.solver =
-              baryonyx::solver_parameters::solver_type::random;
             continue;
         }
 

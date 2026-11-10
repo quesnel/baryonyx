@@ -46,7 +46,6 @@ set(private_baryonyx_source
  src/problem.hpp
  src/random-distributions.hpp
  src/random-engine.hpp
- src/random-solver.cpp
  src/result.cpp
  src/result.hpp
  src/resume.hpp

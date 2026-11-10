@@ -65,30 +65,6 @@ solve_inequalities_101_buffered(const context& ctx, const problem& pb);
 result
 optimize_inequalities_101_buffered(const context& ctx, const problem& pb);
 
-result
-solve_random_inequalities_101(const context& ctx, const problem& pb);
-
-result
-optimize_random_inequalities_101(const context& ctx, const problem& pb);
-
-result
-solve_random_equalities_101(const context& ctx, const problem& pb);
-
-result
-optimize_random_equalities_101(const context& ctx, const problem& pb);
-
-result
-solve_random_inequalities_01(const context& ctx, const problem& pb);
-
-result
-optimize_random_inequalities_01(const context& ctx, const problem& pb);
-
-result
-solve_random_equalities_01(const context& ctx, const problem& pb);
-
-result
-optimize_random_equalities_01(const context& ctx, const problem& pb);
-
 /**
  * @brief Select the correct solver and solve the problem.
  *
@@ -100,61 +76,37 @@ optimize_random_equalities_01(const context& ctx, const problem& pb);
 inline result
 solve(const context& ctx, const problem& pb)
 {
-    if (ctx.parameters.solver == solver_parameters::solver_type::bastert) {
-        if (ctx.parameters.use_buffer_solver) {
-            switch (pb.problem_type) {
-            case problem_solver_type::equalities_01:
-            case problem_solver_type::equalities_101:
-            case problem_solver_type::inequalities_01:
-            case problem_solver_type::inequalities_101:
-                return solve_inequalities_101_buffered(ctx, pb);
-
-            default:
-                break;
-            }
-        }
-
+    if (ctx.parameters.use_buffer_solver) {
         switch (pb.problem_type) {
         case problem_solver_type::equalities_01:
-            return solve_equalities_01(ctx, pb);
-
         case problem_solver_type::equalities_101:
-            return solve_equalities_101(ctx, pb);
-
-        case problem_solver_type::equalities_Z:
-            return solve_inequalities_Z(ctx, pb);
-
         case problem_solver_type::inequalities_01:
-            return solve_inequalities_01(ctx, pb);
-
         case problem_solver_type::inequalities_101:
-            return solve_inequalities_101(ctx, pb);
+            return solve_inequalities_101_buffered(ctx, pb);
 
-        case problem_solver_type::inequalities_Z:
-            return solve_inequalities_Z(ctx, pb);
+        default:
+            break;
         }
-    } else {
-        switch (pb.problem_type) {
-        case problem_solver_type::equalities_01:
-            return optimize_random_equalities_01(ctx, pb);
+    }
 
-        case problem_solver_type::equalities_101:
-            return optimize_random_equalities_101(ctx, pb);
+    switch (pb.problem_type) {
+    case problem_solver_type::equalities_01:
+        return solve_equalities_01(ctx, pb);
 
-        case problem_solver_type::equalities_Z:
-            return result(result_status::internal_error);
+    case problem_solver_type::equalities_101:
+        return solve_equalities_101(ctx, pb);
 
-        case problem_solver_type::inequalities_01:
-            return optimize_random_inequalities_01(ctx, pb);
+    case problem_solver_type::equalities_Z:
+        return solve_inequalities_Z(ctx, pb);
 
-        case problem_solver_type::inequalities_101:
-            return optimize_random_inequalities_101(ctx, pb);
+    case problem_solver_type::inequalities_01:
+        return solve_inequalities_01(ctx, pb);
 
-        case problem_solver_type::inequalities_Z:
-            return result(result_status::internal_error);
-        }
+    case problem_solver_type::inequalities_101:
+        return solve_inequalities_101(ctx, pb);
 
-        return result(result_status::internal_error);
+    case problem_solver_type::inequalities_Z:
+        return solve_inequalities_Z(ctx, pb);
     }
 
     return result(result_status::internal_error);
@@ -171,59 +123,37 @@ solve(const context& ctx, const problem& pb)
 inline result
 optimize(const context& ctx, const problem& pb)
 {
-    if (ctx.parameters.solver == solver_parameters::solver_type::bastert) {
-        if (ctx.parameters.use_buffer_solver) {
-            switch (pb.problem_type) {
-            case problem_solver_type::equalities_01:
-            case problem_solver_type::equalities_101:
-            case problem_solver_type::inequalities_01:
-            case problem_solver_type::inequalities_101:
-                return optimize_inequalities_101_buffered(ctx, pb);
-
-            default:
-                break;
-            }
-        }
-
+    if (ctx.parameters.use_buffer_solver) {
         switch (pb.problem_type) {
         case problem_solver_type::equalities_01:
-            return optimize_equalities_01(ctx, pb);
-
         case problem_solver_type::equalities_101:
-            return optimize_equalities_101(ctx, pb);
-
-        case problem_solver_type::equalities_Z:
-            return optimize_inequalities_Z(ctx, pb);
-
         case problem_solver_type::inequalities_01:
-            return optimize_inequalities_01(ctx, pb);
-
         case problem_solver_type::inequalities_101:
-            return optimize_inequalities_101(ctx, pb);
+            return optimize_inequalities_101_buffered(ctx, pb);
 
-        case problem_solver_type::inequalities_Z:
-            return optimize_inequalities_Z(ctx, pb);
+        default:
+            break;
         }
-    } else {
-        switch (pb.problem_type) {
-        case problem_solver_type::equalities_01:
-            return optimize_random_equalities_01(ctx, pb);
+    }
 
-        case problem_solver_type::equalities_101:
-            return optimize_random_equalities_101(ctx, pb);
+    switch (pb.problem_type) {
+    case problem_solver_type::equalities_01:
+        return optimize_equalities_01(ctx, pb);
 
-        case problem_solver_type::equalities_Z:
-            return result(result_status::internal_error);
+    case problem_solver_type::equalities_101:
+        return optimize_equalities_101(ctx, pb);
 
-        case problem_solver_type::inequalities_01:
-            return optimize_random_inequalities_01(ctx, pb);
+    case problem_solver_type::equalities_Z:
+        return optimize_inequalities_Z(ctx, pb);
 
-        case problem_solver_type::inequalities_101:
-            return optimize_random_inequalities_101(ctx, pb);
+    case problem_solver_type::inequalities_01:
+        return optimize_inequalities_01(ctx, pb);
 
-        case problem_solver_type::inequalities_Z:
-            return result(result_status::internal_error);
-        }
+    case problem_solver_type::inequalities_101:
+        return optimize_inequalities_101(ctx, pb);
+
+    case problem_solver_type::inequalities_Z:
+        return optimize_inequalities_Z(ctx, pb);
     }
 
     return result(result_status::internal_error);

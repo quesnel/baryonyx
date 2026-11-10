@@ -155,7 +155,6 @@ context_set_solver_parameters(const context_ptr& ctx,
     ctx->parameters.preprocessor = params.preprocessor;
     ctx->parameters.observer = params.observer;
     ctx->parameters.storage = params.storage;
-    ctx->parameters.solver = params.solver;
     ctx->parameters.use_buffer_solver = params.use_buffer_solver;
     ctx->parameters.optimizer_warm_start = params.optimizer_warm_start;
     ctx->parameters.debug = params.debug;
