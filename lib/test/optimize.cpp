@@ -136,14 +136,26 @@ main()
         }
     };
 
-    "test_tuned_optimizer"_test = [] {
-        // The tuner runs within the time limit and returns its best result,
-        // with the sign of the objective of the problem.
-        constexpr std::pair<const char*, double> cases[] = {
-            { "minimize", 15.0 }, { "maximize", -15.0 }
+    "test_tuned_and_lns_optimizers"_test = [] {
+        // Both run within the time limit and return their best result, with
+        // the sign of the objective of the problem.
+        using optimizer_type = baryonyx::solver_parameters::optimizer_type;
+
+        struct test_case
+        {
+            optimizer_type optimizer;
+            const char* sense;
+            double expected;
         };
 
-        for (const auto& [sense, expected] : cases) {
+        constexpr test_case cases[] = {
+            { optimizer_type::tuned, "minimize", 15.0 },
+            { optimizer_type::tuned, "maximize", -15.0 },
+            { optimizer_type::lns, "minimize", 15.0 },
+            { optimizer_type::lns, "maximize", -15.0 },
+        };
+
+        for (const auto& [optimizer, sense, expected] : cases) {
             auto ctx = baryonyx::make_context(0);
             auto pb = baryonyx::make_problem(
               ctx, EXAMPLES_DIR "/assignment_problem_1.lp");
@@ -160,8 +172,7 @@ main()
             params.time_limit = 1.0;
             params.seed = 1;
             params.thread = 2;
-            params.optimizer =
-              baryonyx::solver_parameters::optimizer_type::tuned;
+            params.optimizer = optimizer;
             baryonyx::context_set_solver_parameters(ctx, params);
 
             const auto start = std::chrono::steady_clock::now();

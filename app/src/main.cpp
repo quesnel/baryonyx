@@ -89,6 +89,8 @@ to_string(baryonyx::solver_parameters::optimizer_type type) noexcept
         return "restart";
     case baryonyx::solver_parameters::optimizer_type::tuned:
         return "tuned";
+    case baryonyx::solver_parameters::optimizer_type::lns:
+        return "lns";
     }
 
     return "unknown";
@@ -367,7 +369,7 @@ help() noexcept
       "  - storage-type: one bound five\n"
       "  - print-level: [0, 2]\n"
       "  - buffer-solver: 0 (default) or 1 (experimental -1 0 1 solver)\n"
-      "  - optimizer: genetic (default), restart or tuned\n"
+      "  - optimizer: genetic (default), restart, tuned or lns\n"
       "  - optimizer-warm-start: 0 (default) or 1 (keep pi and P between "
       "optimizer restarts)\n"
       " * In The Middle parameters\n"
@@ -878,6 +880,9 @@ assign_parameter(baryonyx::solver_parameters& params,
         else if (value == "tuned")
             params.optimizer =
               baryonyx::solver_parameters::optimizer_type::tuned;
+        else if (value == "lns")
+            params.optimizer =
+              baryonyx::solver_parameters::optimizer_type::lns;
         else
             return command_line_status::optimizer_error;
 

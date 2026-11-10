@@ -29,6 +29,8 @@
 #include <fmt/format.h>
 
 #include <algorithm>
+#include <span>
+#include <utility>
 
 namespace baryonyx {
 
@@ -199,6 +201,18 @@ affect(const context& ctx,
        const problem& pb,
        int variable_index,
        bool variable_value);
+
+/**
+ * Assigns all the @c assignments (variable index, value) in a single
+ * propagation, faster than successive calls to @c affect.
+ *
+ * @throw @c baryonyx::solver_failure if the assignments make a constraint
+ *     unrealisable.
+ */
+problem
+affect(const context& ctx,
+       const problem& pb,
+       std::span<const std::pair<int, bool>> assignments);
 
 /**
  * @brief Split the @c pb problem in two new problem.

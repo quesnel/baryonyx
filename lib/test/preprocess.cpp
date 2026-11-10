@@ -381,6 +381,35 @@ main()
         }
     };
 
+    "test_affect_variables"_test = [] {
+        auto ctx = baryonyx::make_context(4);
+        std::istringstream iss(d_or_e);
+        auto pb = baryonyx::make_problem(*ctx, iss);
+        expect(pb);
+
+        const auto pb_pp = baryonyx::preprocess(*ctx, pb);
+        expect((pb_pp.vars.names.size() == static_cast<size_t>(2)) >> fatal);
+
+        // A single assignment gives the same problem as the scalar affect,
+        // and assignments violating a constraint are rejected.
+        for (int variable : { 0, 1 }) {
+            for (bool value : { true, false }) {
+                const std::pair<int, bool> one[] = { { variable, value } };
+                expect(baryonyx::affect(*ctx, pb_pp, one) ==
+                       baryonyx::affect(*ctx, pb_pp, variable, value));
+            }
+        }
+
+        const std::pair<int, bool> both[] = { { 0, true }, { 1, true } };
+        expect(throws<baryonyx::solver_failure>(
+          [&] { baryonyx::affect(*ctx, pb_pp, both); }));
+
+        const std::pair<int, bool> full[] = { { 0, true }, { 1, false } };
+        const auto pb_full = baryonyx::affect(*ctx, pb_pp, full);
+        expect(pb_full.vars.names.empty());
+        expect(pb_full.affected_vars.names.size() == static_cast<size_t>(2));
+    };
+
     "test_split"_test = [] {
         auto ctx = baryonyx::make_context(4);
         std::istringstream iss(d_or_e);

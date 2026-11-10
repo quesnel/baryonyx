@@ -407,7 +407,8 @@ struct BX_EXPORT solver_parameters
     {
         genetic, ///< Population with crossovers and mutations.
         restart, ///< Independent restarts adapting the kappa step.
-        tuned    ///< Successive halving over genetic and restart settings.
+        tuned,   ///< Successive halving over genetic and restart settings.
+        lns      ///< Large neighbourhood search around the best solution.
     };
 
     double time_limit{ -1 }; ///< value <= 0 means infinity time.

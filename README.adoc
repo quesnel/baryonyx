@@ -346,6 +346,9 @@ To assign parameters to solver or optimizer algorithms, use the `-p
 * `tuned`: successive halving over random settings of the two previous
   optimizers and of the solver parameters, then the best setting runs for
   the remaining half of the time limit.
+* `lns`: large neighbourhood search. From a first restart solution, frees
+  small neighbourhoods (linked constraints or random variables) of the best
+  solution and solves the reduced problems with short runs.
 
 | init-policy (solver only)
 | string

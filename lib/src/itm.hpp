@@ -128,11 +128,22 @@ solve(const context& ctx, const problem& pb)
 result
 tuned_optimize(const context& ctx, const problem& pb);
 
+/**
+ * Optimizes by large neighbourhood search (`optimizer=lns`): from a first
+ * restart solution, frees small neighbourhoods of the best solution and
+ * solves the reduced problems.
+ */
+result
+lns_optimize(const context& ctx, const problem& pb);
+
 inline result
 optimize(const context& ctx, const problem& pb)
 {
     if (ctx.parameters.optimizer == solver_parameters::optimizer_type::tuned)
         return tuned_optimize(ctx, pb);
+
+    if (ctx.parameters.optimizer == solver_parameters::optimizer_type::lns)
+        return lns_optimize(ctx, pb);
 
     if (ctx.parameters.use_buffer_solver) {
         switch (pb.problem_type) {

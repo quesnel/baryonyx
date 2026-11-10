@@ -50,6 +50,7 @@ set(private_baryonyx_source
  src/resume.hpp
  src/sparse-matrix.hpp
  src/tuned-optimizer.cpp
+ src/lns-optimizer.cpp
  src/utils.hpp)
 
 add_library(libbaryonyx ${public_baryonyx_header} ${private_baryonyx_source})

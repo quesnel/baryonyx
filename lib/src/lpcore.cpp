@@ -137,8 +137,9 @@ compute_function(const functionT& fct, const variablesT& vars) noexcept
     return v;
 }
 
+template<typename Problem>
 static bool
-is_valid_solution_impl(const raw_problem& pb,
+is_valid_solution_impl(const Problem& pb,
                        const std::vector<std::int8_t>& variable_value)
 {
     bx_expects(!variable_value.empty());
@@ -168,8 +169,9 @@ is_valid_solution_impl(const raw_problem& pb,
     return true;
 }
 
+template<typename Problem>
 static double
-compute_solution_impl(const raw_problem& pb,
+compute_solution_impl(const Problem& pb,
                       const std::vector<std::int8_t>& variable_value)
 {
     bx_expects(!variable_value.empty());
@@ -214,6 +216,20 @@ make_variable_value(const Problem& pb, const result& r)
     }
 
     return ret;
+}
+
+bool
+is_valid_solution(const problem& pb,
+                  const std::vector<std::int8_t>& variable_value)
+{
+    return is_valid_solution_impl(pb, variable_value);
+}
+
+double
+compute_solution(const problem& pb,
+                 const std::vector<std::int8_t>& variable_value)
+{
+    return compute_solution_impl(pb, variable_value);
 }
 
 bool

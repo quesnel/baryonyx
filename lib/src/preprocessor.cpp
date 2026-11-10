@@ -28,6 +28,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <numeric>
+#include <span>
 #include <string_view>
 #include <tuple>
 #include <vector>
@@ -483,6 +484,19 @@ public:
         return make_problem();
     }
 
+    bx::problem operator()(std::span<const std::pair<int, bool>> assignments)
+    {
+        initialize();
+
+        for (const auto& [variable, value] : assignments)
+            if (!assign(variable, value))
+                unrealisable(variable);
+
+        simplify();
+
+        return make_problem();
+    }
+
     bx::problem operator()()
     {
         initialize();
@@ -743,6 +757,16 @@ affect(const context& ctx,
     ::preprocessor<problem> pp(ctx, pb);
 
     return pp(variable_index, variable_value);
+}
+
+problem
+affect(const context& ctx,
+       const problem& pb,
+       std::span<const std::pair<int, bool>> assignments)
+{
+    ::preprocessor<problem> pp(ctx, pb);
+
+    return pp(assignments);
 }
 
 problem
