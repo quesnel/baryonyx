@@ -22,6 +22,7 @@ set(private_baryonyx_source
  src/itm-common.hpp
  src/itm.hpp
  src/itm-optimizer-common.hpp
+ src/itm-restart-optimizer.hpp
  src/itm-solver-common.hpp
  src/itm-solver-equalities-01.cpp
  src/itm-solver-equalities-101.cpp

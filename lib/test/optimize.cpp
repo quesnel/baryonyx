@@ -20,6 +20,8 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+#include "problem.hpp"
+
 #include <baryonyx/core-compare>
 #include <baryonyx/core-test>
 #include <baryonyx/core>
@@ -29,11 +31,20 @@
 #include <fmt/core.h>
 
 #include <fstream>
+#include <sstream>
+#include <string>
 
 int
 main()
 {
     using namespace boost::ut;
+    using optimizer_type = baryonyx::solver_parameters::optimizer_type;
+
+    constexpr optimizer_type optimizers[] = { optimizer_type::genetic,
+                                              optimizer_type::restart };
+    const auto name = [](optimizer_type o) {
+        return o == optimizer_type::genetic ? "genetic" : "restart";
+    };
 
     "test_bibd1n"_test = [] {
         auto ctx = baryonyx::make_context(4);
@@ -56,24 +67,71 @@ main()
         }
     };
 
-    "test_optimize_returns_its_solution"_test = [] {
-        for (const int seed : { 1, 2, 3 }) {
+    "test_optimize_returns_its_solution"_test = [&] {
+        for (const auto optimizer : optimizers) {
+            for (const int seed : { 1, 2, 3 }) {
+                auto ctx = baryonyx::make_context(0);
+                auto pb = baryonyx::make_problem(
+                  ctx, EXAMPLES_DIR "/assignment_problem_1.lp");
+
+                baryonyx::solver_parameters params;
+                params.time_limit = 0.5;
+                params.seed = seed;
+                params.thread = 4;
+                params.optimizer = optimizer;
+                baryonyx::context_set_solver_parameters(ctx, params);
+
+                auto result = baryonyx::optimize(ctx, pb);
+                expect((result.status ==
+                        baryonyx::result_status::success) >>
+                       fatal)
+                  << name(optimizer);
+                expect(baryonyx::is_valid_solution(pb, result));
+                expect(baryonyx::compute_solution(pb, result) ==
+                       result.solutions.back().value);
+                expect(result.solutions.back().value == 15.0)
+                  << name(optimizer);
+            }
+        }
+    };
+
+    "test_optimize_maximization"_test = [&] {
+        const char* str_pb = "maximize\n"
+                             "-3 x1 - 8 x2 - 6 x3 - 4 x4 - 4 x5 - 2 x6 - 3 x7"
+                             " - 2 x8 - 2 x9 - 7 x10 - 10 x11 - 8 x12 - 6 x13"
+                             " - 8 x14 - 10 x15 - 5 x16\n"
+                             "subject to:\n"
+                             "x1 + x2 + x3 + x4 = 1\n"
+                             "x5 + x6 + x7 + x8 = 1\n"
+                             "x9 + x10 + x11 + x12 = 1\n"
+                             "x13 + x14 + x15 + x16 = 1\n"
+                             "x1 + x5 + x9 + x13 = 1\n"
+                             "x2 + x6 + x10 + x14 = 1\n"
+                             "x3 + x7 + x11 + x15 = 1\n"
+                             "x4 + x8 + x12 + x16 = 1\n"
+                             "binary\n"
+                             "x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14"
+                             " x15 x16\n"
+                             "end\n";
+
+        for (const auto optimizer : optimizers) {
             auto ctx = baryonyx::make_context(0);
-            auto pb = baryonyx::make_problem(
-              ctx, EXAMPLES_DIR "/assignment_problem_1.lp");
+            std::istringstream iss(str_pb);
+            auto pb = baryonyx::make_problem(*ctx, iss);
+            const auto copy = pb;
 
             baryonyx::solver_parameters params;
             params.time_limit = 0.5;
-            params.seed = seed;
-            params.thread = 4;
+            params.seed = 1;
+            params.thread = 2;
+            params.optimizer = optimizer;
             baryonyx::context_set_solver_parameters(ctx, params);
 
             auto result = baryonyx::optimize(ctx, pb);
             expect((result.status == baryonyx::result_status::success) >>
                    fatal);
-            expect(baryonyx::is_valid_solution(pb, result));
-            expect(baryonyx::compute_solution(pb, result) ==
-                   result.solutions.back().value);
+            expect(baryonyx::is_valid_solution(copy, result));
+            expect(result.solutions.back().value == -15.0) << name(optimizer);
         }
     };
 
@@ -104,7 +162,7 @@ main()
         expect(result.solutions.back().value == 790.0);
     };
 
-    "test_n_queens_problem"_test = [] {
+    "test_n_queens_problem"_test = [&] {
         auto ctx = baryonyx::make_context(4);
         std::vector<double> cplex_solutions(30, 0.0);
 
@@ -127,48 +185,52 @@ main()
                 return;
         }
 
-        baryonyx::solver_parameters params;
-        params.time_limit = 0.5;
-        params.limit = 5000;
-        params.theta = 0.5;
-        params.delta = 1.0;
-        params.alpha = 1.0;
-        params.w = 60;
-        params.pushing_k_factor = 0.9;
-        params.pushes_limit = 50;
-        params.pushing_objective_amplifier = 10;
-        params.pushing_iteration_limit = 10;
-        params.thread = 2;
-        params.order =
-          baryonyx::solver_parameters::constraint_order::random_sorting;
-        baryonyx::context_set_solver_parameters(ctx, params);
+        for (const auto optimizer : optimizers) {
+            baryonyx::solver_parameters params;
+            params.optimizer = optimizer;
+            params.time_limit = 0.5;
+            params.limit = 5000;
+            params.theta = 0.5;
+            params.delta = 1.0;
+            params.alpha = 1.0;
+            params.w = 60;
+            params.pushing_k_factor = 0.9;
+            params.pushes_limit = 50;
+            params.pushing_objective_amplifier = 10;
+            params.pushing_iteration_limit = 10;
+            params.thread = 2;
+            params.order =
+              baryonyx::solver_parameters::constraint_order::random_sorting;
+            baryonyx::context_set_solver_parameters(ctx, params);
 
-        double total_gap = 0.0;
+            double total_gap = 0.0;
 
-        for (std::size_t i{ 0 }; i != cplex_solutions.size(); ++i) {
-            std::string filepath{ EXAMPLES_DIR "/n-queens/n-queens-problem-" };
-            filepath += std::to_string(i);
-            filepath += ".lp";
+            for (std::size_t i{ 0 }; i != cplex_solutions.size(); ++i) {
+                const auto filepath = fmt::format(
+                  EXAMPLES_DIR "/n-queens/n-queens-problem-{}.lp", i);
 
-            auto pb = baryonyx::make_problem(ctx, filepath);
-            auto result = baryonyx::optimize(ctx, pb);
-            expect((result.status == baryonyx::result_status::success) >>
-                   fatal)
-              << filepath;
+                auto pb = baryonyx::make_problem(ctx, filepath);
+                auto result = baryonyx::optimize(ctx, pb);
+                expect((result.status == baryonyx::result_status::success) >>
+                       fatal)
+                  << filepath;
 
-            pb = baryonyx::make_problem(ctx, filepath);
-            const auto value = result.solutions.back().value;
-            expect(baryonyx::is_valid_solution(pb, result)) << filepath;
-            expect(baryonyx::compute_solution(pb, result) == value)
-              << filepath;
-            expect(value >= cplex_solutions[i]) << filepath;
+                pb = baryonyx::make_problem(ctx, filepath);
+                const auto value = result.solutions.back().value;
+                expect(baryonyx::is_valid_solution(pb, result)) << filepath;
+                expect(baryonyx::compute_solution(pb, result) == value)
+                  << filepath;
+                expect(value >= cplex_solutions[i]) << filepath;
 
-            total_gap += (value - cplex_solutions[i]) / cplex_solutions[i];
+                total_gap += (value - cplex_solutions[i]) / cplex_solutions[i];
+            }
+
+            const auto mean_gap =
+              100.0 * total_gap / static_cast<double>(cplex_solutions.size());
+            fmt::print("n-queens mean gap to CPLEX ({}): {:.2f}%\n",
+                       name(optimizer),
+                       mean_gap);
+            expect(mean_gap <= 1.0) << name(optimizer);
         }
-
-        const auto mean_gap =
-          100.0 * total_gap / static_cast<double>(cplex_solutions.size());
-        fmt::print("n-queens mean gap to CPLEX: {:.2f}%\n", mean_gap);
-        expect(mean_gap <= 1.0);
     };
 }

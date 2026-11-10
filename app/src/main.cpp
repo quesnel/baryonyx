@@ -89,12 +89,17 @@ solver_started_cb(const baryonyx::solver_parameters& params)
                "  - time-limit: {:.10g}s\n"
                "  - print-level: {}\n"
                "  - auto-tune: {}\n"
-               "  - observation: {}\n",
+               "  - observation: {}\n"
+               "  - optimizer: {}\n",
                params.limit,
                params.time_limit,
                params.print_level,
                params.mode,
-               params.observer);
+               params.observer,
+               params.optimizer ==
+                   baryonyx::solver_parameters::optimizer_type::restart
+                 ? "restart"
+                 : "genetic");
 
     fmt::print(" * In The Middle parameters:\n"
                "  - preprocessing: {}\n"
@@ -350,6 +355,7 @@ help() noexcept
       "  - storage-type: one bound five\n"
       "  - print-level: [0, 2]\n"
       "  - buffer-solver: 0 (default) or 1 (experimental -1 0 1 solver)\n"
+      "  - optimizer: genetic (default) or restart\n"
       "  - optimizer-warm-start: 0 (default) or 1 (keep pi and P between "
       "optimizer restarts)\n"
       " * In The Middle parameters\n"
@@ -493,6 +499,7 @@ enum class command_line_status
     init_kappa_improve_stop_error,
     buffer_solver_error,
     optimizer_warm_start_error,
+    optimizer_error,
     thread_error,
     seed_error
 };
@@ -538,6 +545,7 @@ constexpr const std::string_view command_line_status_string[] = {
     "init_kappa_improve_stop",
     "buffer_solver",
     "optimizer_warm_start",
+    "optimizer",
     "thread",
     "seed"
 };
@@ -848,6 +856,16 @@ assign_parameter(baryonyx::solver_parameters& params,
         else
             params.use_buffer_solver = *v == 1;
 
+    } else if (is_equal(name, "optimizer")) {
+        if (value == "genetic")
+            params.optimizer =
+              baryonyx::solver_parameters::optimizer_type::genetic;
+        else if (value == "restart")
+            params.optimizer =
+              baryonyx::solver_parameters::optimizer_type::restart;
+        else
+            return command_line_status::optimizer_error;
+
     } else if (is_equal(name, "optimizer-warm-start")) {
         if (auto v = assign(value, 0, 1); !v)
             return command_line_status::optimizer_warm_start_error;
@@ -972,6 +990,7 @@ parse(int argc, const char* argv[])
         }
 
         if (auto opt = get(i, "--param", "-p"); opt) {
+            ret.parse_arg = get.i;
             auto [name, value] = split_argument(*opt);
 
             if (name.empty() || value.empty()) {

@@ -403,6 +403,13 @@ struct BX_EXPORT solver_parameters
         five   ///< stores the best five solution found.
     };
 
+    /** Algorithm driving the solver restarts in optimization mode. */
+    enum class optimizer_type
+    {
+        genetic, ///< Population with crossovers and mutations.
+        restart  ///< Independent restarts adapting the kappa step.
+    };
+
     double time_limit{ -1 }; ///< value <= 0 means infinity time.
     double theta{ 0.5 };
     double delta{ -1 }; ///< value == -1 means automatic.
@@ -452,6 +459,7 @@ struct BX_EXPORT solver_parameters
     preprocessor_options preprocessor{ preprocessor_options::all };
     observer_type observer{ observer_type::none };
     storage_type storage{ storage_type::one };
+    optimizer_type optimizer{ optimizer_type::genetic };
     bool use_buffer_solver{ false }; ///< Experimental solver for -1 0 1
 
     /** The optimizer keeps pi and P between restarts instead of resetting

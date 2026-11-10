@@ -37,6 +37,7 @@
 #include <vector>
 
 #include "itm-common.hpp"
+#include "itm-restart-optimizer.hpp"
 #include "private.hpp"
 #include "result.hpp"
 #include "utils.hpp"
@@ -700,31 +701,14 @@ struct optimize_functor
     }
 };
 
-//
-// Get number of thread to use in optimizer from parameters list or
-// from the standard thread API. If an error occurred, this function
-// returns 1.
-//
-inline unsigned
-get_thread_number(const baryonyx::context& ctx) noexcept
-{
-    unsigned ret;
-
-    if (ctx.parameters.thread <= 0)
-        ret = std::thread::hardware_concurrency();
-    else
-        ret = static_cast<unsigned>(ctx.parameters.thread);
-
-    if (ret == 0)
-        return 1;
-
-    return ret;
-}
-
 template<typename Solver, typename Mode, typename Cost>
 inline result
 optimize_problem(const context& ctx, const problem& pb)
 {
+    if (ctx.parameters.optimizer ==
+        solver_parameters::optimizer_type::restart)
+        return restart_optimize_problem<Solver, Mode, Cost>(ctx, pb);
+
     result r;
 
     if (ctx.start)

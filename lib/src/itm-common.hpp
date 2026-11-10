@@ -1525,6 +1525,26 @@ struct quadratic_cost_type
     }
 };
 
+/**
+ * Number of threads from the parameters, or the hardware concurrency when it
+ * is not positive; at least one.
+ */
+inline unsigned
+get_thread_number(const baryonyx::context& ctx) noexcept
+{
+    unsigned ret;
+
+    if (ctx.parameters.thread <= 0)
+        ret = std::thread::hardware_concurrency();
+    else
+        ret = static_cast<unsigned>(ctx.parameters.thread);
+
+    if (ret == 0)
+        return 1;
+
+    return ret;
+}
+
 inline random_engine::result_type
 init_random_generator_seed(const context& ctx) noexcept
 {
