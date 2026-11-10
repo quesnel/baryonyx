@@ -455,6 +455,7 @@ enum class command_line_status
 {
     success,
     unknown,
+    unknown_option,
     parameter_missing,
     verbose_error,
     limit_error,
@@ -499,6 +500,7 @@ enum class command_line_status
 constexpr const std::string_view command_line_status_string[] = {
     "success",
     "unknown",
+    "unknown_option",
     "parameter_missing",
     "verbose",
     "limit",
@@ -992,6 +994,11 @@ parse(int argc, const char* argv[])
             continue;
         }
 
+        if (arg.size() > 1 && arg.front() == '-') {
+            ret.parse_status = command_line_status::unknown_option;
+            return ret;
+        }
+
         ret.filenames.emplace_back(argv[i]);
     }
 
@@ -1196,6 +1203,14 @@ int
 main(int argc, const char* argv[])
 {
     auto params = parse(argc, argv);
+
+    if (params.parse_status == command_line_status::unknown_option) {
+        fmt::print(stderr,
+                   fmt::emphasis::bold | fmt::fg(fmt::terminal_color::red),
+                   "Unknown option `{}`, see --help\n",
+                   argv[params.parse_arg]);
+        return EXIT_FAILURE;
+    }
 
     if (params.parse_status != command_line_status::success) {
         fmt::print(stderr,
