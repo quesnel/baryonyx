@@ -93,17 +93,17 @@ struct node
     node(baryonyx::problem problem_,
          double solution_,
          int remaining_constraints_,
-         int annoying_variable_)
+         int split_variable_)
       : problem(std::move(problem_))
       , solution(solution_)
       , remaining_constraints(remaining_constraints_)
-      , annoying_variable(annoying_variable_)
+      , split_variable(split_variable_)
     {}
 
     baryonyx::problem problem;
     double solution = 0.0;
     int remaining_constraints = -1;
-    int annoying_variable = -1;
+    int split_variable = -1;
 };
 
 struct node_affected_compare
@@ -140,6 +140,86 @@ struct node_result_compare
 
 using problem_set = std::multiset<node, node_result_compare>;
 
+static bool
+is_violated(const baryonyx::constraint& cst,
+            const std::vector<std::int8_t>& x,
+            int sense)
+{
+    int sum = 0;
+    for (const auto& elem : cst.elements)
+        sum += elem.factor * x[elem.variable_index];
+
+    return sense == 0 ? sum != cst.value
+                      : (sense > 0 ? sum < cst.value : sum > cst.value);
+}
+
+// Infeasible result: the variable shared by the most violated constraints,
+// fixing it either way removes the conflict the solver keeps oscillating on.
+// Feasible result: the selected variable that costs the most, its 0 branch
+// looks for a cheaper solution. Ties go to the largest absolute cost.
+static int
+select_split_variable(const baryonyx::problem& pb, const baryonyx::result& r)
+{
+    const auto n = pb.vars.values.size();
+    if (n == 0 || r.solutions.empty() ||
+        r.solutions.front().variables.size() != n)
+        return -1;
+
+    const auto& x = r.solutions.front().variables;
+
+    std::vector<double> cost(n, 0.0);
+    for (const auto& elem : pb.objective.elements)
+        cost[static_cast<std::size_t>(elem.variable_index)] += elem.factor;
+
+    const double sign =
+      pb.type == baryonyx::objective_function_type::maximize ? -1.0 : 1.0;
+
+    std::vector<int> score(n, 0);
+    bool feasible = true;
+
+    const auto count = [&](const auto& constraints, int sense) {
+        for (const auto& cst : constraints) {
+            if (!is_violated(cst, x, sense))
+                continue;
+
+            feasible = false;
+            for (const auto& elem : cst.elements)
+                ++score[static_cast<std::size_t>(elem.variable_index)];
+        }
+    };
+
+    count(pb.equal_constraints, 0);
+    count(pb.greater_constraints, 1);
+    count(pb.less_constraints, -1);
+
+    int best = -1;
+    double best_key = 0.0;
+    double best_tie = 0.0;
+
+    for (std::size_t i = 0; i != n; ++i) {
+        double key, tie = std::abs(cost[i]);
+
+        if (!feasible) {
+            if (score[i] == 0)
+                continue;
+            key = score[i];
+        } else {
+            if (x[i] == 0)
+                continue;
+            key = sign * cost[i];
+        }
+
+        if (best < 0 || key > best_key ||
+            (key == best_key && tie > best_tie)) {
+            best = static_cast<int>(i);
+            best_key = key;
+            best_tie = tie;
+        }
+    }
+
+    return best;
+}
+
 // Fixing a variable can make the sub-problem infeasible: that branch holds no
 // solution and is pruned instead of aborting the search.
 static std::optional<std::pair<baryonyx::problem, baryonyx::result>>
@@ -173,7 +253,8 @@ optimize(const baryonyx::context& ctx, const baryonyx::problem& pb)
         ctx.start(ctx.parameters);
 
     // The split tree can hold 2^n nodes: the time limit bounds the whole
-    // search and each node only gets a slice of it.
+    // search. The root gets half of it, a good starting point matters more
+    // than many nodes, and each node then gets a sixteenth.
     const double budget = ctx.parameters.time_limit;
     const bool bounded = std::isfinite(budget) && budget > 0.0;
     const auto start = std::chrono::steady_clock::now();
@@ -183,7 +264,7 @@ optimize(const baryonyx::context& ctx, const baryonyx::problem& pb)
                           .count();
     };
     if (bounded)
-        internal_ctx.parameters.time_limit = budget / 8.0;
+        internal_ctx.parameters.time_limit = budget / 2.0;
 
     auto best = baryonyx::itm::optimize(internal_ctx, pb);
 
@@ -196,18 +277,18 @@ optimize(const baryonyx::context& ctx, const baryonyx::problem& pb)
     jobs.emplace(pb,
                  best ? best.solutions.back().value : 0,
                  best.remaining_constraints,
-                 best.annoying_variable);
+                 select_split_variable(pb, best));
 
     do {
         if (bounded) {
             const double left = remaining();
             if (left <= 0.0)
                 break;
-            internal_ctx.parameters.time_limit = std::min(budget / 8.0, left);
+            internal_ctx.parameters.time_limit = std::min(budget / 16.0, left);
         }
 
         auto it = jobs.begin();
-        const int variable = it->annoying_variable;
+        const int variable = it->split_variable;
 
         if (variable < 0 ||
             variable >= baryonyx::length(it->problem.vars.names)) {
@@ -234,7 +315,7 @@ optimize(const baryonyx::context& ctx, const baryonyx::problem& pb)
             jobs.emplace(std::move(sub),
                          ret ? ret.solutions.back().value : 0,
                          ret.remaining_constraints,
-                         ret.annoying_variable);
+                         select_split_variable(sub, ret));
         }
 
         jobs.erase(it);
@@ -244,18 +325,18 @@ optimize(const baryonyx::context& ctx, const baryonyx::problem& pb)
             if (elem.remaining_constraints == 0)
                 baryonyx::notice(
                   internal_ctx,
-                  "    * solution: {} annoying: {} vars: {}/{}\n",
+                  "    * solution: {} split: {} vars: {}/{}\n",
                   elem.solution,
-                  elem.annoying_variable,
+                  elem.split_variable,
                   elem.problem.affected_vars.values.size(),
                   elem.problem.affected_vars.values.size() +
                     elem.problem.vars.values.size());
             else
                 baryonyx::notice(
                   internal_ctx,
-                  "    * remaining: {} annoying: {} vars: {}/{}\n",
+                  "    * remaining: {} split: {} vars: {}/{}\n",
                   elem.remaining_constraints,
-                  elem.annoying_variable,
+                  elem.split_variable,
                   elem.problem.affected_vars.values.size(),
                   elem.problem.affected_vars.values.size() +
                     elem.problem.vars.values.size());

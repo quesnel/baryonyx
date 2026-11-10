@@ -726,10 +726,6 @@ struct result
     int constraints = 0;
     int remaining_constraints = std::numeric_limits<int>::max();
 
-    // The variable id with the heaviest load factor i.e. the variable which
-    // changes too many times during the @c update_row in-the-middle process.
-    int annoying_variable = 0;
-
     result_status status{ result_status::uninitialized };
 
     operator bool() const
