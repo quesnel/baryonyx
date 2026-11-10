@@ -90,6 +90,9 @@ struct solver_functor
         Solver slv(
           m_rng, length(constraints), variables, norm_costs, constraints);
 
+        if constexpr (requires { slv.set_thread_number(1); })
+            slv.set_thread_number(p.thread);
+
         compute_order compute(p.order, variables);
 
         {

@@ -27,6 +27,7 @@
 #include "memory.hpp"
 #include "pnm.hpp"
 #include "sparse-matrix.hpp"
+#include "parallel-for.hpp"
 
 #include <boost/ut.hpp>
 
@@ -331,7 +332,8 @@ main()
         }
 
         {
-            constexpr auto inf = std::numeric_limits<baryonyx::real>::infinity();
+            constexpr auto inf =
+              std::numeric_limits<baryonyx::real>::infinity();
 
             std::vector<rc> R = { { -1.4e36f, 11, -2 }, { 2.1e32f, 8, -3 },
                                   { 2.8e35f, 5, -3 },   { 1.7e36f, 4, -4 },
@@ -489,7 +491,8 @@ main()
         };
 
         // Row 0: 2x0 + 3x2, row 1: -x1 + 4x2. The matrix stores indices into
-        // the row-ordered elements so both views must reference the same cells.
+        // the row-ordered elements so both views must reference the same
+        // cells.
         const std::vector<cst> csts{ { { { 2, 0 }, { 3, 2 } } },
                                      { { { -1, 1 }, { 4, 2 } } } };
 
@@ -522,6 +525,28 @@ main()
         expect(empty.length() == 0);
         auto [eb, ee] = empty.column(1);
         expect(eb == ee);
+    };
+
+    "check_parallel_for"_test = [] {
+        for (const int threads : { 1, 2, 4 }) {
+            baryonyx::parallel_for pool(threads);
+            expect(pool.thread_number() == threads);
+
+            std::vector<int> visits(1000, 0);
+            auto body = [&visits](int i) { ++visits[i]; };
+
+            for (int run = 0; run != 200; ++run)
+                pool.run(static_cast<int>(visits.size()), body);
+
+            expect(std::ranges::all_of(visits,
+                                       [](int v) { return v == 200; }));
+
+            int calls = 0;
+            auto count = [&calls](int) { ++calls; };
+            pool.run(0, count);
+            pool.run(1, count);
+            expect(calls == 1);
+        }
     };
 
     "check_pnm_iterator"_test = [] {

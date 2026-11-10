@@ -23,6 +23,7 @@
 #include "itm-common.hpp"
 #include "itm-optimizer-common.hpp"
 #include "itm-solver-common.hpp"
+#include "parallel-for.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -31,10 +32,12 @@
 namespace baryonyx {
 namespace itm {
 
-// Rows are updated by batches of rows sharing no variable: inside a batch the
-// row computations read nothing another row of the batch writes (pi, P and x
-// of its own variables), so they can run concurrently without locks while
-// producing exactly the result of the sequential Wedelin sweep.
+// Rows are updated by batches of rows sharing no variable, given by a greedy
+// coloring of the row conflict graph computed once: inside a batch the row
+// computations read nothing another row of the batch writes (pi, P and x of
+// its own variables), so they run concurrently without locks. Each row
+// draws its ties from its own random engine, seeded from the batch, so the
+// result does not depend on the number of threads.
 template<typename Mode, typename Cost, bool debug>
 struct solver_inequalities_101coeff_buffered : debug_logger<debug>
 {
@@ -88,10 +91,12 @@ struct solver_inequalities_101coeff_buffered : debug_logger<debug>
     std::unique_ptr<bound_factor[]> b;
     std::unique_ptr<real[]> pi;
     std::vector<row_update> batch;
-    std::vector<int> variable_batch;
-    std::vector<int> pending;
-    std::vector<int> deferred;
-    int batch_id = 0;
+    std::vector<int> batch_rows;
+    std::vector<int> row_color;
+    std::vector<int> color_start;
+    std::vector<int> rows_by_color;
+    std::vector<long> row_work;
+    std::unique_ptr<parallel_for> pool;
 
     const cost_type& c;
     int m;
@@ -111,14 +116,24 @@ struct solver_inequalities_101coeff_buffered : debug_logger<debug>
       , R(std::make_unique<rc_data[]>(ap.size()))
       , b(std::make_unique<bound_factor[]>(m_))
       , pi(std::make_unique<real[]>(m_))
-      , variable_batch(static_cast<std::size_t>(n_), -1)
       , c(c_)
       , m(m_)
       , n(n_)
     {
         batch.reserve(static_cast<std::size_t>(m));
-        pending.reserve(static_cast<std::size_t>(m));
-        deferred.reserve(static_cast<std::size_t>(m));
+        batch_rows.reserve(static_cast<std::size_t>(m));
+        rows_by_color.resize(static_cast<std::size_t>(m));
+        color_rows();
+
+        row_work.resize(static_cast<std::size_t>(m));
+        for (int k = 0; k != m; ++k) {
+            long work = 0;
+            for (auto [it, et] = ap.row(k); it != et; ++it) {
+                auto [cb, ce] = ap.column(it->column);
+                work += static_cast<long>(ce - cb);
+            }
+            row_work[static_cast<std::size_t>(k)] = work;
+        }
 
         int id = 0;
         for (int i = 0, e = length(csts); i != e; ++i) {
@@ -147,6 +162,13 @@ struct solver_inequalities_101coeff_buffered : debug_logger<debug>
             bx_ensures(b[i].min <= b[i].max);
             bx_ensures(upper + lower == length(csts[i].elements));
         }
+    }
+
+    void set_thread_number(int thread_number)
+    {
+        pool = thread_number > 1
+                 ? std::make_unique<parallel_for>(thread_number)
+                 : nullptr;
     }
 
     void reset() noexcept
@@ -207,7 +229,8 @@ struct solver_inequalities_101coeff_buffered : debug_logger<debug>
                            real kappa,
                            real delta,
                            real theta,
-                           real obj_amp) noexcept
+                           real obj_amp,
+                           random_engine& row_rng) noexcept
     {
         constexpr real inf = std::numeric_limits<real>::infinity();
 
@@ -242,7 +265,7 @@ struct solver_inequalities_101coeff_buffered : debug_logger<debug>
             }
         }
 
-        calculator_sort<Mode>(r, r + r_size, rng);
+        calculator_sort<Mode>(r, r + r_size, row_rng);
 
         const real old_phi = sign * pi[k];
         const auto q = [&](int j) { return sign * r[j].value + old_phi; };
@@ -306,20 +329,31 @@ struct solver_inequalities_101coeff_buffered : debug_logger<debug>
         bx_expects(is_valid_constraint(*this, u.k, x));
     }
 
-    bool shares_variable_with_batch(int k) const noexcept
+    void color_rows()
     {
-        for (auto [it, et] = ap.row(k); it != et; ++it)
-            if (variable_batch[static_cast<std::size_t>(it->column)] ==
-                batch_id)
-                return true;
+        row_color.assign(static_cast<std::size_t>(m), -1);
+        std::vector<int> forbidden_by;
 
-        return false;
-    }
+        for (int k = 0; k != m; ++k) {
+            for (auto [it, et] = ap.row(k); it != et; ++it)
+                for (auto [cb, ce] = ap.column(it->column); cb != ce; ++cb)
+                    if (const int color =
+                          row_color[static_cast<std::size_t>(cb->row)];
+                        color >= 0)
+                        forbidden_by[static_cast<std::size_t>(color)] = k;
 
-    void add_to_batch(int k) noexcept
-    {
-        for (auto [it, et] = ap.row(k); it != et; ++it)
-            variable_batch[static_cast<std::size_t>(it->column)] = batch_id;
+            int color = 0;
+            while (color != length(forbidden_by) &&
+                   forbidden_by[static_cast<std::size_t>(color)] == k)
+                ++color;
+
+            if (color == length(forbidden_by))
+                forbidden_by.emplace_back(-1);
+
+            row_color[static_cast<std::size_t>(k)] = color;
+        }
+
+        color_start.assign(forbidden_by.size() + 1u, 0);
     }
 
     template<typename Xtype>
@@ -334,14 +368,49 @@ struct solver_inequalities_101coeff_buffered : debug_logger<debug>
         }
 
         batch.clear();
-        ++batch_id;
 
         return pi_sign_changed;
     }
 
-    // Rows conflicting with the current batch are deferred to the next one
-    // (greedy colouring) so that batches stay large enough to be computed in
-    // parallel.
+    template<typename Xtype>
+    void compute_batch(const Xtype& x,
+                       real kappa,
+                       real delta,
+                       real theta,
+                       real obj_amp)
+    {
+        batch.resize(batch_rows.size());
+        const auto seed = rng();
+
+        auto compute = [&](int i) {
+            const int k = batch_rows[static_cast<std::size_t>(i)];
+            random_engine row_rng(
+              seed + static_cast<random_engine::result_type>(k));
+
+            batch[static_cast<std::size_t>(i)] =
+              compute_row(x, k, kappa, delta, theta, obj_amp, row_rng);
+        };
+
+        const int size = static_cast<int>(batch_rows.size());
+
+        // Below about a thousand multiply-adds the batch is cheaper than
+        // handing it to the workers.
+        constexpr long parallel_min_work = 1000;
+
+        long work = 0;
+        if (pool)
+            for (const int k : batch_rows)
+                work += row_work[static_cast<std::size_t>(k)];
+
+        if (pool && work >= parallel_min_work)
+            pool->run(size, compute);
+        else
+            for (int i = 0; i != size; ++i)
+                compute(i);
+    }
+
+    // The requested rows are bucketed by color, keeping their order inside a
+    // color, and each color is one batch.
     template<typename Xtype, typename Iterator>
     bool update_rows(Xtype& x,
                      Iterator first,
@@ -349,29 +418,36 @@ struct solver_inequalities_101coeff_buffered : debug_logger<debug>
                      real kappa,
                      real delta,
                      real theta,
-                     real obj_amp) noexcept
+                     real obj_amp)
     {
         bool pi_sign_changed = false;
 
-        pending.clear();
-        for (; first != last; ++first)
-            pending.emplace_back(constraint(first));
+        std::fill(color_start.begin(), color_start.end(), 0);
+        for (auto it = first; it != last; ++it)
+            ++color_start[static_cast<std::size_t>(
+              row_color[static_cast<std::size_t>(constraint(it))]) + 1u];
 
-        while (!pending.empty()) {
-            deferred.clear();
+        for (std::size_t c = 1; c < color_start.size(); ++c)
+            color_start[c] += color_start[c - 1];
 
-            for (const int k : pending) {
-                if (shares_variable_with_batch(k)) {
-                    deferred.emplace_back(k);
-                } else {
-                    add_to_batch(k);
-                    batch.emplace_back(
-                      compute_row(x, k, kappa, delta, theta, obj_amp));
-                }
-            }
+        const auto colors = color_start.size() - 1u;
+        batch_rows.assign(color_start.begin(), color_start.end() - 1);
+        for (auto it = first; it != last; ++it) {
+            const int k = constraint(it);
+            const auto color =
+              static_cast<std::size_t>(row_color[static_cast<std::size_t>(k)]);
+            rows_by_color[static_cast<std::size_t>(batch_rows[color]++)] = k;
+        }
 
+        for (std::size_t color = 0; color != colors; ++color) {
+            const auto begin = rows_by_color.begin() + color_start[color];
+            const auto end = rows_by_color.begin() + color_start[color + 1];
+            if (begin == end)
+                continue;
+
+            batch_rows.assign(begin, end);
+            compute_batch(x, kappa, delta, theta, obj_amp);
             pi_sign_changed = flush_batch(x) || pi_sign_changed;
-            pending.swap(deferred);
         }
 
         return pi_sign_changed;

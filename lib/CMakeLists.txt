@@ -36,6 +36,7 @@ set(private_baryonyx_source
  src/merged-constraint.cpp
  src/nlopt-optimizer.cpp
  src/observer.hpp
+ src/parallel-for.hpp
  src/parser.cpp
  src/pnm.hpp
  src/preprocessor.cpp
