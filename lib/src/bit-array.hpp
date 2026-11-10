@@ -30,16 +30,14 @@
 #include <limits>
 #include <memory>
 #include <type_traits>
+#include <utility>
 
 namespace baryonyx {
 
 /**
- * @brief Simple and efficient structure to store bit array.
- *
- * @details @c bit_array stores a smart pointer to a dynamically allocated
- *     array of unsigned integer (with @c std::make_unique<std::uint32_t[]>).
- *     @c bit_array guarantees to delete the pointer on destruction of the @c
- *     bit_array.
+ * Fixed-size array of bits stored in 64-bit blocks. The bits past `size()`
+ * in the last block are always zero so that `operator==` and the hash can
+ * compare whole blocks.
  */
 class bit_array_impl
 {
@@ -60,12 +58,12 @@ public:
     {
     }
 
-    bit_array_impl(int size)
+    explicit bit_array_impl(int size)
       : m_size(size)
-      , m_block_size((m_size / bit_per_block) + 1)
+      , m_block_size((size + bit_per_block - 1) / bit_per_block)
       , m_data(std::make_unique<underlying_type[]>(m_block_size))
     {
-        std::fill_n(m_data.get(), m_block_size, k_zeros);
+        bx_assert(size >= 0);
     }
 
     bit_array_impl(const bit_array_impl& other)
@@ -77,8 +75,8 @@ public:
     }
 
     bit_array_impl(bit_array_impl&& other) noexcept
-      : m_size(other.m_size)
-      , m_block_size(other.m_block_size)
+      : m_size(std::exchange(other.m_size, 0))
+      , m_block_size(std::exchange(other.m_block_size, 0))
       , m_data(std::move(other.m_data))
     {
     }
@@ -101,8 +99,8 @@ public:
     bit_array_impl& operator=(bit_array_impl&& other) noexcept
     {
         if (this != &other) {
-            m_size = other.m_size;
-            m_block_size = other.m_block_size;
+            m_size = std::exchange(other.m_size, 0);
+            m_block_size = std::exchange(other.m_block_size, 0);
             m_data = std::move(other.m_data);
         }
 
@@ -129,7 +127,10 @@ public:
 
     void set_block(int index, underlying_type value) noexcept
     {
-        m_data[index] = value;
+        bx_assert(index >= 0 && index < m_block_size);
+
+        m_data[index] = index + 1 == m_block_size ? value & last_block_mask()
+                                                  : value;
     }
 
     /**
@@ -146,9 +147,12 @@ public:
 
     void set(int index, bool val) noexcept
     {
-        auto mask = (k_one << b_offset(index));
+        bx_assert(index >= 0 && index < m_size);
+
+        // Negating val spreads it over the whole word before masking.
+        const auto mask = k_one << b_offset(index);
         auto& ref = m_data[b_index(index)];
-        ref ^= (underlying_type(val) ^ ref) & mask;
+        ref ^= (-static_cast<underlying_type>(val) ^ ref) & mask;
     }
 
     /**
@@ -184,62 +188,12 @@ public:
         return !!(m_data[b_index(index)] & (k_one << b_offset(index)));
     }
 
-    void assign(const bit_array_impl& other, int from, int to)
-    {
-        bx_assert(other.size() == size());
-        bx_assert(from >= 0 && from < to && from < size() && to <= size());
-
-        int loop_min, loop_max;
-
-        {
-            const auto index = b_index(from);
-            const auto offset = b_offset(from);
-            loop_min = index;
-
-            if (offset > 0) {
-                ++loop_min;
-
-                underlying_type value_orig = m_data[index];
-                value_orig = (value_orig >> (bit_per_block - offset));
-                value_orig = (value_orig << (bit_per_block - offset));
-
-                underlying_type value_new = other.m_data[index];
-                value_new = (value_new << offset);
-                value_new = (value_new >> offset);
-
-                m_data[index] = value_new | value_orig;
-            }
-        }
-
-        {
-            const auto index = b_index(to);
-            const auto offset = b_offset(to);
-            loop_max = index;
-
-            if (offset > 0) {
-                --loop_max;
-
-                underlying_type value_orig = m_data[index];
-                value_orig = (value_orig << offset);
-                value_orig = (value_orig >> offset);
-
-                underlying_type value_new = other.m_data[index];
-                value_new = (value_new >> (bit_per_block - offset));
-                value_new = (value_new << (bit_per_block - offset));
-
-                m_data[index] = value_new | value_orig;
-            }
-        }
-
-        if (loop_max > loop_min)
-            std::copy_n(other.m_data.get() + loop_min,
-                        loop_max - loop_min,
-                        m_data.get() + loop_min);
-    }
-
     void ones() noexcept
     {
         std::fill_n(m_data.get(), m_block_size, k_ones);
+
+        if (m_block_size > 0)
+            m_data[m_block_size - 1] &= last_block_mask();
     }
 
     void zeros() noexcept
@@ -287,14 +241,22 @@ protected:
     int m_block_size;
     std::unique_ptr<underlying_type[]> m_data;
 
-    constexpr static int b_index(int b) noexcept
+    // Indices are non-negative: unsigned arithmetic turns the division and
+    // the modulo into a shift and a mask.
+    constexpr static unsigned b_index(int b) noexcept
     {
-        return b / bit_per_block;
+        return static_cast<unsigned>(b) / bit_per_block;
     }
 
-    constexpr static int b_offset(int b) noexcept
+    constexpr static unsigned b_offset(int b) noexcept
     {
-        return b % bit_per_block;
+        return static_cast<unsigned>(b) % bit_per_block;
+    }
+
+    underlying_type last_block_mask() const noexcept
+    {
+        const auto used = b_offset(m_size);
+        return used == 0 ? k_ones : (k_one << used) - 1;
     }
 };
 
@@ -303,7 +265,7 @@ class bit_array : public bit_array_impl
 public:
     bit_array() = default;
 
-    bit_array(int size)
+    explicit bit_array(int size)
       : bit_array_impl(size)
     {
     }
@@ -334,7 +296,7 @@ public:
 
     value_bit_array() = default;
 
-    value_bit_array(int size)
+    explicit value_bit_array(int size)
       : bit_array_impl(size)
     {
     }

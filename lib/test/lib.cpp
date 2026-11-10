@@ -823,75 +823,30 @@ main()
         for (auto i = 0; i != a.size(); i += 2)
             expect(a.get(i) == 1 && a.get(i + 1) == 0);
 
-        baryonyx::bit_array b(baryonyx::bit_array::bit_per_block * 2);
-        baryonyx::bit_array c(baryonyx::bit_array::bit_per_block * 2);
-
-        constexpr auto middle = baryonyx::bit_array::bit_per_block / 2;
-
-        {
-            b.ones();
-            c.zeros();
-
-            expect(b.block(0) == baryonyx::bit_array::k_ones);
-            expect(b.block(1) == baryonyx::bit_array::k_ones);
-            expect(c.block(0) == baryonyx::bit_array::k_zeros);
-            expect(c.block(1) == baryonyx::bit_array::k_zeros);
-
-            b.assign(c,
-                     baryonyx::bit_array::bit_per_block / 2,
-                     baryonyx::bit_array::bit_per_block * 3 / 2);
-
-            expect(b.block(0) == baryonyx::bit_array::k_ones << middle);
-            expect(b.block(1) == baryonyx::bit_array::k_ones >> middle);
+        for (auto i = 0; i != a.size(); ++i) {
+            a.set(i, i % 3 == 0);
+            expect(a.get(i) == (i % 3 == 0 ? 1 : 0));
         }
 
-        {
-            b.ones();
-            c.zeros();
+        constexpr auto bits = baryonyx::bit_array::bit_per_block;
+        expect(baryonyx::bit_array(bits * 2).block_size() == 2);
+        expect(baryonyx::bit_array(bits * 2 + 1).block_size() == 3);
 
-            expect(b.block(0) == baryonyx::bit_array::k_ones);
-            expect(b.block(1) == baryonyx::bit_array::k_ones);
-            expect(c.block(0) == baryonyx::bit_array::k_zeros);
-            expect(c.block(1) == baryonyx::bit_array::k_zeros);
+        // Bits past size() stay zero, so equal contents compare and hash
+        // equal whatever the way they were written.
+        baryonyx::bit_array by_ones(100), by_set(100);
+        by_ones.ones();
+        for (auto i = 0; i != by_set.size(); ++i)
+            by_set.set(i);
+        expect(by_ones == by_set);
+        expect(baryonyx::bit_array_hash()(by_ones) ==
+               baryonyx::bit_array_hash()(by_set));
 
-            b.assign(c, 0, baryonyx::bit_array::bit_per_block / 2);
+        by_set.set_block(1, baryonyx::bit_array::k_ones);
+        expect(by_ones == by_set);
 
-            expect(b.block(0) == baryonyx::bit_array::k_ones >> middle);
-            expect(b.block(1) == baryonyx::bit_array::k_ones);
-        }
-
-        {
-            b.ones();
-            c.zeros();
-
-            expect(b.block(0) == baryonyx::bit_array::k_ones);
-            expect(b.block(1) == baryonyx::bit_array::k_ones);
-            expect(c.block(0) == baryonyx::bit_array::k_zeros);
-            expect(c.block(1) == baryonyx::bit_array::k_zeros);
-
-            b.assign(c,
-                     baryonyx::bit_array::bit_per_block / 2,
-                     baryonyx::bit_array::bit_per_block * 2);
-
-            expect(b.block(0) == baryonyx::bit_array::k_ones << middle);
-            expect(b.block(1) == baryonyx::bit_array::k_zeros);
-        }
-
-        {
-            b.ones();
-            c.zeros();
-
-            expect(b.block(0) == baryonyx::bit_array::k_ones);
-            expect(b.block(1) == baryonyx::bit_array::k_ones);
-            expect(c.block(0) == baryonyx::bit_array::k_zeros);
-            expect(c.block(1) == baryonyx::bit_array::k_zeros);
-
-            b.assign(c,
-                     baryonyx::bit_array::bit_per_block * 2 - 1,
-                     baryonyx::bit_array::bit_per_block * 2);
-
-            expect(b.block(0) == baryonyx::bit_array::k_ones);
-            expect(b.block(1) == baryonyx::bit_array::k_ones - 1);
-        }
+        baryonyx::bit_array moved(std::move(by_ones));
+        expect(moved == by_set);
+        expect(by_ones.size() == 0 && by_ones.block_size() == 0);
     };
 }
