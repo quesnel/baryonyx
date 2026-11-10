@@ -68,6 +68,10 @@ struct context
     solver_finished_cb finish;
 
     message_type log_priority = context::message_type::info;
+
+    // Set in the runs of the tuned optimizer, whose candidates must not start
+    // a tuned optimization again.
+    bool tuning = false;
 };
 
 namespace detail {

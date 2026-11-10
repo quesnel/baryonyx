@@ -24,6 +24,7 @@
 #include <chrono>
 #include <cmath>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "debug.hpp"
@@ -59,7 +60,8 @@ random_parameters(bx::solver_parameters p, bx::xoshiro256pp& rng)
     using optimizer_type = bx::solver_parameters::optimizer_type;
 
     constexpr optimizer_type optimizers[] = { optimizer_type::genetic,
-                                              optimizer_type::restart };
+                                              optimizer_type::restart,
+                                              optimizer_type::lns };
     constexpr double thetas[] = { 0.2, 0.35, 0.5, 0.65, 0.8 };
     constexpr double deltas[] = { -1.0, 1e-3, 1e-2, 1e-1 };
     constexpr double kappa_mins[] = { 0.0, 0.05, 0.1, 0.2 };
@@ -76,15 +78,30 @@ random_parameters(bx::solver_parameters p, bx::xoshiro256pp& rng)
     return p;
 }
 
+std::string_view
+to_string(bx::solver_parameters::optimizer_type type) noexcept
+{
+    switch (type) {
+    case bx::solver_parameters::optimizer_type::genetic:
+        return "genetic";
+    case bx::solver_parameters::optimizer_type::restart:
+        return "restart";
+    case bx::solver_parameters::optimizer_type::tuned:
+        return "tuned";
+    case bx::solver_parameters::optimizer_type::lns:
+        return "lns";
+    }
+
+    return "unknown";
+}
+
 std::string
 describe(const bx::solver_parameters& p)
 {
     return fmt::format(
       "optimizer={} theta={:g} delta={:g} kappa-min={:g} kappa-step={:g} "
       "init-policy-random={:g}",
-      p.optimizer == bx::solver_parameters::optimizer_type::restart
-        ? "restart"
-        : "genetic",
+      to_string(p.optimizer),
       p.theta,
       p.delta,
       p.kappa_min,
@@ -169,13 +186,14 @@ optimize(const bx::context& ctx, const bx::problem& pb)
         ? static_cast<bx::xoshiro256pp::result_type>(ctx.parameters.seed)
         : 1u);
 
-    // The requested settings run with both optimizers, never with the tuned
-    // one, which would recurse.
+    // The requested settings run with every optimizer but the tuned one,
+    // which would recurse.
     std::vector<candidate> pool;
     pool.reserve(static_cast<std::size_t>(candidates));
     using optimizer_type = bx::solver_parameters::optimizer_type;
-    for (const auto optimizer :
-         { optimizer_type::genetic, optimizer_type::restart }) {
+    for (const auto optimizer : { optimizer_type::genetic,
+                                  optimizer_type::restart,
+                                  optimizer_type::lns }) {
         pool.push_back({ ctx.parameters, {} });
         pool.back().parameters.optimizer = optimizer;
     }
@@ -187,6 +205,7 @@ optimize(const bx::context& ctx, const bx::problem& pb)
     internal.update = nullptr;
     internal.finish = nullptr;
     internal.log_priority = bx::context::message_type::warning;
+    internal.tuning = true;
 
     if (ctx.start)
         ctx.start(ctx.parameters);

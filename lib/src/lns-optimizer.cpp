@@ -196,14 +196,25 @@ optimize(const bx::context& ctx, const bx::problem& pb)
         ctx.start(ctx.parameters);
 
     // A first solution: a quarter of the budget, then half of it with tuned
-    // parameters, which find one on parameter-sensitive problems.
+    // parameters, which find one on parameter-sensitive problems. A candidate
+    // of the tuned optimizer must not tune again: it keeps searching with
+    // restart for the rest of its time, as good as a restart candidate.
     internal.parameters.time_limit = 0.25 * budget;
     auto best = bx::itm::optimize(internal, pb);
     if (!best) {
-        internal.parameters.optimizer =
-          bx::solver_parameters::optimizer_type::tuned;
-        internal.parameters.time_limit = 0.5 * budget;
-        best = bx::itm::optimize(internal, pb);
+        if (ctx.tuning) {
+            internal.parameters.time_limit = 0.75 * budget;
+        } else {
+            internal.parameters.optimizer =
+              bx::solver_parameters::optimizer_type::tuned;
+            internal.parameters.time_limit = 0.5 * budget;
+        }
+
+        auto second = bx::itm::optimize(internal, pb);
+        if (second ||
+            second.remaining_constraints < best.remaining_constraints)
+            best = std::move(second);
+
         internal.parameters = ctx.parameters;
         internal.parameters.optimizer =
           bx::solver_parameters::optimizer_type::restart;
