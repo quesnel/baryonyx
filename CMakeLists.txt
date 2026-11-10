@@ -13,15 +13,6 @@ add_library(threads INTERFACE IMPORTED)
 set_property(TARGET threads PROPERTY
   INTERFACE_LINK_LIBRARIES ${CMAKE_THREAD_LIBS_INIT})
 
-find_package(NLopt CONFIG QUIET)
-if (NLopt_FOUND)
-    set(NLOPT_FOUND TRUE)
-    set(NLOPT_LIBRARIES NLopt::nlopt)
-    set(NLOPT_INCLUDE_DIRS "")
-else ()
-    find_package(NLOPT)
-endif ()
-message(STATUS "NLopt support: ${NLOPT_FOUND}")
 
 add_definitions(-DFMT_HEADER_ONLY)
 include_directories(${CMAKE_SOURCE_DIR}/external/fmt/include)

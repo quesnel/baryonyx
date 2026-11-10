@@ -30,7 +30,7 @@ jobs:
         submodules: recursive
 
     - name: Install dependencies
-      run: brew install ninja nlopt
+      run: brew install ninja
 
     - name: Configure CMake
       run: cmake -B ${{ github.workspace }}/build -G Ninja -DCMAKE_BUILD_TYPE=${{ matrix.BUILD_TYPE }}

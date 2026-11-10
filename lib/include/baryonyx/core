@@ -372,7 +372,6 @@ struct BX_EXPORT solver_parameters
     enum class mode_type : unsigned
     {
         none = 0,
-        nlopt = 2,
         branch = 4
     };
 

@@ -34,11 +34,7 @@ apt-get install build-essential cmake clang
 ....
 
 For Windows, install the https://www.cmake.org[CMake program] and
-Visual Studio 2019 (MSVC). You may also install the vcpkg program to
-install nlopt and other dependencies.
-
-* `nlopt` library - optimization library to automatic parametrization
- of the Baryonyx solver parameters.
+Visual Studio 2019 (MSVC).
 
 === First installation
 
@@ -191,20 +187,13 @@ some specific for the optimization algorithms.
 |
 | disable the use of preprocessing
 
-| --random
-|
-| use the pure random solver (for benchmark) instead of the Bastert/Wedelin algorithm.
-
 | --auto[:= ]value
 | string
 | Select the type of optimizer meta-heuristic. Values are:
 
-* `none` without specific algorithm.
-* `manual` tries to update parameters to found best solution.
-* `nlopt` tries to update parameters to found best solution using nlopt library and the Nelder Mead algorithm.
-* `branch` split recursively original problem to found best solution.
-* `branch-manual` mix branch and manual algorithm.
-* `branch-nlopt` mix branch and nlopt algorithm.
+* `branch` split recursively the problem on the variable of the most
+  violated constraints (or the most expensive one) to found best solution.
+  Use `-p optimizer=tuned` to also tune the solver parameters.
 
 |===
 
@@ -346,6 +335,17 @@ To assign parameters to solver or optimizer algorithms, use the `-p
 * `one` (default): stores only the best solution found.
 * `bound`: stores the best and the bad solution found.
 * `five`: stores the best five solution found.
+
+| optimizer (optimizer only)
+| string
+| Select the optimizer algorithm. Values are:
+
+* `genetic` (default): a population of solutions with crossovers and
+  mutations.
+* `restart`: independent restarts adapting the kappa step.
+* `tuned`: successive halving over random settings of the two previous
+  optimizers and of the solver parameters, then the best setting runs for
+  the remaining half of the time limit.
 
 | init-policy (solver only)
 | string

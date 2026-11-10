@@ -322,19 +322,8 @@ struct fmt::formatter<baryonyx::solver_parameters::mode_type>
 
         if (static_cast<underlying_type>(c) &
             static_cast<underlying_type>(
-              baryonyx::solver_parameters::mode_type::branch)) {
-            if (static_cast<underlying_type>(c) &
-                static_cast<underlying_type>(
-                  baryonyx::solver_parameters::mode_type::nlopt))
-                name = "nlopt-and-branch";
-            else
-                name = "branch";
-        } else {
-            if (static_cast<underlying_type>(c) &
-                static_cast<underlying_type>(
-                  baryonyx::solver_parameters::mode_type::nlopt))
-                name = "nlopt";
-        }
+              baryonyx::solver_parameters::mode_type::branch))
+            name = "branch";
 
         return formatter<string_view>::format(name, ctx);
     }

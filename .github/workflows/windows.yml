@@ -29,9 +29,6 @@ jobs:
       with:
         submodules: recursive
 
-    - name: Install dependencies
-      run: vcpkg install nlopt:x64-windows
-
     - name: Configure CMake
       run: cmake -B "${{ github.workspace }}/build" -A x64 -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" -DVCPKG_TARGET_TRIPLET=x64-windows
 

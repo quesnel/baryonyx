@@ -40,7 +40,7 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y ninja-build libnlopt-dev
+        sudo apt-get install -y ninja-build
 
     - name: Configure CMake
       run: cmake -B ${{ github.workspace }}/build -G Ninja -DCMAKE_BUILD_TYPE=${{ matrix.BUILD_TYPE }}

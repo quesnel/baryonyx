@@ -6,7 +6,7 @@ variables:
 build:
   stage: build
   before_script:
-    - apt-get update && apt-get -y install cmake g++ ninja-build libnlopt-dev
+    - apt-get update && apt-get -y install cmake g++ ninja-build
   script:
     - cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
     - cmake --build build

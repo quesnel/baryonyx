@@ -34,7 +34,6 @@ set(private_baryonyx_source
  src/memory.cpp
  src/memory.hpp
  src/merged-constraint.cpp
- src/nlopt-optimizer.cpp
  src/observer.hpp
  src/parallel-for.hpp
  src/parser.cpp
@@ -74,13 +73,11 @@ target_compile_options(libbaryonyx
 target_include_directories(libbaryonyx PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/>
-  $<$<BOOL:${NLOPT_FOUND}>:${NLOPT_INCLUDE_DIRS}>)
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/>)
 
 target_link_libraries(libbaryonyx
   PRIVATE
-  threads
-  $<$<BOOL:${NLOPT_FOUND}>:${NLOPT_LIBRARIES}>)
+  threads)
 
 set_target_properties(libbaryonyx PROPERTIES
   OUTPUT_NAME "baryonyx-${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}"
@@ -100,7 +97,6 @@ target_compile_definitions(libbaryonyx
   $<$<BOOL:${WITH_FULL_OPTIMIZATION}>:BARYONYX_FULL_OPTIMIZATION>
   $<$<BOOL:${WITH_DEBUG}>:BARYONYX_ENABLE_DEBUG>
   $<$<BOOL:${WITH_LOG}>:BARYONYX_ENABLE_LOG>
-  $<$<BOOL:${NLOPT_FOUND}>:BARYONYX_HAVE_NLOPT>
   $<$<CXX_COMPILER_ID:MSVC>:_CRT_SECURE_NO_WARNINGS>
   $<$<CXX_COMPILER_ID:MSVC>:_SCL_SECURE_NO_WARNINGS>
   VERSION_MAJOR=${PROJECT_VERSION_MAJOR}
@@ -113,10 +109,6 @@ install(TARGETS libbaryonyx
   LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
   INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
-
-if (NLOPT_FOUND)
-  set(BARYONYX_DEPENDENCIES nlopt)
-endif ()
 
 configure_file(baryonyx.pc.in
   "${CMAKE_BINARY_DIR}/baryonyx-${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.pc"
@@ -166,7 +158,6 @@ function(baryonyx_add_test test_name)
     PRIVATE
     $<$<BOOL:${WITH_DEBUG}>:BARYONYX_ENABLE_DEBUG>
     $<$<BOOL:${WITH_LOG}>:BARYONYX_ENABLE_LOG>
-    $<$<BOOL:${NLOPT_FOUND}>:BARYONYX_HAVE_NLOPT>
     $<$<CXX_COMPILER_ID:MSVC>:_CRT_SECURE_NO_WARNINGS>
     $<$<CXX_COMPILER_ID:MSVC>:_SCL_SECURE_NO_WARNINGS>
     $<$<CXX_COMPILER_ID:MSVC>:BOOST_UT_DISABLE_MODULE>)
@@ -178,8 +169,7 @@ function(baryonyx_add_test test_name)
     src
     ${CMAKE_CURRENT_BINARY_DIR})
 
-  target_link_libraries(${test_name} libbaryonyx threads
-      $<$<BOOL:${NLOPT_FOUND}>:${NLOPT_LIBRARIES}>)
+  target_link_libraries(${test_name} libbaryonyx threads)
 
   add_test(${test_name} ${test_name})
 endfunction()

@@ -171,31 +171,12 @@ optimize(const context& ctx, const problem& pb)
 }
 
 /**
- * @brief auto-tune solver parameters to optimize the problem using nlopt.
- *
- * @details The solver parameters are tuned to perform optimization and to
- *     found the best parameters to found the best solution. This function
- * use the @c nlopt library to search best parameters.
- *
- * @note Available if baryonyx is build with nlopt support otherwise, this
- *     function rely to @c tuned_optimize.
- *
- * @param ctx A context.
- * @param pb Problem definition.
- * @return A representation of the result.
- *
- * @throw @c baryonyx::solver_error
- */
-result
-nlopt_optimize(const context& ctx, const problem& pb);
-
-/**
  * @brief Split the problem with affected/no-affected variable.
  *
  * @details This optimization function tries to found variable with many
  *     changes during an @c update_row and split the problem in two distinct
  *     problem: variable affected to 0, variable affected to 1. Internally,
- * the problem can use @c optimize or @c nlopt_optimize.
+ * the problem uses @c optimize.
  *
  * @param ctx A context.
  * @param pb Problem definition.

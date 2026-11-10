@@ -350,8 +350,7 @@ help() noexcept
       "  --disable-preprocessing|-np   Disable preprocessing\n"
       "  --optimize|-O                 Optimize model (default "
       "feasibility search only)\n"
-      "  --auto:[nlopt,branch,branch-nlopt]|-a\n"
-      "                                Automatic parameters optimization\n"
+      "  --auto:branch|-a:branch       Split the problem on variables\n"
       "  --check filename.sol          Check if the solution is correct.\n"
       "\n"
       "  --quiet                       Remove any verbose message\n"
@@ -961,15 +960,8 @@ parse(int argc, const char* argv[])
         }
 
         if (auto opt = get(i, "--auto", "-a"); opt) {
-            if (*opt == "nlopt")
+            if (*opt == "branch")
                 ret.parameters.mode =
-                  baryonyx::solver_parameters::mode_type::nlopt;
-            else if (*opt == "branch")
-                ret.parameters.mode =
-                  baryonyx::solver_parameters::mode_type::branch;
-            else if (*opt == "branch-nlopt")
-                ret.parameters.mode =
-                  baryonyx::solver_parameters::mode_type::nlopt |
                   baryonyx::solver_parameters::mode_type::branch;
             else {
                 ret.parse_status = command_line_status::unknown_option;
