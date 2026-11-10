@@ -243,32 +243,41 @@ private:
 
         const bool always =
           kind == constraint_kind::equal ? lo == hi : (reach_lo && reach_hi);
-        const bool force_hi =
-          kind != constraint_kind::less && !always && hi == rhs;
-        const bool force_lo =
-          kind != constraint_kind::greater && !always && lo == rhs;
 
-        if (!always && !force_hi && !force_lo)
+        if (always) {
+            remaining[to_index(kind)][index] = 0;
+
+            debug(ctx,
+                  "      - {} constraint {} removed.\n",
+                  constraint_kind_names[to_index(kind)],
+                  cst.label);
             return;
-
-        remaining[to_index(kind)][index] = 0;
-
-        if (force_hi || force_lo) {
-            for (const auto& elem : cst.elements) {
-                if (values[elem.variable_index] != unassigned ||
-                    elem.factor == 0)
-                    continue;
-
-                if (!assign(elem.variable_index,
-                            force_hi ? elem.factor > 0 : elem.factor < 0))
-                    unrealisable(kind, index);
-            }
         }
 
-        debug(ctx,
-              "      - {} constraint {} removed.\n",
-              constraint_kind_names[to_index(kind)],
-              cst.label);
+        // A value of a variable that pushes the reachable left-hand side
+        // beyond the right-hand side is excluded, so the variable takes the
+        // other one (activity-based fixing). The decided values follow from
+        // the same bounds, so they can be applied in any order.
+        const bool upper = kind != constraint_kind::greater;
+        const bool lower = kind != constraint_kind::less;
+
+        for (const auto& elem : cst.elements) {
+            if (values[elem.variable_index] != unassigned || elem.factor == 0)
+                continue;
+
+            const long long a = elem.factor;
+            const bool excludes_1 = (upper && a > 0 && lo + a > rhs) ||
+                                    (lower && a < 0 && hi + a < rhs);
+            const bool excludes_0 = (upper && a < 0 && lo - a > rhs) ||
+                                    (lower && a > 0 && hi - a < rhs);
+
+            if (excludes_0 && excludes_1)
+                unrealisable(kind, index);
+
+            if ((excludes_0 || excludes_1) &&
+                !assign(elem.variable_index, excludes_0))
+                unrealisable(kind, index);
+        }
     }
 
     void propagate()
@@ -362,45 +371,81 @@ private:
         }
     }
 
-    bool is_unused_variable(int variable) const noexcept
+    // Counts the remaining constraints that a variable going up (or down)
+    // could violate.
+    std::pair<int, int> locks(int variable) const noexcept
     {
-        for (auto kind : constraint_kinds)
-            for (int cst : cache[variable][to_index(kind)])
-                if (remaining[to_index(kind)][cst] > 0)
-                    return false;
+        int up = 0;
+        int down = 0;
 
-        return true;
+        for (auto kind : constraint_kinds) {
+            for (int cst : cache[variable][to_index(kind)]) {
+                if (remaining[to_index(kind)][cst] <= 0)
+                    continue;
+
+                int factor = 0;
+                for (const auto& elem : get(kind, cst).elements)
+                    if (elem.variable_index == variable)
+                        factor += elem.factor;
+
+                if (factor == 0)
+                    continue;
+
+                const bool positive = factor > 0;
+                if (kind != constraint_kind::greater)
+                    ++(positive ? up : down);
+                if (kind != constraint_kind::less)
+                    ++(positive ? down : up);
+            }
+        }
+
+        return { up, down };
     }
 
-    // A variable free of any remaining constraint takes the value improving
-    // its linear objective term. Variables of quadratic terms are kept since
+    // Dual fixing: a variable that no remaining constraint prevents from
+    // going down (up) and whose cost does not favour the other value keeps an
+    // optimal solution at 0 (1). Variables of quadratic terms are kept since
     // their best value depends on other variables.
-    void assign_unused_variables()
+    bool dual_fixing()
     {
         std::vector<double> linear(values.size(), 0.0);
         std::vector<char> quadratic(values.size(), false);
 
+        const double sense =
+          pb.type == bx::objective_function_type::maximize ? -1.0 : 1.0;
+
         for (const auto& elem : pb.objective.elements)
-            linear[elem.variable_index] += elem.factor;
+            linear[elem.variable_index] += sense * elem.factor;
 
         for (const auto& elem : pb.objective.qelements) {
             quadratic[elem.variable_index_a] = true;
             quadratic[elem.variable_index_b] = true;
         }
 
-        const bool maximize = pb.type == bx::objective_function_type::maximize;
+        bool fixed = false;
 
         for (int i = 0, e = bx::length(values); i != e; ++i) {
-            if (values[i] != unassigned || quadratic[i] ||
-                !is_unused_variable(i))
+            if (values[i] != unassigned || quadratic[i])
                 continue;
 
-            [[maybe_unused]] const bool success =
-              assign(i, maximize ? linear[i] > 0 : linear[i] < 0);
-            bx_assert(success);
+            const auto [up, down] = locks(i);
+
+            if (down == 0 && linear[i] >= 0.0)
+                fixed = assign(i, false) || fixed;
+            else if (up == 0 && linear[i] <= 0.0)
+                fixed = assign(i, true) || fixed;
         }
 
-        propagate();
+        return fixed;
+    }
+
+    // Alternates propagation and dual fixing until neither assigns anything.
+    void simplify()
+    {
+        reduce();
+
+        while (dual_fixing())
+            reduce();
     }
 
 public:
@@ -428,8 +473,7 @@ public:
         if (!assign(variable_index, variable_value))
             unrealisable(variable_index);
 
-        reduce();
-        assign_unused_variables();
+        simplify();
 
         info(ctx,
              "  - Preprocessor finish. Removed variables {} (size: {})\n",
@@ -442,7 +486,7 @@ public:
     bx::problem operator()()
     {
         initialize();
-        assign_unused_variables();
+        simplify();
 
         info(ctx,
              "  - Preprocessor finish. Removed variables {} (size: {})\n",
@@ -628,6 +672,38 @@ private:
     }
 };
 
+// The solvers only handle 0-1 variables: an integer variable above 1 would
+// silently be solved as binary, while undeclared variables, real in the LP
+// format, have long been read as binary.
+static void
+check_variable_domains(const bx::context& ctx, const bx::raw_problem& pb)
+{
+    int real = 0;
+
+    for (int i = 0, e = bx::length(pb.vars.values); i != e; ++i) {
+        const auto& v = pb.vars.values[i];
+
+        if (v.type == bx::variable_type::real) {
+            ++real;
+        } else if (v.max > 1) {
+            error(ctx,
+                  "  - Variable {} has bounds [{}, {}]: only 0-1 variables "
+                  "are supported.\n",
+                  pb.vars.names[i],
+                  v.min,
+                  v.max);
+
+            throw bx::solver_failure(
+              bx::solver_error_tag::not_binary_variable);
+        }
+    }
+
+    if (real > 0)
+        warning(ctx,
+                "  - {} real variables are solved as 0-1 variables.\n",
+                real);
+}
+
 } // namespace anonymous
 
 namespace baryonyx {
@@ -676,6 +752,8 @@ preprocess(const context& ctx, const raw_problem& raw_pb)
          "- Preprocessing starts (size: {})\n",
          to_string(memory_consumed_size(memory_consumed(raw_pb))));
 
+    check_variable_domains(ctx, raw_pb);
+
     ::preprocessor<raw_problem> pp(ctx, raw_pb);
 
     return pp();
@@ -687,6 +765,8 @@ unpreprocess(const context& ctx, const raw_problem& raw_pb)
     info(ctx,
          "- Unprepossessing starts (size: {})\n",
          to_string(memory_consumed_size(memory_consumed(raw_pb))));
+
+    check_variable_domains(ctx, raw_pb);
 
     return problem(raw_pb);
 }

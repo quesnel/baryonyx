@@ -267,7 +267,8 @@ enum class solver_error_tag
 {
     no_solver_available = 1,
     unrealisable_constraint,
-    not_enough_memory
+    not_enough_memory,
+    not_binary_variable ///< An integer variable has an upper bound above 1.
 };
 
 struct solver_error

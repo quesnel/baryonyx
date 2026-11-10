@@ -53,6 +53,8 @@ template<typename Problem>
 static std::optional<double>
 brute_force(const Problem& pb)
 {
+    const bool maximize =
+      pb.type == baryonyx::objective_function_type::maximize;
     const int n = baryonyx::length(pb.vars.names);
     std::optional<double> best;
 
@@ -91,7 +93,7 @@ brute_force(const Problem& pb)
             value += elem.factor * x[elem.variable_index_a] *
                      x[elem.variable_index_b];
 
-        if (!best || value < *best)
+        if (!best || (maximize ? value > *best : value < *best))
             best = value;
     }
 
@@ -107,12 +109,13 @@ random_problem(std::mt19937& rng)
     std::uniform_int_distribution<int> var(0, 5);
     std::uniform_int_distribution<int> length(1, 4);
     std::bernoulli_distribution fixed(0.1);
+    std::bernoulli_distribution maximize(0.5);
 
     auto term = [](int f, int v) {
         return fmt::format("{}{} x{} ", f < 0 ? "- " : "+ ", std::abs(f), v);
     };
 
-    std::string ret = "minimize\n";
+    std::string ret = maximize(rng) ? "maximize\n" : "minimize\n";
     for (int v = 0; v != 6; ++v)
         if (int f = factor(rng); f != 0)
             ret += term(f, v);
@@ -302,37 +305,30 @@ main()
         expect(pb);
         expect(pb.vars.names.size() == static_cast<size_t>(6));
 
-        // The preprocessing can not remove any constraint or variable from the
-        // raw_problem.
-
+        // Without objective, dual fixing decides every variable: a and b go
+        // down and c up, which makes ct00 always satisfied, then d, e and f
+        // follow ct01 alone.
         auto pb_pp = baryonyx::preprocess(*ctx, pb);
-        expect(pb_pp.vars.names.size() == static_cast<size_t>(6));
-        expect(pb_pp.affected_vars.names.size() == static_cast<size_t>(0));
-        expect(pb_pp.equal_constraints.size() == static_cast<size_t>(0));
-        expect(pb_pp.less_constraints.size() == static_cast<size_t>(2));
-        expect(pb_pp.greater_constraints.size() == static_cast<size_t>(0));
+        expect(pb_pp.vars.names.size() == static_cast<size_t>(0));
+        expect(pb_pp.affected_vars.names.size() == static_cast<size_t>(6));
+        expect(pb_pp.less_constraints.empty());
+        expect(brute_force(pb_pp) == brute_force(pb));
 
-        // We add an "affectation bound" for the variable 'f' i.e. in bound
-        // section of the lp file format:
-        //
-        // bounds:
-        // f = 0
-
+        // The bound f = 0 of the LP bounds section is applied as well.
         auto id = get_variable(pb.vars.names, "f");
-        expect(id >= 0);
-        expect(id < baryonyx::length(pb.vars.names));
-
-        expect(pb.vars.names.size() == pb.vars.values.size());
+        expect((id >= 0 && id < baryonyx::length(pb.vars.names)) >> fatal);
 
         pb.vars.values[id].min = 0;
         pb.vars.values[id].max = 0;
 
         auto pb_pp2 = baryonyx::preprocess(*ctx, pb);
-        expect(pb_pp2.vars.names.size() == static_cast<size_t>(5));
-        expect(pb_pp2.affected_vars.names.size() == static_cast<size_t>(1));
-        expect(pb_pp2.equal_constraints.size() == static_cast<size_t>(0));
-        expect(pb_pp2.less_constraints.size() == static_cast<size_t>(2));
-        expect(pb_pp2.greater_constraints.size() == static_cast<size_t>(0));
+        expect(pb_pp2.vars.names.size() == static_cast<size_t>(0));
+        expect(brute_force(pb_pp2) == brute_force(pb));
+
+        const auto& names = pb_pp2.affected_vars.names;
+        const auto f = std::ranges::find(names, std::string_view("f"));
+        expect((f != names.end()) >> fatal);
+        expect(pb_pp2.affected_vars.values[f - names.begin()] == 0);
     };
 
     "test_cleaning_affected_variables"_test = [] {
@@ -342,94 +338,71 @@ main()
         expect(pb);
         expect(pb.vars.names.size() == static_cast<size_t>(23));
 
+        // Dual fixing sets d and e, which only appear in <= constraints
+        // with positive factors and positive costs, to 0.
         auto pb_pp = baryonyx::preprocess(*ctx, pb);
 
-        expect(pb_pp.vars.names.size() == static_cast<size_t>(2));
-        expect(pb_pp.affected_vars.names.size() == static_cast<size_t>(21));
+        expect(pb_pp.vars.names.size() == static_cast<size_t>(0));
+        expect(pb_pp.affected_vars.names.size() == static_cast<size_t>(23));
     };
+
+    // Both variables stay free after preprocessing: they want to be 1 but
+    // d + e <= 1 allows only one of them.
+    static constexpr const char* d_or_e = "minimize\n"
+                                          "-d - 2 e\n"
+                                          "st\n"
+                                          "d + e <= 1\n"
+                                          "binary\n"
+                                          "d e\n"
+                                          "end\n";
 
     "test_affect_variable"_test = [] {
         auto ctx = baryonyx::make_context(4);
-        auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/prepro.lp");
-
+        std::istringstream iss(d_or_e);
+        auto pb = baryonyx::make_problem(*ctx, iss);
         expect(pb);
+
         auto pb_pp = baryonyx::preprocess(*ctx, pb);
+        expect((pb_pp.vars.names.size() == static_cast<size_t>(2)) >> fatal);
+        expect(pb_pp.affected_vars.names.size() == static_cast<size_t>(0));
 
-        expect(pb_pp.vars.names.size() == static_cast<size_t>(2));
-        expect(pb_pp.affected_vars.names.size() == static_cast<size_t>(21));
-
-        {
-            // + d + e <= 1
-            // d = 1 implies e = 0
-
-            auto pb_af = baryonyx::affect(*ctx, pb_pp, 0, true);
-            expect(pb_af.vars.names.size() == static_cast<size_t>(0));
-            expect(pb_af.affected_vars.names.size() ==
-                   static_cast<size_t>(23));
-        }
-
-        {
-            // + d + e <= 1
-            // d = 0 implies e = {0, 1} but minimize so => 0.
-
-            auto pb_af = baryonyx::affect(*ctx, pb_pp, 0, false);
-            expect(pb_af.vars.names.size() == static_cast<size_t>(0));
-            expect(pb_af.affected_vars.names.size() ==
-                   static_cast<size_t>(23));
-        }
-
-        {
-            // + d + e <= 1
-            // e = 1 implies d = 0
-
-            auto pb_af = baryonyx::affect(*ctx, pb_pp, 1, true);
-            expect(pb_af.vars.names.size() == static_cast<size_t>(0));
-            expect(pb_af.affected_vars.names.size() ==
-                   static_cast<size_t>(23));
-        }
-
-        {
-            // + d + e <= 1
-            // e = 0 implies d = {0, 1} but minimize so => 0.
-
-            auto pb_af = baryonyx::affect(*ctx, pb_pp, 1, false);
-            expect(pb_af.vars.names.size() == static_cast<size_t>(0));
-            expect(pb_af.affected_vars.names.size() ==
-                   static_cast<size_t>(23));
+        // Fixing either variable decides the other one: a variable set to 1
+        // forces the other to 0 and a variable set to 0 frees the other,
+        // which then takes the value of its negative cost.
+        for (int variable : { 0, 1 }) {
+            for (bool value : { true, false }) {
+                auto pb_af = baryonyx::affect(*ctx, pb_pp, variable, value);
+                expect(pb_af.vars.names.size() == static_cast<size_t>(0));
+                expect(pb_af.affected_vars.names.size() ==
+                       static_cast<size_t>(2));
+                expect(pb_af.affected_vars.values[0] !=
+                       pb_af.affected_vars.values[1]);
+            }
         }
     };
 
     "test_split"_test = [] {
         auto ctx = baryonyx::make_context(4);
-        auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/prepro.lp");
+        std::istringstream iss(d_or_e);
+        auto pb = baryonyx::make_problem(*ctx, iss);
         expect(pb);
-        auto pb_pp = baryonyx::preprocess(*ctx, pb);
 
-        expect(pb_pp.vars.names.size() == static_cast<size_t>(2));
-        expect(pb_pp.affected_vars.names.size() == static_cast<size_t>(21));
+        auto pb_pp = baryonyx::preprocess(*ctx, pb);
+        expect((pb_pp.vars.names.size() == static_cast<size_t>(2)) >> fatal);
 
         baryonyx::problem p0, p1;
         std::tie(p0, p1) = baryonyx::split(*ctx, pb_pp, 0);
 
-        {
-            // + d + e <= 1
-            // d = 1 implies e = 0
-
-            expect(p0.vars.names.size() == static_cast<size_t>(0));
-            expect(p0.affected_vars.names.size() == static_cast<size_t>(23));
-        }
-
-        {
-            // + d + e <= 1
-            // d = 0 implies e = {0, 1}
-
-            expect(p1.vars.names.size() == static_cast<size_t>(0));
-            expect(p1.affected_vars.names.size() == static_cast<size_t>(23));
+        for (const auto& p : { p0, p1 }) {
+            expect(p.vars.names.size() == static_cast<size_t>(0));
+            expect(p.affected_vars.names.size() == static_cast<size_t>(2));
+            expect(p.affected_vars.values[0] != p.affected_vars.values[1]);
         }
     };
 
     "test_unrealisable_problems"_test = [] {
-        auto unrealisable = [](const char* str_pb) {
+        auto fails_with = [](const char* str_pb,
+                             baryonyx::solver_error_tag tag) {
             auto ctx = baryonyx::make_context(4);
             std::istringstream iss(str_pb);
             auto pb = baryonyx::make_problem(*ctx, iss);
@@ -437,11 +410,15 @@ main()
             try {
                 baryonyx::preprocess(*ctx, pb);
             } catch (const baryonyx::solver_failure& e) {
-                return e.failure() ==
-                       baryonyx::solver_error_tag::unrealisable_constraint;
+                return e.failure() == tag;
             }
 
             return false;
+        };
+
+        auto unrealisable = [&](const char* str_pb) {
+            return fails_with(
+              str_pb, baryonyx::solver_error_tag::unrealisable_constraint);
         };
 
         // The first constraint fixes every variable to 1, which violates the
@@ -460,8 +437,10 @@ main()
           "minimize\nx + y\nst\nx + y <= 0\n"
           "bounds\nx >= 1\nx <= 1\nbinary\ny\ngeneral\nx\nend\n"));
 
-        expect(unrealisable("minimize\nx + y\nst\nx + y >= 1\n"
-                            "bounds\nx >= 2\nbinary\ny\ngeneral\nx\nend\n"));
+        // An integer variable above 1 cannot be solved as a 0-1 variable.
+        expect(fails_with("minimize\nx + y\nst\nx + y >= 1\n"
+                          "bounds\nx >= 2\nbinary\ny\ngeneral\nx\nend\n",
+                          baryonyx::solver_error_tag::not_binary_variable));
 
         expect(unrealisable("minimize\nx + y + z\nst\n2 x = 1\ny + z >= 1\n"
                             "binary\nx y z\nend\n"));
@@ -478,7 +457,7 @@ main()
                              "c3: d + e + f >= 1\n"
                              "c4: d + e - f <= 1\n"
                              "bounds\n"
-                             "d >= 1\n"
+                             "d = 1\n"
                              "binary\n"
                              "a b c e f\n"
                              "general\n"
@@ -501,12 +480,42 @@ main()
         expect(value_of("c") == 0);
         expect(value_of("d") == 1);
 
-        // d = 1 satisfies c3 and leaves e - f <= 0 in c4.
-        expect(pb_pp.vars.names.size() == 2u);
-        expect(pb_pp.less_constraints.size() == 1u);
+        // d = 1 satisfies c3 and leaves e - f <= 0 in c4, then dual fixing
+        // sets e to 0, its only lock being upward, and f follows.
+        expect(value_of("e") == 0);
+        expect(value_of("f") == 0);
+        expect(pb_pp.vars.names.size() == 0u);
+        expect(pb_pp.less_constraints.size() == 0u);
         expect(pb_pp.greater_constraints.size() == 0u);
         expect(pb_pp.equal_constraints.size() == 0u);
         expect(pb_pp.objective.value == 3.0);
+    };
+
+    "test_activity_fixing"_test = [] {
+        auto ctx = baryonyx::make_context(4);
+
+        // x = 1 would need 3 <= 2: x is fixed to 0, then y + z <= 2 always
+        // holds and both variables take the value of their negative cost.
+        const char* str_pb = "minimize\n"
+                             "-x - y - z\n"
+                             "st\n"
+                             "3 x + y + z <= 2\n"
+                             "binary\n"
+                             "x y z\n"
+                             "end\n";
+
+        std::istringstream iss(str_pb);
+        auto pb = baryonyx::make_problem(*ctx, iss);
+        auto pb_pp = baryonyx::preprocess(*ctx, pb);
+
+        expect(pb_pp.vars.names.empty());
+        expect(pb_pp.less_constraints.empty());
+        expect(pb_pp.objective.value == -2.0);
+
+        const auto& names = pb_pp.affected_vars.names;
+        const auto x = std::ranges::find(names, std::string_view("x"));
+        expect((x != names.end()) >> fatal);
+        expect(pb_pp.affected_vars.values[x - names.begin()] == 0);
     };
 
     "test_quadratic_objective_cleaning"_test = [] {

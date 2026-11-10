@@ -94,7 +94,8 @@ main()
                        result,
                        result.affected_vars.names.size());
 
-            expect(result.affected_vars.names.size() == 21);
+            // The preprocessor decides every variable of prepro.lp.
+            expect(result.affected_vars.names.size() == 23);
 
             int var;
 
@@ -168,7 +169,7 @@ main()
             expect(result.status == baryonyx::result_status::success);
             expect(!result.solutions.empty());
             expect(result.solutions.size() >= 1);
-            expect(result.variable_name.size() == 2);
+            expect(result.variable_name.size() == 0);
 
             expect(baryonyx::is_valid_solution(pb, result) == true);
 
@@ -301,9 +302,18 @@ main()
             expect(unrealisable(ctx, pb, optimize));
         }
 
+        // The sudoku variables are integers in [1, 9]: solving them as 0-1
+        // variables would be wrong, so they are rejected.
         auto ctx = baryonyx::make_context(4);
         auto sudoku = baryonyx::make_problem(ctx, EXAMPLES_DIR "/sudoku.lp");
-        expect(unrealisable(ctx, sudoku, solve));
+        bool rejected = false;
+        try {
+            baryonyx::solve(ctx, sudoku);
+        } catch (const baryonyx::solver_failure& e) {
+            rejected =
+              e.failure() == baryonyx::solver_error_tag::not_binary_variable;
+        }
+        expect(rejected);
     };
 
     "test_real_cost"_test = [] {

@@ -438,6 +438,9 @@ struct fmt::formatter<baryonyx::solver_error_tag>
         case baryonyx::solver_error_tag::not_enough_memory:
             name = "not enough memory";
             break;
+        case baryonyx::solver_error_tag::not_binary_variable:
+            name = "not binary variable";
+            break;
         } 
 
         return formatter<string_view>::format(name, ctx);
