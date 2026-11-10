@@ -844,26 +844,27 @@ main()
         expect(baryonyx::is_valid_solution(pb, result) == true);
     };
 
-    //"test_flat30_7_with_buffer"_test = [] {
-    //    auto ctx = baryonyx::make_context(4);
-    //    auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/flat30-7.lp");
+    "test_flat30_7_with_buffer"_test = [] {
+        auto ctx = baryonyx::make_context(4);
+        auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/flat30-7.lp");
 
-    //    baryonyx::solver_parameters params;
-    //    params.limit = -1;
-    //    params.delta = 0.001;
-    //    params.kappa_min = 0.;
-    //    params.kappa_step = 1e-10;
-    //    params.kappa_max = 1.0;
-    //    params.order =
-    //      baryonyx::solver_parameters::constraint_order::random_sorting;
-    //    params.use_buffer_solver = true;
-    //    baryonyx::context_set_solver_parameters(ctx, params);
+        baryonyx::solver_parameters params;
+        params.limit = 200000;
+        params.seed = 1;
+        params.delta = 0.001;
+        params.kappa_min = 0.;
+        params.kappa_step = 1e-10;
+        params.kappa_max = 1.0;
+        params.order =
+          baryonyx::solver_parameters::constraint_order::random_sorting;
+        params.use_buffer_solver = true;
+        baryonyx::context_set_solver_parameters(ctx, params);
 
-    //    auto result = baryonyx::solve(ctx, pb);
+        auto result = baryonyx::solve(ctx, pb);
 
-    //    expect(result.status == baryonyx::result_status::success);
-    //    expect(baryonyx::is_valid_solution(pb, result) == true);
-    //};
+        expect(result.status == baryonyx::result_status::success);
+        expect(baryonyx::is_valid_solution(pb, result) == true);
+    };
 
     "test_uf50_0448"_test = [] {
         auto ctx = baryonyx::make_context(4);
@@ -888,29 +889,30 @@ main()
         expect(baryonyx::is_valid_solution(pb, result) == true);
     };
 
-    //"test_uf50_0448_with_buffer"_test = [] {
-    //    auto ctx = baryonyx::make_context(4);
-    //    auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/uf50-0448.lp");
+    "test_uf50_0448_with_buffer"_test = [] {
+        auto ctx = baryonyx::make_context(4);
+        auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/uf50-0448.lp");
 
-    //    baryonyx::solver_parameters params;
-    //    params.limit = -1;
-    //    params.theta = 0.5;
-    //    params.delta = 1.0;
-    //    params.kappa_min = 0.1;
-    //    params.kappa_step = 1e-17;
-    //    params.kappa_max = 1.0;
-    //    params.alpha = 2.0;
-    //    params.w = 60;
-    //    params.use_buffer_solver = true;
-    //    params.order =
-    //      baryonyx::solver_parameters::constraint_order::random_sorting;
-    //    baryonyx::context_set_solver_parameters(ctx, params);
+        baryonyx::solver_parameters params;
+        params.limit = 200000;
+        params.seed = 1;
+        params.theta = 0.5;
+        params.delta = 1.0;
+        params.kappa_min = 0.1;
+        params.kappa_step = 1e-17;
+        params.kappa_max = 1.0;
+        params.alpha = 2.0;
+        params.w = 60;
+        params.use_buffer_solver = true;
+        params.order =
+          baryonyx::solver_parameters::constraint_order::random_sorting;
+        baryonyx::context_set_solver_parameters(ctx, params);
 
-    //    auto result = baryonyx::solve(ctx, pb);
+        auto result = baryonyx::solve(ctx, pb);
 
-    //    expect(result.status == baryonyx::result_status::success);
-    //    expect(baryonyx::is_valid_solution(pb, result) == true);
-    //};
+        expect(result.status == baryonyx::result_status::success);
+        expect(baryonyx::is_valid_solution(pb, result) == true);
+    };
 
     "test_aim_50_1_6_yes1_2"_test = [] {
         auto ctx = baryonyx::make_context(4);

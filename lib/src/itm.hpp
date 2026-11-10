@@ -105,7 +105,6 @@ solve(const context& ctx, const problem& pb)
             switch (pb.problem_type) {
             case problem_solver_type::equalities_01:
             case problem_solver_type::equalities_101:
-            case problem_solver_type::equalities_Z:
             case problem_solver_type::inequalities_01:
             case problem_solver_type::inequalities_101:
                 return solve_inequalities_101_buffered(ctx, pb);
@@ -177,7 +176,6 @@ optimize(const context& ctx, const problem& pb)
             switch (pb.problem_type) {
             case problem_solver_type::equalities_01:
             case problem_solver_type::equalities_101:
-            case problem_solver_type::equalities_Z:
             case problem_solver_type::inequalities_01:
             case problem_solver_type::inequalities_101:
                 return optimize_inequalities_101_buffered(ctx, pb);
