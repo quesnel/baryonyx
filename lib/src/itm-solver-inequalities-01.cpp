@@ -197,11 +197,92 @@ struct solver_inequalities_01coeff : debug_logger<debug>
         bkmin = std::min(bkmin, r_size);
         bkmax = std::min(bkmax, r_size);
 
-        for (int i = bkmin; i <= bkmax; ++i)
+        for (int i = bkmin; i < bkmax; ++i)
             if (stop_iterating<Mode>(R[i].value, rng))
                 return i - 1;
 
         return bkmax - 1;
+    }
+
+    // Lagrangian coordinate ascent on a range row: the selection uses the
+    // reduced costs without the row multiplier and pi[k] is set in the middle
+    // of the multipliers supporting it, which must be >= 0 when only the lower
+    // bound can be tight and <= 0 when only the upper bound can be tight.
+    template<typename Xtype, typename Iterator>
+    bool affect_range(Xtype& x,
+                      Iterator it,
+                      int k,
+                      int r_size,
+                      real kappa,
+                      real delta)
+    {
+        constexpr real inf = std::numeric_limits<real>::infinity();
+        constexpr real zero{ 0 };
+
+        const real old_pi = pi[k];
+        for (int i = 0; i != r_size; ++i)
+            R[i].value += old_pi;
+
+        int attractive = 0;
+        while (attractive != r_size && R[attractive].value < zero)
+            ++attractive;
+
+        const int bmin = std::min(b[k].min, r_size);
+        const int bmax = std::min(b[k].max, r_size);
+        const int count = std::clamp(attractive, bmin, bmax);
+
+        real lo = count > 0 ? R[count - 1].value : -inf;
+        real hi = count < r_size ? R[count].value : +inf;
+        if (count > bmin)
+            hi = std::min(hi, zero);
+        if (count < bmax)
+            lo = std::max(lo, zero);
+
+        if (std::isfinite(lo) && std::isfinite(hi))
+            pi[k] = (lo + hi) / 2;
+        else if (std::isfinite(lo))
+            pi[k] = lo;
+        else if (std::isfinite(hi))
+            pi[k] = hi;
+        else
+            pi[k] = zero;
+
+        const real gap = count > 0 && count < r_size
+                           ? R[count].value - R[count - 1].value
+                           : zero;
+        const real d = delta + (kappa / (1 - kappa)) * gap;
+
+        for (int i = 0; i != r_size; ++i) {
+            auto var = it + R[i].id;
+
+            if (i < count) {
+                x.set(var->column);
+                P[var->value] += d;
+            } else {
+                x.unset(var->column);
+                P[var->value] -= d;
+            }
+        }
+
+        bx_expects(is_valid_constraint(*this, k, x));
+
+        return is_signbit_change(old_pi, pi[k]);
+    }
+
+    template<typename Xtype, typename Iterator>
+    bool select_and_affect(Xtype& x,
+                           Iterator it,
+                           int k,
+                           int r_size,
+                           real kappa,
+                           real delta)
+    {
+        if constexpr (std::is_same_v<Mode, minimize_tag>) {
+            return affect_range(x, it, k, r_size, kappa, delta);
+        } else {
+            const int selected = select_variables(r_size, b[k].min, b[k].max);
+            return affect(*this, x, it, k, selected, r_size, kappa, delta);
+        }
     }
 
     template<typename Xtype, typename Iterator>
@@ -237,17 +318,16 @@ struct solver_inequalities_01coeff : debug_logger<debug>
                               c((std::get<0>(it) + R[i].id)->column, x);
 
             calculator_sort<Mode>(R.get(), R.get() + r_size, rng);
-            int selected = select_variables(r_size, b[k].min, b[k].max);
 
             logger::log("constraints {}: {} <= ", k, b[k].min);
 
             for (int i = 0; i < r_size; ++i)
                 logger::log("({} {}) ", R[i].value, R[i].id);
 
-            logger::log("<= {} => Selected: {}\n", b[k].max, selected);
+            logger::log("<= {}\n", b[k].max);
 
-            auto pi_change = affect(
-              *this, x, std::get<0>(it), k, selected, r_size, kappa, delta);
+            auto pi_change = select_and_affect(
+              x, std::get<0>(it), k, r_size, kappa, delta);
 
             at_least_one_pi_changed = at_least_one_pi_changed || pi_change;
         }
@@ -277,17 +357,16 @@ struct solver_inequalities_01coeff : debug_logger<debug>
               compute_reduced_costs(std::get<0>(it), std::get<1>(it), x);
 
             calculator_sort<Mode>(R.get(), R.get() + r_size, rng);
-            int selected = select_variables(r_size, b[k].min, b[k].max);
 
             logger::log("constraints {}: {} <= ", k, b[k].min);
 
             for (int i = 0; i < r_size; ++i)
                 logger::log("({} {}) ", R[i].value, R[i].id);
 
-            logger::log("<= {} => Selected: {}\n", b[k].max, selected);
+            logger::log("<= {}\n", b[k].max);
 
-            auto pi_change = affect(
-              *this, x, std::get<0>(it), k, selected, r_size, kappa, delta);
+            auto pi_change = select_and_affect(
+              x, std::get<0>(it), k, r_size, kappa, delta);
 
             at_least_one_pi_changed = at_least_one_pi_changed || pi_change;
         }
