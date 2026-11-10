@@ -58,6 +58,7 @@ struct local_context
     std::uniform_int_distribution<int> bad_solution_choose;
     std::uniform_int_distribution<std::size_t> crossover_dist;
     std::bernoulli_distribution crossover_bastert_insertion;
+    bit_array random_solution;
 
     const real init_kappa_improve_start;
     const real init_kappa_improve_increase;
@@ -105,7 +106,6 @@ private:
     std::vector<int> m_indices;
     std::vector<raw_result<Mode>> m_data;
     bit_array m_bastert;
-    bit_array m_random;
 
     const Cost& costs;
     real cost_constant;
@@ -130,15 +130,17 @@ private:
         return bound_indices{ m_indices.front(), m_indices.back() };
     }
 
-    void replace_result(const int id,
-                        const bit_array& x,
-                        const real value,
-                        const double duration,
-                        const std::size_t hash,
-                        const long int loop,
-                        const int remaining_constraints) noexcept
+    void replace_bad_solution(local_context& ctx,
+                              const bit_array& x,
+                              const real value,
+                              const double duration,
+                              const std::size_t hash,
+                              const long int loop,
+                              const int remaining_constraints)
     {
         std::unique_lock<std::shared_mutex> lock{ mutex };
+
+        const int id = m_indices[choose_a_bad_solution(ctx)];
 
         m_data[id].x = x;
         m_data[id].value = value;
@@ -146,6 +148,8 @@ private:
         m_data[id].hash = hash;
         m_data[id].loop = loop;
         m_data[id].remaining_constraints = remaining_constraints;
+
+        sort();
     }
 
     int choose_a_bad_solution(local_context& ctx) const
@@ -160,7 +164,8 @@ private:
             value = ctx.choose_sol_dist(ctx.rng);
         } while (value < 0 || value > 1);
 
-        return static_cast<int>(static_cast<real>(m_size) * value);
+        return std::min(static_cast<int>(static_cast<real>(m_size) * value),
+                        m_size - 1);
     }
 
 public:
@@ -173,7 +178,6 @@ public:
       : m_indices(population_size)
       , m_data(population_size)
       , m_bastert(variables)
-      , m_random(variables)
       , costs(costs_)
       , cost_constant(cost_constant_)
       , m_size(population_size)
@@ -247,19 +251,15 @@ public:
                 const std::size_t hash,
                 const int remaining_constraints,
                 const double duration,
-                const long int loop) noexcept
+                const long int loop)
     {
-        int id_to_delete = m_indices[choose_a_bad_solution(ctx)];
-
-        replace_result(id_to_delete,
-                       x,
-                       costs.results(x, cost_constant),
-                       duration,
-                       hash,
-                       loop,
-                       remaining_constraints);
-
-        sort();
+        replace_bad_solution(ctx,
+                             x,
+                             costs.results(x, cost_constant),
+                             duration,
+                             hash,
+                             loop,
+                             remaining_constraints);
     }
 
     void insert(local_context& ctx,
@@ -267,13 +267,9 @@ public:
                 const std::size_t hash,
                 const real value,
                 const double duration,
-                const long int loop) noexcept
+                const long int loop)
     {
-        int id_to_delete = m_indices[choose_a_bad_solution(ctx)];
-
-        replace_result(id_to_delete, x, value, duration, hash, loop, 0);
-
-        sort();
+        replace_bad_solution(ctx, x, value, duration, hash, loop, 0);
     }
 
     bool can_be_inserted(const std::size_t hash,
@@ -304,6 +300,8 @@ public:
 
     const raw_result<Mode>& get_worst() const noexcept
     {
+        std::shared_lock<std::shared_mutex> lock(mutex);
+
         int last = 1;
         const int end = length(m_indices);
 
@@ -330,6 +328,8 @@ public:
 
     const raw_result<Mode>& get_best(int i) const noexcept
     {
+        std::shared_lock<std::shared_mutex> lock(mutex);
+
         return m_data[m_indices[i]];
     }
 
@@ -349,23 +349,27 @@ public:
 
     void crossover(local_context& ctx, bit_array& x)
     {
+        std::shared_lock<std::shared_mutex> lock(mutex);
+
         if (ctx.crossover_bastert_insertion(ctx.rng)) {
             int first = m_indices[choose_a_solution(ctx)];
             std::bernoulli_distribution b(0.5);
 
             if (b(ctx.rng)) {
-                if (b(ctx.rng)) {
+                if (b(ctx.rng))
                     crossover(ctx, x, m_data[first].x, m_bastert);
-                } else {
-                    m_data[first].x = m_bastert;
-                }
+                else
+                    x = m_bastert;
             } else {
-                init_with_random(m_random, ctx.rng, x.size(), 0.5);
-                if (b(ctx.rng)) {
-                    crossover(ctx, x, m_data[first].x, m_random);
-                } else {
-                    m_data[first].x = m_random;
-                }
+                if (ctx.random_solution.size() != x.size())
+                    ctx.random_solution = bit_array(x.size());
+
+                init_with_random(
+                  ctx.random_solution, ctx.rng, x.size(), 0.5);
+                if (b(ctx.rng))
+                    crossover(ctx, x, m_data[first].x, ctx.random_solution);
+                else
+                    x = ctx.random_solution;
             }
         } else {
             int first = m_indices[choose_a_solution(ctx)];
@@ -378,10 +382,9 @@ public:
     }
 
 private:
+    // Called with the exclusive lock held.
     void sort() noexcept
     {
-        std::unique_lock<std::shared_mutex> lock{ mutex };
-
         std::sort(
           std::begin(m_indices), std::end(m_indices), [this](int i1, int i2) {
               const int cst_1 = this->m_data[i1].remaining_constraints;
@@ -533,7 +536,9 @@ struct optimize_functor
 {
     const context& m_ctx;
     local_context m_local_ctx;
-    long int m_call_number;
+    // Read by the monitoring thread through std::atomic_ref.
+    alignas(std::atomic_ref<long int>::required_alignment) long int
+      m_call_number;
     unsigned m_thread_id;
 
     optimize_functor(const context& ctx,
@@ -586,17 +591,18 @@ struct optimize_functor
         bool is_a_solution = false;
 
         while (not stop_task.load()) {
-            ++m_call_number;
+            std::atomic_ref<long int>(m_call_number)
+              .fetch_add(1, std::memory_order_relaxed);
             const auto kappa_start = static_cast<real>(best_recorder.reinit(
               m_local_ctx, is_a_solution, kappa_min, kappa_max, x));
             auto kappa = kappa_start;
             compute.init(slv, x);
 
-            auto best_remaining = INT_MAX;
+            auto remaining = INT_MAX;
             is_a_solution = false;
 
             for (long int i = 0; !stop_task.load() && i != p.limit; ++i) {
-                auto remaining =
+                remaining =
                   compute.run(slv, x, m_local_ctx.rng, kappa, delta, theta);
 
                 if (remaining == 0) {
@@ -606,11 +612,8 @@ struct optimize_functor
                       original_costs.results(x, cost_constant),
                       i);
 
-                    best_remaining = 0;
                     is_a_solution = true;
                     break;
-                } else {
-                    best_remaining = std::min(remaining, best_remaining);
                 }
 
                 if (i > w_limit)
@@ -623,16 +626,17 @@ struct optimize_functor
                     break;
             }
 
-            if (best_remaining > 0) {
-                best_recorder.try_advance(
-                  m_local_ctx, x, best_remaining, p.limit);
+            if (remaining > 0) {
+                if (remaining != INT_MAX)
+                    best_recorder.try_advance(
+                      m_local_ctx, x, remaining, p.limit);
                 continue;
             }
 
             for (int push = 0; !stop_task.load() && push < p.pushes_limit;
                  ++push) {
 
-                auto remaining =
+                remaining =
                   compute.push_and_run(slv,
                                        x,
                                        m_local_ctx.rng,
@@ -768,7 +772,9 @@ optimize_problem(const context& ctx, const problem& pb)
 
         auto call_number = 0L;
         for (auto i = 0u; i != thread; ++i)
-            call_number += functors[i].m_call_number;
+            call_number +=
+              std::atomic_ref<long int>(functors[i].m_call_number)
+                .load(std::memory_order_relaxed);
 
         int constraints_remaining;
         long int loop;

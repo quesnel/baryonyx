@@ -50,6 +50,27 @@ main()
         expect(result.status != baryonyx::result_status::internal_error);
     };
 
+    "test_optimize_returns_its_solution"_test = [] {
+        for (const int seed : { 1, 2, 3 }) {
+            auto ctx = baryonyx::make_context(0);
+            auto pb = baryonyx::make_problem(
+              ctx, EXAMPLES_DIR "/assignment_problem_1.lp");
+
+            baryonyx::solver_parameters params;
+            params.time_limit = 1.0;
+            params.seed = seed;
+            params.thread = 4;
+            baryonyx::context_set_solver_parameters(ctx, params);
+
+            auto result = baryonyx::optimize(ctx, pb);
+            expect((result.status == baryonyx::result_status::success) >>
+                   fatal);
+            expect(baryonyx::is_valid_solution(pb, result));
+            expect(baryonyx::compute_solution(pb, result) ==
+                   result.solutions.back().value);
+        }
+    };
+
     "test_qap"_test = [] {
         auto ctx = baryonyx::make_context(4);
         auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/small4.lp");
