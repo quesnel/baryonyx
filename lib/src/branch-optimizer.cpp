@@ -342,7 +342,7 @@ optimize(const baryonyx::context& ctx, const baryonyx::problem& pb)
                     elem.problem.vars.values.size());
         }
 
-    } while (!jobs.empty());
+    } while (!jobs.empty() && !baryonyx::is_stop_requested());
 
     if (ctx.finish)
         ctx.finish(best);

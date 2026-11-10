@@ -818,6 +818,16 @@ result
 optimize(const baryonyx::context_ptr& ctx, const raw_problem& pb);
 
 /**
+ * Asks the running @c solve or @c optimize to stop as if its time limit was
+ * reached: it returns its best result. Async-signal-safe, it can be called
+ * from a signal handler. The request is cleared when @c solve or @c optimize
+ * starts.
+ */
+BX_EXPORT
+void
+request_stop() noexcept;
+
+/**
  * @details Try to valid the @c baryonyx::result according to the
  *    @c baryonyx::raw_problem.
  *

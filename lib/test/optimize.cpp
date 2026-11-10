@@ -32,6 +32,7 @@
 
 #include <chrono>
 #include <fstream>
+#include <thread>
 #include <sstream>
 #include <string>
 
@@ -188,6 +189,46 @@ main()
             expect(result.solutions.back().value == expected) << sense;
             expect(elapsed < 2.0) << sense;
         }
+    };
+
+    "test_request_stop"_test = [] {
+        // Without time limit the optimization only ends on request_stop(),
+        // with its best solution; the next optimization is not stopped.
+        auto ctx = baryonyx::make_context(0);
+        auto pb =
+          baryonyx::make_problem(ctx, EXAMPLES_DIR "/assignment_problem_1.lp");
+
+        baryonyx::solver_parameters params;
+        params.time_limit = 0.0;
+        params.seed = 1;
+        params.thread = 2;
+        baryonyx::context_set_solver_parameters(ctx, params);
+
+        const auto elapsed_since = [](auto start) {
+            return std::chrono::duration<double>(
+                     std::chrono::steady_clock::now() - start)
+              .count();
+        };
+
+        auto start = std::chrono::steady_clock::now();
+        std::thread stopper([] {
+            std::this_thread::sleep_for(std::chrono::milliseconds(500));
+            baryonyx::request_stop();
+        });
+        auto result = baryonyx::optimize(ctx, pb);
+        stopper.join();
+
+        expect((result.status == baryonyx::result_status::success) >> fatal);
+        expect(baryonyx::is_valid_solution(pb, result));
+        expect(elapsed_since(start) < 2.0);
+
+        params.time_limit = 0.5;
+        baryonyx::context_set_solver_parameters(ctx, params);
+
+        start = std::chrono::steady_clock::now();
+        result = baryonyx::optimize(ctx, pb);
+        expect(elapsed_since(start) > 0.4);
+        expect(result.solutions.back().value == 15.0);
     };
 
     "test_qap"_test = [] {

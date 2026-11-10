@@ -192,6 +192,9 @@ optimize(const bx::context& ctx, const bx::problem& pb)
 
     bx::result best;
     const auto run = [&](optimizer_type optimizer, double time_limit) {
+        if (bx::is_stop_requested())
+            return;
+
         internal.parameters = ctx.parameters;
         internal.parameters.optimizer = optimizer;
         internal.parameters.time_limit = time_limit;
@@ -207,7 +210,7 @@ optimize(const bx::context& ctx, const bx::problem& pb)
     // keeps searching with restart instead. Without time limit: alternate
     // both with doubling durations until a solution is found.
     if (unbounded) {
-        for (double t = 1.0; !best; t *= 2.0) {
+        for (double t = 1.0; !best && !bx::is_stop_requested(); t *= 2.0) {
             run(optimizer_type::restart, t);
             if (!best)
                 run(optimizer_type::tuned, 2.0 * t);
@@ -267,7 +270,12 @@ optimize(const bx::context& ctx, const bx::problem& pb)
     std::vector<std::int8_t> candidate;
     long int iterations = 0, improvements = 0;
 
-    while (unbounded || elapsed() + internal.parameters.time_limit < budget) {
+    const auto has_time = [&]() {
+        return unbounded ||
+               elapsed() + internal.parameters.time_limit < budget;
+    };
+
+    while (!bx::is_stop_requested() && has_time()) {
         ++iterations;
         std::fill(is_free.begin(), is_free.end(), 0);
         const int k = static_cast<int>(wanted);

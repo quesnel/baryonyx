@@ -213,8 +213,11 @@ optimize(const bx::context& ctx, const bx::problem& pb)
     const auto start = std::chrono::steady_clock::now();
     bx::result best;
 
-    for (int round = 0; round != rounds; ++round) {
+    for (int round = 0; round != rounds && !bx::is_stop_requested(); ++round) {
         for (auto& c : pool) {
+            if (bx::is_stop_requested())
+                break;
+
             internal.parameters = c.parameters;
             internal.parameters.time_limit = run_time;
             c.result = bx::itm::optimize(internal, pb);
@@ -247,10 +250,12 @@ optimize(const bx::context& ctx, const bx::problem& pb)
 
     internal.parameters = pool.front().parameters;
     internal.parameters.time_limit = std::max(budget - elapsed, minimal_run);
-    auto final_result = bx::itm::optimize(internal, pb);
+    if (!bx::is_stop_requested()) {
+        auto final_result = bx::itm::optimize(internal, pb);
 
-    if (is_better(final_result, best, pb.type))
-        best = std::move(final_result);
+        if (is_better(final_result, best, pb.type))
+            best = std::move(final_result);
+    }
 
     if (ctx.finish)
         ctx.finish(best);

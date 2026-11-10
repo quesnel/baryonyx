@@ -27,6 +27,7 @@
 
 #include "private.hpp"
 
+#include <atomic>
 #include <chrono>
 #include <concepts>
 #include <functional>
@@ -153,6 +154,17 @@ is_essentially_equal(const T v1, const T v2, const T epsilon)
  * @param begin Time point from the begining of a compuation.
  * @param end Time point of the current compuation.
  */
+/** Set by @c request_stop(), possibly from a signal handler. */
+inline std::atomic<bool> stop_requested{ false };
+static_assert(std::atomic<bool>::is_always_lock_free,
+              "a signal handler may only use lock-free atomics");
+
+inline bool
+is_stop_requested() noexcept
+{
+    return stop_requested.load(std::memory_order_relaxed);
+}
+
 inline bool
 is_time_limit(double limit,
               std::chrono::steady_clock::time_point begin,
@@ -160,6 +172,9 @@ is_time_limit(double limit,
 {
     using std::chrono::duration;
     using std::chrono::duration_cast;
+
+    if (is_stop_requested())
+        return true;
 
     if (limit <= 0)
         return false;

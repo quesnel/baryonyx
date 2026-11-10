@@ -41,6 +41,7 @@
 
 #include <cassert>
 #include <cctype>
+#include <csignal>
 #include <cstring>
 #include <ctime>
 
@@ -1182,13 +1183,30 @@ resume(const baryonyx::result& result, std::ostream& os) noexcept
     }
 }
 
+// The first Ctrl-C (or SIGTERM) stops the computation, which then returns
+// and writes its best solution; a second one kills the process as usual.
+extern "C" void
+stop_on_signal(int signal_number)
+{
+    baryonyx::request_stop();
+    std::signal(signal_number, SIG_DFL);
+}
+
 static inline auto
 solve_or_optimize(const baryonyx::context_ptr& ctx,
                   const baryonyx::raw_problem& pb,
                   bool with_optimization) -> baryonyx::result
 {
-    return with_optimization ? baryonyx::optimize(ctx, pb)
-                             : baryonyx::solve(ctx, pb);
+    std::signal(SIGINT, stop_on_signal);
+    std::signal(SIGTERM, stop_on_signal);
+
+    auto result = with_optimization ? baryonyx::optimize(ctx, pb)
+                                    : baryonyx::solve(ctx, pb);
+
+    std::signal(SIGINT, SIG_DFL);
+    std::signal(SIGTERM, SIG_DFL);
+
+    return result;
 }
 
 static bool

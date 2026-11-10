@@ -85,9 +85,17 @@ make_problem(const baryonyx::context_ptr& ctx, const std::string& filename)
     return raw_problem{ baryonyx::file_format_error_tag::empty_context };
 }
 
+void
+request_stop() noexcept
+{
+    stop_requested.store(true, std::memory_order_relaxed);
+}
+
 result
 solve(const baryonyx::context_ptr& ctx, const raw_problem& rawpb)
 {
+    stop_requested.store(false, std::memory_order_relaxed);
+
     if (ctx)
         return (ctx->parameters.preprocessor ==
                 solver_parameters::preprocessor_options::all)
@@ -100,6 +108,8 @@ solve(const baryonyx::context_ptr& ctx, const raw_problem& rawpb)
 result
 optimize(const baryonyx::context_ptr& ctx, const raw_problem& rawpb)
 {
+    stop_requested.store(false, std::memory_order_relaxed);
+
     if (ctx) {
         if ((ctx->parameters.mode & solver_parameters::mode_type::branch) ==
             solver_parameters::mode_type::branch)
