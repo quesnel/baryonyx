@@ -1160,13 +1160,7 @@ struct default_cost_type
         for (int i = 0; i != n; ++i)
             linear_elements[i] = r[i].first;
 
-        // Finally we compute the l+oo norm.
-
-        real div =
-          *std::max_element(linear_elements.get(), linear_elements.get() + n);
-        if (std::isnormal(div))
-            for (int i = 0; i != n; ++i)
-                linear_elements[i] /= div;
+        make_loo_norm(n);
     }
 
     real min(int n) const noexcept
@@ -1198,15 +1192,22 @@ struct default_cost_type
         for (int i = 0; i != n; ++i)
             div += linear_elements[i] * linear_elements[i];
 
+        div = std::sqrt(div);
+
         if (std::isnormal(div))
             for (int i = 0; i != n; ++i)
                 linear_elements[i] /= div;
     }
 
+    // The divisor must be positive: dividing by the largest signed cost
+    // flips every cost when all of them are negative, as for a maximization
+    // with positive coefficients, and the solver then minimizes the opposite.
     void make_loo_norm(int n)
     {
-        real div =
-          *std::max_element(linear_elements.get(), linear_elements.get() + n);
+        real div = { 0 };
+
+        for (int i = 0; i != n; ++i)
+            div = std::max(div, std::abs(linear_elements[i]));
 
         if (std::isnormal(div))
             for (int i = 0; i != n; ++i)
@@ -1452,10 +1453,11 @@ struct quadratic_cost_type
 
         for (int i = 0; i != n; ++i)
             div += linear_elements[i] * linear_elements[i];
-        ;
 
         for (int i = 0, e = indices[n]; i != e; ++i)
             div += quadratic_elements[i].factor * quadratic_elements[i].factor;
+
+        div = std::sqrt(div);
 
         if (std::isnormal(div)) {
             for (int i = 0; i != n; ++i)
@@ -1468,11 +1470,13 @@ struct quadratic_cost_type
 
     void make_loo_norm(int n)
     {
-        real div =
-          *std::max_element(linear_elements.get(), linear_elements.get() + n);
+        real div = { 0 };
+
+        for (int i = 0; i != n; ++i)
+            div = std::max(div, std::abs(linear_elements[i]));
 
         for (int i = 0, e = indices[n]; i != e; ++i)
-            div = std::max(quadratic_elements[i].factor, div);
+            div = std::max(div, std::abs(quadratic_elements[i].factor));
 
         if (std::isnormal(div)) {
             for (int i = 0; i != n; ++i)

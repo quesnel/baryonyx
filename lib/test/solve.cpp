@@ -263,6 +263,39 @@ main()
         expect(result.solutions.back().value == -5.0);
     };
 
+    "test_cost_normalization_sign"_test = [] {
+        // Every cost is negative: normalizing by the largest signed cost
+        // flipped them and the solver returned the worst solution, 0.
+        const char* str_pb = "minimize\n"
+                             "- x1 - 2 x2 - 3 x3\n"
+                             "subject to\n"
+                             "c1: x1 + x2 + x3 <= 1\n"
+                             "c2: x1 + x2 + x3 >= 0\n"
+                             "binaries\n"
+                             "x1 x2 x3\n"
+                             "end\n";
+
+        using norm = baryonyx::solver_parameters::cost_norm_type;
+
+        for (const auto cost_norm :
+             { norm::loo, norm::l1, norm::l2, norm::random }) {
+            auto ctx = baryonyx::make_context(0);
+            std::istringstream iss(str_pb);
+            auto pb = baryonyx::make_problem(*ctx, iss);
+            expect(pb >> fatal);
+
+            baryonyx::solver_parameters params;
+            params.cost_norm = cost_norm;
+            params.preprocessor =
+              baryonyx::solver_parameters::preprocessor_options::none;
+            baryonyx::context_set_solver_parameters(ctx, params);
+
+            auto result = baryonyx::solve(ctx, pb);
+            expect((!!result) >> fatal);
+            expect(result.solutions.back().value == -3.0);
+        }
+    };
+
     "test_unconstrained_quadratic"_test = [] {
         // 231 binaries, a quadratic objective and no constraint; 234 is the
         // optimum proven by HiGHS on a linearization.
