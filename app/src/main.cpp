@@ -357,6 +357,8 @@ help() noexcept
       "  - storage-type: one bound five\n"
       "  - print-level: [0, 2]\n"
       "  - buffer-solver: 0 (default) or 1 (experimental -1 0 1 solver)\n"
+      "  - optimizer-warm-start: 0 (default) or 1 (keep pi and P between "
+      "optimizer restarts)\n"
       " * In The Middle parameters\n"
       "  - preprocessing: none memory less-greater-equal (or any "
       "combination), p1, p2, p3, p4\n"
@@ -496,6 +498,7 @@ enum class command_line_status
     init_kappa_improve_increase_error,
     init_kappa_improve_stop_error,
     buffer_solver_error,
+    optimizer_warm_start_error,
     thread_error,
     seed_error
 };
@@ -539,6 +542,7 @@ constexpr const std::string_view command_line_status_string[] = {
     "init_kappa_improve_increase",
     "init_kappa_improve_stop",
     "buffer_solver",
+    "optimizer_warm_start",
     "thread",
     "seed"
 };
@@ -848,6 +852,12 @@ assign_parameter(baryonyx::solver_parameters& params,
             return command_line_status::buffer_solver_error;
         else
             params.use_buffer_solver = *v == 1;
+
+    } else if (is_equal(name, "optimizer-warm-start")) {
+        if (auto v = assign(value, 0, 1); !v)
+            return command_line_status::optimizer_warm_start_error;
+        else
+            params.optimizer_warm_start = *v == 1;
 
     } else if (is_equal(name, "thread")) {
         if (auto v = assign(value, 0, (std::numeric_limits<int>::max)()); !v)

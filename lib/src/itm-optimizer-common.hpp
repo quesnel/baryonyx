@@ -596,6 +596,10 @@ struct optimize_functor
             const auto kappa_start = static_cast<real>(best_recorder.reinit(
               m_local_ctx, is_a_solution, kappa_min, kappa_max, x));
             auto kappa = kappa_start;
+
+            if (!p.optimizer_warm_start)
+                slv.reset();
+
             compute.init(slv, x);
 
             auto remaining = INT_MAX;
@@ -654,7 +658,6 @@ struct optimize_functor
                     is_a_solution = true;
                 }
 
-                kappa = kappa_start;
                 for (int iter = 0;
                      !stop_task.load() && iter < p.pushing_iteration_limit;
                      ++iter) {
@@ -672,11 +675,10 @@ struct optimize_functor
                         break;
                     }
 
-                    if (iter > p.w)
-                        kappa +=
-                          kappa_step * std::pow(static_cast<real>(remaining) /
-                                                  static_cast<real>(slv.m),
-                                                alpha);
+                    kappa +=
+                      kappa_step * std::pow(static_cast<real>(remaining) /
+                                              static_cast<real>(slv.m),
+                                            alpha);
 
                     if (kappa > kappa_max)
                         break;
@@ -767,8 +769,14 @@ optimize_problem(const context& ctx, const problem& pb)
     const auto start = std::chrono::steady_clock::now();
     auto end = start;
 
+    const auto limit =
+      std::chrono::duration<double>(ctx.parameters.time_limit);
+
     do {
-        std::this_thread::sleep_for(std::chrono::seconds{ 1L });
+        const auto left = limit - (std::chrono::steady_clock::now() - start);
+        std::this_thread::sleep_for(
+          std::min<std::chrono::duration<double>>(std::chrono::seconds{ 1L },
+                                                  left));
 
         auto call_number = 0L;
         for (auto i = 0u; i != thread; ++i)

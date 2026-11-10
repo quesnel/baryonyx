@@ -459,6 +459,10 @@ struct BX_EXPORT solver_parameters
     storage_type storage{ storage_type::one };
     solver_type solver{ solver_type::bastert };
     bool use_buffer_solver{ false }; ///< Experimental solver for -1 0 1
+
+    /** The optimizer keeps pi and P between restarts instead of resetting
+     * them: slower in general, but helps some hard feasibility problems. */
+    bool optimizer_warm_start{ false };
     bool debug{ false };
 };
 
