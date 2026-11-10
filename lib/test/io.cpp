@@ -217,6 +217,63 @@ main()
         expect(pb.equal_constraints.size() == 1_ul);
     };
 
+    "factor before a variable named e"_test = [] {
+        // `2e` is the factor 2 of e, while `2e1` and `1.5E+1` are numbers.
+        const char* example = "minimize\n"
+                              "2e - 2.5E + 2e1 x + 1.5E+1 y - 1e-1 z\n"
+                              "st\n"
+                              "c: e + E + x + y + z >= 1\n"
+                              "binary\n"
+                              "e E x y z\n"
+                              "end\n";
+
+        auto ctx = baryonyx::make_context(4);
+        std::istringstream iss(example);
+        auto pb = baryonyx::make_problem(*ctx, iss);
+        expect((!!pb) >> fatal);
+        expect(pb.vars.names.size() == 5_ul);
+
+        const auto factor_of = [&pb](std::string_view name) {
+            for (const auto& elem : pb.objective.elements)
+                if (pb.vars.names[elem.variable_index] == name)
+                    return elem.factor;
+            return 0.0;
+        };
+
+        expect(factor_of("e") == 2.0_d);
+        expect(factor_of("E") == -2.5_d);
+        expect(factor_of("x") == 20.0_d);
+        expect(factor_of("y") == 15.0_d);
+        expect(factor_of("z") == -0.1_d);
+    };
+
+    "binary keeps bounds"_test = [] {
+        // Declaring a variable binary keeps its bounds within [0, 1],
+        // whatever the order of the sections.
+        for (const char* example : { "minimize\nd + x\nst\nd + x >= 1\n"
+                                     "bounds\nd >= 1\nx <= 5\n"
+                                     "binary\nd x\nend\n",
+                                     "minimize\nd + x\nst\nd + x >= 1\n"
+                                     "binary\nd x\n"
+                                     "bounds\nd >= 1\nx <= 5\nend\n" }) {
+            auto ctx = baryonyx::make_context(4);
+            std::istringstream iss(example);
+            auto pb = baryonyx::make_problem(*ctx, iss);
+            expect((!!pb) >> fatal);
+            expect((pb.vars.names.size() == 2_ul) >> fatal);
+
+            for (std::size_t i = 0; i != pb.vars.names.size(); ++i) {
+                const auto& v = pb.vars.values[i];
+                expect(v.type == baryonyx::variable_type::binary);
+
+                if (pb.vars.names[i] == "d")
+                    expect(v.min == 1_i && v.max == 1_i);
+                else
+                    expect(v.min == 0_i && v.max == 1_i);
+            }
+        }
+    };
+
     "small lp"_test = [] {
         const char* example_1 = "maximize\n"
                                 "obj: x1 + 2x2 + 3x3 - 100\n"

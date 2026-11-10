@@ -115,12 +115,6 @@ starts_with_name(const std::string_view str) noexcept
     return (!str.empty() && is_char_name(str[0]));
 }
 
-constexpr bool
-is_number(const int c) noexcept
-{
-    return is_digit(c) || c == '.' || c == 'e' || c == 'E' || c == '-' ||
-           c == '+';
-}
 
 constexpr bool
 starts_with_a_number(const int c) noexcept
@@ -374,21 +368,39 @@ private:
 
         const bool is_numeric = starts_with_a_number(word[start]);
 
+        // In a number, `e` starts an exponent only when a digit, possibly
+        // signed, follows: `2e` is the factor 2 of the variable `e`.
+        const auto digit_at = [&word](std::size_t i) {
+            return i < word.size() && is_digit(word[i]);
+        };
+
         for (; tok.current < word.size(); ++tok.current) {
             const char c = word[tok.current];
-
-            const bool is_exponent_sign =
-              is_numeric && (c == '-' || c == '+') &&
-              (word[tok.current - 1] == 'e' || word[tok.current - 1] == 'E');
-
-            if (is_exponent_sign)
-                continue;
 
             if (is_separator(c))
                 break;
 
-            if (is_numeric && !is_number(c))
-                break;
+            if (!is_numeric)
+                continue;
+
+            if (is_digit(c) || c == '.')
+                continue;
+
+            const bool is_exponent =
+              (c == 'e' || c == 'E') &&
+              (digit_at(tok.current + 1) ||
+               ((tok.current + 1 < word.size() &&
+                 (word[tok.current + 1] == '-' ||
+                  word[tok.current + 1] == '+')) &&
+                digit_at(tok.current + 2)));
+
+            if (is_exponent) {
+                if (!digit_at(tok.current + 1))
+                    ++tok.current;
+                continue;
+            }
+
+            break;
         }
 
         return word.substr(start, tok.current - start);
@@ -521,9 +533,12 @@ struct problem_parser
         if (id < 0)
             return false;
 
-        m_problem.vars.values[id].type = baryonyx::variable_type::binary;
-        m_problem.vars.values[id].min = 0;
-        m_problem.vars.values[id].max = 1;
+        // The bounds already read are kept within [0, 1]: `d >= 1` followed
+        // by `binary d` fixes d to 1.
+        auto& variable = m_problem.vars.values[id];
+        variable.type = baryonyx::variable_type::binary;
+        variable.min = std::max(variable.min, 0);
+        variable.max = std::min(variable.max, 1);
 
         return true;
     }
@@ -554,6 +569,12 @@ struct problem_parser
         if (bound.max)
             m_problem.vars.values[id].max =
               to_int_saturated(std::floor(*bound.max));
+
+        auto& variable = m_problem.vars.values[id];
+        if (variable.type == baryonyx::variable_type::binary) {
+            variable.min = std::max(variable.min, 0);
+            variable.max = std::min(variable.max, 1);
+        }
 
         return true;
     }
