@@ -179,6 +179,12 @@ struct restart_functor
           static_cast<real>(p.pushing_objective_amplifier);
         const auto w_limit = static_cast<long int>(p.w);
 
+        // A run starting with a high kappa stays close to its initial
+        // solution: drawing the starting kappa mixes local improvements of
+        // the good solutions with deeper Lagrangian searches.
+        uniform_real_distribution<double> kappa_start(
+          p.init_kappa_improve_start, p.init_kappa_improve_stop);
+
         // Threads start from kappa steps spread around the requested one.
         const auto spread =
           (static_cast<real>(m_thread_id) -
@@ -215,7 +221,8 @@ struct restart_functor
 
             compute.init(slv, x);
 
-            auto kappa = kappa_min;
+            auto kappa = kappa_min + (kappa_max - kappa_min) *
+                                       static_cast<real>(kappa_start(m_rng));
             auto remaining = INT_MAX;
 
             for (long int i = 0; !stop_task.load() && i != p.limit; ++i) {
