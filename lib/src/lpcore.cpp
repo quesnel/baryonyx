@@ -32,6 +32,7 @@
 #include <algorithm>
 #include <fstream>
 #include <iterator>
+#include <limits>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -198,21 +199,21 @@ compute_solution_impl(const Problem& pb,
     return ret;
 }
 
+// The result may come from a solution file: an empty vector tells that it
+// holds no solution or does not assign every variable of the problem.
 template<typename Problem>
 static std::vector<std::int8_t>
 make_variable_value(const Problem& pb, const result& r)
 {
-    if (!r || r.solutions.empty())
+    if (!r || r.solutions.empty() || pb.vars.names.empty() ||
+        r.affected_vars.names.size() != r.affected_vars.values.size() ||
+        r.variable_name.size() != r.solutions.back().variables.size())
         return {};
 
     std::unordered_map<std::string_view, bool> cache;
 
-    bx_ensures(r.affected_vars.names.size() == r.affected_vars.values.size());
-
     for (size_t i = 0, e = r.affected_vars.names.size(); i != e; ++i)
         cache[r.affected_vars.names[i]] = r.affected_vars.values[i];
-
-    bx_ensures(r.variable_name.size() == r.solutions.back().variables.size());
 
     for (size_t i = 0, e = r.variable_name.size(); i != e; ++i)
         cache[r.variable_name[i]] = r.solutions.back().variables[i];
@@ -221,7 +222,9 @@ make_variable_value(const Problem& pb, const result& r)
 
     for (std::size_t i = 0, e = pb.vars.names.size(); i != e; ++i) {
         auto it = cache.find(pb.vars.names[i]);
-        bx_expects(it != cache.end());
+        if (it == cache.end())
+            return {};
+
         ret[i] = it->second;
     }
 
@@ -245,27 +248,18 @@ compute_solution(const problem& pb,
 bool
 is_valid_solution(const raw_problem& pb, const result& r)
 {
-    if (!r || r.solutions.empty())
-        return false;
+    const auto values = make_variable_value(pb, r);
 
-    bx_expects(pb.vars.names.size() == pb.vars.values.size());
-    bx_expects(pb.vars.names.size() ==
-               r.variable_name.size() + r.affected_vars.names.size());
-    bx_expects(r.solutions.back().variables.size() == r.variable_name.size());
-
-    return is_valid_solution_impl(pb, make_variable_value(pb, r));
+    return !values.empty() && is_valid_solution_impl(pb, values);
 }
 
 double
 compute_solution(const raw_problem& pb, const result& r)
 {
-    bx_expects(r && !r.solutions.empty());
-    bx_expects(pb.vars.names.size() == pb.vars.values.size());
-    bx_expects(pb.vars.names.size() ==
-               r.affected_vars.names.size() + r.variable_name.size());
-    bx_expects(r.solutions.back().variables.size() == r.variable_name.size());
+    const auto values = make_variable_value(pb, r);
 
-    return compute_solution_impl(pb, make_variable_value(pb, r));
+    return values.empty() ? std::numeric_limits<double>::quiet_NaN()
+                          : compute_solution_impl(pb, values);
 }
 
 } // namespace baryonyx

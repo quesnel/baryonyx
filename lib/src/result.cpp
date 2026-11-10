@@ -100,8 +100,14 @@ operator>>(std::istream& is, result& ret)
             if (!std::isspace(buffer[i]))
                 break;
 
-        if (i != e && buffer[i] == '\\')
+        if (i != e && buffer[i] == '\\') {
+            // Written in place of the assignments when no solution was found.
+            if (buffer.find("Solution not found", i) != std::string::npos) {
+                ret.status = result_status::time_limit_reached;
+                ret.solutions.clear();
+            }
             continue;
+        }
 
         auto found = buffer.find('=', 0);
         if (found == std::string::npos)
@@ -113,6 +119,9 @@ operator>>(std::istream& is, result& ret)
                                buffer.size() - found);
 
         if (auto value = to_int(right); value.has_value()) {
+            if (ret.solutions.empty())
+                ret.solutions.emplace_back();
+
             ret.variable_name.emplace_back(ret.strings->append(left));
             ret.solutions.back().variables.emplace_back(!!(*value));
         } else {

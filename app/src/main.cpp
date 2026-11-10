@@ -1222,6 +1222,13 @@ check_solution(const baryonyx::context_ptr& ctx,
         }
 
         const auto result = baryonyx::make_result(ctx, solution_filename);
+        if (result.status == baryonyx::result_status::time_limit_reached) {
+            fmt::print("Check {} with {}: no solution in file\n",
+                       problem_filename,
+                       solution_filename);
+            return false;
+        }
+
         if (!result) {
             fmt::print(stderr,
                        "Fail to read solution file: {}\n",

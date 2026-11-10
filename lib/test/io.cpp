@@ -26,6 +26,8 @@
 #include <boost/ut.hpp>
 
 #include <algorithm>
+#include <cmath>
+#include <cstdio>
 #include <fstream>
 #include <map>
 #include <numeric>
@@ -175,6 +177,36 @@ main()
 
         expect(!result);
         expect(result.status == baryonyx::result_status::uninitialized);
+    };
+
+    "solution files without solution or for another problem"_test = [] {
+        auto ctx = baryonyx::make_context(0);
+        const auto pb =
+          baryonyx::make_problem(ctx, EXAMPLES_DIR "/assignment_problem_1.lp");
+        expect(pb >> fatal);
+
+        const char* filename = "baryonyx-io-test.sol";
+        const auto read = [&](const char* content) {
+            std::ofstream(filename) << content;
+            auto r = baryonyx::make_result(ctx, filename);
+            std::remove(filename);
+            return r;
+        };
+
+        // Written by baryonyx when no solution was found.
+        const auto none = read("\\ solver starts: 2026-01-01 00:00:00\n"
+                               "\\ Solution not found. Missing "
+                               "constraints: 3\n");
+        expect(!none);
+        expect(none.status == baryonyx::result_status::time_limit_reached);
+        expect(!baryonyx::is_valid_solution(pb, none));
+        expect(std::isnan(baryonyx::compute_solution(pb, none)));
+
+        // An assignment that does not name the variables of the problem.
+        const auto other = read("x=1\ny=0\n");
+        expect(!!other);
+        expect(!baryonyx::is_valid_solution(pb, other));
+        expect(std::isnan(baryonyx::compute_solution(pb, other)));
     };
 
     "named objective"_test = [] {

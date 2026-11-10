@@ -847,8 +847,8 @@ is_valid_solution(const raw_problem& pb, const result& r);
  * @param pb Problem definition.
  * @param r A representation of the result of the problem @c pb.
  *
- * @return the value of the solution if @c r is a solution of the problem
- *    @c pb.
+ * @return the value of the solution if @c r assigns every variable of the
+ *    problem @c pb, a quiet NaN otherwise.
  */
 BX_EXPORT
 double
