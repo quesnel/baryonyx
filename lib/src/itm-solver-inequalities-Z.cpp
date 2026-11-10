@@ -29,6 +29,11 @@
 namespace baryonyx {
 namespace itm {
 
+// Rows are handled for y = 1 - x on negative coefficients (Bastert et al.
+// 2010, Alg. 3): weights are |a|, reduced costs of negative coefficients are
+// negated and the bounds are shifted, so every row reads
+// lo <= sum |a| y <= hi with R holding the weights |a|. Reduced costs use the
+// signed coefficients.
 template<typename Mode, typename Cost, bool debug>
 struct solver_inequalities_Zcoeff : debug_logger<debug>
 {
@@ -37,6 +42,10 @@ struct solver_inequalities_Zcoeff : debug_logger<debug>
     using cost_type = Cost;
 
     static inline const int maximum_factor_exhaustive_solver = 10;
+
+    // q = sign * r makes the attractive variables have q < 0 in both modes.
+    static constexpr real sign =
+      std::is_same_v<Mode, minimize_tag> ? One : -One;
 
     random_engine& rng;
 
@@ -57,12 +66,6 @@ struct solver_inequalities_Zcoeff : debug_logger<debug>
         }
     };
 
-    struct rc_size
-    {
-        int r_size;
-        int c_size;
-    };
-
     struct bound_factor
     {
         int min;
@@ -72,11 +75,9 @@ struct solver_inequalities_Zcoeff : debug_logger<debug>
 
     enum class subsolver_type : char
     {
-        branch_and_bound,
-        exhaustive,
-        unconstrained_branch_and_bound,
-        unconstrained_exhaustive,
         linear,
+        exhaustive,
+        branch_and_bound,
     };
 
     sparse_matrix<int> ap;
@@ -112,71 +113,51 @@ struct solver_inequalities_Zcoeff : debug_logger<debug>
       , m(m_)
       , n(n_)
     {
-        // Count the maximum function elements in the constraint where a least
-        // one coefficient is in Z. To be use with the branch-and-bound and
-        // exhaustive solvers.
         std::size_t z_variables_max = 0;
-
-        // Count the maximum constraint number where at leat one coefficient is
-        // in Z. To be used with the exhaustive solver.
         std::size_t z_constraint_exhaustive = 0;
+        std::vector<function_element> y_elements;
 
         int id = 0;
         for (int i = 0, e = length(csts); i != e; ++i) {
             int lower = 0, upper = 0;
-            std::size_t local_z_variables_max = 0;
-
-            Z[i] =
-              subsolver_type::linear; // Default, Z solver use the classical
-                                      // Bastert selection for 101 problem.
+            Z[i] = subsolver_type::linear;
 
             for (const auto& cst : csts[i].elements) {
                 bx_ensures(cst.factor);
                 A[id++] = cst.factor;
-                ++local_z_variables_max;
 
                 if (cst.factor > 0)
                     upper += cst.factor;
                 else
                     lower += cst.factor;
 
-                if (cst.factor < -1 || cst.factor > 1) {
+                if (cst.factor < -1 || cst.factor > 1)
                     Z[i] = subsolver_type::branch_and_bound;
-                }
             }
 
+            const auto row_size = csts[i].elements.size();
             if (Z[i] == subsolver_type::branch_and_bound &&
-                local_z_variables_max < maximum_factor_exhaustive_solver)
+                row_size < maximum_factor_exhaustive_solver)
                 Z[i] = subsolver_type::exhaustive;
 
-            if (csts[i].min == csts[i].max) {
-                b[i].min = csts[i].min;
-                b[i].max = csts[i].max;
-            } else {
-                if (lower >= csts[i].min || upper <= csts[i].max) {
-                    if (Z[i] == subsolver_type::branch_and_bound)
-                        Z[i] = subsolver_type::unconstrained_branch_and_bound;
-                    else if (Z[i] == subsolver_type::exhaustive)
-                        Z[i] = subsolver_type::unconstrained_exhaustive;
-                }
+            b[i].min = std::max(lower, csts[i].min);
+            b[i].max = std::min(upper, csts[i].max);
+            b[i].negative_factor = -lower;
 
-                b[i].min = std::max(lower, csts[i].min);
-                b[i].max = std::min(upper, csts[i].max);
+            z_variables_max = std::max(z_variables_max, row_size);
+
+            if (Z[i] == subsolver_type::exhaustive) {
+                y_elements.clear();
+                for (const auto& cst : csts[i].elements)
+                    y_elements.emplace_back(std::abs(cst.factor),
+                                            cst.variable_index);
+
+                ++z_constraint_exhaustive;
+                ex.build_constraints(i,
+                                     y_elements,
+                                     b[i].min + b[i].negative_factor,
+                                     b[i].max + b[i].negative_factor);
             }
-
-            z_variables_max = std::max(z_variables_max, local_z_variables_max);
-
-            if (Z[i] == subsolver_type::exhaustive ||
-                Z[i] == subsolver_type::unconstrained_exhaustive) {
-                z_constraint_exhaustive++;
-                ex.build_constraints(i, csts[i].elements, b[i].min, b[i].max);
-            }
-
-            logger::log("Is Z: {} ({}) with {} <= {}\n",
-                        static_cast<int>(Z[i]),
-                        local_z_variables_max,
-                        b[i].min,
-                        b[i].max);
 
             bx_ensures(b[i].min <= b[i].max);
         }
@@ -189,10 +170,8 @@ struct solver_inequalities_Zcoeff : debug_logger<debug>
 
     void reset() noexcept
     {
-        logger::log("reset-solver\n");
-
-        std::fill_n(P.get(), ap.length(), real{ 0 });
-        std::fill_n(pi.get(), m, real{ 0 });
+        std::fill_n(P.get(), ap.length(), Zero);
+        std::fill_n(pi.get(), m, Zero);
     }
 
     int factor(int value) const noexcept
@@ -229,11 +208,8 @@ struct solver_inequalities_Zcoeff : debug_logger<debug>
     {
         real ret{ 0 };
 
-        sparse_matrix<int>::const_col_iterator ht, hend;
-        std::tie(ht, hend) = ap.column(variable);
-
-        for (; ht != hend; ++ht)
-            ret += std::abs(static_cast<real>(ht->factor)) * pi[ht->row];
+        for (auto [ht, hend] = ap.column(variable); ht != hend; ++ht)
+            ret += static_cast<real>(ht->factor) * pi[ht->row];
 
         return ret;
     }
@@ -246,162 +222,226 @@ struct solver_inequalities_Zcoeff : debug_logger<debug>
             P[begin->value] *= theta;
     }
 
-    //
-    // Compute the reduced costs and return the size of the newly R vector.
-    //
+    template<typename Xtype>
+    real reduced_cost(int variable, const Xtype& x) const noexcept
+    {
+        real sum_a_pi = 0;
+        real sum_a_p = 0;
+
+        for (auto [ht, hte] = ap.column(variable); ht != hte; ++ht) {
+            const auto a = static_cast<real>(ht->factor);
+            sum_a_pi += a * pi[ht->row];
+            sum_a_p += a * P[ht->value];
+        }
+
+        return c(variable, x) - sum_a_pi - sum_a_p;
+    }
+
     template<typename Xtype>
     int compute_reduced_costs(sparse_matrix<int>::row_iterator begin,
                               sparse_matrix<int>::row_iterator end,
-                              const Xtype& x) noexcept
+                              const Xtype& x,
+                              real obj_amp) noexcept
     {
         int r_size = 0;
 
-        for (; begin != end; ++begin) {
-            real sum_a_pi_p = 0;
-
-            for (auto [first, last] = ap.column(begin->column); first != last;
-                 ++first) {
-                auto a = std::abs(static_cast<real>(first->factor));
-                sum_a_pi_p += a * (pi[first->row] + P[first->value]);
-            }
+        for (; begin != end; ++begin, ++r_size) {
+            auto value = reduced_cost(begin->column, x);
+            if (obj_amp != Zero)
+                value += obj_amp * c(begin->column, x);
 
             R[r_size].id = r_size;
-            R[r_size].f = A[begin->value];
-            R[r_size].value = c(begin->column, x) - sum_a_pi_p;
-
-            ++r_size;
+            R[r_size].f = std::abs(A[begin->value]);
+            R[r_size].value = A[begin->value] < 0 ? -value : value;
         }
 
         return r_size;
     }
 
-    template<typename Xtype>
-    real local_compute_reduced_cost(int variable, const Xtype& x) noexcept
+    static real weight(const rc_data& r) noexcept
     {
-        real sum_a_pi_p = 0;
-
-        for (auto [ht, hte] = ap.column(variable); ht != hte; ++ht) {
-            auto a = std::abs(static_cast<real>(ht->factor));
-            sum_a_pi_p += a * (pi[ht->row] + P[ht->value]);
-        }
-
-        return c(variable, x) - sum_a_pi_p;
+        return static_cast<real>(r.f);
     }
 
-    int select_variables(const int r_size, int bkmin, int bkmax)
+    static real ratio(const rc_data& r) noexcept
     {
-        int sum = 0;
-        int best = -2;
-
-        for (int i = -1; i < r_size; ++i) {
-            if (bkmin <= sum && sum <= bkmax)
-                best = i;
-
-            if (i + 1 == r_size)
-                break;
-
-            if (best != -2 && stop_iterating<Mode>(R[i + 1].value))
-                break;
-
-            sum += R[i + 1].f;
-        }
-
-        return best;
+        return sign * r.value / weight(r);
     }
 
+    // Greedy scan by increasing reduced cost per unit of weight (Bastert et
+    // al. 2010, §3.2 and Alg. 4): items are taken until the lower bound is
+    // met, then while they stay attractive and fit. Returns the number of
+    // selected items or -1 when the scan cannot satisfy the row.
+    int scan(int r_size, int lo, int hi, real phi) noexcept
+    {
+        std::sort(R.get(), R.get() + r_size, [](const auto& l, const auto& r) {
+            return ratio(l) < ratio(r);
+        });
+
+        int total = 0;
+        int count = 0;
+        while (count != r_size) {
+            const int w = R[count].f;
+            if (total + w > hi)
+                break;
+            if (total >= lo && ratio(R[count]) + phi >= Zero)
+                break;
+
+            total += w;
+            ++count;
+        }
+
+        return lo <= total && total <= hi ? count : -1;
+    }
+
+    // Returns the number of selected items, moved to the front of R, or -1
+    // when the row cannot be satisfied.
+    int select(int k, int r_size, bool& knapsack) noexcept
+    {
+        const int lo = b[k].min + b[k].negative_factor;
+        const int hi = b[k].max + b[k].negative_factor;
+
+        knapsack = false;
+        if (const int count = scan(r_size, lo, hi, sign * pi[k]); count >= 0)
+            return count;
+
+        knapsack = true;
+        int selected = -1;
+
+        switch (Z[k]) {
+        case subsolver_type::exhaustive:
+            std::sort(
+              R.get(), R.get() + r_size, [](const auto& l, const auto& r) {
+                  return l.id < r.id;
+              });
+            selected = ex.solve(k, R, r_size);
+            break;
+        case subsolver_type::branch_and_bound:
+            selected = bb.solve(R, r_size, lo, hi);
+            if (!bb.has_solution)
+                return -1;
+            break;
+        case subsolver_type::linear:
+            return -1;
+        }
+
+        return std::min(selected + 1, r_size);
+    }
+
+    // pi[k] is set in the middle of the multipliers separating the selected
+    // items from the others by reduced cost per unit of weight, with the
+    // dual sign of the bounds that can be tight. Preferences follow Bastert
+    // et al. 2010, Alg. 4, whose repair is applied after the greedy scan too:
+    // with weights above one the scan alone leaves the solver cycling.
     template<typename Xtype, typename Iterator>
-    bool local_affect(Xtype& x,
-                      Iterator it,
-                      int k,
-                      int selected,
-                      int r_size,
-                      const real kappa,
-                      const real delta)
+    bool affect(Xtype& x,
+                Iterator it,
+                int k,
+                int r_size,
+                int count,
+                bool knapsack,
+                real kappa,
+                real delta)
     {
-        constexpr real one{ 1 };
-        constexpr real two{ 2 };
-        constexpr real middle{ (two + one) / two };
+        constexpr real inf = std::numeric_limits<real>::infinity();
 
-        const auto old_pi = pi[k];
+        const real old_pi = pi[k];
+        const real old_phi = sign * old_pi;
 
-        auto d = (kappa / (one - kappa)) + delta;
-
-        if (selected < 0) {
-            pi[k] += R[0].value / two;
-
-            logger::log("    selected: {}/{} ({})/2 = pi {}\n",
-                        selected,
-                        r_size,
-                        R[0].value,
-                        pi[k]);
-
-            for (int i = 0; i != r_size; ++i) {
-                auto var = it + R[i].id;
-
-                x.unset(var->column);
-                P[var->value] -= d;
-
-                auto repair = local_compute_reduced_cost(var->column, x);
-                if (repair <= 0)
-                    P[var->value] = P[var->value] + repair - d;
-            }
-        } else if (selected + 1 >= r_size) {
-            pi[k] += R[selected].value * middle;
-
-            logger::log("    selected: {}/{} ({})/2 = pi {}\n",
-                        selected,
-                        r_size,
-                        R[selected].value,
-                        pi[k]);
-
-            for (int i = 0; i != r_size; ++i) {
-                auto var = it + R[i].id;
-
-                x.set(var->column);
-                P[var->value] += d;
-
-                auto repair = local_compute_reduced_cost(var->column, x);
-                if (repair >= 0)
-                    P[var->value] = P[var->value] - repair + d;
-            }
-        } else {
-            pi[k] += ((R[selected].value + R[selected + 1].value) / two);
-
-            logger::log("    selected: {}/{} ({}x{})/2 = pi {}\n",
-                        selected,
-                        r_size,
-                        R[selected].value,
-                        R[selected + 1].value,
-                        pi[k]);
-
-            int i = 0;
-            for (; i <= selected; ++i) {
-                auto var = it + R[i].id;
-
-                x.set(var->column);
-                P[var->value] += d;
-
-                auto repair = local_compute_reduced_cost(var->column, x);
-                if (repair >= 0)
-                    P[var->value] = P[var->value] - repair + d;
-            }
-
-            for (; i != r_size; ++i) {
-                auto var = it + R[i].id;
-
-                x.unset(var->column);
-                P[var->value] -= d;
-
-                auto repair = local_compute_reduced_cost(var->column, x);
-                if (repair <= 0)
-                    P[var->value] = P[var->value] + repair - d;
+        int total = 0;
+        real lo = -inf;
+        real hi = +inf;
+        for (int i = 0; i != r_size; ++i) {
+            const real t = ratio(R[i]) + old_phi;
+            if (i < count) {
+                total += R[i].f;
+                lo = std::max(lo, t);
+            } else {
+                hi = std::min(hi, t);
             }
         }
 
-        // TODO job: develops is_valid_constraint for all the solvers
+        const real gap =
+          !knapsack && count > 0 && count < r_size ? hi - lo : One;
+
+        const int lower = b[k].min + b[k].negative_factor;
+        const int upper = b[k].max + b[k].negative_factor;
+        if (total > lower)
+            hi = std::min(hi, Zero);
+        if (total < upper)
+            lo = std::max(lo, Zero);
+
+        real phi = Zero;
+        if (std::isfinite(lo) && std::isfinite(hi))
+            phi = (lo + hi) / Two;
+        else if (std::isfinite(lo))
+            phi = lo;
+        else if (std::isfinite(hi))
+            phi = hi;
+
+        pi[k] = sign * phi;
+
+        const real d = sign * (delta + (kappa / (One - kappa)) * gap);
+
+        for (int i = 0; i != r_size; ++i) {
+            const auto var = it + R[i].id;
+            const bool selected = i < count;
+
+            if (selected != (A[var->value] < 0))
+                x.set(var->column);
+            else
+                x.unset(var->column);
+
+            P[var->value] += selected ? d : -d;
+        }
+
+        for (int i = 0; i != r_size; ++i) {
+            const auto var = it + R[i].id;
+            const real r_x = reduced_cost(var->column, x);
+            const real q = sign * (A[var->value] < 0 ? -r_x : r_x);
+            const real w = weight(R[i]);
+
+            if (i < count && q >= Zero)
+                P[var->value] += sign * (q + delta) / w;
+            else if (i >= count && q <= Zero)
+                P[var->value] += sign * (q - delta) / w;
+        }
+
         bx_expects(is_valid_constraint(*this, k, x));
 
         return is_signbit_change(old_pi, pi[k]);
+    }
+
+    template<typename Xtype, typename Iterator>
+    bool update_rows(Xtype& x,
+                     Iterator first,
+                     Iterator last,
+                     real kappa,
+                     real delta,
+                     real theta,
+                     real obj_amp)
+    {
+        bool pi_changed = false;
+
+        for (; first != last; ++first) {
+            const auto k = constraint(first);
+            const auto [row_begin, row_end] = ap.row(k);
+
+            decrease_preference(row_begin, row_end, theta);
+            const int r_size =
+              compute_reduced_costs(row_begin, row_end, x, obj_amp);
+
+            bool knapsack = false;
+            const int count = select(k, r_size, knapsack);
+            if (count < 0)
+                continue;
+
+            pi_changed =
+              affect(x, row_begin, k, r_size, count, knapsack, kappa, delta) ||
+              pi_changed;
+        }
+
+        return pi_changed;
     }
 
     template<typename Xtype, typename Iterator>
@@ -413,63 +453,7 @@ struct solver_inequalities_Zcoeff : debug_logger<debug>
                                      real theta,
                                      real obj_amp)
     {
-        auto at_least_one_pi_changed{ false };
-
-        logger::log("push-update-row {} {} {}\n", kappa, delta, theta);
-
-        for (; first != last; ++first) {
-            auto k = constraint(first);
-
-            const auto it = ap.row(k);
-            decrease_preference(std::get<0>(it), std::get<1>(it), theta);
-
-            const auto r_size =
-              compute_reduced_costs(std::get<0>(it), std::get<1>(it), x);
-
-            // Before sort and select variables, we apply the push method: for
-            // each reduces cost, we had the cost multiply with an objective
-            // amplifier.
-
-            for (int i = 0; i != r_size; ++i)
-                R[i].value +=
-                  obj_amp * c((std::get<0>(it) + R[i].id)->column, x);
-
-            real pi_change;
-            int selected;
-
-            switch (Z[k]) {
-            case subsolver_type::branch_and_bound:
-                calculator_sort<Mode>(R.get(), R.get() + r_size, rng);
-                selected = bb.solve(R, r_size, b[k].min, b[k].max);
-                break;
-            case subsolver_type::exhaustive:
-                selected = ex.solve(k, R, r_size);
-                break;
-            case subsolver_type::unconstrained_branch_and_bound:
-                calculator_sort<Mode>(R.get(), R.get() + r_size, rng);
-                selected = select_variables(r_size, b[k].min, b[k].max);
-                if (selected == -2)
-                    selected = bb.solve(R, r_size, b[k].min, b[k].max);
-                break;
-            case subsolver_type::unconstrained_exhaustive:
-                calculator_sort<Mode>(R.get(), R.get() + r_size, rng);
-                selected = select_variables(r_size, b[k].min, b[k].max);
-                if (selected == -2)
-                    selected = ex.solve(k, R, r_size);
-                break;
-            case subsolver_type::linear:
-            default:
-                calculator_sort<Mode>(R.get(), R.get() + r_size, rng);
-                selected = select_variables(r_size, b[k].min, b[k].max);
-                break;
-            }
-
-            pi_change = local_affect(
-              x, std::get<0>(it), k, selected, r_size, kappa, delta);
-            at_least_one_pi_changed = at_least_one_pi_changed || pi_change;
-        }
-
-        return at_least_one_pi_changed;
+        return update_rows(x, first, last, kappa, delta, theta, obj_amp);
     }
 
     template<typename Xtype, typename Iterator>
@@ -480,53 +464,7 @@ struct solver_inequalities_Zcoeff : debug_logger<debug>
                             real delta,
                             real theta)
     {
-        auto at_least_one_pi_changed{ false };
-
-        logger::log("update-row {} {} {}\n", kappa, delta, theta);
-
-        for (; first != last; ++first) {
-            auto k = constraint(first);
-
-            const auto it = ap.row(k);
-            decrease_preference(std::get<0>(it), std::get<1>(it), theta);
-            const auto r_size =
-              compute_reduced_costs(std::get<0>(it), std::get<1>(it), x);
-
-            real pi_change;
-            int selected = -2;
-
-            switch (Z[k]) {
-            case subsolver_type::branch_and_bound:
-                calculator_sort<Mode>(R.get(), R.get() + r_size, rng);
-                selected = bb.solve(R, r_size, b[k].min, b[k].max);
-                break;
-            case subsolver_type::exhaustive:
-                selected = ex.solve(k, R, r_size);
-                break;
-            case subsolver_type::unconstrained_branch_and_bound:
-                calculator_sort<Mode>(R.get(), R.get() + r_size, rng);
-                selected = select_variables(r_size, b[k].min, b[k].max);
-                if (selected == -2)
-                    selected = bb.solve(R, r_size, b[k].min, b[k].max);
-                break;
-            case subsolver_type::unconstrained_exhaustive:
-                calculator_sort<Mode>(R.get(), R.get() + r_size, rng);
-                selected = select_variables(r_size, b[k].min, b[k].max);
-                if (selected == -2)
-                    selected = ex.solve(k, R, r_size);
-                break;
-            case subsolver_type::linear:
-                calculator_sort<Mode>(R.get(), R.get() + r_size, rng);
-                selected = select_variables(r_size, b[k].min, b[k].max);
-                break;
-            }
-
-            pi_change = local_affect(
-              x, std::get<0>(it), k, selected, r_size, kappa, delta);
-            at_least_one_pi_changed = at_least_one_pi_changed || pi_change;
-        }
-
-        return at_least_one_pi_changed;
+        return update_rows(x, first, last, kappa, delta, theta, Zero);
     }
 };
 

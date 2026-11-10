@@ -95,7 +95,6 @@ struct exhaustive_solver
 
     std::vector<item> items;
     std::vector<int> flat_constraints;
-    std::vector<std::int8_t> walkers;
     std::set<constraint> constraints;
 
     void reserve(std::size_t max_variables, std::size_t max_z_constraints)
@@ -105,7 +104,6 @@ struct exhaustive_solver
 
         items.reserve(max_variables);
         flat_constraints.reserve(max_variables * max_z_constraints);
-        walkers.reserve(max_variables);
     }
 
     template<typename C>
@@ -121,43 +119,19 @@ struct exhaustive_solver
         bx_ensures(k >= 0);
         bx_ensures(constraint_size > 0);
 
-        walkers.resize(constraint_elements.size(), 0);
-        walkers.back() = 1;
-        bool end = false;
+        for (unsigned mask = 0; mask != (1u << constraint_size); ++mask) {
+            int sum = 0;
+            for (int j = 0; j != constraint_size; ++j)
+                if (mask & (1u << j))
+                    sum += constraint_elements[j].factor;
 
-        do {
-            auto i = length(walkers) - 1;
-
-            do {
-                int sum = 0;
+            if (bk_min <= sum && sum <= bk_max) {
+                ++nb_solution;
                 for (int j = 0; j != constraint_size; ++j)
-                    if (walkers[j])
-                        sum += constraint_elements[j].factor;
-
-                if (bk_min <= sum && sum <= bk_max) {
-                    ++nb_solution;
-                    for (int j = 0; j != constraint_size; ++j) {
-                        flat_constraints.emplace_back(
-                          walkers[j] ? constraint_elements[j].factor : 0);
-                    }
-                }
-
-                ++walkers[i];
-
-                if (walkers[i] > 1) {
-                    walkers[i] = 0;
-
-                    if (i == 0) {
-                        end = true;
-                        break;
-                    } else {
-                        --i;
-                    }
-                } else {
-                    break;
-                }
-            } while (!end);
-        } while (!end);
+                    flat_constraints.emplace_back(
+                      mask & (1u << j) ? constraint_elements[j].factor : 0);
+            }
+        }
 
         bx_expects(start_it_flat_constraints >= 0);
         bx_expects(nb_solution > 0);

@@ -365,6 +365,18 @@ main()
         };
 
         {
+            // Only the empty selection satisfies 0 <= 2x + 3y <= 1.
+            baryonyx::itm::exhaustive_solver<baryonyx::itm::minimize_tag> ex;
+            ex.reserve(10u, 1u);
+
+            std::vector<rc> R = { { -1.0, 0, 2 }, { -2.0, 1, 3 } };
+            std::vector<cst> C = { { 2 }, { 3 } };
+
+            ex.build_constraints(0, C, 0, 1);
+            expect(ex.solve(0, R, 2) == -1);
+        }
+
+        {
             baryonyx::itm::exhaustive_solver<baryonyx::itm::maximize_tag> ex;
             ex.reserve(10u, 1u);
 

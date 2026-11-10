@@ -959,6 +959,25 @@ main()
         expect(baryonyx::is_valid_solution(pb, result) == true);
     };
 
+    "test_Z_mixed_coefficients"_test = [] {
+        auto ctx = baryonyx::make_context(0);
+        auto pb = baryonyx::make_problem(
+          ctx, EXAMPLES_DIR "/z-mixed-coefficients.lp");
+
+        baryonyx::solver_parameters params;
+        params.limit = 20000;
+        params.seed = 1;
+        baryonyx::context_set_solver_parameters(ctx, params);
+
+        auto result = baryonyx::solve(ctx, pb);
+        expect((result.status == baryonyx::result_status::success) >> fatal);
+
+        pb = baryonyx::make_problem(ctx,
+                                    EXAMPLES_DIR "/z-mixed-coefficients.lp");
+        expect(baryonyx::is_valid_solution(pb, result));
+        expect(baryonyx::compute_solution(pb, result) >= 560.0);
+    };
+
     "test_Z_coefficient_1"_test = [] {
         auto ctx = baryonyx::make_context(4);
 
