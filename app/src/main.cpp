@@ -1257,6 +1257,41 @@ check_solution(const baryonyx::context_ptr& ctx,
     }
 }
 
+// Message of the exception being handled, for the console and the result
+// files.
+static std::string
+current_failure_message()
+{
+    try {
+        throw;
+    } catch (const baryonyx::precondition_failure& e) {
+        return fmt::format("internal failure: {}", e.what());
+    } catch (const baryonyx::postcondition_failure& e) {
+        return fmt::format("internal failure: {}", e.what());
+    } catch (const baryonyx::numeric_cast_failure& e) {
+        return fmt::format("numeric cast internal failure: {}", e.what());
+    } catch (const baryonyx::file_access_failure& e) {
+        return fmt::format("file `{}' fail {}: {}",
+                           e.file(),
+                           e.error(),
+                           std::strerror(e.error()));
+    } catch (const baryonyx::file_format_failure& e) {
+        return fmt::format("file format error at line {} column {} {}",
+                           e.line(),
+                           e.column(),
+                           e.failure());
+    } catch (const baryonyx::problem_definition_failure& e) {
+        return fmt::format(
+          "definition problem error at {}: {}", e.element(), e.failure());
+    } catch (const baryonyx::solver_failure& e) {
+        return fmt::format("solver error: {}", e.failure());
+    } catch (const std::exception& e) {
+        return fmt::format("failure: {}", e.what());
+    } catch (...) {
+        return "unknown failure";
+    }
+}
+
 int
 main(int argc, const char* argv[])
 {
@@ -1329,13 +1364,15 @@ main(int argc, const char* argv[])
             if (!pb) {
                 fmt::print(stderr, "Fail to read file: {}\n", pb.status);
             } else {
+                std::ofstream ofs;
+
                 try {
                     auto filename = fmt::format(
                       "{}-{}.sol", params.filenames.front(), get_pid());
                     fmt::print("  - output file: {}\n", filename);
 
                     resume(pb);
-                    std::ofstream ofs(filename);
+                    ofs.open(filename);
 
                     resume(pb, ofs);
 
@@ -1360,35 +1397,15 @@ main(int argc, const char* argv[])
                                    "constraints: {}\n",
                                    ret.remaining_constraints);
                     }
-                } catch (const baryonyx::precondition_failure& e) {
-                    fmt::print(stderr, "internal failure: {}\n", e.what());
-                } catch (const baryonyx::postcondition_failure& e) {
-                    fmt::print(stderr, "internal failure: {}\n", e.what());
-                } catch (const baryonyx::numeric_cast_failure& e) {
-                    fmt::print(
-                      stderr, "numeric cast internal failure: {}\n", e.what());
-                } catch (const baryonyx::file_access_failure& e) {
-                    fmt::print(stderr,
-                               "file `{}' fail {}: {}\n",
-                               e.file(),
-                               e.error(),
-                               std::strerror(e.error()));
-                } catch (const baryonyx::file_format_failure& e) {
-                    fmt::print(stderr,
-                               "file format error at line {} column {} "
-                               "{}\n",
-                               e.line(),
-                               e.column(),
-                               e.failure());
-                } catch (const baryonyx::problem_definition_failure& e) {
-                    fmt::print(stderr,
-                               "definition problem error at {}: {}\n",
-                               e.element(),
-                               e.failure());
-                } catch (const baryonyx::solver_failure& e) {
-                    fmt::print(stderr, "solver error: {}\n", e.failure());
-                } catch (const std::exception& e) {
-                    fmt::print(stderr, "failure: {}.\n", e.what());
+                } catch (...) {
+                    // The solution file tells why it holds no solution.
+                    const auto message = current_failure_message();
+                    fmt::print(stderr, "{}\n", message);
+
+                    if (ofs.is_open())
+                        fmt::print(ofs,
+                                   "\\ Solution not found. Error: {}\n",
+                                   message);
                 }
             }
         } else {
@@ -1421,35 +1438,10 @@ main(int argc, const char* argv[])
                         fmt::print(ofs, "No solution found.\n");
                     }
                     ofs.flush();
-                } catch (const baryonyx::precondition_failure& e) {
-                    fmt::print(stderr, "internal failure: {}\n", e.what());
-                } catch (const baryonyx::postcondition_failure& e) {
-                    fmt::print(stderr, "internal failure: {}\n", e.what());
-                } catch (const baryonyx::numeric_cast_failure& e) {
-                    fmt::print(
-                      stderr, "numeric cast internal failure: {}\n", e.what());
-                } catch (const baryonyx::file_access_failure& e) {
-                    fmt::print(stderr,
-                               "file `{}' fail {}: {}\n",
-                               e.file(),
-                               e.error(),
-                               std::strerror(e.error()));
-                } catch (const baryonyx::file_format_failure& e) {
-                    fmt::print(stderr,
-                               "file format error at line {} column {} "
-                               "{}\n",
-                               e.line(),
-                               e.column(),
-                               e.failure());
-                } catch (const baryonyx::problem_definition_failure& e) {
-                    fmt::print(stderr,
-                               "definition problem error at {}: {}\n",
-                               e.element(),
-                               e.failure());
-                } catch (const baryonyx::solver_failure& e) {
-                    fmt::print(stderr, "solver error: {}\n", e.failure());
-                } catch (const std::exception& e) {
-                    fmt::print(stderr, "failure: {}.\n", e.what());
+                } catch (...) {
+                    const auto message = current_failure_message();
+                    fmt::print(stderr, "{}\n", message);
+                    fmt::print(ofs, "error: {}\n", message);
                 }
             }
         }
