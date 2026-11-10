@@ -29,6 +29,7 @@
 #include "debug.hpp"
 #include "private.hpp"
 #include "problem.hpp"
+#include "random-engine.hpp"
 #include "sparse-matrix.hpp"
 #include "utils.hpp"
 
@@ -43,8 +44,7 @@
 
 namespace baryonyx {
 
-// We statically define this PRNG for all subsystems in Baryonyx.
-using random_engine = std::default_random_engine;
+using random_engine = xoshiro256pp;
 
 constexpr real Zero{ 0 };
 constexpr real One{ 1 };

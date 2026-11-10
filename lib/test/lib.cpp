@@ -28,6 +28,7 @@
 #include "pnm.hpp"
 #include "sparse-matrix.hpp"
 #include "parallel-for.hpp"
+#include "random-engine.hpp"
 
 #include <boost/ut.hpp>
 
@@ -537,6 +538,21 @@ main()
         expect(empty.length() == 0);
         auto [eb, ee] = empty.column(1);
         expect(eb == ee);
+    };
+
+    "check_xoshiro256pp"_test = [] {
+        // Reference values from the authors' C code with splitmix64 seeding.
+        baryonyx::xoshiro256pp rng(1);
+        expect(rng() == 0xcfc5d07f6f03c29bULL);
+        expect(rng() == 0xbf424132963fe08dULL);
+        expect(rng() == 0x19a37d5757aaf520ULL);
+
+        baryonyx::xoshiro256pp same(1), other(2);
+        rng.seed(1);
+        for (int i = 0; i != 100; ++i)
+            expect(rng() == same());
+        rng.seed(1);
+        expect(rng() != other());
     };
 
     "check_parallel_for"_test = [] {
