@@ -164,19 +164,14 @@ merge(const bx::problem& sub_pb,
 // Large neighbourhood search: most variables keep their value in the best
 // solution, a neighbourhood of k variables is freed and the reduced problem
 // is solved by short restart runs. Wedelin solves such small problems in
-// milliseconds where a full run takes seconds on large instances.
+// milliseconds where a full run takes seconds on large instances. Without
+// time limit, the search runs until the process is stopped and reports each
+// improvement through the update callback.
 bx::result
 optimize(const bx::context& ctx, const bx::problem& pb)
 {
-    constexpr double default_budget = 10.0;
-
-    double budget = ctx.parameters.time_limit;
-    if (!std::isfinite(budget) || budget <= 0.0) {
-        bx::warning(ctx,
-                    "  - lns optimizer needs a time limit: {}s used.\n",
-                    default_budget);
-        budget = default_budget;
-    }
+    const double budget = ctx.parameters.time_limit;
+    const bool unbounded = !std::isfinite(budget) || budget <= 0.0;
 
     const auto start = clock_type::now();
     const auto elapsed = [&start]() {
@@ -189,36 +184,46 @@ optimize(const bx::context& ctx, const bx::problem& pb)
     internal.update = nullptr;
     internal.finish = nullptr;
     internal.log_priority = bx::context::message_type::warning;
-    internal.parameters.optimizer =
-      bx::solver_parameters::optimizer_type::restart;
 
     if (ctx.start)
         ctx.start(ctx.parameters);
 
-    // A first solution: a quarter of the budget, then half of it with tuned
-    // parameters, which find one on parameter-sensitive problems. A candidate
-    // of the tuned optimizer must not tune again: it keeps searching with
-    // restart for the rest of its time, as good as a restart candidate.
-    internal.parameters.time_limit = 0.25 * budget;
-    auto best = bx::itm::optimize(internal, pb);
-    if (!best) {
-        if (ctx.tuning) {
-            internal.parameters.time_limit = 0.75 * budget;
-        } else {
-            internal.parameters.optimizer =
-              bx::solver_parameters::optimizer_type::tuned;
-            internal.parameters.time_limit = 0.5 * budget;
-        }
+    using optimizer_type = bx::solver_parameters::optimizer_type;
 
-        auto second = bx::itm::optimize(internal, pb);
-        if (second ||
-            second.remaining_constraints < best.remaining_constraints)
-            best = std::move(second);
-
+    bx::result best;
+    const auto run = [&](optimizer_type optimizer, double time_limit) {
         internal.parameters = ctx.parameters;
-        internal.parameters.optimizer =
-          bx::solver_parameters::optimizer_type::restart;
+        internal.parameters.optimizer = optimizer;
+        internal.parameters.time_limit = time_limit;
+
+        auto ret = bx::itm::optimize(internal, pb);
+        if (ret || ret.remaining_constraints < best.remaining_constraints)
+            best = std::move(ret);
+    };
+
+    // A first solution with restart, then with tuned parameters, which find
+    // one on parameter-sensitive problems. With a time limit: a quarter, then
+    // half of it; a candidate of the tuned optimizer must not tune again and
+    // keeps searching with restart instead. Without time limit: alternate
+    // both with doubling durations until a solution is found.
+    if (unbounded) {
+        for (double t = 1.0; !best; t *= 2.0) {
+            run(optimizer_type::restart, t);
+            if (!best)
+                run(optimizer_type::tuned, 2.0 * t);
+        }
+    } else {
+        run(optimizer_type::restart, 0.25 * budget);
+        if (!best) {
+            if (ctx.tuning)
+                run(optimizer_type::restart, 0.75 * budget);
+            else
+                run(optimizer_type::tuned, 0.5 * budget);
+        }
     }
+
+    internal.parameters = ctx.parameters;
+    internal.parameters.optimizer = optimizer_type::restart;
 
     const auto n = pb.vars.values.size();
     if (!best || n == 0 || best.solutions.empty() ||
@@ -230,6 +235,9 @@ optimize(const bx::context& ctx, const bx::problem& pb)
 
     std::vector<std::int8_t> x = best.solutions.back().variables;
     double value = bx::compute_solution(pb, x);
+
+    if (ctx.update)
+        ctx.update(0, value, 0, elapsed(), 0);
 
     std::unordered_map<std::string_view, int> index;
     index.reserve(n);
@@ -259,7 +267,7 @@ optimize(const bx::context& ctx, const bx::problem& pb)
     std::vector<std::int8_t> candidate;
     long int iterations = 0, improvements = 0;
 
-    while (elapsed() + internal.parameters.time_limit < budget) {
+    while (unbounded || elapsed() + internal.parameters.time_limit < budget) {
         ++iterations;
         std::fill(is_free.begin(), is_free.end(), 0);
         const int k = static_cast<int>(wanted);

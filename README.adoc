@@ -343,7 +343,8 @@ To assign parameters to solver or optimizer algorithms, use the `-p
 * `lns` (default): large neighbourhood search. From a first restart
   solution, frees small neighbourhoods (linked constraints or random
   variables) of the best solution and solves the reduced problems with short
-  runs. Without time limit, it runs for 10 seconds.
+  runs. Without time limit, it runs until stopped and shows each
+  improvement.
 * `genetic`: a population of solutions with crossovers and mutations.
 * `restart`: independent restarts adapting the kappa step.
 * `tuned`: successive halving over random settings of the other optimizers
