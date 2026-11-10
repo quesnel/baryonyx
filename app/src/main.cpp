@@ -369,7 +369,7 @@ help() noexcept
       "  - storage-type: one bound five\n"
       "  - print-level: [0, 2]\n"
       "  - buffer-solver: 0 (default) or 1 (experimental -1 0 1 solver)\n"
-      "  - optimizer: genetic (default), restart, tuned or lns\n"
+      "  - optimizer: lns (default), genetic, restart or tuned\n"
       "  - optimizer-warm-start: 0 (default) or 1 (keep pi and P between "
       "optimizer restarts)\n"
       " * In The Middle parameters\n"

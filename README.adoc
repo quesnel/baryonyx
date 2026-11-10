@@ -330,7 +330,7 @@ To assign parameters to solver or optimizer algorithms, use the `-p
 
 | storage-type
 | string
-| Change the solution storage policy for the optimizer mode.
+| Change the solution storage policy of the `genetic` optimizer.
 
 * `one` (default): stores only the best solution found.
 * `bound`: stores the best and the bad solution found.
@@ -340,15 +340,16 @@ To assign parameters to solver or optimizer algorithms, use the `-p
 | string
 | Select the optimizer algorithm. Values are:
 
-* `genetic` (default): a population of solutions with crossovers and
-  mutations.
+* `lns` (default): large neighbourhood search. From a first restart
+  solution, frees small neighbourhoods (linked constraints or random
+  variables) of the best solution and solves the reduced problems with short
+  runs. Without time limit, it runs for 10 seconds.
+* `genetic`: a population of solutions with crossovers and mutations.
 * `restart`: independent restarts adapting the kappa step.
-* `tuned`: successive halving over random settings of the two previous
-  optimizers and of the solver parameters, then the best setting runs for
-  the remaining half of the time limit.
-* `lns`: large neighbourhood search. From a first restart solution, frees
-  small neighbourhoods (linked constraints or random variables) of the best
-  solution and solves the reduced problems with short runs.
+* `tuned`: successive halving over random settings of the other optimizers
+  and of the solver parameters, then the best setting runs for the remaining
+  half of the time limit. Often the best choice for long time limits or when
+  a first solution is hard to find.
 
 | init-policy (solver only)
 | string

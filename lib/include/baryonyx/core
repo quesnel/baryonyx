@@ -460,7 +460,7 @@ struct BX_EXPORT solver_parameters
     preprocessor_options preprocessor{ preprocessor_options::all };
     observer_type observer{ observer_type::none };
     storage_type storage{ storage_type::one };
-    optimizer_type optimizer{ optimizer_type::genetic };
+    optimizer_type optimizer{ optimizer_type::lns };
     bool use_buffer_solver{ false }; ///< Experimental solver for -1 0 1
 
     /** The optimizer keeps pi and P between restarts instead of resetting
