@@ -279,8 +279,9 @@ solve_problem(const context& ctx, const problem& pb)
     if (!constraints.empty() && !pb.vars.values.empty()) {
         random_engine rng(init_random_generator_seed(ctx));
 
-        auto cost = Cost(pb.objective, variables);
-        auto cost_constant = static_cast<real>(pb.objective.value);
+        const auto objective = minimization_objective(pb);
+        auto cost = Cost(objective, variables);
+        auto cost_constant = static_cast<real>(objective.value);
 
         switch (ctx.parameters.observer) {
         case solver_parameters::observer_type::pnm: {
@@ -303,6 +304,8 @@ solve_problem(const context& ctx, const problem& pb)
             break;
         }
         }
+
+        restore_objective_sign(pb, ret);
     } else {
         ret.status = result_status::success;
         ret.solutions.resize(1);

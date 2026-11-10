@@ -34,6 +34,7 @@
 #include <fmt/ostream.h>
 
 #include <fstream>
+#include <tuple>
 #include <map>
 #include <numeric>
 #include <random>
@@ -957,6 +958,52 @@ main()
 
         expect(result.status == baryonyx::result_status::success);
         expect(baryonyx::is_valid_solution(pb, result) == true);
+    };
+
+    "test_maximize_mirrors_minimize"_test = [] {
+        const auto make_assignment = [](const char* sense, int sign) {
+            const int costs[] = { 3, 8, 6, 4, 4, 2,  3, 2,
+                                  2, 7, 10, 8, 6, 8, 10, 5 };
+
+            std::string str = fmt::format("{}\n", sense);
+            for (int i = 0; i != 16; ++i)
+                str += fmt::format(" {:+} x{}", sign * costs[i], i + 1);
+
+            str += "\nsubject to:\n"
+                   "x1 + x2 + x3 + x4 = 1\n"
+                   "x5 + x6 + x7 + x8 = 1\n"
+                   "x9 + x10 + x11 + x12 = 1\n"
+                   "x13 + x14 + x15 + x16 = 1\n"
+                   "x1 + x5 + x9 + x13 = 1\n"
+                   "x2 + x6 + x10 + x14 = 1\n"
+                   "x3 + x7 + x11 + x15 = 1\n"
+                   "x4 + x8 + x12 + x16 = 1\n"
+                   "binary\n"
+                   "x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16\n"
+                   "end\n";
+            return str;
+        };
+
+        auto ctx = baryonyx::make_context(0);
+        baryonyx::solver_parameters params;
+        params.limit = 1000;
+        params.seed = 1;
+        baryonyx::context_set_solver_parameters(ctx, params);
+
+        for (const auto [sense, sign, expected] :
+             { std::tuple{ "minimize", 1, 15.0 },
+               std::tuple{ "maximize", -1, -15.0 } }) {
+            std::istringstream iss(make_assignment(sense, sign));
+            auto pb = baryonyx::make_problem(*ctx, iss);
+            const auto copy = pb;
+
+            auto result = baryonyx::solve(ctx, pb);
+            expect((result.status == baryonyx::result_status::success) >>
+                   fatal);
+            expect(baryonyx::is_valid_solution(copy, result));
+            expect(result.solutions.back().value == expected) << sense;
+            expect(baryonyx::compute_solution(copy, result) == expected);
+        }
     };
 
     "test_Z_mixed_coefficients"_test = [] {

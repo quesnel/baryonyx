@@ -301,10 +301,7 @@ select_cost(const context& ctx, const problem& pb, bool is_optimization)
 static result
 select_mode(const context& ctx, const problem& pb, bool is_optimization)
 {
-    const auto m = static_cast<int>(pb.type);
-
-    return m == 0 ? select_cost<mode_sel<0>>(ctx, pb, is_optimization)
-                  : select_cost<mode_sel<1>>(ctx, pb, is_optimization);
+    return select_cost<minimize_tag>(ctx, pb, is_optimization);
 }
 
 result

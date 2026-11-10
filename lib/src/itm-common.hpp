@@ -1566,8 +1566,38 @@ using real_sel = std::conditional_t<
   real,
   std::conditional_t<f == 1, double, long double>>;
 
-template<int o>
-using mode_sel = std::conditional_t<o == 0, maximize_tag, minimize_tag>;
+/**
+ * The solvers only minimize: a maximization is solved as the minimization of
+ * the opposite objective, then the reported values are negated back.
+ */
+inline objective_function
+minimization_objective(const problem& pb)
+{
+    auto objective = pb.objective;
+
+    if (pb.type == objective_function_type::maximize) {
+        for (auto& elem : objective.elements)
+            elem.factor = -elem.factor;
+        for (auto& elem : objective.qelements)
+            elem.factor = -elem.factor;
+        objective.value = -objective.value;
+    }
+
+    return objective;
+}
+
+inline double
+original_objective_value(const problem& pb, double value) noexcept
+{
+    return pb.type == objective_function_type::maximize ? -value : value;
+}
+
+inline void
+restore_objective_sign(const problem& pb, result& r)
+{
+    for (auto& elem : r.solutions)
+        elem.value = original_objective_value(pb, elem.value);
+}
 
 template<bool debug>
 struct debug_logger

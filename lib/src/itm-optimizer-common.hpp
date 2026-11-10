@@ -744,8 +744,9 @@ optimize_problem(const context& ctx, const problem& pb)
     random_engine rng(init_random_generator_seed(ctx));
 
     auto variables = length(pb.vars.values);
-    auto cost = Cost(pb.objective, variables);
-    auto cost_constant = static_cast<real>(pb.objective.value);
+    const auto objective = minimization_objective(pb);
+    auto cost = Cost(objective, variables);
+    auto cost_constant = static_cast<real>(objective.value);
 
     const auto thread = get_thread_number(ctx);
 
@@ -804,8 +805,11 @@ optimize_problem(const context& ctx, const problem& pb)
         best_recorder.get_best(constraints_remaining, value, duration, loop);
 
         if (ctx.update) {
-            ctx.update(
-              constraints_remaining, value, loop, duration, call_number);
+            ctx.update(constraints_remaining,
+                       original_objective_value(pb, value),
+                       loop,
+                       duration,
+                       call_number);
         }
 
         end = std::chrono::steady_clock::now();
@@ -856,6 +860,7 @@ optimize_problem(const context& ctx, const problem& pb)
     }
 
     best_recorder.show_population(ctx);
+    restore_objective_sign(pb, r);
 
     if (ctx.finish)
         ctx.finish(r);
