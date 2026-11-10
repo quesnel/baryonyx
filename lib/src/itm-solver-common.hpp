@@ -212,6 +212,10 @@ struct solver_functor
         if (m_best.remaining_constraints == 0)
             r.status = result_status::success;
 
+        r.duration = m_best.duration;
+        r.loop = m_best.loop;
+        r.remaining_constraints = m_best.remaining_constraints;
+
         if (!m_best.x.empty()) {
             r.solutions.resize(1);
             convert(m_best, r.solutions[0], variables);
