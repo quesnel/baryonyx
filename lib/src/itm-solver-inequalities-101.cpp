@@ -239,11 +239,36 @@ struct solver_inequalities_101coeff : debug_logger<debug>
         bkmin += sizes.c_size;
         bkmax = std::min(bkmax + sizes.c_size, sizes.r_size);
 
-        for (int i = bkmin; i <= bkmax; ++i)
+        for (int i = bkmin; i < bkmax; ++i)
             if (stop_iterating<Mode>(R[i].value, rng))
                 return i - 1;
 
         return bkmax - 1;
+    }
+
+    template<typename Xtype, typename Iterator>
+    bool select_and_affect(Xtype& x,
+                           Iterator it,
+                           int k,
+                           const rc_size& sizes,
+                           real kappa,
+                           real delta)
+    {
+        if constexpr (std::is_same_v<Mode, minimize_tag>) {
+            return affect_range(*this,
+                                x,
+                                it,
+                                k,
+                                b[k].min + sizes.c_size,
+                                b[k].max + sizes.c_size,
+                                sizes.r_size,
+                                kappa,
+                                delta);
+        } else {
+            const int selected = select_variables(sizes, b[k].min, b[k].max);
+            return affect(
+              *this, x, it, k, selected, sizes.r_size, kappa, delta);
+        }
     }
 
     template<typename Xtype, typename Iterator>
@@ -277,23 +302,16 @@ struct solver_inequalities_101coeff : debug_logger<debug>
             }
 
             calculator_sort<Mode>(R.get(), R.get() + sizes.r_size, rng);
-            int selected = select_variables(sizes, b[k].min, b[k].max);
 
             logger::log("constraints {}: {} <= ", k, b[k].min);
 
             for (int i = 0; i < sizes.r_size; ++i)
                 logger::log("{} ({} {}) ", R[i].f, R[i].value, R[i].id);
 
-            logger::log("<= {} => Selected: {}\n", b[k].max, selected);
+            logger::log("<= {}\n", b[k].max);
 
-            auto pi_change = affect(*this,
-                                    x,
-                                    std::get<0>(it),
-                                    k,
-                                    selected,
-                                    sizes.r_size,
-                                    kappa,
-                                    delta);
+            auto pi_change = select_and_affect(
+              x, std::get<0>(it), k, sizes, kappa, delta);
 
             at_least_one_pi_changed = at_least_one_pi_changed || pi_change;
         }
@@ -323,23 +341,16 @@ struct solver_inequalities_101coeff : debug_logger<debug>
               compute_reduced_costs(std::get<0>(it), std::get<1>(it), x);
 
             calculator_sort<Mode>(R.get(), R.get() + sizes.r_size, rng);
-            int selected = select_variables(sizes, b[k].min, b[k].max);
 
             logger::log("constraints {}: {} <= ", k, b[k].min);
 
             for (int i = 0; i < sizes.r_size; ++i)
                 logger::log("{} ({} {}) ", R[i].f, R[i].value, R[i].id);
 
-            logger::log("<= {} => Selected: {}\n", b[k].max, selected);
+            logger::log("<= {}\n", b[k].max);
 
-            auto pi_change = affect(*this,
-                                    x,
-                                    std::get<0>(it),
-                                    k,
-                                    selected,
-                                    sizes.r_size,
-                                    kappa,
-                                    delta);
+            auto pi_change = select_and_affect(
+              x, std::get<0>(it), k, sizes, kappa, delta);
 
             at_least_one_pi_changed = at_least_one_pi_changed || pi_change;
         }

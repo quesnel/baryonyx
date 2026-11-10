@@ -33,6 +33,8 @@
 #include "utils.hpp"
 
 #include <algorithm>
+#include <cmath>
+#include <limits>
 #include <chrono>
 #include <numeric>
 #include <random>
@@ -461,6 +463,82 @@ affect(Solver& slv,
     }
 
     // TODO job: develops is_valid_constraint for all the solvers
+    bx_expects(is_valid_constraint(slv, k, x));
+
+    return is_signbit_change(old_pi, slv.pi[k]);
+}
+
+/// Lagrangian coordinate ascent on the range row @c k for minimization.
+///
+/// The reduced costs @c slv.R must be sorted increasingly, include the row
+/// multiplier @c slv.pi[k] and be expressed for y = 1 - x on negative
+/// coefficients (Bastert et al. 2010, Alg. 3). @c bmin and @c bmax are the row
+/// bounds in this y space. The selection uses the reduced costs without the
+/// row multiplier and @c slv.pi[k] is set in the middle of the multipliers
+/// supporting it: >= 0 when only the lower bound can be tight, <= 0 when only
+/// the upper bound can be tight.
+///
+/// @return True if the sign of @c slv.pi[k] changes.
+template<typename Solver, typename Xtype, typename Iterator>
+bool
+affect_range(Solver& slv,
+             Xtype& x,
+             Iterator it,
+             int k,
+             int bmin,
+             int bmax,
+             int r_size,
+             real kappa,
+             real delta)
+{
+    constexpr real inf = std::numeric_limits<real>::infinity();
+    constexpr real zero{ 0 };
+
+    const real old_pi = slv.pi[k];
+    for (int i = 0; i != r_size; ++i)
+        slv.R[i].value += old_pi;
+
+    int attractive = 0;
+    while (attractive != r_size && slv.R[attractive].value < zero)
+        ++attractive;
+
+    bmin = std::clamp(bmin, 0, r_size);
+    bmax = std::clamp(bmax, bmin, r_size);
+    const int count = std::clamp(attractive, bmin, bmax);
+
+    real lo = count > 0 ? slv.R[count - 1].value : -inf;
+    real hi = count < r_size ? slv.R[count].value : +inf;
+    if (count > bmin)
+        hi = std::min(hi, zero);
+    if (count < bmax)
+        lo = std::max(lo, zero);
+
+    if (std::isfinite(lo) && std::isfinite(hi))
+        slv.pi[k] = (lo + hi) / 2;
+    else if (std::isfinite(lo))
+        slv.pi[k] = lo;
+    else if (std::isfinite(hi))
+        slv.pi[k] = hi;
+    else
+        slv.pi[k] = zero;
+
+    const real gap = count > 0 && count < r_size
+                       ? slv.R[count].value - slv.R[count - 1].value
+                       : zero;
+    const real d = delta + (kappa / (1 - kappa)) * gap;
+
+    for (int i = 0; i != r_size; ++i) {
+        auto var = it + slv.R[i].id;
+        const bool selected = i < count;
+
+        if (selected != slv.R[i].is_negative_factor())
+            x.set(var->column);
+        else
+            x.unset(var->column);
+
+        slv.P[var->value] += selected ? d : -d;
+    }
+
     bx_expects(is_valid_constraint(slv, k, x));
 
     return is_signbit_change(old_pi, slv.pi[k]);
