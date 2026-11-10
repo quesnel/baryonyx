@@ -27,6 +27,9 @@
 #include "utils.hpp"
 
 #include <fstream>
+#include <algorithm>
+#include <chrono>
+#include <cmath>
 #include <optional>
 #include <set>
 #include <utility>
@@ -42,11 +45,11 @@ is_best(const baryonyx::result& lhs,
     if (lhs) {
         if (rhs) {
             if (type == baryonyx::objective_function_type::maximize) {
-                return lhs.solutions.front().value >
-                       rhs.solutions.front().value;
+                return lhs.solutions.back().value >
+                       rhs.solutions.back().value;
             } else {
-                return lhs.solutions.front().value <
-                       rhs.solutions.front().value;
+                return lhs.solutions.back().value <
+                       rhs.solutions.back().value;
             }
         } else {
             return true;
@@ -55,7 +58,7 @@ is_best(const baryonyx::result& lhs,
         if (rhs) {
             return false;
         } else {
-            return lhs.constraints < rhs.constraints;
+            return lhs.remaining_constraints < rhs.remaining_constraints;
         }
     }
 }
@@ -70,7 +73,7 @@ is_best(const baryonyx::context& ctx,
         if (current)
             baryonyx::notice(ctx,
                              "  - branch optimization found solution {:G}\n",
-                             current.solutions.front().value);
+                             current.solutions.back().value);
         else
             baryonyx::notice(
               ctx,
@@ -162,6 +165,25 @@ optimize(const baryonyx::context& ctx, const baryonyx::problem& pb)
 {
     baryonyx::context internal_ctx(ctx);
     internal_ctx.log_priority = baryonyx::context::message_type::warning;
+    internal_ctx.start = nullptr;
+    internal_ctx.update = nullptr;
+    internal_ctx.finish = nullptr;
+
+    if (ctx.start)
+        ctx.start(ctx.parameters);
+
+    // The split tree can hold 2^n nodes: the time limit bounds the whole
+    // search and each node only gets a slice of it.
+    const double budget = ctx.parameters.time_limit;
+    const bool bounded = std::isfinite(budget) && budget > 0.0;
+    const auto start = std::chrono::steady_clock::now();
+    const auto remaining = [&]() {
+        return budget - std::chrono::duration<double>(
+                          std::chrono::steady_clock::now() - start)
+                          .count();
+    };
+    if (bounded)
+        internal_ctx.parameters.time_limit = budget / 8.0;
 
     auto best = baryonyx::itm::optimize(internal_ctx, pb);
 
@@ -177,6 +199,13 @@ optimize(const baryonyx::context& ctx, const baryonyx::problem& pb)
                  best.annoying_variable);
 
     do {
+        if (bounded) {
+            const double left = remaining();
+            if (left <= 0.0)
+                break;
+            internal_ctx.parameters.time_limit = std::min(budget / 8.0, left);
+        }
+
         auto it = jobs.begin();
         const int variable = it->annoying_variable;
 
@@ -233,6 +262,9 @@ optimize(const baryonyx::context& ctx, const baryonyx::problem& pb)
         }
 
     } while (!jobs.empty());
+
+    if (ctx.finish)
+        ctx.finish(best);
 
     return best;
 }
