@@ -672,6 +672,17 @@ struct compute_order
         }
     };
 
+    template<typename Solver>
+    void use_all_constraints(const Solver& solver)
+    {
+        R.resize(static_cast<std::size_t>(solver.m));
+        std::iota(R.begin(), R.end(), 0);
+
+        m_order.resize(static_cast<std::size_t>(solver.m));
+        for (int k = 0; k != solver.m; ++k)
+            m_order[static_cast<std::size_t>(k)] = { k, 0 };
+    }
+
     template<typename Solver, typename Xtype>
     int push_and_run(Solver& solver,
                      Xtype& x,
@@ -683,6 +694,10 @@ struct compute_order
     {
         bool pi_changed = 0;
         int remaining = 0;
+
+        // The current solution is feasible: as in Bastert et al. (2010, §4),
+        // the push must revisit every row, not only the violated ones.
+        use_all_constraints(solver);
 
         if (use_cycle)
             order = next_state(order);

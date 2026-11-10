@@ -207,7 +207,8 @@ struct solver_equalities_01coeff : debug_logger<debug>
             // amplifier.
 
             for (int i = 0; i != r_size; ++i)
-                R[i].value += objective_amplifier * c(R[i].id, x);
+                R[i].value += objective_amplifier *
+                              c((std::get<0>(it) + R[i].id)->column, x);
 
             calculator_sort<Mode>(R.get(), R.get() + r_size, rng);
             int selected = select_variables(r_size, b[k]);
