@@ -20,7 +20,11 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <array>
+#include <cmath>
+#include <functional>
+#include <limits>
+#include <string_view>
+#include <vector>
 
 #include "debug.hpp"
 #include "itm.hpp"
@@ -28,150 +32,178 @@
 #include "problem.hpp"
 #include "utils.hpp"
 
-struct manual_course
+namespace {
+
+namespace bx = baryonyx;
+
+/** A tuned parameter: its name, how to set it and the values to try. */
+struct tuned_parameter
 {
-    std::unique_ptr<double[]> theta;
-    std::unique_ptr<double[]> delta;
-    std::unique_ptr<double[]> kappa_min;
-    std::unique_ptr<double[]> kappa_step;
-    std::unique_ptr<double[]> init_policy_random;
-    std::unique_ptr<int[]> iterators;
-
-    const int length;
-
-    manual_course(double theta_,
-                  double delta_,
-                  double kappa_min_,
-                  double kappa_step_,
-                  double init_policy_random_,
-                  int length_)
-      : theta(std::make_unique<double[]>(length_))
-      , delta(std::make_unique<double[]>(length_))
-      , kappa_min(std::make_unique<double[]>(length_))
-      , kappa_step(std::make_unique<double[]>(length_))
-      , init_policy_random(std::make_unique<double[]>(length_))
-      , iterators(std::make_unique<int[]>(length_))
-      , length(length_)
-    {
-        bx_ensures(length > 2);
-
-        theta[0] = theta_;
-        theta[1] = 1.0 / static_cast<double>(length);
-
-        delta[0] = delta_;
-        delta[1] = 0.1 / static_cast<double>(length);
-
-        kappa_min[0] = kappa_min_;
-        kappa_min[1] = 1e-2 / static_cast<double>(length);
-
-        kappa_step[0] = kappa_step_;
-        kappa_step[1] = 1e-7 / static_cast<double>(length);
-
-        init_policy_random[0] = init_policy_random_;
-        init_policy_random[1] = 0.9 / static_cast<double>(length);
-
-        for (int i = 2; i != length; ++i)
-            theta[i] = theta[i - 1] + 1.0 / static_cast<double>(length);
-
-        for (int i = 2; i != length; ++i)
-            delta[i] =
-              theta[i - 1] + 0.1 / (5.0 * static_cast<double>(length));
-
-        for (int i = 2; i != length; ++i)
-            kappa_min[i] = theta[i - 1] + 1e-2 / static_cast<double>(length);
-
-        for (int i = 2; i != length; ++i)
-            kappa_step[i] =
-              theta[i - 1] + 1e-7 / (5.0 * static_cast<double>(length));
-
-        for (int i = 2; i != length; ++i)
-            init_policy_random[i] =
-              theta[i - 1] + 0.9 / static_cast<double>(length);
-
-        reset();
-    }
-
-    void reset()
-    {
-        std::fill_n(iterators.get(), length, 0);
-    }
-
-    bool next()
-    {
-        for (int i = length - 1; i >= 0; --i) {
-            if (iterators[i] + 1 >= length) {
-                iterators[i] = 0;
-            } else {
-                ++iterators[i];
-                return true;
-            }
-        }
-
-        return false;
-    }
+    std::string_view name;
+    std::function<void(bx::solver_parameters&, double)> set;
+    std::vector<double> values;
 };
 
-static baryonyx::result
-optimize(const baryonyx::context& ctx, const baryonyx::problem& pb)
+std::vector<tuned_parameter>
+tuned_parameters()
 {
-    manual_course array(ctx.parameters.theta,
-                        ctx.parameters.delta,
-                        ctx.parameters.kappa_min,
-                        ctx.parameters.kappa_step,
-                        ctx.parameters.init_policy_random,
-                        5);
+    using optimizer_type = bx::solver_parameters::optimizer_type;
 
-    baryonyx::context internal(ctx);
-    internal.log_priority = baryonyx::context::message_type::warning;
-
-    auto best_params = std::make_unique<int[]>(array.length);
-    double best = +HUGE_VAL;
-
-    do {
-        internal.parameters.theta = array.theta[array.iterators[0]];
-        internal.parameters.delta = array.delta[array.iterators[1]];
-        internal.parameters.kappa_min = array.kappa_min[array.iterators[2]];
-        internal.parameters.kappa_step = array.kappa_step[array.iterators[3]];
-        internal.parameters.init_policy_random =
-          array.init_policy_random[array.iterators[4]];
-
-        baryonyx::notice(internal,
-                         "  - optimization with theta:{} delta:{} "
-                         "kappa-min:{} kappa-step:{} "
-                         "init-policy-random: {}",
-                         internal.parameters.theta,
-                         internal.parameters.delta,
-                         internal.parameters.kappa_min,
-                         internal.parameters.kappa_step,
-                         internal.parameters.init_policy_random);
-
-        auto ret = baryonyx::itm::optimize(internal, pb);
-        if (ret) {
-            baryonyx::notice(internal, "{:f}\n", ret.solutions.back().value);
-            if (best > ret.solutions.back().value) {
-                best = ret.solutions.back().value;
-
-                std::copy_n(
-                  array.iterators.get(), array.length, best_params.get());
-            }
-        } else {
-            baryonyx::notice(internal, "no solution\n");
-        }
-    } while (array.next());
-
-    baryonyx::notice(
-      internal,
-      "  - manual optimization found solution {:f}: with theta:{} "
-      "delta:{} kappa-min:{} kappa-step:{} init-random:{}\n",
-      best,
-      array.theta[array.iterators[0]],
-      array.delta[array.iterators[1]],
-      array.kappa_min[array.iterators[2]],
-      array.kappa_step[array.iterators[3]],
-      array.init_policy_random[array.iterators[4]]);
-
-    return baryonyx::itm::optimize(internal, pb);
+    return {
+        { "optimizer",
+          [](auto& p, double v) {
+              p.optimizer =
+                v == 0.0 ? optimizer_type::genetic : optimizer_type::restart;
+          },
+          { 0.0, 1.0 } },
+        { "theta",
+          [](auto& p, double v) { p.theta = v; },
+          { 0.2, 0.4, 0.6, 0.8 } },
+        { "delta",
+          [](auto& p, double v) { p.delta = v; },
+          { -1.0, 1e-3, 1e-2, 1e-1 } },
+        { "kappa-min",
+          [](auto& p, double v) { p.kappa_min = v; },
+          { 0.0, 0.05, 0.1, 0.2 } },
+        { "kappa-step",
+          [](auto& p, double v) { p.kappa_step = v; },
+          { 1e-4, 3e-4, 1e-3, 3e-3, 1e-2 } },
+        { "init-policy-random",
+          [](auto& p, double v) { p.init_policy_random = v; },
+          { 0.0, 0.25, 0.5, 0.75 } },
+    };
 }
+
+// A feasible solution beats an infeasible one, then the objective decides,
+// or the number of violated constraints between infeasible ones.
+bool
+is_better(const bx::result& lhs,
+          const bx::result& rhs,
+          bx::objective_function_type type)
+{
+    if (rhs.solutions.empty())
+        return !lhs.solutions.empty();
+
+    if (lhs.solutions.empty())
+        return false;
+
+    const bool lhs_ok = lhs.status == bx::result_status::success;
+    const bool rhs_ok = rhs.status == bx::result_status::success;
+
+    if (lhs_ok != rhs_ok)
+        return lhs_ok;
+
+    if (!lhs_ok)
+        return lhs.remaining_constraints < rhs.remaining_constraints;
+
+    const auto l = lhs.solutions.back().value;
+    const auto r = rhs.solutions.back().value;
+
+    return type == bx::objective_function_type::maximize ? l > r : l < r;
+}
+
+std::string
+describe(const bx::result& r)
+{
+    if (r.solutions.empty())
+        return "no result";
+
+    if (r.status != bx::result_status::success)
+        return fmt::format("{} constraints remaining",
+                           r.remaining_constraints);
+
+    return fmt::format("{:g}", r.solutions.back().value);
+}
+
+// Coordinate search over the solver parameters: each parameter is tried in
+// turn with the others fixed and keeps its best value. Half of the time
+// budget goes to these trials, the other half to a final run with the best
+// parameters.
+bx::result
+optimize(const bx::context& ctx, const bx::problem& pb)
+{
+    constexpr double default_budget = 10.0;
+
+    double budget = ctx.parameters.time_limit;
+    if (!std::isfinite(budget) || budget <= 0.0) {
+        bx::warning(ctx,
+                    "  - auto-tune (manual) needs a time limit: {}s used.\n",
+                    default_budget);
+        budget = default_budget;
+    }
+
+    const auto parameters = tuned_parameters();
+
+    int trials = 1;
+    for (const auto& parameter : parameters)
+        trials += bx::length(parameter.values);
+
+    bx::context internal(ctx);
+    internal.start = nullptr;
+    internal.update = nullptr;
+    internal.finish = nullptr;
+    internal.log_priority = bx::context::message_type::warning;
+    internal.parameters.time_limit = 0.5 * budget / trials;
+
+    if (ctx.start)
+        ctx.start(ctx.parameters);
+
+    auto best_parameters = internal.parameters;
+    auto best = bx::itm::optimize(internal, pb);
+    auto best_tuned = best;
+
+    bx::notice(ctx,
+               "  - auto-tune (manual) baseline: {}\n",
+               describe(best_tuned));
+
+    for (const auto& parameter : parameters) {
+        for (const double value : parameter.values) {
+            internal.parameters = best_parameters;
+            parameter.set(internal.parameters, value);
+
+            auto ret = bx::itm::optimize(internal, pb);
+
+            bx::notice(ctx,
+                       "  - auto-tune (manual) {}={:g}: {}\n",
+                       parameter.name,
+                       value,
+                       describe(ret));
+
+            if (is_better(ret, best_tuned, pb.type)) {
+                best_tuned = ret;
+                best_parameters = internal.parameters;
+            }
+        }
+    }
+
+    bx::notice(ctx,
+               "  - auto-tune (manual) best: theta={:g} delta={:g} "
+               "kappa-min={:g} kappa-step={:g} init-policy-random={:g} "
+               "optimizer={}\n",
+               best_parameters.theta,
+               best_parameters.delta,
+               best_parameters.kappa_min,
+               best_parameters.kappa_step,
+               best_parameters.init_policy_random,
+               best_parameters.optimizer ==
+                   bx::solver_parameters::optimizer_type::restart
+                 ? "restart"
+                 : "genetic");
+
+    internal.parameters = best_parameters;
+    internal.parameters.time_limit = 0.5 * budget;
+    best = bx::itm::optimize(internal, pb);
+
+    if (is_better(best_tuned, best, pb.type))
+        best = std::move(best_tuned);
+
+    if (ctx.finish)
+        ctx.finish(best);
+
+    return best;
+}
+
+} // namespace
 
 namespace baryonyx {
 namespace itm {

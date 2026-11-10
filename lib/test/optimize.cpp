@@ -30,6 +30,7 @@
 
 #include <fmt/core.h>
 
+#include <chrono>
 #include <fstream>
 #include <sstream>
 #include <string>
@@ -132,6 +133,48 @@ main()
                    fatal);
             expect(baryonyx::is_valid_solution(copy, result));
             expect(result.solutions.back().value == -15.0) << name(optimizer);
+        }
+    };
+
+    "test_manual_tuning"_test = [] {
+        // The tuner runs within the time limit and returns its best result,
+        // with the sign of the objective of the problem.
+        constexpr std::pair<const char*, double> cases[] = {
+            { "minimize", 15.0 }, { "maximize", -15.0 }
+        };
+
+        for (const auto& [sense, expected] : cases) {
+            auto ctx = baryonyx::make_context(0);
+            auto pb = baryonyx::make_problem(
+              ctx, EXAMPLES_DIR "/assignment_problem_1.lp");
+
+            if (std::string_view(sense) == "maximize") {
+                pb.type = baryonyx::objective_function_type::maximize;
+                for (auto& elem : pb.objective.elements)
+                    elem.factor = -elem.factor;
+            }
+
+            const auto copy = pb;
+
+            baryonyx::solver_parameters params;
+            params.time_limit = 1.0;
+            params.seed = 1;
+            params.thread = 2;
+            params.mode = baryonyx::solver_parameters::mode_type::manual;
+            baryonyx::context_set_solver_parameters(ctx, params);
+
+            const auto start = std::chrono::steady_clock::now();
+            auto result = baryonyx::optimize(ctx, pb);
+            const auto elapsed = std::chrono::duration<double>(
+                                   std::chrono::steady_clock::now() - start)
+                                   .count();
+
+            expect((result.status == baryonyx::result_status::success) >>
+                   fatal)
+              << sense;
+            expect(baryonyx::is_valid_solution(copy, result));
+            expect(result.solutions.back().value == expected) << sense;
+            expect(elapsed < 2.0) << sense;
         }
     };
 
