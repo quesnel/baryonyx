@@ -992,7 +992,7 @@ round_constraint_value(const baryonyx::operator_type op, const double value)
 }
 
 raw_problem_status
-read_constraint(stream_buffer& buf, problem_parser& p, int id)
+read_constraint(stream_buffer& buf, problem_parser& p, int& id)
 {
     std::string_view label;
     std::vector<baryonyx::objective_function_element> terms;
@@ -1003,7 +1003,10 @@ read_constraint(stream_buffer& buf, problem_parser& p, int id)
         buf.pop_front(2);
     }
 
-    do {
+    // A constraint may have no term, as `c: = 0` written by CPLEX for a row
+    // whose variables were all removed, or terms that cancel out.
+    bool has_variable = false;
+    while (!buf.first().empty() && !starts_with_operator(buf.first())) {
         auto elem =
           read_function_element(buf.first(), buf.second(), buf.third());
         if (!elem)
@@ -1013,11 +1016,14 @@ read_constraint(stream_buffer& buf, problem_parser& p, int id)
             constant += elem->factor;
         else if (!p.append_to_constraint(terms, *elem))
             return baryonyx::file_format_error_tag::too_many_variables;
+        else
+            has_variable = true;
 
         buf.pop_front(elem->read);
-    } while (!buf.first().empty() && !starts_with_operator(buf.first()));
+    }
 
-    if (terms.empty())
+    // Only a constant on the left-hand side is most likely a mistake.
+    if (!has_variable && constant != 0.0)
         return baryonyx::file_format_error_tag::bad_constraint;
 
     std::vector<baryonyx::function_element> elements;
@@ -1027,7 +1033,8 @@ read_constraint(stream_buffer& buf, problem_parser& p, int id)
         if (!factor)
             return baryonyx::file_format_error_tag::bad_constraint;
 
-        elements.emplace_back(*factor, term.variable_index);
+        if (*factor != 0)
+            elements.emplace_back(*factor, term.variable_index);
     }
 
     auto operator_opt = read_operator(buf.first(), buf.second());
@@ -1048,6 +1055,27 @@ read_constraint(stream_buffer& buf, problem_parser& p, int id)
     if (!value)
         return baryonyx::file_format_error_tag::bad_constraint;
 
+    // Without term (none written or all cancelled), the left-hand side is 0:
+    // an always satisfied constraint is dropped, an unsatisfiable one makes
+    // the file invalid.
+    if (elements.empty()) {
+        bool satisfied = false;
+        switch (operator_opt->op) {
+        case baryonyx::operator_type::less:
+            satisfied = 0 <= *value;
+            break;
+        case baryonyx::operator_type::greater:
+            satisfied = 0 >= *value;
+            break;
+        case baryonyx::operator_type::equal:
+            satisfied = 0 == *value;
+            break;
+        }
+
+        return satisfied ? baryonyx::file_format_error_tag::success
+                         : baryonyx::file_format_error_tag::bad_constraint;
+    }
+
     switch (operator_opt->op) {
     case baryonyx::operator_type::equal:
         p.m_problem.equal_constraints.emplace_back(
@@ -1063,6 +1091,7 @@ read_constraint(stream_buffer& buf, problem_parser& p, int id)
         break;
     }
 
+    ++id;
     return baryonyx::file_format_error_tag::success;
 }
 
@@ -1077,8 +1106,6 @@ read_constraints(stream_buffer& buf, problem_parser& p)
 
         if (auto ret = read_constraint(buf, p, constraint_next_id); !ret)
             return ret;
-
-        ++constraint_next_id;
     }
 
     return baryonyx::file_format_error_tag::success;

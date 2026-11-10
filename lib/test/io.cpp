@@ -245,6 +245,43 @@ main()
         expect(failure_line("\\ only a comment\n") == 1);
     };
 
+    "constraints without term"_test = [] {
+        // Written by CPLEX for rows whose variables were all removed: always
+        // satisfied ones are dropped, the others make the file invalid.
+        const char* example = "minimize\n"
+                              "x + y\n"
+                              "subject to\n"
+                              "c1: x + y >= 1\n"
+                              "c2: = 0\n"
+                              "c3:\n"
+                              "  <= 2\n"
+                              "c4: x - x >= -1\n"
+                              "c5: x + y <= 1\n"
+                              "binaries\n"
+                              "x y\n"
+                              "end\n";
+
+        auto ctx = baryonyx::make_context(0);
+        std::istringstream iss(example);
+        auto pb = baryonyx::make_problem(*ctx, iss);
+        expect((!!pb) >> fatal);
+        expect(pb.equal_constraints.empty());
+        expect(pb.greater_constraints.size() == 1_ul);
+        expect(pb.less_constraints.size() == 1_ul);
+        expect(pb.greater_constraints[0].id == 0_i);
+        expect(pb.less_constraints[0].id == 1_i);
+
+        for (const char* invalid :
+             { "c: = 1\n", "c: >= 1\n", "c: x - x <= -1\n" }) {
+            std::istringstream bad(std::string("minimize\nx\nsubject to\n") +
+                                   invalid + "binaries\nx\nend\n");
+            auto bad_pb = baryonyx::make_problem(*ctx, bad);
+            expect(!bad_pb) << invalid;
+            expect(bad_pb.status ==
+                   baryonyx::file_format_error_tag::bad_constraint);
+        }
+    };
+
     "named objective"_test = [] {
         const char* example = "maximize\n"
                               "x0: +x1 + 2x2 + 3x3 - 100\n"
