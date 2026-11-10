@@ -29,6 +29,7 @@
 #include "debug.hpp"
 #include "private.hpp"
 #include "problem.hpp"
+#include "random-distributions.hpp"
 #include "random-engine.hpp"
 #include "sparse-matrix.hpp"
 #include "utils.hpp"
@@ -128,12 +129,12 @@ random_shuffle_unique(iteratorT begin,
     auto ret = begin++;
     for (; begin != end; ++begin) {
         if (ret->value != begin->value) {
-            std::shuffle(ret, begin, rng);
+            baryonyx::shuffle(ret, begin, rng);
             ret = begin;
         }
     }
 
-    std::shuffle(ret, begin, rng);
+    baryonyx::shuffle(ret, begin, rng);
 }
 
 template<typename Mode, typename Iterator>
@@ -157,7 +158,7 @@ inline bool
 stop_iterating(real value, random_engine& rng) noexcept
 {
     if (value == 0) {
-        std::bernoulli_distribution d(0.5);
+        bernoulli_distribution d(0.5);
         return d(rng);
     }
 
@@ -276,7 +277,7 @@ init_with_random(bit_array& x,
                  const int variables,
                  const double init_ramdom) noexcept
 {
-    std::bernoulli_distribution dist(init_ramdom);
+    bernoulli_distribution dist(init_ramdom);
 
     for (int i = 0; i != variables; ++i)
         if (dist(rng))
@@ -307,7 +308,7 @@ init_with_pre_solve(bit_array& x_pessimistic,
     };
 
     std::vector<reduced_cost> R(max_length);
-    std::bernoulli_distribution dist(init_random);
+    bernoulli_distribution dist(init_random);
 
     for (const auto& cst : constraints) {
         if (!dist(rng))
@@ -322,7 +323,7 @@ init_with_pre_solve(bit_array& x_pessimistic,
             R[i].id = cst.elements[i].variable_index;
         }
 
-        std::shuffle(std::begin(R), std::end(R), rng);
+        baryonyx::shuffle(std::begin(R), std::end(R), rng);
         std::sort(
           std::begin(R), std::end(R), [](const auto& lhs, const auto& rhs) {
               return is_better_solution<Mode>(lhs.value, rhs.value);
@@ -790,7 +791,7 @@ struct compute_order
 
             return compute_violated_constraints(solver, x, R);
         case solver_parameters::constraint_order::random_sorting:
-            std::shuffle(R.begin(), R.end(), rng);
+            baryonyx::shuffle(R.begin(), R.end(), rng);
 
             solver.push_and_compute_update_row(
               x, R.begin(), R.end(), kappa, delta, theta, objective_amplifier);
@@ -858,7 +859,7 @@ struct compute_order
 
             return compute_violated_constraints(solver, x, R);
         case solver_parameters::constraint_order::pi_sign_change:
-            std::shuffle(R.begin(), R.end(), rng);
+            baryonyx::shuffle(R.begin(), R.end(), rng);
 
             pi_changed = solver.push_and_compute_update_row(
               x, R.begin(), R.end(), kappa, delta, theta, objective_amplifier);
@@ -899,7 +900,7 @@ struct compute_order
 
             return compute_violated_constraints(solver, x, R);
         case solver_parameters::constraint_order::random_sorting:
-            std::shuffle(R.begin(), R.end(), rng);
+            baryonyx::shuffle(R.begin(), R.end(), rng);
 
             solver.compute_update_row(
               x, R.begin(), R.end(), kappa, delta, theta);
@@ -945,7 +946,7 @@ struct compute_order
 
             return compute_violated_constraints(solver, x, R);
         case solver_parameters::constraint_order::pi_sign_change:
-            std::shuffle(R.begin(), R.end(), rng);
+            baryonyx::shuffle(R.begin(), R.end(), rng);
 
             pi_changed = solver.compute_update_row(
               x, R.begin(), R.end(), kappa, delta, theta);
@@ -1041,7 +1042,7 @@ random_epsilon_unique(iteratorT begin,
 {
     bx_expects(min != max);
 
-    std::uniform_real_distribution<real> distribution(min, max);
+    uniform_real_distribution<real> distribution(min, max);
 
     for (; begin != end; ++begin)
         begin->first = distribution(rng);
@@ -1545,7 +1546,7 @@ generate_seed(random_engine& rng, unsigned count)
 {
     using type = random_engine::result_type;
 
-    std::uniform_int_distribution<type> dst(std::numeric_limits<type>::min(),
+    uniform_int_distribution<type> dst(std::numeric_limits<type>::min(),
                                             std::numeric_limits<type>::max());
 
     std::vector<type> ret;

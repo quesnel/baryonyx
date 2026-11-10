@@ -28,6 +28,7 @@
 #include "pnm.hpp"
 #include "sparse-matrix.hpp"
 #include "parallel-for.hpp"
+#include "random-distributions.hpp"
 #include "random-engine.hpp"
 
 #include <boost/ut.hpp>
@@ -35,6 +36,7 @@
 #include <baryonyx/core>
 
 #include <functional>
+#include <cmath>
 #include <numeric>
 
 template<typename R>
@@ -553,6 +555,83 @@ main()
             expect(rng() == same());
         rng.seed(1);
         expect(rng() != other());
+    };
+
+    "check_random_distributions"_test = [] {
+        // Reference values from an independent transcription of the
+        // algorithms: these draws must not depend on the platform.
+        {
+            baryonyx::xoshiro256pp rng(1);
+            expect(baryonyx::uniform_below(rng, 1000) == 387u);
+            expect(baryonyx::uniform_below(rng, 1000) == 965u);
+            expect(baryonyx::uniform_below(rng, 1000) == 744u);
+        }
+
+        {
+            baryonyx::xoshiro256pp rng(1);
+            std::vector<int> v(10);
+            std::iota(v.begin(), v.end(), 0);
+            baryonyx::shuffle(v.begin(), v.end(), rng);
+            expect(v == std::vector<int>{ 1, 4, 5, 3, 6, 2, 9, 0, 8, 7 });
+        }
+
+        constexpr int draws = 200000;
+        baryonyx::xoshiro256pp rng(42);
+
+        {
+            std::vector<int> buckets(10, 0);
+            for (int i = 0; i != draws; ++i)
+                ++buckets[baryonyx::uniform_below(rng, 10)];
+            for (const int count : buckets)
+                expect(std::abs(count - draws / 10) < draws / 100);
+        }
+
+        {
+            baryonyx::bernoulli_distribution coin(0.3);
+            int heads = 0;
+            for (int i = 0; i != draws; ++i)
+                heads += coin(rng) ? 1 : 0;
+            expect(std::abs(heads - draws * 3 / 10) < draws / 100);
+
+            baryonyx::bernoulli_distribution never(0.0), always(1.0);
+            expect(!never(rng) && always(rng));
+        }
+
+        {
+            baryonyx::uniform_int_distribution<int> dice(1, 6);
+            bool seen_low = false, seen_high = false;
+            for (int i = 0; i != 1000; ++i) {
+                const int v = dice(rng);
+                expect(1 <= v && v <= 6);
+                seen_low = seen_low || v == 1;
+                seen_high = seen_high || v == 6;
+            }
+            expect(seen_low && seen_high);
+        }
+
+        {
+            baryonyx::uniform_real_distribution<double> real(-2.0, 3.0);
+            for (int i = 0; i != 1000; ++i) {
+                const double v = real(rng);
+                expect(-2.0 <= v && v < 3.0);
+            }
+        }
+
+        {
+            baryonyx::normal_distribution<double> normal(1.0, 2.0);
+            expect(normal.mean() == 1.0 && normal.stddev() == 2.0);
+
+            double sum = 0, sum_sq = 0;
+            for (int i = 0; i != draws; ++i) {
+                const double v = normal(rng);
+                sum += v;
+                sum_sq += v * v;
+            }
+            const double mean = sum / draws;
+            const double variance = sum_sq / draws - mean * mean;
+            expect(std::abs(mean - 1.0) < 0.02);
+            expect(std::abs(std::sqrt(variance) - 2.0) < 0.02);
+        }
     };
 
     "check_parallel_for"_test = [] {

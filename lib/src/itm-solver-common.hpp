@@ -96,7 +96,7 @@ struct solver_functor
         compute_order compute(p.order, variables);
 
         {
-            std::bernoulli_distribution choose_mutation(
+            bernoulli_distribution choose_mutation(
               m_ctx.parameters.init_policy_random);
             bit_array empty_x;
 

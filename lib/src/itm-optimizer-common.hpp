@@ -52,12 +52,12 @@ namespace itm {
 struct local_context
 {
     random_engine rng;
-    std::normal_distribution<real> choose_sol_dist;
-    std::normal_distribution<real> variable_p_dist;
-    std::normal_distribution<real> value_p_dist;
-    std::uniform_int_distribution<int> bad_solution_choose;
-    std::uniform_int_distribution<std::size_t> crossover_dist;
-    std::bernoulli_distribution crossover_bastert_insertion;
+    normal_distribution<real> choose_sol_dist;
+    normal_distribution<real> variable_p_dist;
+    normal_distribution<real> value_p_dist;
+    uniform_int_distribution<int> bad_solution_choose;
+    uniform_int_distribution<std::size_t> crossover_dist;
+    bernoulli_distribution crossover_bastert_insertion;
     bit_array random_solution;
 
     const real init_kappa_improve_start;
@@ -190,7 +190,7 @@ public:
         for (int i = 0, e = m_size / 2; i != e; ++i) {
             m_data[i].x = m_bastert;
 
-            std::bernoulli_distribution dist(
+            bernoulli_distribution dist(
               std::clamp(static_cast<double>(i) / (5 * e), 0.0, 1.0));
 
             for (int v = 0; v != variables; ++v)
@@ -353,7 +353,7 @@ public:
 
         if (ctx.crossover_bastert_insertion(ctx.rng)) {
             int first = m_indices[choose_a_solution(ctx)];
-            std::bernoulli_distribution b(0.5);
+            bernoulli_distribution b(0.5);
 
             if (b(ctx.rng)) {
                 if (b(ctx.rng))
@@ -452,8 +452,8 @@ struct best_solution_recorder
             val_p = ctx.value_p_dist(ctx.rng);
         } while (val_p < 0 || val_p > 1);
 
-        std::bernoulli_distribution dist_var_p(var_p);
-        std::bernoulli_distribution dist_value_p(val_p);
+        bernoulli_distribution dist_var_p(var_p);
+        bernoulli_distribution dist_value_p(val_p);
 
         for (int i = 0, e = x.size(); i != e; ++i) {
             if (dist_var_p(ctx.rng)) {

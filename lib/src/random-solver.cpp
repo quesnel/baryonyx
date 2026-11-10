@@ -68,7 +68,7 @@ struct solver_random_inequalities_101coeff
     std::unique_ptr<real[]> pi;
     std::unique_ptr<real[]> P;
     const cost_type& c;
-    std::bernoulli_distribution dist;
+    bernoulli_distribution dist;
     int m;
     int n;
 
