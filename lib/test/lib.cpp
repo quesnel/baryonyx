@@ -316,6 +316,37 @@ main()
             expect(f == -2);
             expect(r == 2.0); // Strange ?!?
         }
+
+        baryonyx::itm::branch_and_bound_solver<baryonyx::itm::minimize_tag>
+          bb_min;
+        bb_min.reserve(16u);
+
+        {
+            std::vector<rc> R = {
+                { 5.0, 0, 1 }, { 6.0, 1, 1 }, { 7.0, 2, 1 }, { 8.0, 3, 1 }
+            };
+
+            auto result = bb_min.solve(R, 4, 0, 4);
+            expect(result == -1);
+        }
+
+        {
+            constexpr auto inf = std::numeric_limits<baryonyx::real>::infinity();
+
+            std::vector<rc> R = { { -1.4e36f, 11, -2 }, { 2.1e32f, 8, -3 },
+                                  { 2.8e35f, 5, -3 },   { 1.7e36f, 4, -4 },
+                                  { inf, 0, -3 },       { -2.6e36f, 3, 5 },
+                                  { -5.6e35f, 1, 2 },   { -9.3e34f, 6, 1 },
+                                  { -1.5e32f, 2, 1 },   { 3.7e32f, 10, 1 },
+                                  { 2.3e37f, 7, 4 },    { inf, 9, 2 } };
+            const int nb = static_cast<int>(R.size());
+
+            auto result = bb_min.solve(R, nb, 12, 16);
+            expect(result >= -1 && result <= nb);
+
+            auto [r, f] = sum(R, nb, result);
+            expect(12 <= f && f <= 16);
+        }
     };
 
     "check_exhaustive_solver"_test = [] {

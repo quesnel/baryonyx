@@ -217,9 +217,9 @@ struct branch_and_bound_solver
         {
             if constexpr (std::is_same_v<Mode, minimize_tag>)
                 return (r / static_cast<real>(factor)) <
-                       (other.r / static_cast<real>(factor));
+                       (other.r / static_cast<real>(other.factor));
             else
-                return (other.r / static_cast<real>(factor)) <
+                return (other.r / static_cast<real>(other.factor)) <
                        (r / static_cast<real>(factor));
         }
     };
@@ -248,6 +248,7 @@ struct branch_and_bound_solver
     real upper_bound;
     real lower_bound;
     unsigned int solution;
+    bool has_solution;
     int b_min;
     int b_max;
 
@@ -295,6 +296,18 @@ struct branch_and_bound_solver
             return node_z < lower_bound;
         else
             return node_z > lower_bound;
+    }
+
+    // The first feasible assignment is always kept: reduced costs may be
+    // non-finite and comparisons against them always fail.
+    void update_solution(unsigned int variables, real sumr) noexcept
+    {
+        if (has_solution && !is_best_solution(sumr))
+            return;
+
+        subvector.copy(variables, solution);
+        lower_bound = sumr;
+        has_solution = true;
     }
 
     void make_init_node_0()
@@ -346,11 +359,7 @@ struct branch_and_bound_solver
             node_1.z = node_1.sumr + items[level + 1].sum_z;
 
         if (node_1.sumfactor == b_min) {
-            if (is_best_solution(node_1.sumr)) {
-                subvector.copy(variables, solution);
-                subvector.invert(solution, level);
-                lower_bound = nodes.back().sumr;
-            }
+            update_solution(node_1.variables, node_1.sumr);
             subvector.remove(node_1.variables);
             nodes.pop_back();
         }
@@ -386,11 +395,7 @@ struct branch_and_bound_solver
             node_1.z = node_1.sumr + items[level + 1].sum_z;
 
         if (b_min <= node_1.sumfactor && node_1.sumfactor <= b_max) {
-            if (is_best_solution(node_1.sumr)) {
-                subvector.copy(variables, solution);
-                subvector.invert(solution, level);
-                lower_bound = nodes.back().sumr;
-            }
+            update_solution(node_1.variables, node_1.sumr);
         } else if (node_1.sumfactor > b_max) {
             subvector.remove(node_1.variables);
             nodes.pop_back();
@@ -404,16 +409,14 @@ struct branch_and_bound_solver
 
         make_init_node_0();
         if (nodes.back().sumfactor == b_min) {
-            upper_bound = nodes.back().sumr;
-            subvector.copy(nodes.back().variables, solution);
+            update_solution(nodes.back().variables, nodes.back().sumr);
             subvector.remove(nodes.back().variables);
             return;
         }
 
         make_init_node_1();
         if (nodes.back().sumfactor == b_min) {
-            upper_bound = nodes.back().sumr;
-            subvector.copy(nodes.back().variables, solution);
+            update_solution(nodes.back().variables, nodes.back().sumr);
             subvector.remove(nodes.back().variables);
             nodes.pop_back(); // Remove the branch
         }
@@ -430,8 +433,7 @@ struct branch_and_bound_solver
         make_init_node_0();
         if (b_min <= nodes.back().sumfactor &&
             nodes.back().sumfactor <= b_max) {
-            upper_bound = nodes.back().sumr;
-            subvector.copy(nodes.back().variables, solution);
+            update_solution(nodes.back().variables, nodes.back().sumr);
         } else if (nodes.back().sumfactor > b_max) {
             subvector.remove(nodes.back().variables);
             nodes.pop_back(); // Remove the branch
@@ -440,8 +442,7 @@ struct branch_and_bound_solver
         make_init_node_1();
         if (b_min <= nodes.back().sumfactor &&
             nodes.back().sumfactor <= b_max) {
-            upper_bound = nodes.back().sumr;
-            subvector.copy(nodes.back().variables, solution);
+            update_solution(nodes.back().variables, nodes.back().sumr);
         } else if (nodes.back().sumfactor > b_max) {
             subvector.remove(nodes.back().variables);
             nodes.pop_back(); // Remove the branch
@@ -465,6 +466,7 @@ struct branch_and_bound_solver
             throw solver_failure(solver_error_tag::no_solver_available);
 
         solution = subvector.emplace();
+        has_solution = false;
 
         bx_assert(solution == 0u);
 
