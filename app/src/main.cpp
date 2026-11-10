@@ -971,6 +971,7 @@ parse(int argc, const char* argv[])
 
         if (auto opt = get(i, "--check", "-C"); opt) {
             ret.check_filename = *opt;
+            ret.check = true;
             i = get.i;
             continue;
         }
@@ -1170,6 +1171,40 @@ solve_or_optimize(const baryonyx::context_ptr& ctx,
                              : baryonyx::solve(ctx, pb);
 }
 
+static bool
+check_solution(const baryonyx::context_ptr& ctx,
+               const std::string& problem_filename,
+               const std::string& solution_filename)
+{
+    try {
+        const auto pb = baryonyx::make_problem(ctx, problem_filename);
+        if (!pb) {
+            fmt::print(stderr, "Fail to read file: {}\n", pb.status);
+            return false;
+        }
+
+        const auto result = baryonyx::make_result(ctx, solution_filename);
+        if (!result) {
+            fmt::print(stderr,
+                       "Fail to read solution file: {}\n",
+                       solution_filename);
+            return false;
+        }
+
+        const bool valid = baryonyx::is_valid_solution(pb, result);
+        fmt::print("Check {} with {}: {} (value: {:.10g})\n",
+                   problem_filename,
+                   solution_filename,
+                   valid ? "success" : "failure",
+                   baryonyx::compute_solution(pb, result));
+
+        return valid;
+    } catch (const std::exception& e) {
+        fmt::print(stderr, "check failure: {}\n", e.what());
+        return false;
+    }
+}
+
 int
 main(int argc, const char* argv[])
 {
@@ -1195,6 +1230,18 @@ main(int argc, const char* argv[])
     auto ctx = baryonyx::make_context(params.verbose);
 
     context_set_solver_parameters(ctx, params.parameters);
+
+    if (params.check) {
+        if (params.filenames.size() != 1) {
+            fmt::print(stderr, "--check needs exactly one lp file\n");
+            return EXIT_FAILURE;
+        }
+
+        return check_solution(
+                 ctx, params.filenames.front(), params.check_filename)
+                 ? EXIT_SUCCESS
+                 : EXIT_FAILURE;
+    }
 
     context_register(
       ctx, solver_started_cb, solver_updated_cb, solver_finished_cb);
@@ -1226,20 +1273,6 @@ main(int argc, const char* argv[])
                     auto filename = fmt::format(
                       "{}-{}.sol", params.filenames.front(), get_pid());
                     fmt::print("  - output file: {}\n", filename);
-
-                    if (params.check) {
-                        auto result =
-                          baryonyx::make_result(ctx, params.check_filename);
-
-                        if (result) {
-                            auto valid =
-                              baryonyx::is_valid_solution(pb, result);
-                            fmt::print("Check {} with {}: {}",
-                                       params.filenames.front(),
-                                       params.check_filename,
-                                       (valid ? "success" : "failure"));
-                        }
-                    }
 
                     resume(pb);
                     std::ofstream ofs(filename);

@@ -168,6 +168,15 @@ main()
 {
     using namespace boost::ut;
 
+    "missing solution file"_test = [] {
+        auto ctx = baryonyx::make_context(0);
+        auto result =
+          baryonyx::make_result(ctx, EXAMPLES_DIR "/does-not-exist.sol");
+
+        expect(!result);
+        expect(result.status == baryonyx::result_status::uninitialized);
+    };
+
     "named objective"_test = [] {
         const char* example = "maximize\n"
                               "x0: +x1 + 2x2 + 3x3 - 100\n"

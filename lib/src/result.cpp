@@ -39,6 +39,9 @@ make_result(const baryonyx::context_ptr& ctx, const std::string& filename)
     if (ctx) {
         info(*ctx, "solution reads from file {}\n", filename);
         std::ifstream ifs(filename);
+        if (!ifs.is_open())
+            return result{ result_status::uninitialized };
+
         result ret;
         ifs >> ret;
         return ret;
