@@ -20,58 +20,76 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+#include <algorithm>
+#include <chrono>
 #include <cmath>
-#include <functional>
-#include <limits>
-#include <string_view>
+#include <string>
 #include <vector>
 
 #include "debug.hpp"
+#include "itm-common.hpp"
 #include "itm.hpp"
 #include "private.hpp"
 #include "problem.hpp"
+#include "random-distributions.hpp"
+#include "random-engine.hpp"
 #include "utils.hpp"
 
 namespace {
 
 namespace bx = baryonyx;
 
-/** A tuned parameter: its name, how to set it and the values to try. */
-struct tuned_parameter
+struct candidate
 {
-    std::string_view name;
-    std::function<void(bx::solver_parameters&, double)> set;
-    std::vector<double> values;
+    bx::solver_parameters parameters;
+    bx::result result;
 };
 
-std::vector<tuned_parameter>
-tuned_parameters()
+template<typename T, std::size_t N>
+T
+pick(bx::xoshiro256pp& rng, const T (&values)[N])
+{
+    return values[bx::uniform_below(rng, N)];
+}
+
+// Random parameters in the ranges the solver is usually tuned in.
+bx::solver_parameters
+random_parameters(bx::solver_parameters p, bx::xoshiro256pp& rng)
 {
     using optimizer_type = bx::solver_parameters::optimizer_type;
 
-    return {
-        { "optimizer",
-          [](auto& p, double v) {
-              p.optimizer =
-                v == 0.0 ? optimizer_type::genetic : optimizer_type::restart;
-          },
-          { 0.0, 1.0 } },
-        { "theta",
-          [](auto& p, double v) { p.theta = v; },
-          { 0.2, 0.4, 0.6, 0.8 } },
-        { "delta",
-          [](auto& p, double v) { p.delta = v; },
-          { -1.0, 1e-3, 1e-2, 1e-1 } },
-        { "kappa-min",
-          [](auto& p, double v) { p.kappa_min = v; },
-          { 0.0, 0.05, 0.1, 0.2 } },
-        { "kappa-step",
-          [](auto& p, double v) { p.kappa_step = v; },
-          { 1e-4, 3e-4, 1e-3, 3e-3, 1e-2 } },
-        { "init-policy-random",
-          [](auto& p, double v) { p.init_policy_random = v; },
-          { 0.0, 0.25, 0.5, 0.75 } },
-    };
+    constexpr optimizer_type optimizers[] = { optimizer_type::genetic,
+                                              optimizer_type::restart };
+    constexpr double thetas[] = { 0.2, 0.35, 0.5, 0.65, 0.8 };
+    constexpr double deltas[] = { -1.0, 1e-3, 1e-2, 1e-1 };
+    constexpr double kappa_mins[] = { 0.0, 0.05, 0.1, 0.2 };
+    constexpr double kappa_steps[] = { 1e-4, 3e-4, 1e-3, 3e-3, 1e-2 };
+    constexpr double init_randoms[] = { 0.0, 0.25, 0.5, 0.75 };
+
+    p.optimizer = pick(rng, optimizers);
+    p.theta = pick(rng, thetas);
+    p.delta = pick(rng, deltas);
+    p.kappa_min = pick(rng, kappa_mins);
+    p.kappa_step = pick(rng, kappa_steps);
+    p.init_policy_random = pick(rng, init_randoms);
+
+    return p;
+}
+
+std::string
+describe(const bx::solver_parameters& p)
+{
+    return fmt::format(
+      "optimizer={} theta={:g} delta={:g} kappa-min={:g} kappa-step={:g} "
+      "init-policy-random={:g}",
+      p.optimizer == bx::solver_parameters::optimizer_type::restart
+        ? "restart"
+        : "genetic",
+      p.theta,
+      p.delta,
+      p.kappa_min,
+      p.kappa_step,
+      p.init_policy_random);
 }
 
 // A feasible solution beats an infeasible one, then the objective decides,
@@ -115,14 +133,15 @@ describe(const bx::result& r)
     return fmt::format("{:g}", r.solutions.back().value);
 }
 
-// Coordinate search over the solver parameters: each parameter is tried in
-// turn with the others fixed and keeps its best value. Half of the time
-// budget goes to these trials, the other half to a final run with the best
-// parameters.
+// Successive halving: every remaining candidate runs for the same time, the
+// better half survives and the time per run doubles, so each round costs the
+// same and the last survivors are compared on long, less noisy runs. Half of
+// the budget goes to these rounds, the rest to a final run of the winner.
 bx::result
 optimize(const bx::context& ctx, const bx::problem& pb)
 {
     constexpr double default_budget = 10.0;
+    constexpr double minimal_run = 0.1;
 
     double budget = ctx.parameters.time_limit;
     if (!std::isfinite(budget) || budget <= 0.0) {
@@ -132,70 +151,80 @@ optimize(const bx::context& ctx, const bx::problem& pb)
         budget = default_budget;
     }
 
-    const auto parameters = tuned_parameters();
+    const double tuning = 0.5 * budget;
 
-    int trials = 1;
-    for (const auto& parameter : parameters)
-        trials += bx::length(parameter.values);
+    // The largest power of two (4 to 32) whose first round still gives each
+    // candidate a meaningful run.
+    int candidates = 4;
+    while (candidates < 32 &&
+           tuning / (2 * candidates * std::log2(2.0 * candidates)) >=
+             minimal_run)
+        candidates *= 2;
+
+    const int rounds = static_cast<int>(std::log2(candidates));
+    double run_time = tuning / (candidates * rounds);
+
+    bx::xoshiro256pp rng(
+      ctx.parameters.seed > 0
+        ? static_cast<bx::xoshiro256pp::result_type>(ctx.parameters.seed)
+        : 1u);
+
+    std::vector<candidate> pool;
+    pool.reserve(static_cast<std::size_t>(candidates));
+    pool.push_back({ ctx.parameters, {} });
+    while (bx::length(pool) != candidates)
+        pool.push_back({ random_parameters(ctx.parameters, rng), {} });
 
     bx::context internal(ctx);
     internal.start = nullptr;
     internal.update = nullptr;
     internal.finish = nullptr;
     internal.log_priority = bx::context::message_type::warning;
-    internal.parameters.time_limit = 0.5 * budget / trials;
 
     if (ctx.start)
         ctx.start(ctx.parameters);
 
-    auto best_parameters = internal.parameters;
-    auto best = bx::itm::optimize(internal, pb);
-    auto best_tuned = best;
+    const auto start = std::chrono::steady_clock::now();
+    bx::result best;
 
-    bx::notice(ctx,
-               "  - auto-tune (manual) baseline: {}\n",
-               describe(best_tuned));
+    for (int round = 0; round != rounds; ++round) {
+        for (auto& c : pool) {
+            internal.parameters = c.parameters;
+            internal.parameters.time_limit = run_time;
+            c.result = bx::itm::optimize(internal, pb);
 
-    for (const auto& parameter : parameters) {
-        for (const double value : parameter.values) {
-            internal.parameters = best_parameters;
-            parameter.set(internal.parameters, value);
-
-            auto ret = bx::itm::optimize(internal, pb);
-
-            bx::notice(ctx,
-                       "  - auto-tune (manual) {}={:g}: {}\n",
-                       parameter.name,
-                       value,
-                       describe(ret));
-
-            if (is_better(ret, best_tuned, pb.type)) {
-                best_tuned = ret;
-                best_parameters = internal.parameters;
-            }
+            if (is_better(c.result, best, pb.type))
+                best = c.result;
         }
+
+        std::stable_sort(
+          pool.begin(), pool.end(), [&pb](const auto& lhs, const auto& rhs) {
+              return is_better(lhs.result, rhs.result, pb.type);
+          });
+
+        bx::notice(ctx,
+                   "  - auto-tune (manual) round {}: {} candidates, {:.3g}s "
+                   "each, best {} with {}\n",
+                   round + 1,
+                   pool.size(),
+                   run_time,
+                   describe(pool.front().result),
+                   describe(pool.front().parameters));
+
+        pool.resize(std::max<std::size_t>(1, pool.size() / 2));
+        run_time *= 2;
     }
 
-    bx::notice(ctx,
-               "  - auto-tune (manual) best: theta={:g} delta={:g} "
-               "kappa-min={:g} kappa-step={:g} init-policy-random={:g} "
-               "optimizer={}\n",
-               best_parameters.theta,
-               best_parameters.delta,
-               best_parameters.kappa_min,
-               best_parameters.kappa_step,
-               best_parameters.init_policy_random,
-               best_parameters.optimizer ==
-                   bx::solver_parameters::optimizer_type::restart
-                 ? "restart"
-                 : "genetic");
+    const double elapsed = std::chrono::duration<double>(
+                             std::chrono::steady_clock::now() - start)
+                             .count();
 
-    internal.parameters = best_parameters;
-    internal.parameters.time_limit = 0.5 * budget;
-    best = bx::itm::optimize(internal, pb);
+    internal.parameters = pool.front().parameters;
+    internal.parameters.time_limit = std::max(budget - elapsed, minimal_run);
+    auto final_result = bx::itm::optimize(internal, pb);
 
-    if (is_better(best_tuned, best, pb.type))
-        best = std::move(best_tuned);
+    if (is_better(final_result, best, pb.type))
+        best = std::move(final_result);
 
     if (ctx.finish)
         ctx.finish(best);
