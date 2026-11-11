@@ -1072,7 +1072,7 @@ normalize_costs(const context& ctx, const Cost& c, random_engine& rng, int n)
 
     switch (ctx.parameters.cost_norm) {
     case solver_parameters::cost_norm_type::none:
-        info(ctx, "  - No norm");
+        info(ctx, "  - No norm\n");
         return ret;
 
     case solver_parameters::cost_norm_type::random:
@@ -1086,15 +1086,17 @@ normalize_costs(const context& ctx, const Cost& c, random_engine& rng, int n)
         return ret;
 
     case solver_parameters::cost_norm_type::l2:
-        info(ctx, "  - Compute l2 norm\n");
+        info(ctx, "  - Compute l2 norm (default)\n");
         ret.make_l2_norm(n);
         return ret;
 
-    default:
-        info(ctx, "  - Compute infinity-norm (default)\n");
+    case solver_parameters::cost_norm_type::loo:
+        info(ctx, "  - Compute infinity-norm\n");
         ret.make_loo_norm(n);
         return ret;
     }
+
+    return ret;
 }
 
 struct default_cost_type

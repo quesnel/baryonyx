@@ -424,7 +424,7 @@ struct BX_EXPORT solver_parameters
     int thread{ 0 };        ///< value <= 0 means automatic detection.
     long int limit{ 1000 }; ///< value <= 0 means infinity loop.
     constraint_order order{ constraint_order::none };
-    cost_norm_type cost_norm{ cost_norm_type::loo };
+    cost_norm_type cost_norm{ cost_norm_type::l2 };
     mode_type mode{ mode_type::none };
     preprocessor_options preprocessor{ preprocessor_options::all };
     observer_type observer{ observer_type::none };

@@ -223,7 +223,7 @@ convert_result(const baryonyx::result& res, bool minimize)
 //'    - 8: cycle
 //'
 //' @param norm the normalization used to reduces cost dependencies. Default
-//'    is to use the infinity norm. Other values are:
+//'    is to use the l2 norm. Other values are:
 //'    - 0: none (use the default cost from the model (lp file)).
 //'    - 1: rng
 //'    - 2: l1-norm
@@ -264,7 +264,7 @@ solve_01lp_problem(std::string file_path,
                    double time_limit = 10.0,
                    int seed = -1,
                    int thread = 1,
-                   int norm = 4,
+                   int norm = 3,
                    bool verbose = true) noexcept
 
 {
@@ -326,7 +326,7 @@ solve_01lp_problem(std::string file_path,
 //'    - 8: cycle
 //'
 //' @param norm the normalization used to reduces cost dependencies. Default
-//'    is to use the infinity norm. Other values are:
+//'    is to use the l2 norm. Other values are:
 //'    - 0: none (use the default cost from the model (lp file)).
 //'    - 1: rng
 //'    - 2: l1-norm
@@ -367,7 +367,7 @@ optimize_01lp_problem(std::string file_path,
                       double time_limit = 10.0,
                       int seed = -1,
                       int thread = 1,
-                      int norm = 4,
+                      int norm = 3,
                       bool verbose = true) noexcept
 {
     baryonyx::result ret;

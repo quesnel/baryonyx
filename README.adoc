@@ -241,7 +241,7 @@ results:
 |===
 
 The costs are normalized before the search (`norm`, default: divided by their
-largest absolute value).
+euclidean norm).
 
 === Solver classes
 
@@ -340,7 +340,7 @@ that drives the solver:
 | Successive halving (`lib/src/tuned-optimizer.cpp`): random settings of the
   optimizer (`genetic`, `restart`, `lns`) and of the solver parameters
   (`theta` up to 0.95, `delta`, `kappa-min`, `kappa-step`,
-  `constraint-order`) compete on half of the time
+  `constraint-order`, `norm`) compete on half of the time
   limit, then the best setting runs for the remaining half. Useful when the
   default parameters do not find a solution.
 |===
@@ -434,7 +434,7 @@ influence: they are fixed constants of `solver_parameters`, see
 | `kappa-min` | initial κ | yes
 | `kappa-step` | growth of κ | yes
 | `alpha` | adaptiveness of κ | no
-| `norm` | cost normalization | no
+| `norm` | cost normalization | yes
 | `constraint-order` | order of the violated constraints | yes
 | `buffer-solver` | parallel buffered solver | no
 | `optimizer` | optimization algorithm | yes
@@ -443,8 +443,10 @@ influence: they are fixed constants of `solver_parameters`, see
 
 The most influential parameters are `constraint-order`, `kappa-min`,
 `norm`, `delta` and `theta`. When the default parameters find no solution,
-try first `-p optimizer=tuned`, or a high `theta` (0.7 to 0.9) with
-`constraint-order=lagrangian-decr` on set partitioning problems.
+try first `-p optimizer=tuned`, `-p delta=0.1` in solve mode, or a high
+`theta` (0.7 to 0.9) with `constraint-order=lagrangian-decr` on set
+partitioning problems. Do not combine several of these changes blindly: their
+effects do not add up.
 
 ==== Global parameters
 
@@ -498,7 +500,8 @@ try first `-p optimizer=tuned`, or a high `theta` (0.7 to 0.9) with
 | real ]0, +∞[
 | automatic
 | Random perturbation of the preferences that breaks ties. Computed from
-  the costs and `theta` when not set.
+  the costs and `theta` when not set. In solve mode, `delta=0.1` often finds
+  a solution more often than the automatic value.
 
 | `kappa-min`
 | real [0, 0.6[
@@ -518,12 +521,12 @@ try first `-p optimizer=tuned`, or a high `theta` (0.7 to 0.9) with
 
 | `norm`
 | string
-| `loo`
+| `l2`
 | Cost normalization:
 
+* `l2`: divide by the euclidean norm;
 * `loo`: divide by the largest absolute value;
 * `l1`: divide by the sum of absolute values;
-* `l2`: divide by the euclidean norm;
 * `random`: add a small noise to break equal costs, then `loo`;
 * `none`: unmodified costs.
 
@@ -678,12 +681,12 @@ scalar:
 solve_01lp_problem <- function(file_path, limit = 1000L, theta = 0.5,
   delta = -1, constraint_order = 0L,
   kappa_min = 0.0, kappa_step = 1e-3, alpha = 1.0,
-  time_limit = 10.0, seed = -1L, thread = 1L, norm = 4L, verbose = TRUE)
+  time_limit = 10.0, seed = -1L, thread = 1L, norm = 3L, verbose = TRUE)
 
 optimize_01lp_problem <- function(file_path, limit = 1000L, theta = 0.5,
   delta = -1, constraint_order = 0L,
   kappa_min = 0.0, kappa_step = 1e-3, alpha = 1.0,
-  time_limit = 10.0, seed = -1L, thread = 1L, norm = 4L, verbose = TRUE)
+  time_limit = 10.0, seed = -1L, thread = 1L, norm = 3L, verbose = TRUE)
 ----
 
 === Usage
