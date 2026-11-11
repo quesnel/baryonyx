@@ -403,19 +403,48 @@ struct BX_EXPORT solver_parameters
     };
 
     /**
-     * Fixed settings of the In The Middle heuristic. They were command line
-     * parameters but a sensitivity benchmark showed no gain from tuning
-     * them: the solver stops when kappa exceeds @c kappa_max and, after a
-     * first solution, runs @c pushes_limit pushes of
+     * These settings are fixed, not parameters, because they have little
+     * influence on the results: a sensitivity benchmark on varied problems
+     * showed no gain from tuning them. They stay here so that they can be
+     * changed in one place if needed.
+     */
+
+    /** The solver stops when kappa exceeds this value. */
+    static inline constexpr double kappa_max = 0.6;
+
+    /**
+     * After a first solution, the solver runs @c pushes_limit pushes of
      * @c pushing_iteration_limit loops with a kappa multiplied by
      * @c pushing_k_factor and costs amplified by
      * @c pushing_objective_amplifier.
      */
-    static inline constexpr double kappa_max = 0.6;
-    static inline constexpr double pushing_k_factor = 0.9;
-    static inline constexpr double pushing_objective_amplifier = 5;
     static inline constexpr int pushes_limit = 100;
     static inline constexpr int pushing_iteration_limit = 50;
+    static inline constexpr double pushing_k_factor = 0.9;
+    static inline constexpr double pushing_objective_amplifier = 5;
+
+    /**
+     * Genetic optimizer: size of the population, probability to cross a
+     * solution with the bastert one, normal laws selecting the solutions of
+     * a crossover (0: the best, 1: the worst) and the mutated variables and
+     * values.
+     */
+    static inline constexpr int population_size = 100;
+    static inline constexpr double crossover_bastert_insertion = 0.01;
+    static inline constexpr double crossover_selection_mean = 0.0;
+    static inline constexpr double crossover_selection_stddev = 0.3;
+    static inline constexpr double mutation_variable_mean = 0.0001;
+    static inline constexpr double mutation_variable_stddev = 0.001;
+    static inline constexpr double mutation_value_mean = 0.5;
+    static inline constexpr double mutation_value_stddev = 0.2;
+
+    /**
+     * Genetic and restart optimizers: interval of the starting kappa of a
+     * solver run and its increase between two runs of the genetic one.
+     */
+    static inline constexpr double kappa_improve_start = 0.0;
+    static inline constexpr double kappa_improve_increase = 0.02;
+    static inline constexpr double kappa_improve_stop = 0.2;
 
     double time_limit{ -1 }; ///< value <= 0 means infinity time.
     double theta{ 0.5 };

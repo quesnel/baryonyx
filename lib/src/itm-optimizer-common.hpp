@@ -68,19 +68,19 @@ struct local_context
                   const random_engine::result_type seed)
       : rng(seed)
       , choose_sol_dist(
-          static_cast<real>(optimizer_settings::crossover_selection_mean),
-          static_cast<real>(optimizer_settings::crossover_selection_stddev))
+          static_cast<real>(solver_parameters::crossover_selection_mean),
+          static_cast<real>(solver_parameters::crossover_selection_stddev))
       , variable_p_dist(
-          static_cast<real>(optimizer_settings::mutation_variable_mean),
-          static_cast<real>(optimizer_settings::mutation_variable_stddev))
+          static_cast<real>(solver_parameters::mutation_variable_mean),
+          static_cast<real>(solver_parameters::mutation_variable_stddev))
       , value_p_dist(
-          static_cast<real>(optimizer_settings::mutation_value_mean),
-          static_cast<real>(optimizer_settings::mutation_value_stddev))
-      , bad_solution_choose(optimizer_settings::population_size / 5,
-                            optimizer_settings::population_size - 1)
+          static_cast<real>(solver_parameters::mutation_value_mean),
+          static_cast<real>(solver_parameters::mutation_value_stddev))
+      , bad_solution_choose(solver_parameters::population_size / 5,
+                            solver_parameters::population_size - 1)
       , crossover_dist(0)
       , crossover_bastert_insertion(
-          static_cast<real>(optimizer_settings::crossover_bastert_insertion))
+          static_cast<real>(solver_parameters::crossover_bastert_insertion))
       , thread_id(thread_id_)
     {
     }
@@ -446,14 +446,14 @@ struct best_solution_recorder
         real kappa = kappa_min;
 
         if (m_kappa_append[ctx.thread_id] <
-            optimizer_settings::kappa_improve_stop) {
+            solver_parameters::kappa_improve_stop) {
             m_kappa_append[ctx.thread_id] +=
-              optimizer_settings::kappa_improve_increase;
+              solver_parameters::kappa_improve_increase;
             kappa = kappa_min +
                     (kappa_max - kappa_min) * m_kappa_append[ctx.thread_id];
         } else {
             m_kappa_append[ctx.thread_id] =
-              optimizer_settings::kappa_improve_start;
+              solver_parameters::kappa_improve_start;
             crossover(ctx, x);
         }
 
@@ -721,7 +721,7 @@ optimize_problem(const context& ctx, const problem& pb)
       cost_constant,
       variables,
       constraints,
-      optimizer_settings::population_size);
+      solver_parameters::population_size);
 
     auto seeds = generate_seed(rng, thread);
 

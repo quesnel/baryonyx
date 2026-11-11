@@ -200,8 +200,9 @@ two loops and `δ` (`delta`) is a small random perturbation that breaks ties.
 Once a feasible solution is found, the *pushes* amplify the objective in the
 reduced costs to improve the solution while keeping it feasible.
 
-`kappa_max` and the pushes settings are fixed in `solver_parameters`
-(`lib/include/baryonyx/core`), as `static inline constexpr` members:
+`kappa_max` and the pushes settings are fixed, as `static inline constexpr`
+members of `solver_parameters` (`lib/include/baryonyx/core`), because they
+have little influence on the results:
 
 [cols="2,1,5a", options="header"]
 |===
@@ -321,7 +322,8 @@ that drives the solver:
 | `genetic`
 | A population of solutions with crossovers and mutations
   (`lib/src/itm-optimizer-common.hpp`). Its settings (population size,
-  crossover and mutation laws) are fixed in `optimizer_settings`.
+  crossover and mutation laws) are fixed in `solver_parameters` because they
+  have little influence on the results.
 
 | `tuned`
 | Successive halving (`lib/src/tuned-optimizer.cpp`): random settings of the
