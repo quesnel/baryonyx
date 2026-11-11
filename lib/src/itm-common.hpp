@@ -736,6 +736,7 @@ struct compute_order
             infeasibility_local_compute_violated_constraints(s, x);
             break;
         case solver_parameters::constraint_order::pi_sign_change:
+            R.resize(static_cast<std::size_t>(s.m));
             std::iota(R.begin(), R.end(), 0);
             break;
         case solver_parameters::constraint_order::none:

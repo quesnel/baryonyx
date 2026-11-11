@@ -916,6 +916,27 @@ main()
         expect(baryonyx::is_valid_solution(pb, result) == true);
     };
 
+    "test_pi_sign_change_with_more_variables_than_constraints"_test = [] {
+        for (const auto order :
+             { baryonyx::solver_parameters::constraint_order::pi_sign_change,
+               baryonyx::solver_parameters::constraint_order::cycle }) {
+            auto ctx = baryonyx::make_context(4);
+            auto pb = baryonyx::make_problem(
+              ctx, EXAMPLES_DIR "/assignment_problem_1.lp");
+
+            baryonyx::solver_parameters params;
+            params.limit = 10000;
+            params.seed = 1;
+            params.order = order;
+            baryonyx::context_set_solver_parameters(ctx, params);
+
+            auto result = baryonyx::solve(ctx, pb);
+
+            expect(result.status == baryonyx::result_status::success);
+            expect(baryonyx::is_valid_solution(pb, result) == true);
+        }
+    };
+
     "test_flat30_7_with_buffer"_test = [] {
         auto ctx = baryonyx::make_context(4);
         auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/flat30-7.lp");
