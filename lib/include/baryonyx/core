@@ -380,6 +380,19 @@ struct BX_EXPORT solver_parameters
     static inline constexpr double init_policy_random = 0.5;
 
     /**
+     * Repair: a solver run that ends with at most
+     * max(10, @c repair_ratio × constraints) violated constraints is
+     * repaired by a weighted flip search of at most
+     * @c repair_flips × (variables + constraints) flips, bounded by
+     * @c repair_max_flips. Unlike the settings above, these values were not
+     * tuned: the bound keeps a failed repair cheap on large problems, since
+     * the restart optimizer may try one after each solver run.
+     */
+    static inline constexpr double repair_ratio = 0.01;
+    static inline constexpr long int repair_flips = 100;
+    static inline constexpr long int repair_max_flips = 500'000;
+
+    /**
      * After a first solution, the solver runs @c pushes_limit pushes of
      * @c pushing_iteration_limit loops with a kappa multiplied by
      * @c pushing_k_factor and costs amplified by

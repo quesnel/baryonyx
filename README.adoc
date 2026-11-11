@@ -200,10 +200,20 @@ two loops and `δ` (`delta`) is a small random perturbation that breaks ties.
 Once a feasible solution is found, the *pushes* amplify the objective in the
 reduced costs to improve the solution while keeping it feasible.
 
-`kappa_max`, the warm-up `w`, `init_policy_random` and the pushes settings
-are fixed, as `static inline constexpr` members of `solver_parameters`
-(`lib/include/baryonyx/core`), because they have little influence on the
-results:
+When a run ends with only a few violated constraints, Wedelin often
+oscillates on them. A *repair* (`lib/src/itm-repair.hpp`) then tries to
+satisfy them with a weighted flip search, as in Feasibility Jump: each step
+flips the variable of a violated constraint that most reduces the weighted
+violation, and the weights of the constraints that stay violated grow at
+each local minimum. A repaired solution is improved by the pushes like any
+other solution. The repair runs in solve mode and in the `restart` and
+`genetic` optimizers, hence also in `lns` and `tuned`.
+
+`kappa_max`, the warm-up `w`, `init_policy_random`, the pushes and the repair
+settings are fixed, as `static inline constexpr` members of `solver_parameters`
+(`lib/include/baryonyx/core`). A sensitivity benchmark showed that the first
+ones have little influence on the results; the repair settings are a
+reasonable choice that was not tuned:
 
 [cols="2,1,5a", options="header"]
 |===
@@ -238,6 +248,17 @@ results:
 | `pushing_objective_amplifier`
 | 5
 | Factor applied to the costs during a push.
+
+| `repair_ratio`
+| 0.01
+| A run is repaired when it ends with at most
+  `max(10, repair_ratio × constraints)` violated constraints.
+
+| `repair_flips`, `repair_max_flips`
+| 100, 500,000
+| The repair stops after `repair_flips × (variables + constraints)` flips,
+  at most `repair_max_flips`, so that a failed repair stays cheap on large
+  problems.
 |===
 
 The costs are normalized before the search (`norm`, default: divided by their

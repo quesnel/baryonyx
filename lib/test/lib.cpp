@@ -24,6 +24,7 @@
 #include "branch-and-bound-solver.hpp"
 #include "exhaustive-solver.hpp"
 #include "itm-common.hpp"
+#include "itm-repair.hpp"
 #include "memory.hpp"
 #include "pnm.hpp"
 #include "sparse-matrix.hpp"
@@ -53,6 +54,35 @@ sum(const R& r, int r_size, int result)
 
     return std::make_tuple(sumr, sumf);
 }
+
+namespace {
+
+/** Costs of the repair tests: all variables cost 1. */
+struct unit_costs
+{
+    baryonyx::real operator()(int, const baryonyx::bit_array&) const noexcept
+    {
+        return 1;
+    }
+};
+
+bool
+satisfies(const baryonyx::bit_array& x,
+          const std::vector<baryonyx::itm::merged_constraint>& csts)
+{
+    for (const auto& cst : csts) {
+        int value = 0;
+        for (const auto& elem : cst.elements)
+            value += elem.factor * x[elem.variable_index];
+
+        if (value < cst.min || value > cst.max)
+            return false;
+    }
+
+    return true;
+}
+
+} // namespace
 
 int
 main()
@@ -848,5 +878,67 @@ main()
         baryonyx::bit_array moved(std::move(by_ones));
         expect(moved == by_set);
         expect(by_ones.size() == 0 && by_ones.block_size() == 0);
+    };
+
+    "check_repair"_test = [] {
+        using baryonyx::itm::merged_constraint;
+        using fe = baryonyx::function_element;
+
+        // Set partitioning: each variable covers two of the four rows.
+        const std::vector<merged_constraint> spp{
+            { { fe(1, 0), fe(1, 1), fe(1, 2) }, 1, 1, 0 },
+            { { fe(1, 0), fe(1, 3), fe(1, 4) }, 1, 1, 1 },
+            { { fe(1, 1), fe(1, 3), fe(1, 5) }, 1, 1, 2 },
+            { { fe(1, 2), fe(1, 4), fe(1, 5) }, 1, 1, 3 },
+        };
+
+        for (std::uint64_t seed = 1; seed != 20; ++seed) {
+            baryonyx::random_engine rng(seed);
+            baryonyx::bit_array x(6);
+            x.set(0);
+            x.set(1);
+            x.set(5);
+
+            expect(!satisfies(x, spp));
+            expect(baryonyx::itm::repair(x, spp, unit_costs{}, 6, rng, 10000) ==
+                   0);
+            expect(satisfies(x, spp));
+        }
+
+        // Negative and integer coefficients, the only solution is
+        // x = (1, 1, 1, 0).
+        const std::vector<merged_constraint> z{
+            { { fe(2, 0), fe(3, 1), fe(-1, 2) }, 4, 4, 0 },
+            { { fe(1, 0), fe(1, 3) }, 0, 1, 1 },
+            { { fe(-1, 1), fe(1, 3) }, -1, 0, 2 },
+        };
+
+        for (std::uint64_t seed = 1; seed != 20; ++seed) {
+            baryonyx::random_engine rng(seed);
+            baryonyx::bit_array x(4);
+            x.set(2);
+            x.set(3);
+
+            expect(baryonyx::itm::repair(x, z, unit_costs{}, 4, rng, 10000) ==
+                   0);
+            expect(satisfies(x, z));
+        }
+
+        // An unreachable bound stops at the flip limit.
+        const std::vector<merged_constraint> impossible{
+            { { fe(1, 0), fe(1, 1) }, 3, 3, 0 },
+        };
+
+        baryonyx::random_engine rng(7);
+        baryonyx::bit_array x(2);
+        expect(baryonyx::itm::repair(x, impossible, unit_costs{}, 2, rng, 500) ==
+               1);
+
+        expect(baryonyx::itm::is_repairable(1, 50));
+        expect(baryonyx::itm::is_repairable(10, 50));
+        expect(!baryonyx::itm::is_repairable(11, 50));
+        expect(!baryonyx::itm::is_repairable(0, 50));
+        expect(baryonyx::itm::is_repairable(100, 10000));
+        expect(!baryonyx::itm::is_repairable(101, 10000));
     };
 }

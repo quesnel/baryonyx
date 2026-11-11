@@ -34,6 +34,7 @@
 #include <vector>
 
 #include "itm-common.hpp"
+#include "itm-repair.hpp"
 #include "result.hpp"
 #include "utils.hpp"
 
@@ -243,6 +244,26 @@ struct restart_functor
 
                 if (kappa > kappa_max)
                     break;
+            }
+
+            if (remaining != 0 && remaining != INT_MAX &&
+                is_repairable(remaining, slv.m)) {
+                bit_array repaired(x);
+
+                if (repair(repaired,
+                           constraints,
+                           original_costs,
+                           variables,
+                           m_rng,
+                           repair_flip_limit(variables, slv.m)) == 0) {
+                    x = repaired;
+                    remaining = 0;
+                    best.try_update_solution(
+                      x,
+                      original_costs.results(x, cost_constant),
+                      elapsed(),
+                      p.limit);
+                }
             }
 
             if (remaining != 0) {

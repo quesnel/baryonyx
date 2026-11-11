@@ -612,6 +612,27 @@ struct optimize_functor
                     break;
             }
 
+            if (remaining > 0 && remaining != INT_MAX &&
+                is_repairable(remaining, slv.m)) {
+                bit_array repaired(x);
+
+                if (repair(repaired,
+                           constraints,
+                           original_costs,
+                           variables,
+                           m_local_ctx.rng,
+                           repair_flip_limit(variables, slv.m)) == 0) {
+                    x = repaired;
+                    remaining = 0;
+                    best_recorder.try_update(
+                      m_local_ctx,
+                      x,
+                      original_costs.results(x, cost_constant),
+                      p.limit);
+                    is_a_solution = true;
+                }
+            }
+
             previous_remaining = last_remaining;
             last_remaining = remaining;
 

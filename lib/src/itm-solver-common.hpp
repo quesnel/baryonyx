@@ -32,6 +32,7 @@
 #include <vector>
 
 #include "itm-common.hpp"
+#include "itm-repair.hpp"
 #include "observer.hpp"
 #include "private.hpp"
 #include "sparse-matrix.hpp"
@@ -116,7 +117,9 @@ struct solver_functor
 
         compute.init(slv, x);
 
+        long int loop = 0;
         for (long int i = 0; i != p.limit; ++i) {
+            loop = i;
             auto remaining = compute.run(slv, x, m_rng, kappa, delta, theta);
             obs.make_observation(slv.ap, slv.P.get(), slv.pi.get());
 
@@ -146,6 +149,23 @@ struct solver_functor
             if (is_timelimit_reached()) {
                 r.status = result_status::time_limit_reached;
                 break;
+            }
+        }
+
+        if (!start_push && !m_best.x.empty() &&
+            is_repairable(m_best.remaining_constraints, slv.m)) {
+            bit_array repaired(m_best.x);
+
+            if (repair(repaired,
+                       constraints,
+                       original_costs,
+                       variables,
+                       m_rng,
+                       repair_flip_limit(variables, slv.m)) == 0) {
+                x = repaired;
+                store_if_better(
+                  x, original_costs.results(x, cost_constant), loop);
+                start_push = true;
             }
         }
 
