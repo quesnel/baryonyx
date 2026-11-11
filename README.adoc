@@ -420,6 +420,32 @@ baryonyx-0.5 [options] file.lp
 
 === Solver parameters (`-p name=value`)
 
+Baryonyx keeps the parameters that change the results. A sensitivity
+benchmark on varied problems showed that the other settings have little
+influence: they are fixed constants of `solver_parameters`, see
+<<The In The Middle heuristic>>.
+
+[cols="2,3,1", options="header"]
+|===
+| parameter | role | tuned by `tuned`
+
+| `theta` | memory of the preferences | yes
+| `delta` | tie-breaking perturbation | yes
+| `kappa-min` | initial κ | yes
+| `kappa-step` | growth of κ | yes
+| `alpha` | adaptiveness of κ | no
+| `norm` | cost normalization | no
+| `constraint-order` | order of the violated constraints | yes
+| `buffer-solver` | parallel buffered solver | no
+| `optimizer` | optimization algorithm | yes
+| `limit`, `time-limit`, `thread`, `seed`, `observer-type` | execution | no
+|===
+
+The most influential parameters are `constraint-order`, `kappa-min`,
+`norm`, `delta` and `theta`. When the default parameters find no solution,
+try first `-p optimizer=tuned`, or a high `theta` (0.7 to 0.9) with
+`constraint-order=lagrangian-decr` on set partitioning problems.
+
 ==== Global parameters
 
 [cols="2,1,1,5a", options="header"]
@@ -515,16 +541,6 @@ baryonyx-0.5 [options] file.lp
   decreasing or increasing order;
 * `pi-sign-change`: a random order when the signs of the multipliers change;
 * `cycle`: switch between the previous orders.
-
-| `none`
-| Order of the constraint matrix:
-
-* `none`: the order of the LP file for constraints and variables;
-* `memory`: the order of the LP file for constraints, variables sorted to
-  improve the memory cache efficiency;
-* `less-greater-equal`, `less-equal-greater`, `greater-less-equal`,
-  `greater-equal-less`, `equal-less-greater`, `equal-greater-less`:
-  constraints sorted by type in this order, variables sorted as in `memory`.
 
 | `buffer-solver`
 | 0 or 1
