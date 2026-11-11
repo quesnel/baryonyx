@@ -265,9 +265,6 @@ convert_result(const baryonyx::result& res, bool minimize)
 //'    - 3: l2-norm
 //'    - 4: infinity-norm
 //'
-//' @param init_policy_random the probability to invert a variable of the
-//'    initial solution.
-//'
 //' @return a named list:
 //'   \item{solution_found}{Boolean, TRUE is a solution is found.}
 //'   \item{error_found}{Boolean, TRUE if an error occurred in Baryonyx,
@@ -304,7 +301,6 @@ solve_01lp_problem(std::string file_path,
                    int seed = -1,
                    int thread = 1,
                    int norm = 4,
-                   double init_policy_random = 0.5,
                    bool verbose = true) noexcept
 
 {
@@ -328,7 +324,6 @@ solve_01lp_problem(std::string file_path,
         params.kappa_min = kappa_min;
         params.kappa_step = kappa_step;
         params.alpha = alpha;
-        params.init_policy_random = init_policy_random;
         params.seed = seed;
         params.thread = thread;
         params.limit = limit;

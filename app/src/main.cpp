@@ -143,10 +143,6 @@ solver_started_cb(const baryonyx::solver_parameters& params)
                params.pushing_objective_amplifier,
                params.pushing_iteration_limit,
                params.pushing_k_factor);
-
-    fmt::print(" * Solver initialization parameters:\n"
-               "  - init-policy-random: {}\n",
-               params.init_policy_random);
 }
 
 static void
@@ -355,9 +351,6 @@ help() noexcept
       "equal-less-greater equal-greater-less\n"
       "  - buffer-solver: 0 (default) or 1 (experimental parallel -1 0 1 "
       "solver)\n"
-      " * Initialization parameters\n"
-      "  - init-policy-random: real [0, 1] (default: 0.5) probability to "
-      "invert a variable of the initial solution\n"
       " * Optimizer parameters\n"
       "  - optimizer: lns (default) restart genetic tuned\n");
 }
@@ -447,7 +440,6 @@ enum class command_line_status
     kappa_step_error,
     alpha_error,
     norm_error,
-    init_policy_random_error,
     buffer_solver_error,
     optimizer_error,
     thread_error,
@@ -471,7 +463,6 @@ constexpr const std::string_view command_line_status_string[] = {
     "kappa_step",
     "alpha",
     "norm",
-    "init_policy_random",
     "buffer_solver",
     "optimizer",
     "thread",
@@ -624,12 +615,6 @@ assign_parameter(baryonyx::solver_parameters& params,
               baryonyx::solver_parameters::cost_norm_type::loo;
         else
             return command_line_status::norm_error;
-
-    } else if (is_equal(name, "init-policy-random")) {
-        if (auto v = assign_01(value); !v)
-            return command_line_status::init_policy_random_error;
-        else
-            params.init_policy_random = *v;
 
     } else if (is_equal(name, "buffer-solver")) {
         if (auto v = assign(value, 0, 1); !v)

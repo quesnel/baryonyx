@@ -200,8 +200,8 @@ two loops and `δ` (`delta`) is a small random perturbation that breaks ties.
 Once a feasible solution is found, the *pushes* amplify the objective in the
 reduced costs to improve the solution while keeping it feasible.
 
-`kappa_max`, the warm-up `w` and the pushes settings are fixed, as
-`static inline constexpr` members of `solver_parameters`
+`kappa_max`, the warm-up `w`, `init_policy_random` and the pushes settings
+are fixed, as `static inline constexpr` members of `solver_parameters`
 (`lib/include/baryonyx/core`), because they have little influence on the
 results:
 
@@ -217,6 +217,11 @@ results:
 | 0.05
 | Warm-up: κ is not updated during the first `w × limit` loops of a run
   (no warm-up without loop limit).
+
+| `init_policy_random`
+| 0.5
+| Probability to invert each variable of the initial solution, computed
+  from the sign of the costs.
 
 | `pushes_limit`
 | 100
@@ -335,7 +340,7 @@ that drives the solver:
 | Successive halving (`lib/src/tuned-optimizer.cpp`): random settings of the
   optimizer (`genetic`, `restart`, `lns`) and of the solver parameters
   (`theta` up to 0.95, `delta`, `kappa-min`, `kappa-step`,
-  `init-policy-random`, `constraint-order`) compete on half of the time
+  `constraint-order`) compete on half of the time
   limit, then the best setting runs for the remaining half. Useful when the
   default parameters do not find a solution.
 |===
@@ -530,19 +535,6 @@ baryonyx-0.5 [options] file.lp
   parallel computation of the constraints in solve mode.
 |===
 
-==== Initialization parameters
-
-[cols="2,1,1,5a", options="header"]
-|===
-| name | type | default | summary
-
-| `init-policy-random`
-| real [0, 1]
-| 0.5
-| Probability to invert each variable of the initial solution, computed
-  from the sign of the costs.
-|===
-
 ==== Optimizer parameters
 
 [cols="2,1,1,5a", options="header"]
@@ -672,8 +664,7 @@ scalar:
 solve_01lp_problem <- function(file_path, limit = 1000L, theta = 0.5,
   delta = -1, pre_constraint_order = 1L, constraint_order = 0L,
   kappa_min = 0.0, kappa_step = 1e-3, alpha = 1.0,
-  time_limit = 10.0, seed = -1L, thread = 1L, norm = 4L,
-  init_policy_random = 0.5, verbose = TRUE)
+  time_limit = 10.0, seed = -1L, thread = 1L, norm = 4L, verbose = TRUE)
 
 optimize_01lp_problem <- function(file_path, limit = 1000L, theta = 0.5,
   delta = -1, pre_constraint_order = 1L, constraint_order = 0L,

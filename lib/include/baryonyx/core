@@ -407,6 +407,12 @@ struct BX_EXPORT solver_parameters
     static inline constexpr double w = 0.05;
 
     /**
+     * Probability to invert each variable of the initial solution, computed
+     * from the sign of the costs.
+     */
+    static inline constexpr double init_policy_random = 0.5;
+
+    /**
      * After a first solution, the solver runs @c pushes_limit pushes of
      * @c pushing_iteration_limit loops with a kappa multiplied by
      * @c pushing_k_factor and costs amplified by
@@ -446,7 +452,6 @@ struct BX_EXPORT solver_parameters
     double kappa_min{ 0 };
     double kappa_step{ 1.e-3 };
     double alpha{ 1 };
-    double init_policy_random{ 0.5 };
 
     unsigned int seed{ 0 }; ///< value == 0 means automatic seed.
     int thread{ 0 };        ///< value <= 0 means automatic detection.

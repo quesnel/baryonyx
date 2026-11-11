@@ -69,7 +69,6 @@ random_parameters(bx::solver_parameters p, bx::xoshiro256pp& rng)
     constexpr double deltas[] = { -1.0, 1e-3, 1e-2, 1e-1 };
     constexpr double kappa_mins[] = { 0.0, 0.05, 0.1, 0.2 };
     constexpr double kappa_steps[] = { 1e-4, 3e-4, 1e-3, 3e-3, 1e-2 };
-    constexpr double init_randoms[] = { 0.0, 0.25, 0.5, 0.75 };
     constexpr constraint_order orders[] = { constraint_order::none,
                                             constraint_order::random_sorting,
                                             constraint_order::infeasibility_decr,
@@ -80,7 +79,6 @@ random_parameters(bx::solver_parameters p, bx::xoshiro256pp& rng)
     p.delta = pick(rng, deltas);
     p.kappa_min = pick(rng, kappa_mins);
     p.kappa_step = pick(rng, kappa_steps);
-    p.init_policy_random = pick(rng, init_randoms);
     p.order = pick(rng, orders);
 
     return p;
@@ -135,13 +133,12 @@ describe(const bx::solver_parameters& p)
 {
     return fmt::format(
       "optimizer={} theta={:g} delta={:g} kappa-min={:g} kappa-step={:g} "
-      "init-policy-random={:g} constraint-order={}",
+      "constraint-order={}",
       to_string(p.optimizer),
       p.theta,
       p.delta,
       p.kappa_min,
       p.kappa_step,
-      p.init_policy_random,
       to_string(p.order));
 }
 

@@ -60,9 +60,6 @@ context_set_solver_parameters(const context_ptr& ctx,
     if (params.alpha >= 0)
         ctx->parameters.alpha = params.alpha;
 
-    if (params.init_policy_random >= 0 && params.init_policy_random <= 1)
-        ctx->parameters.init_policy_random = params.init_policy_random;
-
     ctx->parameters.seed = params.seed;
     ctx->parameters.thread = params.thread;
 
