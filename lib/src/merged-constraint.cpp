@@ -157,75 +157,6 @@ make_unsorted_merged_constraints(const baryonyx::context& ctx,
     return ret;
 }
 
-/** @brief Build a merged constaints vector and sort constraints
- *    using the type of constraints (equal, less, greater or any order).
- */
-static std::vector<merged_constraint>
-make_ordered_merged_constraints(const baryonyx::context& ctx,
-                                const baryonyx::problem& pb)
-{
-    std::unordered_map<std::vector<baryonyx::function_element>,
-                       std::size_t,
-                       merged_constraint_hash>
-      cache;
-
-    std::vector<merged_constraint> ret;
-    ret.reserve(pb.equal_constraints.size() + pb.less_constraints.size() +
-                pb.greater_constraints.size());
-
-    baryonyx::operator_type op[3] = { baryonyx::operator_type::less,
-                                      baryonyx::operator_type::greater,
-                                      baryonyx::operator_type::equal };
-
-    switch (ctx.parameters.pre_order) {
-    case baryonyx::solver_parameters::pre_constraint_order::less_greater_equal:
-        fill_merged_constraints(ctx, cache, op[0], pb, ret);
-        fill_merged_constraints(ctx, cache, op[1], pb, ret);
-        fill_merged_constraints(ctx, cache, op[2], pb, ret);
-        break;
-    case baryonyx::solver_parameters::pre_constraint_order::less_equal_greater:
-        fill_merged_constraints(ctx, cache, op[0], pb, ret);
-        fill_merged_constraints(ctx, cache, op[2], pb, ret);
-        fill_merged_constraints(ctx, cache, op[1], pb, ret);
-        break;
-    case baryonyx::solver_parameters::pre_constraint_order::greater_less_equal:
-        fill_merged_constraints(ctx, cache, op[1], pb, ret);
-        fill_merged_constraints(ctx, cache, op[0], pb, ret);
-        fill_merged_constraints(ctx, cache, op[2], pb, ret);
-        break;
-    case baryonyx::solver_parameters::pre_constraint_order::greater_equal_less:
-        fill_merged_constraints(ctx, cache, op[1], pb, ret);
-        fill_merged_constraints(ctx, cache, op[2], pb, ret);
-        fill_merged_constraints(ctx, cache, op[0], pb, ret);
-        break;
-    case baryonyx::solver_parameters::pre_constraint_order::equal_less_greater:
-        fill_merged_constraints(ctx, cache, op[2], pb, ret);
-        fill_merged_constraints(ctx, cache, op[0], pb, ret);
-        fill_merged_constraints(ctx, cache, op[1], pb, ret);
-        break;
-    case baryonyx::solver_parameters::pre_constraint_order::equal_greater_less:
-        fill_merged_constraints(ctx, cache, op[2], pb, ret);
-        fill_merged_constraints(ctx, cache, op[1], pb, ret);
-        fill_merged_constraints(ctx, cache, op[0], pb, ret);
-        break;
-    default:
-        break;
-    }
-
-    return ret;
-}
-
-static void
-improve_memory_usage(std::vector<merged_constraint>& csts)
-{
-    for (auto& cst : csts)
-        std::sort(cst.elements.begin(),
-                  cst.elements.end(),
-                  [](const auto& lhs, const auto& rhs) {
-                      return lhs.variable_index < rhs.variable_index;
-                  });
-}
-
 // The solvers assume each row can reach its bounds with 0-1 variables; a row
 // that cannot would break that invariant at the first update instead of
 // being reported.
@@ -258,35 +189,11 @@ check_satisfiable(const context& ctx,
 std::vector<merged_constraint>
 make_merged_constraints(const context& ctx, const problem& pb)
 {
-    info(ctx,
-         "  - merge constraint according to the `{}` algorithm\n",
-         ctx.parameters.pre_order);
-
     auto original_nb = static_cast<int>(pb.equal_constraints.size() +
                                         pb.less_constraints.size() +
                                         pb.greater_constraints.size());
 
-    std::vector<merged_constraint> ret;
-    ret.reserve(original_nb);
-
-    switch (ctx.parameters.pre_order) {
-    case solver_parameters::pre_constraint_order::none:
-        ret = make_unsorted_merged_constraints(ctx, pb);
-        break;
-    case solver_parameters::pre_constraint_order::memory:
-        ret = make_unsorted_merged_constraints(ctx, pb);
-        improve_memory_usage(ret);
-        break;
-    case solver_parameters::pre_constraint_order::less_greater_equal:
-    case solver_parameters::pre_constraint_order::less_equal_greater:
-    case solver_parameters::pre_constraint_order::greater_less_equal:
-    case solver_parameters::pre_constraint_order::greater_equal_less:
-    case solver_parameters::pre_constraint_order::equal_less_greater:
-    case solver_parameters::pre_constraint_order::equal_greater_less:
-        ret = make_ordered_merged_constraints(ctx, pb);
-        improve_memory_usage(ret);
-        break;
-    }
+    auto ret = make_unsorted_merged_constraints(ctx, pb);
 
     info(ctx,
          "  - merged constraints removed: {}\n"

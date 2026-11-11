@@ -115,7 +115,6 @@ solver_started_cb(const baryonyx::solver_parameters& params)
                to_string(params.optimizer));
 
     fmt::print(" * In The Middle parameters:\n"
-               "  - preprocessing: {}\n"
                "  - constraint-order: {}\n"
                "  - theta: {:.10g}\n"
                "  - delta: {:.10g}\n"
@@ -123,7 +122,6 @@ solver_started_cb(const baryonyx::solver_parameters& params)
                "  - alpha: {:.10g}\n"
                "  - w: {:.10g}\n"
                "  - norm: {}\n",
-               params.pre_order,
                params.order,
                params.theta,
                params.delta,
@@ -346,9 +344,6 @@ help() noexcept
       "  - constraint-order: none (default) reversing random-sorting "
       "infeasibility-decr infeasibility-incr lagrangian-decr "
       "lagrangian-incr pi-sign-change cycle\n"
-      "  - preprocessing: none (default) memory less-greater-equal "
-      "less-equal-greater greater-less-equal greater-equal-less "
-      "equal-less-greater equal-greater-less\n"
       "  - buffer-solver: 0 (default) or 1 (experimental parallel -1 0 1 "
       "solver)\n"
       " * Optimizer parameters\n"
@@ -432,7 +427,6 @@ enum class command_line_status
     limit_error,
     time_limit_error,
     observer_type_error,
-    preprocessing_error,
     constraint_order_error,
     theta_error,
     delta_error,
@@ -455,7 +449,6 @@ constexpr const std::string_view command_line_status_string[] = {
     "limit",
     "time_limit",
     "observer_type",
-    "preprocessing",
     "constraint_order",
     "theta",
     "delta",
@@ -510,34 +503,6 @@ assign_parameter(baryonyx::solver_parameters& params,
             params.observer = baryonyx::solver_parameters::observer_type::file;
         else
             return command_line_status::observer_type_error;
-
-    } else if (is_equal(name, "preprocessing")) {
-        if (value == "none")
-            params.pre_order =
-              baryonyx::solver_parameters::pre_constraint_order::none;
-        else if (value == "memory")
-            params.pre_order =
-              baryonyx::solver_parameters::pre_constraint_order::memory;
-        else if (value == "less-greater-equal")
-            params.pre_order = baryonyx::solver_parameters::
-              pre_constraint_order::less_greater_equal;
-        else if (value == "less-equal-greater")
-            params.pre_order = baryonyx::solver_parameters::
-              pre_constraint_order::less_equal_greater;
-        else if (value == "greater-less-equal")
-            params.pre_order = baryonyx::solver_parameters::
-              pre_constraint_order::greater_less_equal;
-        else if (value == "greater-equal-less")
-            params.pre_order = baryonyx::solver_parameters::
-              pre_constraint_order::greater_equal_less;
-        else if (value == "equal-less-greater")
-            params.pre_order = baryonyx::solver_parameters::
-              pre_constraint_order::equal_less_greater;
-        else if (value == "equal-greater-less")
-            params.pre_order = baryonyx::solver_parameters::
-              pre_constraint_order::equal_greater_less;
-        else
-            return command_line_status::preprocessing_error;
 
     } else if (is_equal(name, "constraint-order")) {
         if (value == "none")

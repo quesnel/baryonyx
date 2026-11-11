@@ -516,8 +516,6 @@ baryonyx-0.5 [options] file.lp
 * `pi-sign-change`: a random order when the signs of the multipliers change;
 * `cycle`: switch between the previous orders.
 
-| `preprocessing`
-| string
 | `none`
 | Order of the constraint matrix:
 
@@ -662,12 +660,12 @@ scalar:
 [source,R]
 ----
 solve_01lp_problem <- function(file_path, limit = 1000L, theta = 0.5,
-  delta = -1, pre_constraint_order = 1L, constraint_order = 0L,
+  delta = -1, constraint_order = 0L,
   kappa_min = 0.0, kappa_step = 1e-3, alpha = 1.0,
   time_limit = 10.0, seed = -1L, thread = 1L, norm = 4L, verbose = TRUE)
 
 optimize_01lp_problem <- function(file_path, limit = 1000L, theta = 0.5,
-  delta = -1, pre_constraint_order = 1L, constraint_order = 0L,
+  delta = -1, constraint_order = 0L,
   kappa_min = 0.0, kappa_step = 1e-3, alpha = 1.0,
   time_limit = 10.0, seed = -1L, thread = 1L, norm = 4L, verbose = TRUE)
 ----

@@ -67,7 +67,6 @@ context_set_solver_parameters(const context_ptr& ctx,
                               ? std::numeric_limits<long int>::max()
                               : params.limit;
 
-    ctx->parameters.pre_order = params.pre_order;
     ctx->parameters.order = params.order;
     ctx->parameters.cost_norm = params.cost_norm;
     ctx->parameters.mode = params.mode;

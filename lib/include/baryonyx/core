@@ -303,39 +303,6 @@ private:
  */
 struct BX_EXPORT solver_parameters
 {
-    enum class pre_constraint_order
-    {
-        none = 0, ///< Use the raw_problem (or lp file) order for constraints
-                  ///< and variables.
-        memory,   ///< Default, use the raw_problem (or lp file) order for
-                  ///< constraints but sort the variables to improve the memory
-                  ///< cache efficiency.
-        less_greater_equal, ///< sort constraints according to their type
-                            ///< (first less and finally greater then equal)
-                            ///< and sort variable to improve the memory cache
-                            ///< efficiency.
-        less_equal_greater, ///< sort constraints according to their type
-                            ///< (first less and finally equal then greater)
-                            ///< and sort variable to improve the memory cache
-                            ///< efficiency.
-        greater_less_equal, ///< sort constraints according to their type
-                            ///< (first greater then less and finally equal)
-                            ///< and sort variable to improve the memory cache
-                            ///< efficiency.
-        greater_equal_less, ///< sort constraints according to their type
-                            ///< (first greater then equal and finally less)
-                            ///< and sort variable to improve the memory cache
-                            ///< efficiency.
-        equal_less_greater, ///< sort constraints according to their type
-                            ///< (first equal then less and finally greater)
-                            ///< and sort variable to improve the memory cache
-                            ///< efficiency.
-        equal_greater_less, ///< sort constraints according to their type
-                            ///< (first equal then greater and finally less)
-                            ///< and sort variable to improve the memory cache
-                            ///< efficiency.
-    };
-
     enum class constraint_order
     {
         none = 0,
@@ -456,7 +423,6 @@ struct BX_EXPORT solver_parameters
     unsigned int seed{ 0 }; ///< value == 0 means automatic seed.
     int thread{ 0 };        ///< value <= 0 means automatic detection.
     long int limit{ 1000 }; ///< value <= 0 means infinity loop.
-    pre_constraint_order pre_order{ pre_constraint_order::none };
     constraint_order order{ constraint_order::none };
     cost_norm_type cost_norm{ cost_norm_type::loo };
     mode_type mode{ mode_type::none };
