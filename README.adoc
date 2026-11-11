@@ -501,12 +501,12 @@ try first `-p optimizer=tuned`, or a high `theta` (0.7 to 0.9) with
   the costs and `theta` when not set.
 
 | `kappa-min`
-| real [0, 1]
+| real [0, 0.6[
 | 0
-| Initial value of κ.
+| Initial value of κ, below `kappa_max`.
 
 | `kappa-step`
-| real [0, 1]
+| real [0, 1[
 | 0.001
 | Growth of κ at each loop.
 
