@@ -332,17 +332,12 @@ solve_01lp_problem(std::string file_path,
                    int constraint_order = 0,
                    double kappa_min = 0.0,
                    double kappa_step = 1.0e-3,
-                   double kappa_max = 0.6,
                    double alpha = 1.0,
                    double w = 0.05,
                    double time_limit = 10.0,
                    int seed = -1,
                    int thread = 1,
                    int norm = 4,
-                   double pushing_k_factor = 0.9,
-                   double pushing_objective_amplifier = 5.0,
-                   int pushes_limit = 100,
-                   int pushing_iteration_limit = 50,
                    int init_policy = 0,
                    double init_policy_random = 0.5,
                    bool verbose = true) noexcept
@@ -367,17 +362,12 @@ solve_01lp_problem(std::string file_path,
         params.delta = delta;
         params.kappa_min = kappa_min;
         params.kappa_step = kappa_step;
-        params.kappa_max = kappa_max;
         params.alpha = alpha;
-        params.pushing_k_factor = pushing_k_factor;
-        params.pushing_objective_amplifier = pushing_objective_amplifier;
         params.init_policy_random = init_policy_random;
         params.seed = seed;
         params.thread = thread;
         params.limit = limit;
         params.w = w;
-        params.pushes_limit = pushes_limit;
-        params.pushing_iteration_limit = pushing_iteration_limit;
         params.pre_order = get_pre_constraint_order(pre_constraint_order);
         params.order = get_constrait_order(constraint_order);
         params.cost_norm = get_cost_norm(norm);
@@ -467,17 +457,12 @@ optimize_01lp_problem(std::string file_path,
                       int constraint_order = 0,
                       double kappa_min = 0.0,
                       double kappa_step = 1.0e-3,
-                      double kappa_max = 0.6,
                       double alpha = 1.0,
                       double w = 0.05,
                       double time_limit = 10.0,
                       int seed = -1,
                       int thread = 1,
                       int norm = 4,
-                      double pushing_k_factor = 0.9,
-                      double pushing_objective_amplifier = 5.0,
-                      int pushes_limit = 100,
-                      int pushing_iteration_limit = 50,
                       bool verbose = true) noexcept
 {
     baryonyx::result ret;
@@ -499,17 +484,12 @@ optimize_01lp_problem(std::string file_path,
         params.delta = delta;
         params.kappa_min = kappa_min;
         params.kappa_step = kappa_step;
-        params.kappa_max = kappa_max;
         params.alpha = alpha;
-        params.pushing_k_factor = pushing_k_factor;
-        params.pushing_objective_amplifier = pushing_objective_amplifier;
 
         params.seed = seed;
         params.thread = thread;
         params.limit = limit;
         params.w = w;
-        params.pushes_limit = pushes_limit;
-        params.pushing_iteration_limit = pushing_iteration_limit;
         params.pre_order = get_pre_constraint_order(pre_constraint_order);
         params.order = get_constrait_order(constraint_order);
         params.cost_norm = get_cost_norm(norm);

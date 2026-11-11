@@ -193,14 +193,40 @@ of its variables, sorts them and sets the
 variables so that the constraint becomes satisfied, choosing `π_k` "in the
 middle" of the two reduced costs at the boundary. The preferences are pushed
 away from the boundary by a factor `κ`, which grows during the search
-(`kappa-min`, `kappa-step`, `kappa-max`, `alpha`) until the solution
-stabilizes. `θ` (`theta`) keeps a part of the preferences between two loops
-and `δ` (`delta`) is a small random perturbation that breaks ties.
+(`kappa-min`, `kappa-step`, `alpha`) until the solution stabilizes or κ
+exceeds `kappa_max`. `θ` (`theta`) keeps a part of the preferences between
+two loops and `δ` (`delta`) is a small random perturbation that breaks ties.
 
-Once a feasible solution is found, the *pushes* (`pushes-limit`,
-`pushing-k-factor`, `pushing-objective-amplifier`,
-`pushing-iteration-limit`) amplify the objective in the reduced costs to
-improve the solution while keeping it feasible.
+Once a feasible solution is found, the *pushes* amplify the objective in the
+reduced costs to improve the solution while keeping it feasible.
+
+`kappa_max` and the pushes settings are fixed in `solver_parameters`
+(`lib/include/baryonyx/core`), as `static inline constexpr` members:
+
+[cols="2,1,5a", options="header"]
+|===
+| constant | value | role
+
+| `kappa_max`
+| 0.6
+| The solver stops when κ exceeds this value.
+
+| `pushes_limit`
+| 100
+| Number of pushes after a feasible solution is found.
+
+| `pushing_iteration_limit`
+| 50
+| Number of loops after a push before trying the next one.
+
+| `pushing_k_factor`
+| 0.9
+| Factor applied to κ during a push.
+
+| `pushing_objective_amplifier`
+| 5
+| Factor applied to the costs during a push.
+|===
 
 The costs are normalized before the search (`norm`, default: divided by their
 largest absolute value).
@@ -445,11 +471,6 @@ baryonyx-0.5 [options] file.lp
 | 0.001
 | Growth of κ at each loop.
 
-| `kappa-max`
-| real [0, 1]
-| 0.6
-| The solver stops when κ exceeds this value.
-
 | `alpha`
 | real [0, 2]
 | 1
@@ -506,34 +527,6 @@ baryonyx-0.5 [options] file.lp
 | 0
 | Use the experimental buffered solver for the `01` and `101` classes, with
   parallel computation of the constraints in solve mode.
-|===
-
-==== Pushes parameters
-
-[cols="2,1,1,5a", options="header"]
-|===
-| name | type | default | summary
-
-| `pushes-limit`
-| integer [0, +∞[
-| 100
-| Number of pushes after a feasible solution is found.
-
-| `pushing-objective-amplifier`
-| real ]0, +∞[
-| 5
-| Factor applied to the costs during a push to make the reduced costs closer
-  to the costs.
-
-| `pushing-iteration-limit`
-| integer [0, +∞[
-| 50
-| Number of loops after a push before trying the next one.
-
-| `pushing-k-factor`
-| real ]0, +∞[
-| 0.9
-| Factor applied to κ during a push.
 |===
 
 ==== Initialization parameters
@@ -693,20 +686,15 @@ scalar:
 [source,R]
 ----
 solve_01lp_problem <- function(file_path, limit = 1000L, theta = 0.5,
-  delta = 1e-4, constraint_order = 0L, kappa_min = 0.1, kappa_step = 1e-4,
-  kappa_max = 1.0, alpha = 1.0, w = 500L, time_limit = 10.0, seed = -1L,
-  thread = 1L, norm = 4L, pushing_k_factor = 0.9,
-  pushing_objective_amplifier = 5.0, pushes_limit = 10L,
-  pushing_iteration_limit = 20L, init_policy = 0L, init_random = 0.5,
-  float_type = 1L, verbose = TRUE)
+  delta = -1, pre_constraint_order = 1L, constraint_order = 0L,
+  kappa_min = 0.0, kappa_step = 1e-3, alpha = 1.0, w = 0.05,
+  time_limit = 10.0, seed = -1L, thread = 1L, norm = 4L, init_policy = 0L,
+  init_policy_random = 0.5, verbose = TRUE)
 
 optimize_01lp_problem <- function(file_path, limit = 1000L, theta = 0.5,
-  delta = 1e-4, constraint_order = 0L, kappa_min = 0.1, kappa_step = 1e-4,
-  kappa_max = 1.0, alpha = 1.0, w = 500L, time_limit = 10.0, seed = -1L,
-  thread = 1L, norm = 4L, pushing_k_factor = 0.9,
-  pushing_objective_amplifier = 5.0, pushes_limit = 10L,
-  pushing_iteration_limit = 20L, init_policy = 0L, init_random = 0.5,
-  float_type = 1L, verbose = TRUE)
+  delta = -1, pre_constraint_order = 1L, constraint_order = 0L,
+  kappa_min = 0.0, kappa_step = 1e-3, alpha = 1.0, w = 0.05,
+  time_limit = 10.0, seed = -1L, thread = 1L, norm = 4L, verbose = TRUE)
 ----
 
 === Usage
@@ -719,9 +707,7 @@ library(rbaryonyx)
 library(sensitivity)
 
 factors = c("theta", "delta", "constraint_order", "kappa_min", "kappa_step",
-  "kappa_max", "alpha", "w", "norm", "pushing_k_factor",
-  "pushing_objective_amplifier", "pushes_limit", "pushing_iteration_limit",
-  "float_type")
+  "alpha", "w", "norm")
 
 bounds = data.frame(
   min=c(
@@ -730,14 +716,9 @@ bounds = data.frame(
     0,     # constraint_order
     0,     # kappa_min
     1e-16, # kappa_step
-    1.0,   # kappa_max
     0.0,   # alpha
     50,    # w
     0,     # norm
-    0.1,   # pushing_k_factor
-    1.0,   # pushing_objective_amplifier
-    10,    # pushes_limit
-    20,    # pushing_iteration_limit
     0,     # init_policy
     0.0,   # init_random
     0
@@ -748,14 +729,9 @@ max=c(
     4,     # constraint_order
     0.1,   # kappa_min
     1e-1,  # kappa_step
-    1.0,   # kappa_max
     2.0,   # alpha
     500,   # w
     4,     # norm
-    1,     # pushing_k_factor
-    10.0,  # pushing_objective_amplifier
-    100,   # pushes_limit
-    200,   # pushing_iteration_limit
     2,     # init_policy
     1.0,   # init_random
     2))    # float_type
@@ -778,17 +754,12 @@ solve_lp <- function(x, file_path, limit=10000, time_limit=10, seed=123456789, t
                    constraint_order = x["constraint_order"],
                    kappa_min = x["kappa_min"],
                    kappa_step = x["kappa_step"],
-                   kappa_max = x["kappa_max"],
                    alpha = x["alpha"],
                    w = x["w"],
                    time_limit = time_limit,
                    seed = seed,
                    thread = thread,
                    norm = x["norm"],
-                   pushing_k_factor = x["pushing_k_factor"],
-                   pushing_objective_amplifier = x["pushing_objective_amplifier,"],
-                   pushes_limit = x["pushes_limit"],
-                   pushing_iteration_limit = x["pushing_iteration_limit"],
                    init_policy = x["init_policy"],
                    init_random = x["init_random"],
                    float_type = x["float_type"])
@@ -823,17 +794,12 @@ optim_gen_lp <- function(x) {
            constraint_order = 0,
            kappa_min = x[3],
            kappa_step = x[4],
-           kappa_max = 1.0,
            alpha = 1.0,
            w = 60,
            time_limit = 10,
            seed = 123654785,
            thread = 4,
            norm = 0,
-           pushing_k_factor = 1,
-           pushing_objective_amplifier = 10,
-           pushes_limit = 20,
-           pushing_iteration_limit = 50,
            init_policy = 0,
            init_random = 0.5,
            float_type = 1,

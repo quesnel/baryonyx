@@ -50,23 +50,15 @@ context_set_solver_parameters(const context_ptr& ctx,
     if (params.delta == -1 || params.delta >= 0)
         ctx->parameters.delta = params.delta;
 
-    if (params.kappa_min < params.kappa_max && params.kappa_min >= 0 &&
-        params.kappa_min < 1 && params.kappa_max <= 1 &&
+    if (params.kappa_min >= 0 &&
+        params.kappa_min < solver_parameters::kappa_max &&
         params.kappa_step >= 0 && params.kappa_step < 1) {
         ctx->parameters.kappa_min = params.kappa_min;
         ctx->parameters.kappa_step = params.kappa_step;
-        ctx->parameters.kappa_max = params.kappa_max;
     }
 
     if (params.alpha >= 0)
         ctx->parameters.alpha = params.alpha;
-
-    if (std::isfinite(params.pushing_k_factor))
-        ctx->parameters.pushing_k_factor = params.pushing_k_factor;
-
-    if (std::isfinite(params.pushing_objective_amplifier))
-        ctx->parameters.pushing_objective_amplifier =
-          params.pushing_objective_amplifier;
 
     if (params.init_policy_random >= 0 && params.init_policy_random <= 1)
         ctx->parameters.init_policy_random = params.init_policy_random;
@@ -96,12 +88,6 @@ context_set_solver_parameters(const context_ptr& ctx,
             ctx->parameters.w = std::floor(params.w);
         }
     }
-
-    ctx->parameters.pushes_limit =
-      params.pushes_limit <= 0 ? 0 : params.pushes_limit;
-
-    ctx->parameters.pushing_iteration_limit =
-      params.pushing_iteration_limit <= 0 ? 0 : params.pushing_iteration_limit;
 
     ctx->parameters.pre_order = params.pre_order;
     ctx->parameters.order = params.order;

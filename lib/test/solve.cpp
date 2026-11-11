@@ -445,8 +445,6 @@ main()
         params.limit = 1000000;
         params.theta = 0.5;
         params.delta = 0.2;
-        params.kappa_step = 10e-4;
-        params.kappa_max = 10.0;
         params.alpha = 0.0;
         params.w = 20;
         baryonyx::context_set_solver_parameters(ctx, params);
@@ -476,8 +474,6 @@ main()
         params.limit = 1000000;
         params.theta = 0.5;
         params.delta = 0.2;
-        params.kappa_step = 10e-4;
-        params.kappa_max = 10.0;
         params.alpha = 0.0;
         params.w = 20;
         params.use_buffer_solver = true;
@@ -703,8 +699,6 @@ main()
         params.limit = -1;
         params.theta = 0.5;
         params.delta = 0.02;
-        params.kappa_step = 0.01;
-        params.kappa_max = 60.0;
         params.alpha = 1.0;
         params.w = 40;
         baryonyx::context_set_solver_parameters(ctx, params);
@@ -748,8 +742,6 @@ main()
         params.limit = -1;
         params.theta = 0.5;
         params.delta = 0.02;
-        params.kappa_step = 0.01;
-        params.kappa_max = 60.0;
         params.alpha = 1.0;
         params.w = 40;
         params.use_buffer_solver = true;
@@ -791,8 +783,6 @@ main()
         params.limit = -1;
         params.theta = 0.5;
         params.delta = 0.02;
-        params.kappa_step = 0.01;
-        params.kappa_max = 60.0;
         params.alpha = 1.0;
         params.w = 40;
         params.order =
@@ -825,8 +815,6 @@ main()
         params.limit = -1;
         params.theta = 0.5;
         params.delta = 0.02;
-        params.kappa_step = 0.01;
-        params.kappa_max = 60.0;
         params.alpha = 1.0;
         params.w = 40;
         params.use_buffer_solver = true;
@@ -862,8 +850,6 @@ main()
         params.limit = -1;
         params.theta = 0.5;
         params.delta = 0.01;
-        params.kappa_step = 10e-4;
-        params.kappa_max = 10.0;
         params.alpha = 0.0;
         params.w = 20;
         baryonyx::context_set_solver_parameters(ctx, params);
@@ -883,8 +869,6 @@ main()
         params.limit = -1;
         params.theta = 0.5;
         params.delta = 0.01;
-        params.kappa_step = 10e-4;
-        params.kappa_max = 10.0;
         params.alpha = 0.0;
         params.w = 20;
         params.use_buffer_solver = true;
@@ -905,7 +889,6 @@ main()
         params.delta = 0.001;
         params.kappa_min = 0.3;
         params.kappa_step = 1e-10;
-        params.kappa_max = 1.0;
         params.order =
           baryonyx::solver_parameters::constraint_order::reversing;
         baryonyx::context_set_solver_parameters(ctx, params);
@@ -947,7 +930,6 @@ main()
         params.delta = 0.001;
         params.kappa_min = 0.;
         params.kappa_step = 1e-10;
-        params.kappa_max = 1.0;
         params.order =
           baryonyx::solver_parameters::constraint_order::random_sorting;
         params.use_buffer_solver = true;
@@ -969,7 +951,6 @@ main()
         params.delta = 1.0;
         params.kappa_min = 0.1;
         params.kappa_step = 1e-17;
-        params.kappa_max = 1.0;
         params.alpha = 2.0;
         params.w = 60;
         params.order =
@@ -993,7 +974,6 @@ main()
         params.delta = 1.0;
         params.kappa_min = 0.1;
         params.kappa_step = 1e-17;
-        params.kappa_max = 1.0;
         params.alpha = 2.0;
         params.w = 60;
         params.use_buffer_solver = true;
@@ -1017,8 +997,6 @@ main()
         params.limit = -1;
         params.theta = 0.6;
         params.delta = 0.01;
-        params.kappa_step = 2 * 10e-4;
-        params.kappa_max = 100.0;
         params.alpha = 1.0;
         params.w = 20;
         baryonyx::context_set_solver_parameters(ctx, params);
@@ -1039,8 +1017,6 @@ main()
         params.limit = -1;
         params.theta = 0.6;
         params.delta = 0.01;
-        params.kappa_step = 2 * 10e-4;
-        params.kappa_max = 100.0;
         params.alpha = 1.0;
         params.w = 20;
         params.use_buffer_solver = true;
@@ -1172,8 +1148,6 @@ main()
     //    params.theta = 0.6;
     //    params.delta = 1e-7;
     //    params.kappa_step = 1e-17;
-    //    params.kappa_max = 0.05;
-    //    params.kappa_max = 1.0;
     //    params.alpha = 1.0;
     //    params.w = 60;
     //    params.use_buffer_solver = true;

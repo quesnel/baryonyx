@@ -242,10 +242,6 @@ main()
         params.delta = 0.2;
         params.alpha = 0.0;
         params.w = 20;
-        params.pushing_k_factor = 0.9;
-        params.pushes_limit = 50;
-        params.pushing_objective_amplifier = 10;
-        params.pushing_iteration_limit = 50;
         params.thread = 2;
         baryonyx::context_set_solver_parameters(ctx, params);
 
@@ -290,10 +286,6 @@ main()
             params.delta = 1.0;
             params.alpha = 1.0;
             params.w = 60;
-            params.pushing_k_factor = 0.9;
-            params.pushes_limit = 50;
-            params.pushing_objective_amplifier = 10;
-            params.pushing_iteration_limit = 10;
             params.thread = 2;
             params.order =
               baryonyx::solver_parameters::constraint_order::random_sorting;

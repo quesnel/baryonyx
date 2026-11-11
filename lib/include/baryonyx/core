@@ -402,23 +402,33 @@ struct BX_EXPORT solver_parameters
         lns      ///< Large neighbourhood search around the best solution.
     };
 
+    /**
+     * Fixed settings of the In The Middle heuristic. They were command line
+     * parameters but a sensitivity benchmark showed no gain from tuning
+     * them: the solver stops when kappa exceeds @c kappa_max and, after a
+     * first solution, runs @c pushes_limit pushes of
+     * @c pushing_iteration_limit loops with a kappa multiplied by
+     * @c pushing_k_factor and costs amplified by
+     * @c pushing_objective_amplifier.
+     */
+    static inline constexpr double kappa_max = 0.6;
+    static inline constexpr double pushing_k_factor = 0.9;
+    static inline constexpr double pushing_objective_amplifier = 5;
+    static inline constexpr int pushes_limit = 100;
+    static inline constexpr int pushing_iteration_limit = 50;
+
     double time_limit{ -1 }; ///< value <= 0 means infinity time.
     double theta{ 0.5 };
     double delta{ -1 }; ///< value == -1 means automatic.
     double kappa_min{ 0 };
     double kappa_step{ 1.e-3 };
-    double kappa_max{ 0.6 };
     double alpha{ 1 };
-    double pushing_k_factor{ 0.9 };
-    double pushing_objective_amplifier{ 5 };
     double init_policy_random{ 0.5 };
 
     double w{ 0.05 };       ///< 5% of limit
     unsigned int seed{ 0 }; ///< value == 0 means automatic seed.
     int thread{ 0 };        ///< value <= 0 means automatic detection.
     long int limit{ 1000 }; ///< value <= 0 means infinity loop.
-    int pushes_limit{ 100 };
-    int pushing_iteration_limit{ 50 };
     pre_constraint_order pre_order{ pre_constraint_order::none };
     constraint_order order{ constraint_order::none };
     init_policy_type init_policy{ init_policy_type::bastert };

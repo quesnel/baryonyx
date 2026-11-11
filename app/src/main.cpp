@@ -347,7 +347,6 @@ help() noexcept
       "  - delta: real ]0, +oo[ (default: automatic)\n"
       "  - kappa-min: real [0, 1] (default: 0)\n"
       "  - kappa-step: real [0, 1] (default: 0.001)\n"
-      "  - kappa-max: real [0, 1] (default: 0.6)\n"
       "  - alpha: real [0, 2] (default: 1)\n"
       "  - w: real [0, +oo[ (default: 0.05)\n"
       "  - norm: loo (default) l1 l2 random none\n"
@@ -359,11 +358,6 @@ help() noexcept
       "equal-less-greater equal-greater-less p1 p2 p3 p4\n"
       "  - buffer-solver: 0 (default) or 1 (experimental parallel -1 0 1 "
       "solver)\n"
-      " * Pushes system parameters\n"
-      "  - pushes-limit: integer [0, +oo[ (default: 100)\n"
-      "  - pushing-objective-amplifier: real ]0, +oo[ (default: 5)\n"
-      "  - pushing-iteration-limit: integer [0, +oo[ (default: 50)\n"
-      "  - pushing-k-factor: real ]0, +oo[ (default: 0.9)\n"
       " * Initialization parameters\n"
       "  - init-policy: bastert (default) pessimistic-solve "
       "optimistic-solve\n"
@@ -457,14 +451,9 @@ enum class command_line_status
     delta_error,
     kappa_min_error,
     kappa_step_error,
-    kappa_max_error,
     alpha_error,
     w_error,
     norm_error,
-    pushes_limit_error,
-    pushing_objective_amplifier_error,
-    pushing_iteration_limit_error,
-    pushing_k_factor_error,
     init_policy_error,
     init_policy_random_error,
     buffer_solver_error,
@@ -489,14 +478,9 @@ constexpr const std::string_view command_line_status_string[] = {
     "delta",
     "kappa_min",
     "kappa_step",
-    "kappa_max",
     "alpha",
     "w",
     "norm",
-    "pushes_limit",
-    "pushing_objective_amplifier",
-    "pushing_iteration_limit",
-    "pushing_k_factor",
     "init_policy",
     "init_policy_random",
     "buffer_solver",
@@ -642,12 +626,6 @@ assign_parameter(baryonyx::solver_parameters& params,
         else
             params.kappa_step = *v;
 
-    } else if (is_equal(name, "kappa-max")) {
-        if (auto v = assign_01(value); !v)
-            return command_line_status::kappa_max_error;
-        else
-            params.kappa_max = *v;
-
     } else if (is_equal(name, "alpha")) {
         if (auto v = assign_d(value, 0, 2); !v)
             return command_line_status::alpha_error;
@@ -678,30 +656,6 @@ assign_parameter(baryonyx::solver_parameters& params,
               baryonyx::solver_parameters::cost_norm_type::loo;
         else
             return command_line_status::norm_error;
-
-    } else if (is_equal(name, "pushes-limit")) {
-        if (auto v = assign(value, 0, (std::numeric_limits<int>::max)()); !v)
-            return command_line_status::pushes_limit_error;
-        else
-            params.pushes_limit = *v;
-
-    } else if (is_equal(name, "pushing-objective-amplifier")) {
-        if (auto v = assign_0oo(value); !v)
-            return command_line_status::pushing_objective_amplifier_error;
-        else
-            params.pushing_objective_amplifier = *v;
-
-    } else if (is_equal(name, "pushing-iteration-limit")) {
-        if (auto v = assign(value, 0, (std::numeric_limits<int>::max)()); !v)
-            return command_line_status::pushing_iteration_limit_error;
-        else
-            params.pushing_iteration_limit = *v;
-
-    } else if (is_equal(name, "pushing-k-factor")) {
-        if (auto v = assign_0oo(value); !v)
-            return command_line_status::pushing_k_factor_error;
-        else
-            params.pushing_k_factor = *v;
 
     } else if (is_equal(name, "init-policy")) {
         if (value == "bastert")
