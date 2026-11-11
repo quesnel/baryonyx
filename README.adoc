@@ -521,8 +521,7 @@ baryonyx-0.5 [options] file.lp
   improve the memory cache efficiency;
 * `less-greater-equal`, `less-equal-greater`, `greater-less-equal`,
   `greater-equal-less`, `equal-less-greater`, `equal-greater-less`:
-  constraints sorted by type in this order, variables sorted as in `memory`;
-* `p1`, `p2`, `p3`, `p4`: reserved.
+  constraints sorted by type in this order, variables sorted as in `memory`.
 
 | `buffer-solver`
 | 0 or 1

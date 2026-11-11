@@ -133,14 +133,6 @@ get_pre_constraint_order(int prep)
         return bx::solver_parameters::pre_constraint_order::equal_less_greater;
     case 7:
         return bx::solver_parameters::pre_constraint_order::equal_greater_less;
-    case 8:
-        return bx::solver_parameters::pre_constraint_order::p1;
-    case 9:
-        return bx::solver_parameters::pre_constraint_order::p2;
-    case 10:
-        return bx::solver_parameters::pre_constraint_order::p3;
-    case 11:
-        return bx::solver_parameters::pre_constraint_order::p4;
     default:
         return bx::solver_parameters::pre_constraint_order::memory;
     }
@@ -252,10 +244,6 @@ convert_result(const baryonyx::result& res, bool minimize)
 //'     5: greater_equal_less
 //'     6: equal_less_greater
 //'     7: equal_greater_less
-//'     8: p1
-//'     9: p2
-//'     10: p3
-//'     11: p4
 //'
 //' @param constraint_order order between each run over R. DEfault is to use
 //'    the order defined in model (lp file).
@@ -378,10 +366,6 @@ solve_01lp_problem(std::string file_path,
 //'     5: greater_equal_less
 //'     6: equal_less_greater
 //'     7: equal_greater_less
-//'     8: p1
-//'     9: p2
-//'     10: p3
-//'     11: p4
 //'
 //' @param constraint_order between each run over R. DEfault is to use the
 //'    order defined in model (lp file).

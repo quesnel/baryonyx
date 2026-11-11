@@ -215,74 +215,6 @@ make_ordered_merged_constraints(const baryonyx::context& ctx,
     return ret;
 }
 
-//
-// Reorder constraints according to the special operator proposed into the
-// preprocessing parameter. If parameter is badly defined, we fall back to the
-// unsorted_merged_constraints.
-//
-static std::vector<merged_constraint>
-make_special_merged_constraints(const baryonyx::context& ctx,
-                                const baryonyx::problem& pb)
-{
-    auto csts = make_unsorted_merged_constraints(ctx, pb);
-
-    std::vector<int> variable_constraint_degree(pb.vars.values.size(), 0);
-    for (const auto& cst : csts)
-        for (const auto& elem : cst.elements)
-            ++variable_constraint_degree[elem.variable_index];
-
-    std::vector<double> variable_cost(pb.vars.values.size(), 0.0);
-    for (const auto& elem : pb.objective.elements)
-        variable_cost[elem.variable_index] =
-          elem.factor /
-          static_cast<double>(variable_constraint_degree[elem.variable_index]);
-
-    std::vector<std::pair<int, double>> constraints_ratio_min(csts.size());
-    for (int i = 0, ie = length(csts); i != ie; ++i) {
-        constraints_ratio_min[i] = {
-            i, variable_cost[csts[i].elements[0].variable_index]
-        };
-
-        for (int j = 1, ej = length(csts[i].elements); j != ej; ++j) {
-            constraints_ratio_min[i].second =
-              std::min(constraints_ratio_min[i].second,
-                       variable_cost[csts[i].elements[j].variable_index]);
-        }
-    }
-
-    if (ctx.parameters.pre_order ==
-        solver_parameters::pre_constraint_order::p1) {
-        std::sort(constraints_ratio_min.begin(),
-                  constraints_ratio_min.end(),
-                  [](const auto& lhs, const auto& rhs) {
-                      return lhs.second > rhs.second;
-                  });
-    } else {
-        std::sort(constraints_ratio_min.begin(),
-                  constraints_ratio_min.end(),
-                  [](const auto& lhs, const auto& rhs) {
-                      return lhs.second < rhs.second;
-                  });
-    }
-
-    for (int i = 0, e = length(csts); i != e; ++i)
-        csts[i].id = constraints_ratio_min[i].first;
-
-    std::sort(csts.begin(), csts.end(), [](const auto& lhs, const auto& rhs) {
-        return lhs.id < rhs.id;
-    });
-
-    for (int i = 0, e = length(csts); i != e; ++i)
-        std::sort(csts[i].elements.begin(),
-                  csts[i].elements.end(),
-                  [&variable_cost](const auto& lhs, const auto& rhs) {
-                      return variable_cost[lhs.variable_index] >
-                             variable_cost[rhs.variable_index];
-                  });
-
-    return csts;
-}
-
 static void
 improve_memory_usage(std::vector<merged_constraint>& csts)
 {
@@ -353,12 +285,6 @@ make_merged_constraints(const context& ctx, const problem& pb)
     case solver_parameters::pre_constraint_order::equal_greater_less:
         ret = make_ordered_merged_constraints(ctx, pb);
         improve_memory_usage(ret);
-        break;
-    case solver_parameters::pre_constraint_order::p1:
-    case solver_parameters::pre_constraint_order::p2:
-    case solver_parameters::pre_constraint_order::p3:
-    case solver_parameters::pre_constraint_order::p4:
-        ret = make_special_merged_constraints(ctx, pb);
         break;
     }
 

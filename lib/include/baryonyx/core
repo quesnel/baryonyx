@@ -334,11 +334,6 @@ struct BX_EXPORT solver_parameters
                             ///< (first equal then greater and finally less)
                             ///< and sort variable to improve the memory cache
                             ///< efficiency.
-        p1,                 ///< reserved
-        p2,                 ///< reserved
-        p3,                 ///< reserved
-        p4,                 ///< reserved
-
     };
 
     enum class constraint_order

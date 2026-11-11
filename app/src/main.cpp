@@ -353,7 +353,7 @@ help() noexcept
       "lagrangian-incr pi-sign-change cycle\n"
       "  - preprocessing: none (default) memory less-greater-equal "
       "less-equal-greater greater-less-equal greater-equal-less "
-      "equal-less-greater equal-greater-less p1 p2 p3 p4\n"
+      "equal-less-greater equal-greater-less\n"
       "  - buffer-solver: 0 (default) or 1 (experimental parallel -1 0 1 "
       "solver)\n"
       " * Initialization parameters\n"
@@ -530,18 +530,6 @@ assign_parameter(baryonyx::solver_parameters& params,
         else if (value == "memory")
             params.pre_order =
               baryonyx::solver_parameters::pre_constraint_order::memory;
-        else if (value == "p1")
-            params.pre_order =
-              baryonyx::solver_parameters::pre_constraint_order::p1;
-        else if (value == "p2")
-            params.pre_order =
-              baryonyx::solver_parameters::pre_constraint_order::p2;
-        else if (value == "p3")
-            params.pre_order =
-              baryonyx::solver_parameters::pre_constraint_order::p3;
-        else if (value == "p4")
-            params.pre_order =
-              baryonyx::solver_parameters::pre_constraint_order::p4;
         else if (value == "less-greater-equal")
             params.pre_order = baryonyx::solver_parameters::
               pre_constraint_order::less_greater_equal;

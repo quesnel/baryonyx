@@ -195,18 +195,6 @@ struct fmt::formatter<baryonyx::solver_parameters::pre_constraint_order>
           equal_greater_less:
             name = "equal-greater-less";
             break;
-        case baryonyx::solver_parameters::pre_constraint_order::p1:
-            name = "p1";
-            break;
-        case baryonyx::solver_parameters::pre_constraint_order::p2:
-            name = "p2";
-            break;
-        case baryonyx::solver_parameters::pre_constraint_order::p3:
-            name = "p3";
-            break;
-        case baryonyx::solver_parameters::pre_constraint_order::p4:
-            name = "p4";
-            break;
         }
 
         return formatter<string_view>::format(name, ctx);
