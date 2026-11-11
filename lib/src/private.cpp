@@ -91,13 +91,11 @@ context_set_solver_parameters(const context_ptr& ctx,
 
     ctx->parameters.pre_order = params.pre_order;
     ctx->parameters.order = params.order;
-    ctx->parameters.init_policy = params.init_policy;
     ctx->parameters.cost_norm = params.cost_norm;
     ctx->parameters.mode = params.mode;
     ctx->parameters.preprocessor = params.preprocessor;
     ctx->parameters.observer = params.observer;
     ctx->parameters.use_buffer_solver = params.use_buffer_solver;
-    ctx->parameters.optimizer_warm_start = params.optimizer_warm_start;
     ctx->parameters.optimizer = params.optimizer;
     ctx->parameters.debug = params.debug;
 }

@@ -23,7 +23,6 @@ bounds = data.frame(
     0.0,   # alpha
     50,    # w
     0,     # norm
-    0,     # init_policy
     0.0,   # init_policy_random
     0.0,   # init_random
     0
@@ -37,7 +36,6 @@ max=c(
     2.0,   # alpha
     500,   # w
     4,     # norm
-    2,     # init_policy
     1.0,   # init_policy_random
     1.0,   # init_random
     2))    # float_type
@@ -71,7 +69,6 @@ solve_lp <- function(x, file_path, limit=10000, time_limit=10, seed=123456789, t
                    seed = seed,
                    thread = thread,
                    norm = x["norm"],
-                   init_policy = x["init_policy"],
                    init_policy_random = x["init_policy"],
                    init_random = x["init_random"],
                    float_type = x["float_type"])

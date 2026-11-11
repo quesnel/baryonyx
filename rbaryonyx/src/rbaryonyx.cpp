@@ -192,23 +192,6 @@ get_cost_norm(int norm)
     }
 }
 
-static baryonyx::solver_parameters::init_policy_type
-get_init_policy(int type)
-{
-    namespace bx = baryonyx;
-
-    switch (type) {
-    case 0:
-        return bx::solver_parameters::init_policy_type::bastert;
-    case 1:
-        return bx::solver_parameters::init_policy_type::pessimistic_solve;
-    case 2:
-        return bx::solver_parameters::init_policy_type::optimistic_solve;
-    default:
-        return bx::solver_parameters::init_policy_type::bastert;
-    }
-}
-
 static List
 convert_result(const baryonyx::result& res, bool minimize)
 {
@@ -294,12 +277,8 @@ convert_result(const baryonyx::result& res, bool minimize)
 //'    - 3: l2-norm
 //'    - 4: infinity-norm
 //'
-//' @param init_policy the type of initilization used into the solver.
-//'    - 0: bastert,
-//'    - 1: pessimistic_solve,
-//'    - 2: optimistic_solve,
-//'
-//' @param init_policy_random the type percentage of random in the init_policy.
+//' @param init_policy_random the probability to invert a variable of the
+//'    initial solution.
 //'
 //' @return a named list:
 //'   \item{solution_found}{Boolean, TRUE is a solution is found.}
@@ -338,7 +317,6 @@ solve_01lp_problem(std::string file_path,
                    int seed = -1,
                    int thread = 1,
                    int norm = 4,
-                   int init_policy = 0,
                    double init_policy_random = 0.5,
                    bool verbose = true) noexcept
 
@@ -371,7 +349,6 @@ solve_01lp_problem(std::string file_path,
         params.pre_order = get_pre_constraint_order(pre_constraint_order);
         params.order = get_constrait_order(constraint_order);
         params.cost_norm = get_cost_norm(norm);
-        params.init_policy = get_init_policy(init_policy);
 
         baryonyx::context_set_solver_parameters(ctx, params);
 

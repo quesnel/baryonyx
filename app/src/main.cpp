@@ -145,9 +145,7 @@ solver_started_cb(const baryonyx::solver_parameters& params)
                params.pushing_k_factor);
 
     fmt::print(" * Solver initialization parameters:\n"
-               "  - init-policy: {}\n"
                "  - init-policy-random: {}\n",
-               params.init_policy,
                params.init_policy_random);
 }
 
@@ -359,13 +357,10 @@ help() noexcept
       "  - buffer-solver: 0 (default) or 1 (experimental parallel -1 0 1 "
       "solver)\n"
       " * Initialization parameters\n"
-      "  - init-policy: bastert (default) pessimistic-solve "
-      "optimistic-solve\n"
-      "  - init-policy-random: real [0, 1] (default: 0.5)\n"
+      "  - init-policy-random: real [0, 1] (default: 0.5) probability to "
+      "invert a variable of the initial solution\n"
       " * Optimizer parameters\n"
-      "  - optimizer: lns (default) restart genetic tuned\n"
-      "  - optimizer-warm-start: 0 (default) or 1 (keep pi and P between "
-      "solver runs)\n");
+      "  - optimizer: lns (default) restart genetic tuned\n");
 }
 
 constexpr static bool
@@ -454,10 +449,8 @@ enum class command_line_status
     alpha_error,
     w_error,
     norm_error,
-    init_policy_error,
     init_policy_random_error,
     buffer_solver_error,
-    optimizer_warm_start_error,
     optimizer_error,
     thread_error,
     seed_error
@@ -481,10 +474,8 @@ constexpr const std::string_view command_line_status_string[] = {
     "alpha",
     "w",
     "norm",
-    "init_policy",
     "init_policy_random",
     "buffer_solver",
-    "optimizer_warm_start",
     "optimizer",
     "thread",
     "seed"
@@ -657,19 +648,6 @@ assign_parameter(baryonyx::solver_parameters& params,
         else
             return command_line_status::norm_error;
 
-    } else if (is_equal(name, "init-policy")) {
-        if (value == "bastert")
-            params.init_policy =
-              baryonyx::solver_parameters::init_policy_type::bastert;
-        else if (value == "pessimistic-solve")
-            params.init_policy =
-              baryonyx::solver_parameters::init_policy_type::pessimistic_solve;
-        else if (value == "optimistic-solve")
-            params.init_policy =
-              baryonyx::solver_parameters::init_policy_type::optimistic_solve;
-        else
-            return command_line_status::init_policy_error;
-
     } else if (is_equal(name, "init-policy-random")) {
         if (auto v = assign_01(value); !v)
             return command_line_status::init_policy_random_error;
@@ -697,12 +675,6 @@ assign_parameter(baryonyx::solver_parameters& params,
               baryonyx::solver_parameters::optimizer_type::lns;
         else
             return command_line_status::optimizer_error;
-
-    } else if (is_equal(name, "optimizer-warm-start")) {
-        if (auto v = assign(value, 0, 1); !v)
-            return command_line_status::optimizer_warm_start_error;
-        else
-            params.optimizer_warm_start = *v == 1;
 
     } else if (is_equal(name, "thread")) {
         if (auto v = assign(value, 0, (std::numeric_limits<int>::max)()); !v)

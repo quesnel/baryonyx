@@ -341,13 +341,6 @@ struct BX_EXPORT solver_parameters
 
     };
 
-    enum class init_policy_type
-    {
-        bastert,
-        pessimistic_solve,
-        optimistic_solve,
-    };
-
     enum class constraint_order
     {
         none = 0,
@@ -460,7 +453,6 @@ struct BX_EXPORT solver_parameters
     long int limit{ 1000 }; ///< value <= 0 means infinity loop.
     pre_constraint_order pre_order{ pre_constraint_order::none };
     constraint_order order{ constraint_order::none };
-    init_policy_type init_policy{ init_policy_type::bastert };
     cost_norm_type cost_norm{ cost_norm_type::loo };
     mode_type mode{ mode_type::none };
     preprocessor_options preprocessor{ preprocessor_options::all };
@@ -468,9 +460,6 @@ struct BX_EXPORT solver_parameters
     optimizer_type optimizer{ optimizer_type::lns };
     bool use_buffer_solver{ false }; ///< Experimental solver for -1 0 1
 
-    /** The optimizer keeps pi and P between restarts instead of resetting
-     * them: slower in general, but helps some hard feasibility problems. */
-    bool optimizer_warm_start{ false };
     bool debug{ false };
 };
 

@@ -537,22 +537,11 @@ baryonyx-0.5 [options] file.lp
 |===
 | name | type | default | summary
 
-| `init-policy`
-| string
-| `bastert`
-| Initialization of the solution vector:
-
-* `bastert`: set each variable from the sign of its cost;
-* `pessimistic-solve`: satisfy each constraint with the fewest variables set
-  to one;
-* `optimistic-solve`: satisfy each constraint with the most variables set to
-  one.
-
 | `init-policy-random`
 | real [0, 1]
 | 0.5
-| Probability to use `init-policy` for a variable; otherwise its value is
-  drawn at random.
+| Probability to invert each variable of the initial solution, computed
+  from the sign of the costs.
 |===
 
 ==== Optimizer parameters
@@ -566,12 +555,6 @@ baryonyx-0.5 [options] file.lp
 | `lns`
 | Optimization algorithm: `lns`, `restart`, `genetic` or `tuned`, see
   <<Optimizers>>.
-
-| `optimizer-warm-start`
-| 0 or 1
-| 0
-| Keep π and P between two solver runs instead of resetting them. Slower in
-  general, but helps some hard feasibility problems.
 
 |===
 
@@ -690,7 +673,7 @@ scalar:
 solve_01lp_problem <- function(file_path, limit = 1000L, theta = 0.5,
   delta = -1, pre_constraint_order = 1L, constraint_order = 0L,
   kappa_min = 0.0, kappa_step = 1e-3, alpha = 1.0, w = 0.05,
-  time_limit = 10.0, seed = -1L, thread = 1L, norm = 4L, init_policy = 0L,
+  time_limit = 10.0, seed = -1L, thread = 1L, norm = 4L,
   init_policy_random = 0.5, verbose = TRUE)
 
 optimize_01lp_problem <- function(file_path, limit = 1000L, theta = 0.5,
@@ -721,7 +704,6 @@ bounds = data.frame(
     0.0,   # alpha
     50,    # w
     0,     # norm
-    0,     # init_policy
     0.0,   # init_random
     0
     ),    # float_type
@@ -734,7 +716,6 @@ max=c(
     2.0,   # alpha
     500,   # w
     4,     # norm
-    2,     # init_policy
     1.0,   # init_random
     2))    # float_type
 
@@ -762,7 +743,6 @@ solve_lp <- function(x, file_path, limit=10000, time_limit=10, seed=123456789, t
                    seed = seed,
                    thread = thread,
                    norm = x["norm"],
-                   init_policy = x["init_policy"],
                    init_random = x["init_random"],
                    float_type = x["float_type"])
 
@@ -802,7 +782,6 @@ optim_gen_lp <- function(x) {
            seed = 123654785,
            thread = 4,
            norm = 0,
-           init_policy = 0,
            init_random = 0.5,
            float_type = 1,
            verbose = FALSE)

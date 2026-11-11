@@ -217,8 +217,7 @@ struct restart_functor
 
             initial_solution(x, best, norm_costs, constraints, restart);
 
-            if (!p.optimizer_warm_start)
-                slv.reset();
+            slv.reset();
 
             compute.init(slv, x);
 

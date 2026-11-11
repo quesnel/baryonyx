@@ -579,7 +579,7 @@ struct optimize_functor
             const bool progress =
               !is_a_solution && last_remaining < previous_remaining;
 
-            if (!p.optimizer_warm_start && !progress)
+            if (!progress)
                 slv.reset();
 
             compute.init(slv, x);

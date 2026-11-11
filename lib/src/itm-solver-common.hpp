@@ -98,23 +98,8 @@ struct solver_functor
         {
             bernoulli_distribution choose_mutation(
               m_ctx.parameters.init_policy_random);
-            bit_array empty_x;
 
-            switch (p.init_policy) {
-            case solver_parameters::init_policy_type::pessimistic_solve:
-                init_with_pre_solve<Cost, Mode>(
-                  x, empty_x, m_rng, original_costs, constraints, 1.0);
-                break;
-
-            case solver_parameters::init_policy_type::optimistic_solve:
-                init_with_pre_solve<Cost, Mode>(
-                  empty_x, x, m_rng, original_costs, constraints, 1.0);
-                break;
-
-            case solver_parameters::init_policy_type::bastert:
-                init_with_bastert<Cost, Mode>(x, original_costs, variables, 0);
-                break;
-            }
+            init_with_bastert<Cost, Mode>(x, original_costs, variables, 0);
 
             for (int i = 0, e = x.size(); i != e; ++i)
                 if (choose_mutation(m_rng))

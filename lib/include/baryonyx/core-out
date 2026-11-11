@@ -214,31 +214,6 @@ struct fmt::formatter<baryonyx::solver_parameters::pre_constraint_order>
 };
 
 template<>
-struct fmt::formatter<baryonyx::solver_parameters::init_policy_type>
-  : fmt::formatter<string_view>
-{
-    auto format(baryonyx::solver_parameters::init_policy_type c,
-                format_context& ctx) const
-    {
-        string_view name = "unknown";
-
-        switch (c) {
-        case baryonyx::solver_parameters::init_policy_type::bastert:
-            name = "bastert";
-            break;
-        case baryonyx::solver_parameters::init_policy_type::pessimistic_solve:
-            name = "pessimistic-solve";
-            break;
-        case baryonyx::solver_parameters::init_policy_type::optimistic_solve:
-            name = "optimistic-solve";
-            break;
-        }
-
-        return formatter<string_view>::format(name, ctx);
-    }
-};
-
-template<>
 struct fmt::formatter<baryonyx::solver_parameters::constraint_order>
   : fmt::formatter<string_view>
 {

@@ -17,7 +17,6 @@ optim_gen_lp <- function(x) {
            seed = 123654785,
            thread = 4,
            norm = 4,
-           init_policy = 0,
            init_policy_random = 0.5,
            init_random = 0.5,
            float_type = 1)
