@@ -241,7 +241,6 @@ main()
         params.theta = 0.5;
         params.delta = 0.2;
         params.alpha = 0.0;
-        params.w = 20;
         params.thread = 2;
         baryonyx::context_set_solver_parameters(ctx, params);
 
@@ -285,7 +284,6 @@ main()
             params.theta = 0.5;
             params.delta = 1.0;
             params.alpha = 1.0;
-            params.w = 60;
             params.thread = 2;
             params.order =
               baryonyx::solver_parameters::constraint_order::random_sorting;

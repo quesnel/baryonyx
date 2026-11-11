@@ -300,7 +300,6 @@ solve_01lp_problem(std::string file_path,
                    double kappa_min = 0.0,
                    double kappa_step = 1.0e-3,
                    double alpha = 1.0,
-                   double w = 0.05,
                    double time_limit = 10.0,
                    int seed = -1,
                    int thread = 1,
@@ -333,7 +332,6 @@ solve_01lp_problem(std::string file_path,
         params.seed = seed;
         params.thread = thread;
         params.limit = limit;
-        params.w = w;
         params.pre_order = get_pre_constraint_order(pre_constraint_order);
         params.order = get_constrait_order(constraint_order);
         params.cost_norm = get_cost_norm(norm);
@@ -419,7 +417,6 @@ optimize_01lp_problem(std::string file_path,
                       double kappa_min = 0.0,
                       double kappa_step = 1.0e-3,
                       double alpha = 1.0,
-                      double w = 0.05,
                       double time_limit = 10.0,
                       int seed = -1,
                       int thread = 1,
@@ -450,7 +447,6 @@ optimize_01lp_problem(std::string file_path,
         params.seed = seed;
         params.thread = thread;
         params.limit = limit;
-        params.w = w;
         params.pre_order = get_pre_constraint_order(pre_constraint_order);
         params.order = get_constrait_order(constraint_order);
         params.cost_norm = get_cost_norm(norm);

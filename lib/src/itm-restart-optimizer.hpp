@@ -177,7 +177,7 @@ struct restart_functor
         const auto pushing_k_factor = static_cast<real>(p.pushing_k_factor);
         const auto pushing_objective_amplifier =
           static_cast<real>(p.pushing_objective_amplifier);
-        const auto w_limit = static_cast<long int>(p.w);
+        const auto w_limit = warmup_loops(p.limit);
 
         // A run starting with a high kappa stays close to its initial
         // solution: drawing the starting kappa mixes local improvements of

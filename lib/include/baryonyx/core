@@ -401,6 +401,12 @@ struct BX_EXPORT solver_parameters
     static inline constexpr double kappa_max = 0.6;
 
     /**
+     * Warm-up: kappa is not updated during the first @c w × @c limit loops
+     * of a run (no warm-up without loop limit).
+     */
+    static inline constexpr double w = 0.05;
+
+    /**
      * After a first solution, the solver runs @c pushes_limit pushes of
      * @c pushing_iteration_limit loops with a kappa multiplied by
      * @c pushing_k_factor and costs amplified by
@@ -442,7 +448,6 @@ struct BX_EXPORT solver_parameters
     double alpha{ 1 };
     double init_policy_random{ 0.5 };
 
-    double w{ 0.05 };       ///< 5% of limit
     unsigned int seed{ 0 }; ///< value == 0 means automatic seed.
     int thread{ 0 };        ///< value <= 0 means automatic detection.
     long int limit{ 1000 }; ///< value <= 0 means infinity loop.

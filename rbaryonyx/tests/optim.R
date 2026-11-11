@@ -12,7 +12,6 @@ optim_gen_lp <- function(x) {
            kappa_min = x[3],
            kappa_step = x[4],
            alpha = 1.0,
-           w = 5000,
            time_limit = 120,
            seed = 123654785,
            thread = 4,

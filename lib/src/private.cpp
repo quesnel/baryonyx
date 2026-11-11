@@ -70,25 +70,6 @@ context_set_solver_parameters(const context_ptr& ctx,
                               ? std::numeric_limits<long int>::max()
                               : params.limit;
 
-
-    // Convert the value [0..1] into a percentage of loop or use directly the
-    // number if the value.
-
-    if (params.w < 0) {
-        ctx->parameters.w = 0;
-    } else {
-        if (params.limit > 0) {
-            auto limit = static_cast<double>(params.limit);
-
-            if (params.w < 1)
-                ctx->parameters.w = limit * params.w;
-            else
-                ctx->parameters.w = std::min(limit, params.w);
-        } else {
-            ctx->parameters.w = std::floor(params.w);
-        }
-    }
-
     ctx->parameters.pre_order = params.pre_order;
     ctx->parameters.order = params.order;
     ctx->parameters.cost_norm = params.cost_norm;

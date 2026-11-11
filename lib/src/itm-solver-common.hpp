@@ -85,7 +85,7 @@ struct solver_functor
         const auto pushing_objective_amplifier =
           static_cast<real>(p.pushing_objective_amplifier);
 
-        const long int w_limit = static_cast<long int>(p.w);
+        const long int w_limit = warmup_loops(p.limit);
 
         Solver slv(
           m_rng, length(constraints), variables, norm_costs, constraints);
@@ -182,7 +182,7 @@ struct solver_functor
                         break;
                     }
 
-                    if (iter > p.w)
+                    if (iter > w_limit)
                         kappa +=
                           kappa_step * std::pow(static_cast<real>(remaining) /
                                                   static_cast<real>(slv.m),

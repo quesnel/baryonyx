@@ -200,9 +200,10 @@ two loops and `δ` (`delta`) is a small random perturbation that breaks ties.
 Once a feasible solution is found, the *pushes* amplify the objective in the
 reduced costs to improve the solution while keeping it feasible.
 
-`kappa_max` and the pushes settings are fixed, as `static inline constexpr`
-members of `solver_parameters` (`lib/include/baryonyx/core`), because they
-have little influence on the results:
+`kappa_max`, the warm-up `w` and the pushes settings are fixed, as
+`static inline constexpr` members of `solver_parameters`
+(`lib/include/baryonyx/core`), because they have little influence on the
+results:
 
 [cols="2,1,5a", options="header"]
 |===
@@ -211,6 +212,11 @@ have little influence on the results:
 | `kappa_max`
 | 0.6
 | The solver stops when κ exceeds this value.
+
+| `w`
+| 0.05
+| Warm-up: κ is not updated during the first `w × limit` loops of a run
+  (no warm-up without loop limit).
 
 | `pushes_limit`
 | 100
@@ -479,12 +485,6 @@ baryonyx-0.5 [options] file.lp
 | Adaptiveness of κ: the step is multiplied by
   `(remaining constraints / constraints)^alpha`.
 
-| `w`
-| real [0, +∞[
-| 0.05
-| Warm-up: number of loops without updating κ. Below 1, it is a
-  fraction of `limit`.
-
 | `norm`
 | string
 | `loo`
@@ -671,13 +671,13 @@ scalar:
 ----
 solve_01lp_problem <- function(file_path, limit = 1000L, theta = 0.5,
   delta = -1, pre_constraint_order = 1L, constraint_order = 0L,
-  kappa_min = 0.0, kappa_step = 1e-3, alpha = 1.0, w = 0.05,
+  kappa_min = 0.0, kappa_step = 1e-3, alpha = 1.0,
   time_limit = 10.0, seed = -1L, thread = 1L, norm = 4L,
   init_policy_random = 0.5, verbose = TRUE)
 
 optimize_01lp_problem <- function(file_path, limit = 1000L, theta = 0.5,
   delta = -1, pre_constraint_order = 1L, constraint_order = 0L,
-  kappa_min = 0.0, kappa_step = 1e-3, alpha = 1.0, w = 0.05,
+  kappa_min = 0.0, kappa_step = 1e-3, alpha = 1.0,
   time_limit = 10.0, seed = -1L, thread = 1L, norm = 4L, verbose = TRUE)
 ----
 
@@ -691,7 +691,7 @@ library(rbaryonyx)
 library(sensitivity)
 
 factors = c("theta", "delta", "constraint_order", "kappa_min", "kappa_step",
-  "alpha", "w", "norm")
+  "alpha", "norm")
 
 bounds = data.frame(
   min=c(
@@ -701,7 +701,6 @@ bounds = data.frame(
     0,     # kappa_min
     1e-16, # kappa_step
     0.0,   # alpha
-    50,    # w
     0,     # norm
     0.0,   # init_random
     0
@@ -713,7 +712,6 @@ max=c(
     0.1,   # kappa_min
     1e-1,  # kappa_step
     2.0,   # alpha
-    500,   # w
     4,     # norm
     1.0,   # init_random
     2))    # float_type
@@ -737,7 +735,6 @@ solve_lp <- function(x, file_path, limit=10000, time_limit=10, seed=123456789, t
                    kappa_min = x["kappa_min"],
                    kappa_step = x["kappa_step"],
                    alpha = x["alpha"],
-                   w = x["w"],
                    time_limit = time_limit,
                    seed = seed,
                    thread = thread,
@@ -776,7 +773,6 @@ optim_gen_lp <- function(x) {
            kappa_min = x[3],
            kappa_step = x[4],
            alpha = 1.0,
-           w = 60,
            time_limit = 10,
            seed = 123654785,
            thread = 4,

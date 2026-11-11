@@ -446,7 +446,6 @@ main()
         params.theta = 0.5;
         params.delta = 0.2;
         params.alpha = 0.0;
-        params.w = 20;
         baryonyx::context_set_solver_parameters(ctx, params);
 
         for (int i{ 0 }, e{ 10 }; i != e; ++i) {
@@ -475,7 +474,6 @@ main()
         params.theta = 0.5;
         params.delta = 0.2;
         params.alpha = 0.0;
-        params.w = 20;
         params.use_buffer_solver = true;
         baryonyx::context_set_solver_parameters(ctx, params);
 
@@ -700,7 +698,6 @@ main()
         params.theta = 0.5;
         params.delta = 0.02;
         params.alpha = 1.0;
-        params.w = 40;
         baryonyx::context_set_solver_parameters(ctx, params);
 
         {
@@ -743,7 +740,6 @@ main()
         params.theta = 0.5;
         params.delta = 0.02;
         params.alpha = 1.0;
-        params.w = 40;
         params.use_buffer_solver = true;
         baryonyx::context_set_solver_parameters(ctx, params);
 
@@ -784,7 +780,6 @@ main()
         params.theta = 0.5;
         params.delta = 0.02;
         params.alpha = 1.0;
-        params.w = 40;
         params.order =
           baryonyx::solver_parameters::constraint_order::infeasibility_decr;
 
@@ -816,7 +811,6 @@ main()
         params.theta = 0.5;
         params.delta = 0.02;
         params.alpha = 1.0;
-        params.w = 40;
         params.use_buffer_solver = true;
         params.order =
           baryonyx::solver_parameters::constraint_order::infeasibility_decr;
@@ -851,7 +845,6 @@ main()
         params.theta = 0.5;
         params.delta = 0.01;
         params.alpha = 0.0;
-        params.w = 20;
         baryonyx::context_set_solver_parameters(ctx, params);
 
         auto result = baryonyx::solve(ctx, pb);
@@ -870,7 +863,6 @@ main()
         params.theta = 0.5;
         params.delta = 0.01;
         params.alpha = 0.0;
-        params.w = 20;
         params.use_buffer_solver = true;
         baryonyx::context_set_solver_parameters(ctx, params);
 
@@ -952,7 +944,6 @@ main()
         params.kappa_min = 0.1;
         params.kappa_step = 1e-17;
         params.alpha = 2.0;
-        params.w = 60;
         params.order =
           baryonyx::solver_parameters::constraint_order::random_sorting;
         baryonyx::context_set_solver_parameters(ctx, params);
@@ -975,7 +966,6 @@ main()
         params.kappa_min = 0.1;
         params.kappa_step = 1e-17;
         params.alpha = 2.0;
-        params.w = 60;
         params.use_buffer_solver = true;
         params.order =
           baryonyx::solver_parameters::constraint_order::random_sorting;
@@ -998,7 +988,6 @@ main()
         params.theta = 0.6;
         params.delta = 0.01;
         params.alpha = 1.0;
-        params.w = 20;
         baryonyx::context_set_solver_parameters(ctx, params);
 
         auto result = baryonyx::solve(ctx, pb);
@@ -1018,7 +1007,6 @@ main()
         params.theta = 0.6;
         params.delta = 0.01;
         params.alpha = 1.0;
-        params.w = 20;
         params.use_buffer_solver = true;
         baryonyx::context_set_solver_parameters(ctx, params);
 
@@ -1149,7 +1137,6 @@ main()
     //    params.delta = 1e-7;
     //    params.kappa_step = 1e-17;
     //    params.alpha = 1.0;
-    //    params.w = 60;
     //    params.use_buffer_solver = true;
     //    baryonyx::context_set_solver_parameters(ctx, params);
 

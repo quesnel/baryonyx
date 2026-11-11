@@ -8,7 +8,6 @@ factors = c(
   "kappa_min",
   "kappa_step",
   "alpha",
-  "w",
   "norm",
   "float_type"
   )
@@ -21,7 +20,6 @@ bounds = data.frame(
     0,     # kappa_min
     1e-16, # kappa_step
     0.0,   # alpha
-    50,    # w
     0,     # norm
     0.0,   # init_policy_random
     0.0,   # init_random
@@ -34,7 +32,6 @@ max=c(
     0.1,   # kappa_min
     1e-1,  # kappa_step
     2.0,   # alpha
-    500,   # w
     4,     # norm
     1.0,   # init_policy_random
     1.0,   # init_random
@@ -64,7 +61,6 @@ solve_lp <- function(x, file_path, limit=10000, time_limit=10, seed=123456789, t
                    kappa_min = x["kappa_min"],
                    kappa_step = x["kappa_step"],
                    alpha = x["alpha"],
-                   w = x["w"],
                    time_limit = time_limit,
                    seed = seed,
                    thread = thread,

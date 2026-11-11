@@ -346,7 +346,6 @@ help() noexcept
       "  - kappa-min: real [0, 1] (default: 0)\n"
       "  - kappa-step: real [0, 1] (default: 0.001)\n"
       "  - alpha: real [0, 2] (default: 1)\n"
-      "  - w: real [0, +oo[ (default: 0.05)\n"
       "  - norm: loo (default) l1 l2 random none\n"
       "  - constraint-order: none (default) reversing random-sorting "
       "infeasibility-decr infeasibility-incr lagrangian-decr "
@@ -447,7 +446,6 @@ enum class command_line_status
     kappa_min_error,
     kappa_step_error,
     alpha_error,
-    w_error,
     norm_error,
     init_policy_random_error,
     buffer_solver_error,
@@ -472,7 +470,6 @@ constexpr const std::string_view command_line_status_string[] = {
     "kappa_min",
     "kappa_step",
     "alpha",
-    "w",
     "norm",
     "init_policy_random",
     "buffer_solver",
@@ -610,14 +607,6 @@ assign_parameter(baryonyx::solver_parameters& params,
             return command_line_status::alpha_error;
         else
             params.alpha = *v;
-
-    } else if (is_equal(name, "w")) {
-        if (auto v =
-              assign_d(value, 0.0, (std::numeric_limits<double>::max)());
-            !v)
-            return command_line_status::w_error;
-        else
-            params.w = *v;
 
     } else if (is_equal(name, "norm")) {
         if (value == "none")

@@ -54,6 +54,16 @@ constexpr real Middle{ (One + Two) / Two };
 
 namespace itm {
 
+/** Loops of a run without kappa update, see @c solver_parameters::w. */
+inline long int
+warmup_loops(const long int limit) noexcept
+{
+    return limit == std::numeric_limits<long int>::max()
+             ? 0
+             : static_cast<long int>(static_cast<double>(limit) *
+                                     solver_parameters::w);
+}
+
 struct maximize_tag
 {};
 
