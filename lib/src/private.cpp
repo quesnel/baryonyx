@@ -68,34 +68,6 @@ context_set_solver_parameters(const context_ptr& ctx,
         ctx->parameters.pushing_objective_amplifier =
           params.pushing_objective_amplifier;
 
-    if (std::isfinite(params.init_crossover_bastert_insertion))
-        ctx->parameters.init_crossover_bastert_insertion =
-          std::clamp(params.init_crossover_bastert_insertion, 0.0, 1.0);
-
-    if (std::isfinite(params.init_crossover_solution_selection_mean))
-        ctx->parameters.init_crossover_solution_selection_mean =
-          std::clamp(params.init_crossover_solution_selection_mean, 0.0, 1.0);
-
-    if (std::isfinite(params.init_crossover_solution_selection_stddev))
-        ctx->parameters.init_crossover_solution_selection_stddev = std::clamp(
-          params.init_crossover_solution_selection_stddev, 0.0, 1.0);
-
-    if (std::isfinite(params.init_mutation_variable_mean))
-        ctx->parameters.init_mutation_variable_mean =
-          std::clamp(params.init_mutation_variable_mean, 0.0, 1.0);
-
-    if (std::isfinite(params.init_mutation_variable_stddev))
-        ctx->parameters.init_mutation_variable_stddev =
-          std::clamp(params.init_mutation_variable_stddev, 0.0, 1.0);
-
-    if (std::isfinite(params.init_mutation_value_mean))
-        ctx->parameters.init_mutation_value_mean =
-          std::clamp(params.init_mutation_value_mean, 0.0, 1.0);
-
-    if (std::isfinite(params.init_mutation_value_stddev))
-        ctx->parameters.init_mutation_value_stddev =
-          std::clamp(params.init_mutation_value_stddev, 0.0, 1.0);
-
     if (params.init_policy_random >= 0 && params.init_policy_random <= 1)
         ctx->parameters.init_policy_random = params.init_policy_random;
 
@@ -106,8 +78,6 @@ context_set_solver_parameters(const context_ptr& ctx,
                               ? std::numeric_limits<long int>::max()
                               : params.limit;
 
-    if (params.print_level >= 0)
-        ctx->parameters.print_level = params.print_level;
 
     // Convert the value [0..1] into a percentage of loop or use directly the
     // number if the value.
@@ -133,20 +103,6 @@ context_set_solver_parameters(const context_ptr& ctx,
     ctx->parameters.pushing_iteration_limit =
       params.pushing_iteration_limit <= 0 ? 0 : params.pushing_iteration_limit;
 
-    if (params.init_population_size >= 5)
-        ctx->parameters.init_population_size = params.init_population_size;
-
-    ctx->parameters.init_kappa_improve_start =
-      std::clamp(params.init_kappa_improve_start, 0.0, 1.0);
-
-    ctx->parameters.init_kappa_improve_increase =
-      std::clamp(params.init_kappa_improve_increase, 0.0, 1.0);
-
-    ctx->parameters.init_kappa_improve_stop =
-      std::clamp(params.init_kappa_improve_stop,
-                 ctx->parameters.init_kappa_improve_start,
-                 1.0);
-
     ctx->parameters.pre_order = params.pre_order;
     ctx->parameters.order = params.order;
     ctx->parameters.init_policy = params.init_policy;
@@ -154,7 +110,6 @@ context_set_solver_parameters(const context_ptr& ctx,
     ctx->parameters.mode = params.mode;
     ctx->parameters.preprocessor = params.preprocessor;
     ctx->parameters.observer = params.observer;
-    ctx->parameters.storage = params.storage;
     ctx->parameters.use_buffer_solver = params.use_buffer_solver;
     ctx->parameters.optimizer_warm_start = params.optimizer_warm_start;
     ctx->parameters.optimizer = params.optimizer;

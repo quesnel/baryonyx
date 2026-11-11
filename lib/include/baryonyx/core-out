@@ -380,31 +380,6 @@ struct fmt::formatter<baryonyx::solver_parameters::observer_type>
 };
 
 template<>
-struct fmt::formatter<baryonyx::solver_parameters::storage_type>
-  : fmt::formatter<string_view>
-{
-    auto format(baryonyx::solver_parameters::storage_type c,
-                format_context& ctx) const
-    {
-        string_view name = "unknown";
-
-        switch (c) {
-        case baryonyx::solver_parameters::storage_type::one:
-            name = "one";
-            break;
-        case baryonyx::solver_parameters::storage_type::bound:
-            name = "bound";
-            break;
-        case baryonyx::solver_parameters::storage_type::five:
-            name = "five";
-            break;
-        }
-
-        return formatter<string_view>::format(name, ctx);
-    }
-};
-
-template<>
 struct fmt::formatter<baryonyx::solver_error_tag>
     : fmt::formatter<string_view>
 {

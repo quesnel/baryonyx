@@ -61,10 +61,6 @@ struct local_context
     bernoulli_distribution crossover_bastert_insertion;
     bit_array random_solution;
 
-    const real init_kappa_improve_start;
-    const real init_kappa_improve_increase;
-    const real init_kappa_improve_stop;
-
     const unsigned thread_id;
 
     local_context(const context& ctx,
@@ -72,27 +68,19 @@ struct local_context
                   const random_engine::result_type seed)
       : rng(seed)
       , choose_sol_dist(
-          static_cast<real>(
-            ctx.parameters.init_crossover_solution_selection_mean),
-          static_cast<real>(
-            ctx.parameters.init_crossover_solution_selection_stddev))
+          static_cast<real>(optimizer_settings::crossover_selection_mean),
+          static_cast<real>(optimizer_settings::crossover_selection_stddev))
       , variable_p_dist(
-          static_cast<real>(ctx.parameters.init_mutation_variable_mean),
-          static_cast<real>(ctx.parameters.init_mutation_variable_stddev))
+          static_cast<real>(optimizer_settings::mutation_variable_mean),
+          static_cast<real>(optimizer_settings::mutation_variable_stddev))
       , value_p_dist(
-          static_cast<real>(ctx.parameters.init_mutation_value_mean),
-          static_cast<real>(ctx.parameters.init_mutation_value_stddev))
-      , bad_solution_choose(ctx.parameters.init_population_size / 5,
-                            ctx.parameters.init_population_size - 1)
+          static_cast<real>(optimizer_settings::mutation_value_mean),
+          static_cast<real>(optimizer_settings::mutation_value_stddev))
+      , bad_solution_choose(optimizer_settings::population_size / 5,
+                            optimizer_settings::population_size - 1)
       , crossover_dist(0)
       , crossover_bastert_insertion(
-          static_cast<real>(ctx.parameters.init_crossover_bastert_insertion))
-      , init_kappa_improve_start(
-          static_cast<real>(ctx.parameters.init_kappa_improve_start))
-      , init_kappa_improve_increase(
-          static_cast<real>(ctx.parameters.init_kappa_improve_increase))
-      , init_kappa_improve_stop(
-          static_cast<real>(ctx.parameters.init_kappa_improve_stop))
+          static_cast<real>(optimizer_settings::crossover_bastert_insertion))
       , thread_id(thread_id_)
     {
     }
@@ -299,20 +287,6 @@ public:
         return true;
     }
 
-    const raw_result<Mode>& get_worst() const noexcept
-    {
-        std::shared_lock<std::shared_mutex> lock(mutex);
-
-        int last = 1;
-        const int end = length(m_indices);
-
-        while (last != end && m_data[m_indices[last]].is_solution())
-            ++last;
-
-        return last == end ? m_data[m_indices[last - 1]]
-                           : m_data[m_indices[last]];
-    }
-
     void get_best(int& constraints_remaining,
                   real& value,
                   double& duration,
@@ -471,12 +445,15 @@ struct best_solution_recorder
     {
         real kappa = kappa_min;
 
-        if (m_kappa_append[ctx.thread_id] < ctx.init_kappa_improve_stop) {
-            m_kappa_append[ctx.thread_id] += ctx.init_kappa_improve_increase;
+        if (m_kappa_append[ctx.thread_id] <
+            optimizer_settings::kappa_improve_stop) {
+            m_kappa_append[ctx.thread_id] +=
+              optimizer_settings::kappa_improve_increase;
             kappa = kappa_min +
                     (kappa_max - kappa_min) * m_kappa_append[ctx.thread_id];
         } else {
-            m_kappa_append[ctx.thread_id] = ctx.init_kappa_improve_start;
+            m_kappa_append[ctx.thread_id] =
+              optimizer_settings::kappa_improve_start;
             crossover(ctx, x);
         }
 
@@ -519,11 +496,6 @@ struct best_solution_recorder
     void show_population(const context& ctx) const noexcept
     {
         m_storage.show_population(ctx);
-    }
-
-    const raw_result<Mode>& get_worst() const noexcept
-    {
-        return m_storage.get_worst();
     }
 
     const raw_result<Mode>& get_best(int i) const noexcept
@@ -749,7 +721,7 @@ optimize_problem(const context& ctx, const problem& pb)
       cost_constant,
       variables,
       constraints,
-      ctx.parameters.init_population_size);
+      optimizer_settings::population_size);
 
     auto seeds = generate_seed(rng, thread);
 
@@ -827,26 +799,8 @@ optimize_problem(const context& ctx, const problem& pb)
     r.loop = first.loop;
     r.remaining_constraints = first.remaining_constraints;
 
-    switch (ctx.parameters.storage) {
-    case solver_parameters::storage_type::one: {
-        r.solutions.resize(1);
-        convert(first, r.solutions[0], variables);
-    } break;
-
-    case solver_parameters::storage_type::bound: {
-        r.solutions.resize(2);
-
-        convert(first, r.solutions[0], variables);
-        convert(best_recorder.get_worst(), r.solutions[1], variables);
-    } break;
-
-    case solver_parameters::storage_type::five: {
-        r.solutions.resize(5);
-
-        for (int i = 0; i != 5; ++i)
-            convert(best_recorder.get_best(i), r.solutions[i], variables);
-    } break;
-    }
+    r.solutions.resize(1);
+    convert(first, r.solutions[0], variables);
 
     best_recorder.show_population(ctx);
     restore_objective_sign(pb, r);

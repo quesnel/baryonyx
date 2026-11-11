@@ -209,21 +209,6 @@ get_init_policy(int type)
     }
 }
 
-static baryonyx::solver_parameters::storage_type
-get_storage_type(int type)
-{
-    namespace bx = baryonyx;
-
-    switch (type) {
-    case 1:
-        return bx::solver_parameters::storage_type::bound;
-    case 2:
-        return bx::solver_parameters::storage_type::five;
-    default:
-        return bx::solver_parameters::storage_type::one;
-    }
-}
-
 static List
 convert_result(const baryonyx::result& res, bool minimize)
 {
@@ -316,12 +301,6 @@ convert_result(const baryonyx::result& res, bool minimize)
 //'
 //' @param init_policy_random the type percentage of random in the init_policy.
 //'
-//' @param storage_type the type of solution storage. Default is to store
-//'     the best solution.
-//'    - 0: stores only the best solution found.
-//'    - 1: stores the best and the bad solution found.
-//'    - 2: stores the five best solutions found.
-//'
 //' @return a named list:
 //'   \item{solution_found}{Boolean, TRUE is a solution is found.}
 //'   \item{error_found}{Boolean, TRUE if an error occurred in Baryonyx,
@@ -366,7 +345,6 @@ solve_01lp_problem(std::string file_path,
                    int pushing_iteration_limit = 50,
                    int init_policy = 0,
                    double init_policy_random = 0.5,
-                   int storage_type = 1,
                    bool verbose = true) noexcept
 
 {
@@ -404,7 +382,6 @@ solve_01lp_problem(std::string file_path,
         params.order = get_constrait_order(constraint_order);
         params.cost_norm = get_cost_norm(norm);
         params.init_policy = get_init_policy(init_policy);
-        params.storage = get_storage_type(storage_type);
 
         baryonyx::context_set_solver_parameters(ctx, params);
 
@@ -459,12 +436,6 @@ solve_01lp_problem(std::string file_path,
 //'    - 3: l2-norm
 //'    - 4: infinity-norm
 //'
-//' @param storage_type the type of solution storage. Default is to store
-//'     the best solution.
-//'    - 0: stores only the best solution found.
-//'    - 1: stores the best and the bad solution found.
-//'    - 2: stores the five best solutions found.
-//'
 //' @return a named list:
 //'   \item{solution_found}{Boolean, TRUE is a solution is found.}
 //'   \item{error_found}{Boolean, TRUE if an error occurred in Baryonyx,
@@ -507,17 +478,6 @@ optimize_01lp_problem(std::string file_path,
                       double pushing_objective_amplifier = 5.0,
                       int pushes_limit = 100,
                       int pushing_iteration_limit = 50,
-                      double init_crossover_bastert_insertion = 0.01,
-                      double init_crossover_solution_selection_mean = 0.0,
-                      double init_crossover_solution_selection_stddev = 0.3,
-                      double init_mutation_variable_mean = 0.0001,
-                      double init_mutation_variable_stddev = 0.001,
-                      double init_mutation_value_mean = 0.5,
-                      double init_mutation_value_stddev = 0.2,
-                      double init_kappa_improve_start = 0,
-                      double init_kappa_improve_increase = 0.02,
-                      double init_kappa_improve_stop = 0.2,
-                      int storage_type = 1,
                       bool verbose = true) noexcept
 {
     baryonyx::result ret;
@@ -544,20 +504,6 @@ optimize_01lp_problem(std::string file_path,
         params.pushing_k_factor = pushing_k_factor;
         params.pushing_objective_amplifier = pushing_objective_amplifier;
 
-        params.init_crossover_bastert_insertion =
-          init_crossover_bastert_insertion;
-        params.init_crossover_solution_selection_mean =
-          init_crossover_solution_selection_mean;
-        params.init_crossover_solution_selection_stddev =
-          init_crossover_solution_selection_stddev;
-        params.init_mutation_variable_mean = init_mutation_variable_mean;
-        params.init_mutation_variable_stddev = init_mutation_variable_stddev;
-        params.init_mutation_value_mean = init_mutation_value_mean;
-        params.init_mutation_value_stddev = init_mutation_value_stddev;
-        params.init_kappa_improve_start = init_kappa_improve_start;
-        params.init_kappa_improve_increase = init_kappa_improve_increase;
-        params.init_kappa_improve_stop = init_kappa_improve_stop;
-
         params.seed = seed;
         params.thread = thread;
         params.limit = limit;
@@ -567,7 +513,6 @@ optimize_01lp_problem(std::string file_path,
         params.pre_order = get_pre_constraint_order(pre_constraint_order);
         params.order = get_constrait_order(constraint_order);
         params.cost_norm = get_cost_norm(norm);
-        params.storage = get_storage_type(storage_type);
 
         baryonyx::context_set_solver_parameters(ctx, params);
 

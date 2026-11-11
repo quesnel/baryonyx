@@ -294,8 +294,8 @@ that drives the solver:
 
 | `genetic`
 | A population of solutions with crossovers and mutations
-  (`lib/src/itm-optimizer-common.hpp`), controlled by the `init-*`
-  parameters.
+  (`lib/src/itm-optimizer-common.hpp`). Its settings (population size,
+  crossover and mutation laws) are fixed in `optimizer_settings`.
 
 | `tuned`
 | Successive halving (`lib/src/tuned-optimizer.cpp`): random settings of the
@@ -406,11 +406,6 @@ baryonyx-0.5 [options] file.lp
 | integer
 | 0
 | Seed of the random generators. `0` means a random seed.
-
-| `print-level`
-| integer [0, 2]
-| 0
-| Show more information if greater than 0.
 
 | `observer-type`
 | string
@@ -583,69 +578,6 @@ baryonyx-0.5 [options] file.lp
 | Keep π and P between two solver runs instead of resetting them. Slower in
   general, but helps some hard feasibility problems.
 
-| `storage-type`
-| string
-| `one`
-| Solutions kept by the `genetic` optimizer: `one` (the best), `bound` (the
-  best and the worst) or `five` (the five best).
-
-| `init-population-size`
-| integer [5, +∞[
-| 100
-| Size of the population of the `genetic` optimizer.
-
-| `init-crossover-bastert-insertion`
-| real [0, 1]
-| 0.01
-| Probability to insert a `bastert` solution during a crossover.
-
-| `init-crossover-solution-selection-mean`
-| real [0, 1]
-| 0
-| Mean of the normal law selecting the solutions of a crossover (0: the
-  best, 1: the worst).
-
-| `init-crossover-solution-selection-stddev`
-| real [0, 1]
-| 0.3
-| Standard deviation of the same law.
-
-| `init-mutation-variable-mean`
-| real [0, 1]
-| 0.0001
-| Mean of the normal law giving the proportion of variables mutated after a
-  crossover. With a zero mean and standard deviation, there is no mutation.
-
-| `init-mutation-variable-stddev`
-| real [0, 1]
-| 0.001
-| Standard deviation of the same law.
-
-| `init-mutation-value-mean`
-| real [0, 1]
-| 0.5
-| Mean of the normal law giving the value of a mutated variable.
-
-| `init-mutation-value-stddev`
-| real [0, 1]
-| 0.2
-| Standard deviation of the same law.
-
-| `init-kappa-improve-start`
-| real [0, 1]
-| 0
-| Initial κ of the improve mode.
-
-| `init-kappa-improve-increase`
-| real [0, 1]
-| 0.02
-| Increase of κ in the improve mode.
-
-| `init-kappa-improve-stop`
-| real [0, 1]
-| 0.2
-| When κ exceeds this value, a new crossover and mutation runs. If it equals
-  `init-kappa-improve-start`, the improve mode is disabled.
 |===
 
 === Examples

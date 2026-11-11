@@ -105,13 +105,11 @@ solver_started_cb(const baryonyx::solver_parameters& params)
     fmt::print(" * Global parameters:\n"
                "  - limit: {}\n"
                "  - time-limit: {:.10g}s\n"
-               "  - print-level: {}\n"
                "  - auto-tune: {}\n"
                "  - observation: {}\n"
                "  - optimizer: {}\n",
                params.limit,
                params.time_limit,
-               params.print_level,
                params.mode,
                params.observer,
                to_string(params.optimizer));
@@ -151,30 +149,6 @@ solver_started_cb(const baryonyx::solver_parameters& params)
                "  - init-policy-random: {}\n",
                params.init_policy,
                params.init_policy_random);
-
-    fmt::print(" * Optimizer initialization parameters:\n"
-               "  - init-population-size: {}\n"
-               "  - init-crossover-bastert-insertion: {}\n"
-               "  - init-crossover-solution-selection-mean: {}\n"
-               "  - init-crossover-solution-selection-stddev: {}\n"
-               "  - init-mutation-variable-mean: {}\n"
-               "  - init-mutation-variable-stddev: {}\n"
-               "  - init-mutation-value-mean: {}\n"
-               "  - init-mutation-value-stddev: {}\n"
-               "  - init-kappa-improve-start: {}\n"
-               "  - init-kappa-improve-increase: {}\n"
-               "  - init-kappa-improve-stop: {}\n",
-               params.init_population_size,
-               params.init_crossover_bastert_insertion,
-               params.init_crossover_solution_selection_mean,
-               params.init_crossover_solution_selection_stddev,
-               params.init_mutation_variable_mean,
-               params.init_mutation_variable_stddev,
-               params.init_mutation_value_mean,
-               params.init_mutation_value_stddev,
-               params.init_kappa_improve_start,
-               params.init_kappa_improve_increase,
-               params.init_kappa_improve_stop);
 }
 
 static void
@@ -367,7 +341,6 @@ help() noexcept
       "  - time-limit: real in seconds, <= 0 means no limit\n"
       "  - thread: integer [0, +oo[, 0 means automatic\n"
       "  - seed: integer [0, +oo[, 0 means random\n"
-      "  - print-level: integer [0, 2]\n"
       "  - observer-type: none (default) pnm file\n"
       " * In The Middle parameters\n"
       "  - theta: real [0, 1] (default: 0.5)\n"
@@ -398,19 +371,7 @@ help() noexcept
       " * Optimizer parameters\n"
       "  - optimizer: lns (default) restart genetic tuned\n"
       "  - optimizer-warm-start: 0 (default) or 1 (keep pi and P between "
-      "solver runs)\n"
-      "  - storage-type: one (default) bound five\n"
-      "  - init-population-size: integer [5, +oo[ (default: 100)\n"
-      "  - init-crossover-bastert-insertion: real [0, 1]\n"
-      "  - init-crossover-solution-selection-mean: real [0, 1]\n"
-      "  - init-crossover-solution-selection-stddev: real [0, 1]\n"
-      "  - init-mutation-variable-mean: real [0, 1]\n"
-      "  - init-mutation-variable-stddev: real [0, 1]\n"
-      "  - init-mutation-value-mean: real [0, 1]\n"
-      "  - init-mutation-value-stddev: real [0, 1]\n"
-      "  - init-kappa-improve-start: real [0, 1]\n"
-      "  - init-kappa-improve-increase: real [0, 1]\n"
-      "  - init-kappa-improve-stop: real [0, 1]\n");
+      "solver runs)\n");
 }
 
 constexpr static bool
@@ -490,10 +451,8 @@ enum class command_line_status
     limit_error,
     time_limit_error,
     observer_type_error,
-    print_level_error,
     preprocessing_error,
     constraint_order_error,
-    storage_type_error,
     theta_error,
     delta_error,
     kappa_min_error,
@@ -506,19 +465,8 @@ enum class command_line_status
     pushing_objective_amplifier_error,
     pushing_iteration_limit_error,
     pushing_k_factor_error,
-    init_population_size_error,
     init_policy_error,
     init_policy_random_error,
-    init_crossover_bastert_insertion_error,
-    init_crossover_solution_selection_mean_error,
-    init_crossover_solution_selection_stddev_error,
-    init_mutation_variable_mean_error,
-    init_mutation_variable_stddev_error,
-    init_mutation_value_mean_error,
-    init_mutation_value_stddev_error,
-    init_kappa_improve_start_error,
-    init_kappa_improve_increase_error,
-    init_kappa_improve_stop_error,
     buffer_solver_error,
     optimizer_warm_start_error,
     optimizer_error,
@@ -535,10 +483,8 @@ constexpr const std::string_view command_line_status_string[] = {
     "limit",
     "time_limit",
     "observer_type",
-    "print_level",
     "preprocessing",
     "constraint_order",
-    "storage_type",
     "theta",
     "delta",
     "kappa_min",
@@ -551,19 +497,8 @@ constexpr const std::string_view command_line_status_string[] = {
     "pushing_objective_amplifier",
     "pushing_iteration_limit",
     "pushing_k_factor",
-    "init_population_size",
     "init_policy",
     "init_policy_random",
-    "init_crossover_bastert_insertion",
-    "init_crossover_solution_selection_mean",
-    "init_crossover_solution_selection_stddev",
-    "init_mutation_variable_mean",
-    "init_mutation_variable_stddev",
-    "init_mutation_value_mean",
-    "init_mutation_value_stddev",
-    "init_kappa_improve_start",
-    "init_kappa_improve_increase",
-    "init_kappa_improve_stop",
     "buffer_solver",
     "optimizer_warm_start",
     "optimizer",
@@ -612,12 +547,6 @@ assign_parameter(baryonyx::solver_parameters& params,
             params.observer = baryonyx::solver_parameters::observer_type::file;
         else
             return command_line_status::observer_type_error;
-
-    } else if (is_equal(name, "print-level")) {
-        if (auto v = assign(value, 0, 2); !v)
-            return command_line_status::print_level_error;
-        else
-            params.print_level = *v;
 
     } else if (is_equal(name, "preprocessing")) {
         if (value == "none")
@@ -688,16 +617,6 @@ assign_parameter(baryonyx::solver_parameters& params,
               baryonyx::solver_parameters::constraint_order::cycle;
         else
             return command_line_status::constraint_order_error;
-
-    } else if (is_equal(name, "storage-type")) {
-        if (value == "five")
-            params.storage = baryonyx::solver_parameters::storage_type::five;
-        else if (value == "bound")
-            params.storage = baryonyx::solver_parameters::storage_type::bound;
-        else if (value == "one")
-            params.storage = baryonyx::solver_parameters::storage_type::one;
-        else
-            return command_line_status::storage_type_error;
 
     } else if (is_equal(name, "theta")) {
         if (auto v = assign_01(value); !v)
@@ -783,74 +702,6 @@ assign_parameter(baryonyx::solver_parameters& params,
             return command_line_status::pushing_k_factor_error;
         else
             params.pushing_k_factor = *v;
-
-    } else if (is_equal(name, "init-population-size")) {
-        if (auto v = assign(value, 5, (std::numeric_limits<int>::max)()); !v)
-            return command_line_status::init_population_size_error;
-        else
-            params.init_population_size = *v;
-
-    } else if (is_equal(name, "init-crossover-bastert-insertion")) {
-        if (auto v = assign_01(value); !v)
-            return command_line_status::init_crossover_bastert_insertion_error;
-        else
-            params.init_crossover_bastert_insertion = *v;
-
-    } else if (is_equal(name, "init-crossover-solution-selection-mean")) {
-        if (auto v = assign_01(value); !v)
-            return command_line_status::
-              init_crossover_solution_selection_mean_error;
-        else
-            params.init_crossover_solution_selection_mean = *v;
-
-    } else if (is_equal(name, "init-crossover-solution-selection-stddev")) {
-        if (auto v = assign_01(value); !v)
-            return command_line_status::
-              init_crossover_solution_selection_stddev_error;
-        else
-            params.init_crossover_solution_selection_stddev = *v;
-
-    } else if (is_equal(name, "init-mutation-variable-mean")) {
-        if (auto v = assign_01(value); !v)
-            return command_line_status::init_mutation_variable_mean_error;
-        else
-            params.init_mutation_variable_mean = *v;
-
-    } else if (is_equal(name, "init-mutation-variable-stddev")) {
-        if (auto v = assign_01(value); !v)
-            return command_line_status::init_mutation_variable_stddev_error;
-        else
-            params.init_mutation_variable_stddev = *v;
-
-    } else if (is_equal(name, "init-mutation-value-mean")) {
-        if (auto v = assign_01(value); !v)
-            return command_line_status::init_mutation_value_mean_error;
-        else
-            params.init_mutation_value_mean = *v;
-
-    } else if (is_equal(name, "init-mutation-value-stddev")) {
-        if (auto v = assign_01(value); !v)
-            return command_line_status::init_mutation_value_stddev_error;
-        else
-            params.init_mutation_value_stddev = *v;
-
-    } else if (is_equal(name, "init-kappa-improve-start")) {
-        if (auto v = assign_01(value); !v)
-            return command_line_status::init_kappa_improve_start_error;
-        else
-            params.init_kappa_improve_start = *v;
-
-    } else if (is_equal(name, "init-kappa-improve-increase")) {
-        if (auto v = assign_01(value); !v)
-            return command_line_status::init_kappa_improve_increase_error;
-        else
-            params.init_kappa_improve_increase = *v;
-
-    } else if (is_equal(name, "init-kappa-improve-stop")) {
-        if (auto v = assign_01(value); !v)
-            return command_line_status::init_kappa_improve_stop_error;
-        else
-            params.init_kappa_improve_stop = *v;
 
     } else if (is_equal(name, "init-policy")) {
         if (value == "bastert")

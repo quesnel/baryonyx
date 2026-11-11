@@ -39,6 +39,25 @@
 
 namespace baryonyx::itm {
 
+/**
+ * Fixed settings of the genetic and restart optimizers. They were command
+ * line parameters but a sensitivity benchmark showed no gain from tuning
+ * them.
+ */
+namespace optimizer_settings {
+inline constexpr int population_size = 100;
+inline constexpr double crossover_bastert_insertion = 0.01;
+inline constexpr double crossover_selection_mean = 0.0;
+inline constexpr double crossover_selection_stddev = 0.3;
+inline constexpr double mutation_variable_mean = 0.0001;
+inline constexpr double mutation_variable_stddev = 0.001;
+inline constexpr double mutation_value_mean = 0.5;
+inline constexpr double mutation_value_stddev = 0.2;
+inline constexpr double kappa_improve_start = 0.0;
+inline constexpr double kappa_improve_increase = 0.02;
+inline constexpr double kappa_improve_stop = 0.2;
+} // namespace optimizer_settings
+
 /** Best solution shared by the restart threads. */
 template<typename Mode>
 class shared_best_solution
@@ -183,7 +202,8 @@ struct restart_functor
         // solution: drawing the starting kappa mixes local improvements of
         // the good solutions with deeper Lagrangian searches.
         uniform_real_distribution<double> kappa_start(
-          p.init_kappa_improve_start, p.init_kappa_improve_stop);
+          optimizer_settings::kappa_improve_start,
+          optimizer_settings::kappa_improve_stop);
 
         // Threads start from kappa steps spread around the requested one.
         const auto spread =
