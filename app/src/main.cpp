@@ -411,6 +411,18 @@ assign(std::string_view value, long int mindef, long int maxdef)
         return std::nullopt;
 }
 
+/** Accepts a real in the half-open interval [mindef, maxdef[. */
+constexpr static std::optional<double>
+assign_right_open(std::string_view value, double mindef, double maxdef)
+{
+    auto result = ::to_double(value);
+
+    if (result.has_value() && *result >= mindef && *result < maxdef)
+        return *result;
+    else
+        return std::nullopt;
+}
+
 constexpr static std::optional<double>
 assign_d(std::string_view value, double mindef, double maxdef)
 {
@@ -552,13 +564,15 @@ assign_parameter(baryonyx::solver_parameters& params,
             params.delta = *v;
 
     } else if (is_equal(name, "kappa-min")) {
-        if (auto v = assign_01(value); !v)
+        if (auto v = assign_right_open(
+              value, 0.0, baryonyx::solver_parameters::kappa_max);
+            !v)
             return command_line_status::kappa_min_error;
         else
             params.kappa_min = *v;
 
     } else if (is_equal(name, "kappa-step")) {
-        if (auto v = assign_01(value); !v)
+        if (auto v = assign_right_open(value, 0.0, 1.0); !v)
             return command_line_status::kappa_step_error;
         else
             params.kappa_step = *v;
