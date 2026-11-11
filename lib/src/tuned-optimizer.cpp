@@ -58,15 +58,22 @@ bx::solver_parameters
 random_parameters(bx::solver_parameters p, bx::xoshiro256pp& rng)
 {
     using optimizer_type = bx::solver_parameters::optimizer_type;
+    using constraint_order = bx::solver_parameters::constraint_order;
 
     constexpr optimizer_type optimizers[] = { optimizer_type::genetic,
                                               optimizer_type::restart,
                                               optimizer_type::lns };
-    constexpr double thetas[] = { 0.2, 0.35, 0.5, 0.65, 0.8 };
+    // High thetas are needed by set partitioning problems where the solver
+    // oscillates between violated equalities.
+    constexpr double thetas[] = { 0.2, 0.35, 0.5, 0.65, 0.8, 0.9, 0.95 };
     constexpr double deltas[] = { -1.0, 1e-3, 1e-2, 1e-1 };
     constexpr double kappa_mins[] = { 0.0, 0.05, 0.1, 0.2 };
     constexpr double kappa_steps[] = { 1e-4, 3e-4, 1e-3, 3e-3, 1e-2 };
     constexpr double init_randoms[] = { 0.0, 0.25, 0.5, 0.75 };
+    constexpr constraint_order orders[] = { constraint_order::none,
+                                            constraint_order::random_sorting,
+                                            constraint_order::infeasibility_decr,
+                                            constraint_order::lagrangian_decr };
 
     p.optimizer = pick(rng, optimizers);
     p.theta = pick(rng, thetas);
@@ -74,6 +81,7 @@ random_parameters(bx::solver_parameters p, bx::xoshiro256pp& rng)
     p.kappa_min = pick(rng, kappa_mins);
     p.kappa_step = pick(rng, kappa_steps);
     p.init_policy_random = pick(rng, init_randoms);
+    p.order = pick(rng, orders);
 
     return p;
 }
@@ -95,18 +103,46 @@ to_string(bx::solver_parameters::optimizer_type type) noexcept
     return "unknown";
 }
 
+std::string_view
+to_string(bx::solver_parameters::constraint_order order) noexcept
+{
+    switch (order) {
+    case bx::solver_parameters::constraint_order::none:
+        return "none";
+    case bx::solver_parameters::constraint_order::reversing:
+        return "reversing";
+    case bx::solver_parameters::constraint_order::random_sorting:
+        return "random-sorting";
+    case bx::solver_parameters::constraint_order::infeasibility_decr:
+        return "infeasibility-decr";
+    case bx::solver_parameters::constraint_order::infeasibility_incr:
+        return "infeasibility-incr";
+    case bx::solver_parameters::constraint_order::lagrangian_decr:
+        return "lagrangian-decr";
+    case bx::solver_parameters::constraint_order::lagrangian_incr:
+        return "lagrangian-incr";
+    case bx::solver_parameters::constraint_order::pi_sign_change:
+        return "pi-sign-change";
+    case bx::solver_parameters::constraint_order::cycle:
+        return "cycle";
+    }
+
+    return "unknown";
+}
+
 std::string
 describe(const bx::solver_parameters& p)
 {
     return fmt::format(
       "optimizer={} theta={:g} delta={:g} kappa-min={:g} kappa-step={:g} "
-      "init-policy-random={:g}",
+      "init-policy-random={:g} constraint-order={}",
       to_string(p.optimizer),
       p.theta,
       p.delta,
       p.kappa_min,
       p.kappa_step,
-      p.init_policy_random);
+      p.init_policy_random,
+      to_string(p.order));
 }
 
 // A feasible solution beats an infeasible one, then the objective decides,

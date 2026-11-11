@@ -348,7 +348,8 @@ To assign parameters to solver or optimizer algorithms, use the `-p
 * `genetic`: a population of solutions with crossovers and mutations.
 * `restart`: independent restarts adapting the kappa step.
 * `tuned`: successive halving over random settings of the other optimizers
-  and of the solver parameters, then the best setting runs for the remaining
+  and of the solver parameters (including theta up to 0.95 and the
+  constraint order), then the best setting runs for the remaining
   half of the time limit. Often the best choice for long time limits or when
   a first solution is hard to find.
 
