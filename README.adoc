@@ -2,10 +2,13 @@
 Gauthier Quesnel <gauthier.quesnel@inrae.fr>
 v0.5.0, 2021-xx-xx
 :toc:
+:toclevels: 3
 :homepage: https://github.com/quesnel/baryonyx/
 
-https://en.wikipedia.org/wiki/Baryonyx[Baryonyx] is an integer and binary
-linear programming solver based on the http://www.cse.chalmers.se/~dag/[Dag Wedelin] heuristic.
+https://en.wikipedia.org/wiki/Baryonyx[Baryonyx] is a heuristic solver for
+0-1 integer programs, based on the http://www.cse.chalmers.se/~dag/[Dag
+Wedelin] "In The Middle" heuristic and its extensions by Bastert, Hummel and
+de Vries.
 
 image:https://github.com/quesnel/baryonyx/actions/workflows/linux.yml/badge.svg[Linux, link=https://github.com/quesnel/baryonyx/actions/workflows/linux.yml]
 image:https://github.com/quesnel/baryonyx/actions/workflows/macos.yml/badge.svg[MacOS, link=https://github.com/quesnel/baryonyx/actions/workflows/macos.yml]
@@ -15,444 +18,669 @@ Copyright © 2017-2021 http://www.inrae.fr/en[INRA]
 
 The software is released under the MIT license. See the LICENSE file.
 
-== Baryonyx
+== General information
 
-=== Requirements and recommended
+=== What Baryonyx does
 
-* `cmake` (≥ 3.11)
-* $$C++$$ compiler with $$C++17$$ support:
-** `gcc` ≥ 7 (https://www.gnu.org/software/gcc/projects/cxx-status.html[notes])
-** `clang` ≥ 5 (https://clang.llvm.org/cxx_status.html[notes])
-** `visual studio 2019 16.0` (https://docs.microsoft.com/en-us/visualstudio/releasenotes/vs2017-relnotes[notes])
+Baryonyx reads a problem in the CPLEX LP format and searches for 0-1
+solutions:
 
-For recent Debian GNU/Linux and Ubuntu derivatives (remove clang to
-only use gcc):
+* in *solve mode* (default), it searches for a solution that satisfies every
+  constraint;
+* in *optimization mode* (`-O`), it also improves the objective until the
+  time limit is reached or the search is interrupted.
+
+Baryonyx is a heuristic: it finds good solutions quickly on large problems,
+often much larger than an exact solver can handle in the same time, but it
+never proves optimality. Use an exact solver (CPLEX, Gurobi, HiGHS, SCIP) when
+a proof is required.
+
+Supported problems:
+
+* 0-1 variables (real variables are solved as 0-1 variables with a warning,
+  general integer variables are rejected);
+* equality, less and greater constraints with integer coefficients;
+* linear or quadratic objective functions, minimized or maximized;
+* problems without constraint.
+
+=== Requirements
+
+* `cmake` ≥ 3.20
+* a $$C++20$$ compiler: `gcc`, `clang` or Visual Studio 2022 (MSVC)
+* the `fmt` and `boost.ut` libraries, provided as Git submodules in
+  `external/`
+
+For recent Debian GNU/Linux and Ubuntu derivatives:
 
 [source,bash]
 ....
-apt-get install build-essential cmake clang
+apt-get install build-essential cmake
 ....
 
-For Windows, install the https://www.cmake.org[CMake program] and
-Visual Studio 2019 (MSVC).
+For Windows, install the https://www.cmake.org[CMake program] and Visual
+Studio.
 
-=== First installation
+=== Build and installation
 
-First, we clone Baryonyx git repository and the submodule.
+Clone the Git repository and its submodules:
 
+[source,bash]
 ....
 git clone https://github.com/quesnel/baryonyx.git
 cd baryonyx
 git submodule update --init --recursive
 ....
 
-Default, Baryonyx provides a shared library `libbaryonyx-0.5.so` (with
-hidden symbol), a static library `libbaryonyx-0.5.a` (all symbols are
-public) and an executable `baryonyx-0.5`. To compile and install in
-the default CMake install directory:
+Baryonyx provides the `libbaryonyx-0.5` library and the `baryonyx-0.5`
+program. To compile and install in the default CMake install directory
+(`/usr/local`):
 
+[source,bash]
 ....
-cd baryonyx
-mkdir build
-cd build
-cmake -DCMAKE_BUILD_TYPE=Release ..
-make install
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build -j
+cmake --install build
 ....
 
-Previous command line install Baryonyx program and library into the
-`/usr/local` prefix. If you install into another directory, you need
-to define three environment variables (into your `.bashrc` or
-equivalent). If you install into `$HOME/usr` for example, you need to
-define in your `.bashrc`:
+To install into another directory, for example `$HOME/usr`, use
+`-DCMAKE_INSTALL_PREFIX=$HOME/usr` and define in your `.bashrc`:
 
+[source,bash]
 ....
 export PATH=$PATH:$HOME/usr/bin
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME/usr/lib
-export PKG_CONFIG_PATH=$PKG_CONFIX_PATH:$HOME/usr/lib/pkgconfig
+export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:$HOME/usr/lib/pkgconfig
 ....
 
-Then run the following commands:
+To update an installation:
 
+[source,bash]
 ....
-cd baryonyx
-mkdir build
+git pull -r
+git submodule update --recursive
+cmake --build build -j
+cmake --install build
+....
+
+The unit tests run with `ctest`:
+
+[source,bash]
+....
 cd build
-cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$HOME/usr ..
-make install
+ctest
 ....
 
-To override the default build flags, remove the `CMAKE_BUILD_TYPE`
-parameter and override the `CXXFLAGS` as follow:
-
-....
-export CXX=g++-8
-export CXXFLAGS='-Wall -Wextra -Werror -ftree-vectorize -mmmx -msse -msse2 -msse3 -O3'
-cmake -DCMAKE_INSTALL_PREFIX=$HOME/usr ..
-....
-
-The CMake script provide parameters to control debug, log facility and
-optimization.
-
-.Table CMake Command line parameters (cmake -DWITH_LOG=OFF ...)
+.CMake parameters (`cmake -DWITH_LOG=OFF ...`)
 [cols="1,1,5a", options="header"]
 |===
 |name| default| summary
 
 | WITH_LOG
 | ON
-| Enable log message on standard output.
+| Enable log messages on the standard output.
 
 | WITH_DEBUG
 | ON
-| Enable maximum debug function and add more log message. Be careful, this mode slow down computation.
+| Enable debug checks and more log messages. This mode slows down the
+  computation.
 
 | WITH_FULL_OPTIMIZATION
 | OFF
-| Enable optimal computation but remove some control on float and control.
+| Disable all logging facilities and enable heavy optimization code.
+
+| BUILD_SHARED_LIBS
+| OFF
+| Build the shared library instead of the static one.
 |===
 
-=== Update installation
+=== Quick start
 
-First, we need to update the Git repository with the following
-commands:
+Search for a feasible solution:
 
-....
-cd baryonyx
-git pull -r
-git submodule update --recursive
-....
-
-Then go to the build directory and restart compilation and
-installation :
-
-....
-cd baryonyx
-mkdir build
-cd build
-cmake -DCMAKE_BUILD_TYPE=Release ..
-make install
-....
-
-== Usage
-
-=== Solver & Optimizer
-
-To run Baryonyx in solver mode (i trying to valid all constraints):
-
+[source,bash]
 ....
 baryonyx-0.5 file.lp
 ....
 
-To run baryonyx into the heuristic model (i trying to valid all
-constraints and optimize the solution), add a `-o` or `--optimize`
-option to the command line:
+Optimize for 60 seconds with 8 threads:
 
+[source,bash]
 ....
-baryonyx-0.5 -o file.lp
+baryonyx-0.5 -O -p time-limit=60 -p thread=8 file.lp
 ....
 
-The Baryonyx solver have many parameters. Some parameters are global,
-some specific for the optimization algorithms.
+Baryonyx writes the best solution in `file.lp-<pid>.sol`, one `name=value`
+line per variable after a commented header. When no solution is found, the
+file contains the reason (`\ Solution not found. Error: ...`).
 
-.Table Command line global parameters
-[cols="1,1,5a", options="header"]
+`Ctrl-C` (or `SIGTERM`) stops the search: Baryonyx writes the best solution
+found so far and exits. Without time limit, the optimization runs until it is
+stopped this way.
+
+Check that a solution file satisfies the constraints of a problem and compute
+its value:
+
+[source,bash]
+....
+baryonyx-0.5 --check file.sol file.lp
+....
+
+== Technical overview
+
+=== From the LP file to the solution
+
+. *Parsing* (`lib/src/parser.cpp`): reads the CPLEX LP file into a
+  `raw_problem` (objective, constraints, bounds and variable types). The
+  parser accepts constraints without terms, written by CPLEX, and drops zero
+  coefficients.
+. *Preprocessing* (`lib/src/preprocessor.cpp`): fixes the variables forced by
+  the constraints, removes the satisfied constraints and propagates. The
+  `--disable-preprocessing` option skips this step and `--debug` writes the
+  reduced problem in `preprocessed.lp`.
+. *Selection of the solver class* (`lib/src/problem.hpp`) according to the
+  constraint types and coefficients, see below.
+. *Solve or optimization* (`lib/src/itm.hpp`): the solver searches for a
+  feasible solution, the optimizer drives the solver to improve it.
+. *Result*: the solution is mapped back to the original variables and written
+  in the `.sol` file.
+
+=== The In The Middle heuristic
+
+Each constraint `k` has a Lagrangian multiplier `π_k` and each non-zero
+coefficient `a_kj` a preference `P_kj`. For each violated constraint, the
+solver computes the reduced costs `r_j = c_j − Σ_i a_ij π_i − Σ_i a_ij P_ij`
+of its variables, sorts them and sets the
+variables so that the constraint becomes satisfied, choosing `π_k` "in the
+middle" of the two reduced costs at the boundary. The preferences are pushed
+away from the boundary by a factor `κ`, which grows during the search
+(`kappa-min`, `kappa-step`, `kappa-max`, `alpha`) until the solution
+stabilizes. `θ` (`theta`) keeps a part of the preferences between two loops
+and `δ` (`delta`) is a small random perturbation that breaks ties.
+
+Once a feasible solution is found, the *pushes* (`pushes-limit`,
+`pushing-k-factor`, `pushing-objective-amplifier`,
+`pushing-iteration-limit`) amplify the objective in the reduced costs to
+improve the solution while keeping it feasible.
+
+The costs are normalized before the search (`norm`, default: divided by their
+largest absolute value).
+
+=== Solver classes
+
+The solver class is chosen from the constraint types and the coefficients
+of the preprocessed problem. All solvers share the same In The Middle loop
+(`lib/src/itm-solver-common.hpp`) and only differ in the way they satisfy a
+constraint.
+
+[cols="2,2,5a", options="header"]
 |===
-|name| type| summary
+| class | problems | implementation
 
-| --help -h
-|
-| Show help message
+| `equalities_01`
+| equality constraints only, coefficients in `{1}`
+| `lib/src/itm-solver-equalities-01.cpp`. Sorts the reduced costs of the
+  constraint and selects the `b` best variables.
 
-| --quiet -q
-|
-| Remove many console output
+| `equalities_101`
+| equality constraints only, coefficients in `{-1, 1}`
+| `lib/src/itm-solver-equalities-101.cpp`. Same as above, the negative
+  coefficients are handled by a change of variable `y = 1 − x`.
 
-| --bench [name]
-|
-| Start benchmark. Need csv input files
+| `inequalities_01`
+| any constraint type, coefficients in `{1}`
+| `lib/src/itm-solver-inequalities-01.cpp`. Selects a number of variables in
+  the `[min, max]` interval of the constraint.
 
-| --optimize -O
-|
-| Start Baryonyx in optimization mode, default is to use the solve mode
+| `inequalities_101`
+| any constraint type, coefficients in `{-1, 1}`
+| `lib/src/itm-solver-inequalities-101.cpp`. Same as above with the change of
+  variable for negative coefficients.
 
-| --limit -l -plimit
-| integer
-| number of loop to stop algorithm
+| `inequalities_Z` (also used for `equalities_Z`)
+| at least one coefficient outside `{-1, 0, 1}`
+| `lib/src/itm-solver-inequalities-Z.cpp`. Each constraint uses its own
+  sub-solver:
 
-| --verbose -v
-| integer
-| verbose level from 0 (very very verbose in debug mode) to 7 (quiet)
+* *linear* when its coefficients are in `{-1, 1}`;
+* *exhaustive* (`lib/src/exhaustive-solver.hpp`) for short constraints
+  (fewer than 10 variables) with larger coefficients: all the valid
+  assignments are enumerated once, then the best one is selected at each
+  loop;
+* *branch and bound* (`lib/src/branch-and-bound-solver.hpp`) for the other
+  constraints.
 
-| --disable-preprocessing -np
-|
-| disable the use of preprocessing
-
-| --auto[:= ]value
-| string
-| Select the type of optimizer meta-heuristic. Values are:
-
-* `branch` split recursively the problem on the variable of the most
-  violated constraints (or the most expensive one) to found best solution.
-  Use `-p optimizer=tuned` to also tune the solver parameters.
-
+| `inequalities_101` buffered
+| classes `01` and `101`, with `-p buffer-solver=1`
+| `lib/src/itm-solver-inequalities-101-buffered.cpp`. Experimental. The
+  constraints are colored once so that the constraints of the same color
+  share no variable; each color is computed in parallel on `thread` threads
+  and the preferences are updated afterwards. The results differ from the
+  sequential solvers. It is only faster on very large problems (millions of
+  variables) with 4 threads or more.
 |===
 
-To assign parameters to solver or optimizer algorithms, use the `-p
-[name]:value` syntax in the command line:
+Each class is instantiated for two cost types:
 
-.Table Command line parameters
-[cols="1,1,5a", options="header"]
+* `default_cost_type`: linear objective;
+* `quadratic_cost_type`: quadratic objective (`[ ... ] / 2` terms in the LP
+  file); the reduced costs include the quadratic terms of the current
+  solution.
+
+A problem without constraint does not run the heuristic: the solution comes
+directly from the sign of the costs (linear objective) or from a tabu search
+(quadratic objective).
+
+=== Optimizers
+
+In optimization mode (`-O`), the `optimizer` parameter selects the algorithm
+that drives the solver:
+
+[cols="1,6a", options="header"]
 |===
-|name| type| summary
+| optimizer | algorithm
 
-| time-limit
-| real
-| time in second to stop algorithm or stop the optimize mode
+| `lns` (default)
+| Large neighbourhood search (`lib/src/lns-optimizer.cpp`). A first solution
+  comes from `restart`, then `tuned` if needed. Then, in a loop, most
+  variables are fixed to their value in the best solution and a small
+  neighbourhood is freed, alternating constraint-linked variables and random
+  variables; the reduced problem is preprocessed and solved by a short
+  `restart` run. The neighbourhood size adapts to the success of the
+  previous runs.
 
-| limit
-| integer
-| number of loop to stop algorithm
+| `restart`
+| Independent restarts of the solver from the best solution, adapting the
+  kappa step (`lib/src/itm-restart-optimizer.hpp`).
 
-| w
-| double
-| warmup-iterator [0, 1] A percentage of `limit` loop and if w is greater than 1, the number of loop without updating kappa
+| `genetic`
+| A population of solutions with crossovers and mutations
+  (`lib/src/itm-optimizer-common.hpp`), controlled by the `init-*`
+  parameters.
 
-| theta
-| real
-| history parameters [0, 1[
-
-| delta
-| real
-| influence parameters [0, +oo[
-
-| kappa-min
-| real
-| kappa minimal value  [0, kappa-max
-
-| kappa-step
-| real
-| kappa updater [0, +oo[
-
-| kappa-max
-| real
-| kappa maximal value ]kappa-min, +oo[ to stop algorithm
-
-| alpha
-| real
-| adaptiveness parameter
-
-| pushing-k-factor
-| integer
-| use to lower the kappa using the push system
-
-| pushes-limit
-| integer
-| number of push before stopping the algorithm
-
-| pushing-objective-amplifier
-| real
-| use to make r more similar to costs
-
-| pushing-iteration-limit
-| integer
-| number of loop before trying a new push
-
-| norm
-| string
-| Select the cost normalization function
-
-* `none`  let unmodified costs
-* `l1` use the l1-norm function
-* `l2` use the l2-norm function
-* `random` try to avoid equal cost
-* `inf` (default): use the infinity norm
-
-| constraint-order
-| string
-| Remaining constraints order. Values are:
-
-* `none` (default): use the lp format constraint order
-* `reversing`: reverse the lp format constraint order
-* `random-sorting`: random the remaining constraint list
-* `infeasibility-decr`: compute in-feasibility constraint in decremental order
-* `infeasibility-incr`: compute in-feasibility constraint in incremental order
-* `lagrangian-decr`: sort violated constraints according to the Lagrangian multiplier values in decremental order
-* `lagrangian-incr`: sort violated constraints according to the Lagrangian multiplier values in incremental order
-* `pi-sign-change`: random the remaining constraint list if the lagrangian multipliers signs have changed
-* `cycle`: switch the constraint order after each `update_row`. Starts from `none` to `pi-sign-change`.
-
-| preprocessing
-| string
-| Constraints matrix A order. Values are:
-
-* `none`: Use the raw_problem (or lp file) order for constraints and variables.
-* `memory`: Default, use the raw_problem (or lp file) order for constraints but sort the variables to improve the memory cache efficiency.
-* `less_greater_equal`: sort constraints according to their type (first less and finally greater then equal) and sort variable to improve the memory cache efficiency.
-* `less_equal_greater`: sort constraints according to their type (first less
-  and finally equal then greater) and sort variable to improve the memory cache
-  efficiency.
-* `greater_less_equal`: sort constraints according to their type (first greater
-  then less and finally equal) and sort variable to improve the memory cache
-  efficiency.
-* `greater_equal_less`: sort constraints according to their type (first greater
-  then equal and finally less) and sort variable to improve the memory cache
-  efficiency.
-* `equal_less_greater`: sort constraints according to their type (first equal
-  then less and finally greater) and sort variable to improve the memory cache
-  efficiency.
-* `equal_greater_less`: sort constraints according to their type (first equal
-  then greater and finally less) and sort variable to improve the memory cache
-  efficiency.
-* `p1`: reserved
-* `p2`: reserved
-* `p3`: reserved
-* `p4`: reserved
-
-| observation
-| string
-| Select the type of observation mechanism (only in solve mode)
-
-* `none` no observation (default).
-* `pnm` produce picture files for the P matrix (one per loop) and Pi vector (Lagrangian multipliers) each loop
-* `file` produce CSV files for the P matrix (one per loop) and Pi vector (Lagrangian multipliers) each loop
-
-| floating-point_type
-| string
-| Select the type of real use internally in the solvers. Values are:
-
-* `float` float (32 bits)
-* `double` double (64 bits)
-* `longdouble` long double (84 or 128 bits)
-
-| print-level
-| integer
-| show information if greater than 0
-
-| storage-type
-| string
-| Change the solution storage policy of the `genetic` optimizer.
-
-* `one` (default): stores only the best solution found.
-* `bound`: stores the best and the bad solution found.
-* `five`: stores the best five solution found.
-
-| optimizer (optimizer only)
-| string
-| Select the optimizer algorithm. Values are:
-
-* `lns` (default): large neighbourhood search. From a first restart
-  solution, frees small neighbourhoods (linked constraints or random
-  variables) of the best solution and solves the reduced problems with short
-  runs. Without time limit, it runs until stopped and shows each
-  improvement.
-* `genetic`: a population of solutions with crossovers and mutations.
-* `restart`: independent restarts adapting the kappa step.
-* `tuned`: successive halving over random settings of the other optimizers
-  and of the solver parameters (including theta up to 0.95 and the
-  constraint order), then the best setting runs for the remaining
-  half of the time limit. Often the best choice for long time limits or when
-  a first solution is hard to find.
-
-| init-policy (solver only)
-| string
-| Change the initialization and reinitialization policy of the solution vector. Values are:
-
-* `bastert`: for each variable (or at `init-policy-random` rate) use cost
-  values to set or unset variable.
-* `pessimistic-solve`: found a solution for each (or at `init-policy-random`
-  rate) constraints. For soft constraints, affect one to strict minimum
-  variables.
-* `optimistic-solve`: found a solution for each (or or `init-policy-random`
-  rate) constraints. For soft constraints, affect one to the maximum variables
-  that valid the constraint.
-
-| init-policy-random (solver only)
-| real
-| [0-1] (default, 0.5) parameter of the bernoulli's law to be used in
-  conjunction with the `init-policy` parameter. If the law returns 1, it
-  uses the `init-policy` algorithm to initialize `X_i`, 0 means use a toss
-  up to choose 0 or 1 according to the `init-random` value.
-
-| init-population-size (optimizer only)
-| integer
-| [25-+oo] Defines the size of the population for the evolutionary algorithm.
-
-| init-crossover-bastert-insertion (optimizer only)
-| real
-| [0-1] Probability to insert a bastert solution during the crossover
-  operation.
-
-| init-crossover-solution-selection-mean (optimizer only)
-| real
-| [0-1] Probability to select a solution to do the crossover operation. This
-  parameter allows the selection of solution in the population. 0 means best
-  solution, 1 means the worst in mean.
-
-| init-crossover-solution-selection-stddev (optimizer only)
-| real
-| [0-1] Probability to select a solution to do the crossover operation. This
-  parameter allows the selection of solution in the population. The standard
-  deviation for the normal probability law.
-
-| init-mutation-variable-mean (optimizer only)
-| real
-| [0-1] Probability to mutate the solution after the crossover operation. This
-  parameter defines the number of variables to change. The mean for the normal
-  probability law.
-
-| init-mutation-variable-stddev (optimizer only)
-| real
-| [0-1] Probability to mutate the solution after the crossover operation. This
-  parameter defines the number of variables to change. The standard deviation
-  for the normal probability law.
-
-| init-mutation-value-mean (optimizer only)
-| real
-| [0-1] Probability to mutate the solution after the crossover operation. This
-  parameter defines the value of the variable. The mean for the normal
-  probability law.
-
-| init-mutation-value-stddev (optimizer only)
-| real
-| [0-1] Probability to mutate the solution after the crossover operation. This
-  parameter defines the value of the variable. The standard deviation for the
-  normal probability law.
-
-| init-kappa-improve-start (optimizer only)
-| real
-| [0-1] The start value of kappa for the improve mode.
-
-| init-kappa-improve-increase (optimizer only)
-| real
-| [0-1] The start value of kappa for the improve mode.
-
-| init-kappa-improve-stop (optimizer only)
-| real
-| [init-kappa-improve-start - 1.0] The stop value of kappa for the improve mode. When the optimizer kappa exceeds this value, a new crossover and mutation will run. If `init_kappa_improve_stop` equals `init-kappa-improve-start` then improving is disabled.
-
+| `tuned`
+| Successive halving (`lib/src/tuned-optimizer.cpp`): random settings of the
+  optimizer (`genetic`, `restart`, `lns`) and of the solver parameters
+  (`theta` up to 0.95, `delta`, `kappa-min`, `kappa-step`,
+  `init-policy-random`, `constraint-order`) compete on half of the time
+  limit, then the best setting runs for the remaining half. Useful when the
+  default parameters do not find a solution.
 |===
+
+The `--auto:branch` mode (`lib/src/branch-optimizer.cpp`) splits the problem
+on a variable chosen in the most violated constraints, solves both
+sub-problems (variable fixed to 0 or 1) with the selected optimizer and keeps
+the best solution.
+
+=== Parallelism
+
+* In optimization mode, the `thread` parameter sets the number of solvers
+  running in parallel; they share the best solution.
+* In solve mode, `thread` only matters for the buffered solver
+  (`buffer-solver=1`).
+* The `seed` parameter makes a run reproducible for a given number of
+  threads.
+
+== Options
+
+=== Command line
+
+[source,bash]
+....
+baryonyx-0.5 [options] file.lp
+....
+
+[cols="2,1,5a", options="header"]
+|===
+| option | argument | summary
+
+| `--help`, `-h`
+|
+| Show the help message.
+
+| `--optimize`, `-O`
+|
+| Optimize the objective. The default is to search for a feasible solution
+  only.
+
+| `--param`, `-p`
+| `name=value`
+| Set a solver parameter, see below. `:` can replace `=`, and the value can
+  follow the option directly: `-p theta=0.7`, `-ptheta:0.7`,
+  `--param=theta=0.7`.
+
+| `--auto`, `-a`
+| `branch`
+| Use the branch mode (`--auto:branch`, `-a branch`).
+
+| `--check`, `-C`
+| `file.sol`
+| Check a solution file against the problem and print its value.
+
+| `--disable-preprocessing`, `-np`
+|
+| Solve the problem without preprocessing.
+
+| `--verbose`, `-v`
+| integer [0, 7]
+| Verbose level, from 0 (very verbose) to 7 (quiet). Default: 6.
+
+| `--quiet`, `-q`
+|
+| Remove most console output.
+
+| `--bench`, `-b`
+| `name`
+| Benchmark mode: solve every problem of the `csv` files given on the
+  command line and store the results in the `name` column, see
+  <<Benchmark>>.
+
+| `--debug`
+|
+| Enable the debug mode (writes `preprocessed.lp` among others).
+|===
+
+=== Solver parameters (`-p name=value`)
+
+==== Global parameters
+
+[cols="2,1,1,5a", options="header"]
+|===
+| name | type | default | summary
+
+| `limit`
+| integer
+| 1000
+| Maximum number of loops of a solver run. `-1` or `0` means no limit.
+
+| `time-limit`
+| real
+| none
+| Time limit in seconds. A value ≤ 0 means no limit.
+
+| `thread`
+| integer
+| 0
+| Number of threads. `0` means automatic detection.
+
+| `seed`
+| integer
+| 0
+| Seed of the random generators. `0` means a random seed.
+
+| `print-level`
+| integer [0, 2]
+| 0
+| Show more information if greater than 0.
+
+| `observer-type`
+| string
+| `none`
+| Observation of the solver, in solve mode only:
+
+* `none`: no observation;
+* `pnm`: one picture of the P matrix and of the π vector per loop;
+* `file`: one CSV file of the P matrix and of the π vector per loop.
+|===
+
+==== In The Middle parameters
+
+[cols="2,1,1,5a", options="header"]
+|===
+| name | type | default | summary
+
+| `theta`
+| real [0, 1]
+| 0.5
+| Part of the preferences kept between two loops. High values (0.7 to 0.9)
+  help on set partitioning problems where the search oscillates.
+
+| `delta`
+| real ]0, +∞[
+| automatic
+| Random perturbation of the preferences that breaks ties. Computed from
+  the costs and `theta` when not set.
+
+| `kappa-min`
+| real [0, 1]
+| 0
+| Initial value of κ.
+
+| `kappa-step`
+| real [0, 1]
+| 0.001
+| Growth of κ at each loop.
+
+| `kappa-max`
+| real [0, 1]
+| 0.6
+| The solver stops when κ exceeds this value.
+
+| `alpha`
+| real [0, 2]
+| 1
+| Adaptiveness of κ: the step is multiplied by
+  `(remaining constraints / constraints)^alpha`.
+
+| `w`
+| real [0, +∞[
+| 0.05
+| Warm-up: number of loops without updating κ. Below 1, it is a
+  fraction of `limit`.
+
+| `norm`
+| string
+| `loo`
+| Cost normalization:
+
+* `loo`: divide by the largest absolute value;
+* `l1`: divide by the sum of absolute values;
+* `l2`: divide by the euclidean norm;
+* `random`: add a small noise to break equal costs, then `loo`;
+* `none`: unmodified costs.
+
+| `constraint-order`
+| string
+| `none`
+| Order of the violated constraints at each loop:
+
+* `none`: the order of the LP file;
+* `reversing`: the reverse order;
+* `random-sorting`: a random order;
+* `infeasibility-decr`, `infeasibility-incr`: sorted by violation, in
+  decreasing or increasing order;
+* `lagrangian-decr`, `lagrangian-incr`: sorted by Lagrangian multiplier, in
+  decreasing or increasing order;
+* `pi-sign-change`: a random order when the signs of the multipliers change;
+* `cycle`: switch between the previous orders.
+
+| `preprocessing`
+| string
+| `none`
+| Order of the constraint matrix:
+
+* `none`: the order of the LP file for constraints and variables;
+* `memory`: the order of the LP file for constraints, variables sorted to
+  improve the memory cache efficiency;
+* `less-greater-equal`, `less-equal-greater`, `greater-less-equal`,
+  `greater-equal-less`, `equal-less-greater`, `equal-greater-less`:
+  constraints sorted by type in this order, variables sorted as in `memory`;
+* `p1`, `p2`, `p3`, `p4`: reserved.
+
+| `buffer-solver`
+| 0 or 1
+| 0
+| Use the experimental buffered solver for the `01` and `101` classes, with
+  parallel computation of the constraints in solve mode.
+|===
+
+==== Pushes parameters
+
+[cols="2,1,1,5a", options="header"]
+|===
+| name | type | default | summary
+
+| `pushes-limit`
+| integer [0, +∞[
+| 100
+| Number of pushes after a feasible solution is found.
+
+| `pushing-objective-amplifier`
+| real ]0, +∞[
+| 5
+| Factor applied to the costs during a push to make the reduced costs closer
+  to the costs.
+
+| `pushing-iteration-limit`
+| integer [0, +∞[
+| 50
+| Number of loops after a push before trying the next one.
+
+| `pushing-k-factor`
+| real ]0, +∞[
+| 0.9
+| Factor applied to κ during a push.
+|===
+
+==== Initialization parameters
+
+[cols="2,1,1,5a", options="header"]
+|===
+| name | type | default | summary
+
+| `init-policy`
+| string
+| `bastert`
+| Initialization of the solution vector:
+
+* `bastert`: set each variable from the sign of its cost;
+* `pessimistic-solve`: satisfy each constraint with the fewest variables set
+  to one;
+* `optimistic-solve`: satisfy each constraint with the most variables set to
+  one.
+
+| `init-policy-random`
+| real [0, 1]
+| 0.5
+| Probability to use `init-policy` for a variable; otherwise its value is
+  drawn at random.
+|===
+
+==== Optimizer parameters
+
+[cols="2,1,1,5a", options="header"]
+|===
+| name | type | default | summary
+
+| `optimizer`
+| string
+| `lns`
+| Optimization algorithm: `lns`, `restart`, `genetic` or `tuned`, see
+  <<Optimizers>>.
+
+| `optimizer-warm-start`
+| 0 or 1
+| 0
+| Keep π and P between two solver runs instead of resetting them. Slower in
+  general, but helps some hard feasibility problems.
+
+| `storage-type`
+| string
+| `one`
+| Solutions kept by the `genetic` optimizer: `one` (the best), `bound` (the
+  best and the worst) or `five` (the five best).
+
+| `init-population-size`
+| integer [5, +∞[
+| 100
+| Size of the population of the `genetic` optimizer.
+
+| `init-crossover-bastert-insertion`
+| real [0, 1]
+| 0.01
+| Probability to insert a `bastert` solution during a crossover.
+
+| `init-crossover-solution-selection-mean`
+| real [0, 1]
+| 0
+| Mean of the normal law selecting the solutions of a crossover (0: the
+  best, 1: the worst).
+
+| `init-crossover-solution-selection-stddev`
+| real [0, 1]
+| 0.3
+| Standard deviation of the same law.
+
+| `init-mutation-variable-mean`
+| real [0, 1]
+| 0.0001
+| Mean of the normal law giving the proportion of variables mutated after a
+  crossover. With a zero mean and standard deviation, there is no mutation.
+
+| `init-mutation-variable-stddev`
+| real [0, 1]
+| 0.001
+| Standard deviation of the same law.
+
+| `init-mutation-value-mean`
+| real [0, 1]
+| 0.5
+| Mean of the normal law giving the value of a mutated variable.
+
+| `init-mutation-value-stddev`
+| real [0, 1]
+| 0.2
+| Standard deviation of the same law.
+
+| `init-kappa-improve-start`
+| real [0, 1]
+| 0
+| Initial κ of the improve mode.
+
+| `init-kappa-improve-increase`
+| real [0, 1]
+| 0.02
+| Increase of κ in the improve mode.
+
+| `init-kappa-improve-stop`
+| real [0, 1]
+| 0.2
+| When κ exceeds this value, a new crossover and mutation runs. If it equals
+  `init-kappa-improve-start`, the improve mode is disabled.
+|===
+
+=== Examples
+
+[source,bash]
+....
+# Feasibility search with 100,000 loops at most
+baryonyx-0.5 -p limit=100000 lib/test/prevl1.lp
+
+# Set partitioning problem where the default parameters oscillate
+baryonyx-0.5 -p theta=0.7 -p constraint-order=lagrangian-decr -p limit=100000 file.lp
+
+# Optimization for 5 minutes, 4 threads, reproducible
+baryonyx-0.5 -O -p time-limit=300 -p thread=4 -p seed=1 file.lp
+
+# Let tuned search the parameters
+baryonyx-0.5 -O -p optimizer=tuned -p time-limit=120 file.lp
+....
+
+[[Benchmark]]
+== Benchmark
+
+Baryonyx runs benchmarks on a set of problems described in `csv` files with
+the `--bench [name]` option. All Baryonyx parameters are available to perform
+the benchmark.
 
 For example:
 
+[source,bash]
 ....
-baryonyx -p limit:1000000 lib/test/prevl1.lp
-baryonyx -p limit:-1 -p kappa-min:0.2 lib/test/prevl1.lp
-....
-
-=== Benchmark
-
-Baryonyx permits to run benchmark on a set of problems described in a `csv`
-files. This option is available using the `--bench [name]` option and `csv`
-files. All Baryonyx parameters are available to perform the benchmark.
-
-For example:
-
-....
-baryonyx --bench bx-0.5 -pdelta:0.01 -ptime-limit:60 spp.csv
+baryonyx-0.5 --bench bx-0.5 -p delta=0.01 -p time-limit=60 spp.csv
 ....
 
-The benchmark mode updates the `csv` file with results of computation. The
-`csv` format is:
+The benchmark mode updates the `csv` file with the results of the
+computation. The `csv` format is:
 
 ....
 file optimum status cplex lsp bx-0.2 <1>
@@ -464,16 +692,16 @@ scp41 optimum 429 429 429 627
 scp42 optimum 512 512 512 934
 ....
 
-<1> The header: three columns mandatory (`file`, `optimum`, `status`) and one
-solver per column. In this example, cplex, local solver and baryonyx 0.2.
-<2> The description part: one line per solver to describe version and parameter
-for example.
-<3> Finally, one line per solve: model name (with or without extension), status
-(optimum/feasible), best solution found and solver's solution. `inf` can be use
-to indicate no solution found.
+<1> The header: three mandatory columns (`file`, `optimum`, `status`) and one
+column per solver. In this example, cplex, local solver and baryonyx 0.2.
+<2> The description part: one line per solver to describe its version and
+parameters for example.
+<3> Finally, one line per problem: model name (with or without extension),
+status (optimum/feasible), best solution known and the solution of each
+solver. `inf` indicates that no solution was found.
 
-In benchmark directory, some files are provided and a script to download
-classical problem.
+The `benchmarks` directory provides some files and a script to download
+classical problems.
 
 == R
 
