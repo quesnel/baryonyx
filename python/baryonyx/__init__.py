@@ -23,4 +23,4 @@ with ``_`` instead of ``-``; the enumerations take the same strings:
 from ._baryonyx import Result, optimize, request_stop, solve
 
 __all__ = ["Result", "optimize", "request_stop", "solve"]
-__version__ = "0.5.0"
+__version__ = "0.6.0"

@@ -1,6 +1,6 @@
 = Baryonyx
 Gauthier Quesnel <gauthier.quesnel@inrae.fr>
-v0.5.0, 2021-xx-xx
+v0.6.0, 2026-11-12
 :toc:
 :toclevels: 3
 :homepage: https://github.com/quesnel/baryonyx/
@@ -14,7 +14,7 @@ image:https://github.com/quesnel/baryonyx/actions/workflows/linux.yml/badge.svg[
 image:https://github.com/quesnel/baryonyx/actions/workflows/macos.yml/badge.svg[MacOS, link=https://github.com/quesnel/baryonyx/actions/workflows/macos.yml]
 image:https://github.com/quesnel/baryonyx/actions/workflows/windows.yml/badge.svg[Windows, link=https://github.com/quesnel/baryonyx/actions/workflows/windows.yml]
 
-Copyright © 2017-2021 http://www.inrae.fr/en[INRA]
+Copyright © 2017-2026 http://www.inrae.fr/en[INRAE]
 
 The software is released under the MIT license. See the LICENSE file.
 
@@ -71,7 +71,7 @@ cd baryonyx
 git submodule update --init --recursive
 ....
 
-Baryonyx provides the `libbaryonyx-0.5` library and the `baryonyx-0.5`
+Baryonyx provides the `libbaryonyx-0.6` library and the `baryonyx-0.6`
 program. To compile and install in the default CMake install directory
 (`/usr/local`):
 
@@ -139,14 +139,14 @@ Search for a feasible solution:
 
 [source,bash]
 ....
-baryonyx-0.5 file.lp
+baryonyx-0.6 file.lp
 ....
 
 Optimize for 60 seconds with 8 threads:
 
 [source,bash]
 ....
-baryonyx-0.5 -O -p time-limit=60 -p thread=8 file.lp
+baryonyx-0.6 -O -p time-limit=60 -p thread=8 file.lp
 ....
 
 Baryonyx writes the best solution in `file.lp-<pid>.sol`, one `name=value`
@@ -162,7 +162,7 @@ its value:
 
 [source,bash]
 ....
-baryonyx-0.5 --check file.sol file.lp
+baryonyx-0.6 --check file.sol file.lp
 ....
 
 == Technical overview
@@ -418,7 +418,7 @@ the best solution.
 
 [source,bash]
 ....
-baryonyx-0.5 [options] file.lp
+baryonyx-0.6 [options] file.lp
 ....
 
 [cols="2,1,5a", options="header"]
@@ -624,16 +624,16 @@ effects do not add up.
 [source,bash]
 ....
 # Feasibility search with 100,000 loops at most
-baryonyx-0.5 -p limit=100000 lib/test/prevl1.lp
+baryonyx-0.6 -p limit=100000 lib/test/prevl1.lp
 
 # Set partitioning problem where the default parameters oscillate
-baryonyx-0.5 -p theta=0.7 -p constraint-order=lagrangian-decr -p limit=100000 file.lp
+baryonyx-0.6 -p theta=0.7 -p constraint-order=lagrangian-decr -p limit=100000 file.lp
 
 # Optimization for 5 minutes, 4 threads, reproducible
-baryonyx-0.5 -O -p time-limit=300 -p thread=4 -p seed=1 file.lp
+baryonyx-0.6 -O -p time-limit=300 -p thread=4 -p seed=1 file.lp
 
 # Let tuned search the parameters
-baryonyx-0.5 -O -p optimizer=tuned -p time-limit=120 file.lp
+baryonyx-0.6 -O -p optimizer=tuned -p time-limit=120 file.lp
 ....
 
 [[Benchmark]]
@@ -647,7 +647,7 @@ For example:
 
 [source,bash]
 ....
-baryonyx-0.5 --bench bx-0.5 -p delta=0.01 -p time-limit=60 spp.csv
+baryonyx-0.6 --bench bx-0.6 -p delta=0.01 -p time-limit=60 spp.csv
 ....
 
 The benchmark mode updates the `csv` file with the results of the

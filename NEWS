@@ -1,260 +1,200 @@
-## baryonyx v0.5.0 - 2020-02-04
+## baryonyx v0.6.0 - 2026-11-12
 
-### Major changes:
+### Major changes
+
+* optimizers:
+  * new `lns` optimizer, a large neighbourhood search, and the default
+    optimizer (`-p optimizer=lns`): it fixes most variables to their value in
+    the best solution, frees a neighbourhood of variables, found by a walk in
+    the constraint graph or at random, and solves the sub-problem with short
+    restart runs. Each candidate is polished on the full problem. Without
+    time limit, it runs until stopped.
+  * new `restart` optimizer: independent Wedelin restarts sharing their best
+    solution, with a kappa step adapted to the outcome of each run and a
+    drawn starting kappa. The multipliers are kept across restarts while
+    they progress.
+  * new `tuned` optimizer (`-p optimizer=tuned`), which replaces
+    `--auto:manual` and the NLopt auto-tuning: successive halving over
+    random parameters (higher thetas, constraint order, cost norm) and the
+    genetic, restart and lns optimizers.
+  * portfolio: each thread of `restart` (and of the first run of `lns`)
+    runs a one-parameter variant of the user's parameters (`norm=loo`,
+    `constraint-order=random-sorting`, `theta=0.8`, `delta=0.1`…); the final
+    message names the variant that found the best solution.
+  * feasibility jump: with at least 4 threads, the last `restart` thread
+    first searches a feasible solution by a weighted flip search; when the
+    first restart run of `lns` ends without solution, `lns` runs it on the
+    full problem before `tuned`. It finds solutions on problems where
+    Wedelin alone ends with violated constraints.
+  * branch optimizer: the whole search is bounded by the time limit and
+    splits on the variable of the most violated constraints.
+
+* solvers:
+  * repair: a run that ends with few violated constraints is repaired by a
+    weighted flip search.
+  * polish: each solution is improved to a 1-flip and exchange local
+    optimum.
+  * maximization is solved as the minimization of the opposite objective.
+  * costs are normalized by their largest absolute value; the `l2` norm is
+    the default and `tuned` chooses the norm.
+  * Lagrangian range-row update for the inequalities-01 and 101 solvers;
+    fixed preference and push signs for negative coefficients.
+  * the Z solver row update is rewritten after Bastert et al. (Alg. 3 and
+    4).
+  * the buffered 101 solver computes conflict-free row batches in parallel
+    with a static row coloring (`-p buffer-solver=1`).
+  * the push phase revisits all constraints and scales its kappa by the
+    current kappa.
+  * the random solver is removed.
+
+* preprocessor:
+  * detects infeasibility, rejects integer variables above 1, and adds
+    activity and dual fixing; fixes in propagation and the objective.
+
+* Python: new `baryonyx` module built with pybind11 (`pip install .`):
+  `solve` and `optimize` with the parameters of the command line, a result
+  giving the value of each variable, a progress callback, Ctrl-C and
+  `request_stop`.
+
+* R: the `rbaryonyx` package is removed.
+
+* command line:
+  * Ctrl-C stops the computation and writes the best solution.
+  * `--check` verifies a solution file; the solution file parser is strict
+    and reports line numbers; the solver error is written in the solution
+    file.
+  * unknown options are rejected, `--help` matches the accepted options,
+    kappa-min and kappa-step values the solver ignores are rejected.
+  * many parameters are removed (print-level, the genetic optimizer
+    parameters, kappa-max, the pushes parameters, init-policy,
+    optimizer-warm-start, w, init-policy-random, the preprocessing order):
+    they are fixed settings in `solver_parameters`.
+
+### Small changes
 
 * project:
-  * add [codecov.io](https://codecove.io) to produce coverage reports in travis
-  * use Visual Studio 2019 image in appveyor
-  * [boost/ut](https://github.com/boost-experimental/ut): use boost.UT v1.1.6
-  * [fmtlib/fmt](https://fmt.dev/latest/index.html): bump to version v6.1.1
+  * C++20 for the library and the application; hand-written helpers
+    replaced with standard features.
+  * CI moved to GitHub actions with updated runners and compilers.
+  * fmt bumped to 12.2.0, boost.ut to 1.1.8; the NLopt dependency is
+    removed.
+  * random numbers: xoshiro256++ and portable distributions instead of the
+    standard ones.
+  * README: general, technical and options sections.
 
-* optimizer:
-  * use a evolutionary algorithm to init/reinit solver. In optimization mode, Baryonyx stores all solutions found during search. Two algorithms are used to initialize the X vector:
-    * A crossover/mutation using two solutions is used to re-initialize the solver.
-    * An improve mode using a dynamical kappa.
-  * Quadratic objective function: Experimental support.
-  * Z-coefficient: Enable the Z-coefficient solver.
-  * random-solver: This solver is enabled with the `--random` command line option
-  and in the `solver_parameters::solver_type`. It provides a pure random solver without any preference and Lagrangian relaxation. It is provided only for benchmark.
-  * add Lagrangian multipliers sign change detection.
+* fixes:
+  * parser: memory errors, bounds and constraints parsing, `2e` read as a
+    factor of `e`, objective label, constraints without term written by
+    CPLEX.
+  * genetic optimizer: population corruption and data races.
+  * result when the preprocessor finds the solution; variables of problems
+    without constraint are assigned.
+  * branch and bound keeps a feasible solution; out-of-bounds read in the Z
+    solver; unaligned free list access in `shared_subvector`; `bit_array`
+    padding bits; duplicated seeds.
+  * solvers report constraints unreachable with 0-1 variables, and the best
+    remaining constraints, loop and duration.
 
-### Small changes:
+## baryonyx v0.5.0 - 2020-02-04
 
-* c++:
-  * solvers: replace `fill` and `copy` with `fill_n` and `copy_n` equivalent.
-  * solvers: replace `std::vector<T>` with a new `bit_array` to improve cache  efficiency
-  * main: fix signed/unsigned warning
+### Major changes
 
-* solver
-  * negative coefficient solvers: fix R access
-  * add pi signed change detection
-  * improve efficiency of random-solver
-  * add reset function to reinit solver
-  * solver: move normalized cost in thread part
+* optimizer: genetic algorithm to initialize the solver: a population of
+  the solutions found, binary crossover, mutations and an improve mode with
+  a dynamic kappa; parameters for the population, crossover and mutation.
+* solvers: experimental quadratic objective (BQP mode); the Z solver uses a
+  new branch and bound and an exhaustive solver for small constraints; a
+  pure random solver for benchmarks; detection of the sign changes of the
+  Lagrangian multipliers; `cycle` constraint order.
+* parser: new lightweight LP parser with better error reports and checks of
+  the number of constraints and variables.
+* core: pessimistic/optimistic initialization (`init-policy`,
+  `init-random`, `init-policy-random`), a debug mode (`--debug`).
+* tests: boost.ut replaces the previous test library; coverage reports.
 
-* optimizer:
-  * replace time limit detection algorithm
-  * add pi signed change detection to build a new constraint remaining list
+### Small changes
 
-* benchmark:
-  * fix sort functor behaviour
-
-* main:
-  * fix time-limit parameter assignation
-  * missing or malformed parameters equal error
-  * fix infinity norm string
-  * add a `--debug` mode.
-
-* CMake:
-  * reduce warning level for msvc
-  * use the BUILD_SHARED_LIBS CMake option to build share library. Default, a
-     static library is build to enable all internal test that use private API.
+* `bit_array` replaces `std::vector<bool>` in the solvers.
+* `std::string_view` and a string buffer replace `std::string` in the
+  problem; ostream output replaced with fmt formatters.
+* modern CMake; fmt bumped to 6.1.2.
+* fixes: time limit detection, long objective functions, real/integer
+  tokens.
 
 ## baryonyx v0.4.0 - 2019-02-19
 
-Bump C++ dependency to C++17 standard.
+* C++17 is required.
+* the output messages are sent through callbacks of the context (used by
+  the R package to release the terminal).
+* random normalization improved with a linear interpolation; the `rng`
+  norm is renamed `random`.
+* benchmark mode: statistics csv output and ranks using the objective type.
+* clang-tidy support; removal of the sparse vector and dead code.
 
-main::
+## baryonyx v0.3.4 - 2019-01-17
 
-* benchmark: add a second output `csv` file with the rank for each solvers and
-  models to show best solver.
-
-solver/optimizer::
-
-* Optimize all solver algorithms to improve performance: rewrite and
-  generalize.
-
-* Improve the `best-cycle` algorithm: is no best solution was found for three
-  complete optimization, solver restart to `bastert-cycle`.
-
-* Fix the initialization cycle behaviour.
-
-* Fix the random normalization behaviour.
-
-* Remove useless header (sparse-vector etc), dead code.
-
-== baryonyx v0.3.4 - 2019-01-17
-
-main::
-
-* benchmark: add a benchmark mode to permit to run benchmark on a set of
-  problems described in a `csv` files and make easy comparison.
-
-* colours: improve colour rendering in log system. Replace specific Linux/Unix
-  source code about colour in (pseudo)terminal with the `fmt::text_style` and
-  `fmt::terminal_color` enumeration.
-
-* add warning message for unknown parameters
-
-solver/optimizer::
-
-* core: add init policy cycle:
-  ** `bastert` (default): use cost values.
-  ** `random`: use random value.
-  ** `best`: use best solution found if available (`bastert` otherwise).
-  ** `bastert-cycle`: start with bastert policy then start a cycle between
-       random, best and bastert.
-  ** `random-cycle`: start with random policy then start a cycle between best,
-       bastert and random.
-  ** `best-cycle`: start with best policy then start a cycle between bastert,
-       random and best.
-
-* core: add lagrangian runtime constraint order.
-  ** `lagrangian-decr`: sort violated constraints according to the Lagrangian
-     multiplier values in decremental order.
-  ** `lagrangian-incr`: sort violated constraints according to the Lagrangian
-     multiplier values in incremental order
+* runtime constraint order based on the Lagrangian multipliers.
+* benchmark mode (`--bench`) with csv output.
+* `cycle` init policy; warning on unknown parameters.
+* GitLab CI and AppVeyor static artifacts; fmt bumped to 5.3.0.
 
 ## baryonyx v0.3.3 - 2018-10-04
 
-main::
-
-* output: better render output float number
-
-solver/optimizer::
-
-* Fix the preference matrix assignment for both equalities and inequalities
-  with -1 and 1 coefficients, we replace the preference matrix clean up
-  algorithm (invert the variable values for negative coefficients) with a
-  version that revert only the added or subtracted value during the preferences
-  update process.
-* Fix core dump if no solution are found
-
-preprocessor::
-
-* update the preprocessing solver option: Replace the old preprocessing option
-  with new one but without description (p1, p2, p3 and p4). Options are `none`
-  to use the raw_problem (or lp file) order for constraints and variables.
-  `memory`, the default, to use the raw_problem (or lp file) order for
-  constraints but sort the variables to improve the memory cache efficiency.
+* sparse vectors in the equalities-101 solvers.
+* exception for badly defined problems in merged constraints.
+* fixes: core dump without solution, preference matrix assignment, pi
+  assignment without selected variable.
+* R: `pre_constraint_order` parameter.
 
 ## baryonyx v0.3.2 - 2018-09-24
 
-solver/optimizer::
-
-* Be sure to always return the correct solution value (if any), the
-  status (success, time-limit, kappa-limit, loop-limit) and the
-  remaining constraints.
-* Fix optimizer algorithm to store best constraints remaining
-  solution.
-* Fix push system in solver
-
-general::
-
-* add storage policy option to select the result solution vector
-  policy (one best solution, best and worst solution and the five best
-  solution).
-* bump fmt library to v5.2.0
-
-preprocessor::
-
-* detect and affect variable affected in bound.
-
-main::
-
-* Add the `storage-type` option with a string parameter (one, bound
-  and five).
+* preprocessor: variables fixed by a bound are affected.
+* improved branch and optimize algorithms; fmt bumped to 5.2.0.
 
 ## baryonyx v0.3.1 - 2018-09-18
 
-main::
-
-* fix typo in constraint-order parameter.
-* fix exception output message.
-
-preprocessor::
-
-* replace the old preprocessor algorithm. The new one is better to remove
-  constraints and variables and fix some issues.
-
-solver::
-
-* print solver parameters before solve/optimize
-
-parser::
-
-* fix the reading of the constraint label.
-* add a default label to constraints.
-* remove function elements where factors equals 0.
-* merge function elements in constraints or in the objective function where
-  variable index appears several times.
-* remove constraints with empty function element vector.
-
-problem::
-
-* fix the coefficient_type function
+* new preprocessor algorithm.
+* the optimizer starts with the user's parameters.
+* solver parameters printed before solve and optimize.
+* fixes: constraint label reading, exception output.
 
 ## baryonyx v0.3.0 - 2018-09-11
 
-general::
+* solvers split by constraint type (equalities and inequalities, 01, 101
+  and Z coefficients), an experimental buffered solver, a branch and bound
+  for Z coefficients.
+* push system in solve mode; dynamic `delta`; init policies (`bastert`,
+  random); default parameters from Bastert.
+* optimizer: NLopt and manual automatic parameter tuning, thread and seed
+  parameters, branch algorithm.
+* preprocessor: affect and split functions, problem type detection.
+* PNM and file observers of the solver.
+* fmt replaces iostream; README and NEWS in AsciiDoc; Visual Studio support
+  with AppVeyor.
 
-* enable x86 and x86-64 for both Release and Debug with Visual Studio
-  2017
+## baryonyx v0.2.3.0 - 2017-11-20
 
-solver::
+* preprocessor: improved removal of unused variables.
 
-* Add small optimizer meta-heuristic algorithm, option `--auto:`:
-** `none` without specific algorithm.
-** `manual` tries to update parameters to found best solution.
-** `nlopt` tries to update parameters to found best solution using
-   nlopt library and the Nelder Mead algorithm.
-** `branch` split recursively original problem to found best solution.
-** `branch-manual` mix branch and manual algorithm.
-** `branch-nlopt` mix branch and nlopt algorithm.
+## baryonyx v0.2.2.0 - 2017-10-13
 
-+ Add observation mechanism, option `-p observer:`:
-** `none` no observation (default).
-** `pnm` produce picture files for the P matrix (one per loop) and Pi
-   vector (Lagrangian multipliers) each loop
-** `file` produce CSV files for the P matrix (one per loop) and Pi
-   vector (Lagrangian multipliers) each loop
+* fixes: crash with empty constraints or variables, greedy
+  constraints/variables remover.
 
-* Add solvers:
-** equalities 01
-** equalities 101
-** inequalities 01
-** inequalities 101
-** inequalities 101 buffered (experimental)
-** inequalities Z (experimental)
+## baryonyx v0.2.1.0 - 2017-10-06
 
-* Update solver and main to enable the use of float (4 bytes), double
-  (8 bytes) or long double (16 bytes for x86_64) for reduce costs,
-  kappa, delta and preference matrix etc. Default is the use of
-  double. To change the solver internal representation use the
-  following command:
+* `l+oo` norm; help message lists all parameters.
+* fixes: `--check` option, objective function cleanup in the preprocessor.
 
-   $ baryonyx [...] --param floating-point-type=float|double|longdouble
+## baryonyx v0.2.0.0 - 2017-10-03
 
-* For constraints matrix A, add new static order for constraints (`-p
-  preprocessing=option`) where option is defined as:
-** `none` (default): use the lp format constraint order.
-** `less,greater,equal` or `greater,less,equal` or any other form: use
-   the type of operator
-** `variables-number` (experimental): use number variable links.
-** `variables-weight` (experimental): sort variables weights (sum
-   variable appearance in all constraints).
-** `constraints-weight` (experimental): use number constraint links.
+* generic LP preprocessor.
+* cost norms: l1, l2, infinity, random and none.
+* temporary solutions written during optimization; external solution
+  checker.
 
-* Add push system for solving process
-* Add parameters in solution file
-* Show violated constraints in solve mode
+## baryonyx v0.1.0.0 - 2017-09-19
 
-core::
-
-* Objective function now use double instead of integer.
-
-* Replace `serialize` with `print-level` in option to show information
-  (e.g.  with `print-level=1` with the solve mode, violated
-  constraints are displayed.
-
-cmake::
-
-* CMake use two options WITH_DEBUG (ON default), WITH_LOG (ON
-  default).
-** WITH_LOG enables logging system (using the BARYONYX_ENABLE_DEBUG
-   preprocessor definition).
-** WITH_DEBUG enable debug messages in logging system and some debug
-   information (using the BARYONYX_ENABLE_DEBUG preprocessor
-   definition).
-* Add the nlopt dependency (optional) to perform automatic parameters
-  optimization.
+* first release: generalized Wedelin algorithm for 0-1 linear programs,
+  LP file reader, solve and optimize (`-O`) modes, static library with a
+  pkg-config file, R package.

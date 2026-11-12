@@ -4,7 +4,7 @@ build-backend = "scikit_build_core.build"
 
 [project]
 name = "baryonyx"
-version = "0.5.0"
+version = "0.6.0"
 description = "0-1 integer linear programming with the Wedelin heuristic"
 readme = { file = "README.adoc", content-type = "text/plain" }
 license = { file = "LICENSE" }
