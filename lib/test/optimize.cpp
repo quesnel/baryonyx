@@ -255,6 +255,44 @@ main()
         }
     };
 
+    "test_lns_feasibility_jump"_test = [] {
+        // With one thread and a few milliseconds, restart ends without
+        // solution on geom-30a and the feasibility jump phase finds one; on
+        // prevl1 the first phases exceed the budget and lns must still stop.
+        const std::pair<const char*, bool> cases[] = {
+            { EXAMPLES_DIR "/geom-30a-3-ext_1000_support.lp", true },
+            { EXAMPLES_DIR "/prevl1.lp", false }
+        };
+
+        for (const auto [file, must_succeed] : cases) {
+            auto ctx = baryonyx::make_context(0);
+            auto pb = baryonyx::make_problem(ctx, file);
+            const auto copy = pb;
+
+            baryonyx::solver_parameters params;
+            params.time_limit = 0.01;
+            params.seed = 1;
+            params.thread = 1;
+            params.optimizer =
+              baryonyx::solver_parameters::optimizer_type::lns;
+            baryonyx::context_set_solver_parameters(ctx, params);
+
+            const auto start = std::chrono::steady_clock::now();
+            auto result = baryonyx::optimize(ctx, pb);
+            const auto seconds = std::chrono::duration<double>(
+                                   std::chrono::steady_clock::now() - start)
+                                   .count();
+
+            expect(seconds < 5.0) << file;
+            if (must_succeed)
+                expect((result.status == baryonyx::result_status::success) >>
+                       fatal)
+                  << file;
+            if (result.status == baryonyx::result_status::success)
+                expect(baryonyx::is_valid_solution(copy, result)) << file;
+        }
+    };
+
     "test_request_stop"_test = [] {
         // Without time limit the optimization only ends on request_stop(),
         // with its best solution; the next optimization is not stopped.

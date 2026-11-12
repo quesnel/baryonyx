@@ -147,13 +147,14 @@ private:
 };
 
 /**
- * Descent to a local optimum of the full problem: a variable that no recent
- * neighbourhood freed keeps a costly value the sub-problems never see.
+ * The full problem in the form of the local searches: merged constraints and
+ * a minimized objective, built once for the polish of each candidate and
+ * for the feasibility jump phase.
  */
-class full_problem_polisher
+class full_problem
 {
 public:
-    full_problem_polisher(const bx::context& ctx, const bx::problem& pb)
+    full_problem(const bx::context& ctx, const bx::problem& pb)
       : m_objective(bx::itm::minimization_objective(pb))
       , m_constraints(bx::itm::make_merged_constraints(ctx, pb))
       , m_polish(m_constraints, bx::length(pb.vars.values))
@@ -167,37 +168,85 @@ public:
             m_quadratic.emplace(m_objective, n);
     }
 
-    // The cost functions keep a reference to m_objective.
-    full_problem_polisher(const full_problem_polisher&) = delete;
-    full_problem_polisher& operator=(const full_problem_polisher&) = delete;
+    // The cost functions and the searches keep references to the members.
+    full_problem(const full_problem&) = delete;
+    full_problem& operator=(const full_problem&) = delete;
 
     /**
+     * Descent to a local optimum: a variable that no recent neighbourhood
+     * freed keeps a costly value the sub-problems never see.
+     *
      * @param changed the variables changed since @c x was a local optimum,
      *     an empty span checks every variable.
      * @return true if @c x changed.
      */
-    bool operator()(std::vector<std::int8_t>& x, std::span<const int> changed)
+    bool polish(std::vector<std::int8_t>& x, std::span<const int> changed)
     {
-        for (int j = 0, e = m_x.size(); j != e; ++j)
-            m_x.set(j, x[static_cast<std::size_t>(j)] != 0);
+        load(x);
 
         const auto moves = m_linear ? m_polish(m_x, *m_linear, changed)
                                     : m_polish(m_x, *m_quadratic, changed);
         if (moves == 0)
             return false;
 
-        for (int j = 0, e = m_x.size(); j != e; ++j)
-            x[static_cast<std::size_t>(j)] = static_cast<std::int8_t>(m_x[j]);
-
+        store(x);
         return true;
     }
 
+    /**
+     * Weighted flip search from @c x until it is feasible or @c stop returns
+     * true. The constraint weights persist between calls.
+     *
+     * @return true if @c x is now a solution.
+     */
+    template<typename Stop>
+    bool jump(std::vector<std::int8_t>& x,
+              bx::xoshiro256pp& rng,
+              const Stop& stop)
+    {
+        if (m_linear && !m_linear_search)
+            m_linear_search.emplace(m_constraints, *m_linear, m_x.size());
+        if (m_quadratic && !m_quadratic_search)
+            m_quadratic_search.emplace(
+              m_constraints, *m_quadratic, m_x.size());
+
+        load(x);
+
+        const auto flip_limit = bx::itm::repair_flip_limit(
+          m_x.size(), bx::length(m_constraints));
+        int remaining = 1;
+        while (remaining != 0 && !stop() && !bx::is_stop_requested())
+            remaining =
+              m_linear_search
+                ? (*m_linear_search)(m_x, rng, flip_limit, stop)
+                : (*m_quadratic_search)(m_x, rng, flip_limit, stop);
+
+        store(x);
+        return remaining == 0;
+    }
+
 private:
+    void load(const std::vector<std::int8_t>& x)
+    {
+        for (int j = 0, e = m_x.size(); j != e; ++j)
+            m_x.set(j, x[static_cast<std::size_t>(j)] != 0);
+    }
+
+    void store(std::vector<std::int8_t>& x) const
+    {
+        for (int j = 0, e = m_x.size(); j != e; ++j)
+            x[static_cast<std::size_t>(j)] = static_cast<std::int8_t>(m_x[j]);
+    }
+
     bx::objective_function m_objective;
     std::vector<bx::itm::merged_constraint> m_constraints;
     bx::itm::polisher m_polish;
     std::optional<bx::itm::default_cost_type> m_linear;
     std::optional<bx::itm::quadratic_cost_type> m_quadratic;
+    std::optional<bx::itm::weighted_flip_search<bx::itm::default_cost_type>>
+      m_linear_search;
+    std::optional<bx::itm::weighted_flip_search<bx::itm::quadratic_cost_type>>
+      m_quadratic_search;
     bx::bit_array m_x;
 };
 
@@ -264,7 +313,23 @@ optimize(const bx::context& ctx, const bx::problem& pb)
 
     using optimizer_type = bx::solver_parameters::optimizer_type;
 
+    internal.parameters = ctx.parameters;
+    full_problem full(internal, pb);
+    bx::xoshiro256pp rng(
+      ctx.parameters.seed > 0
+        ? static_cast<bx::xoshiro256pp::result_type>(ctx.parameters.seed)
+        : 1u);
+
+    const auto n = pb.vars.values.size();
+    std::unordered_map<std::string_view, int> index;
+    index.reserve(n);
+    for (std::size_t i = 0; i != n; ++i)
+        index.emplace(pb.vars.names[i], static_cast<int>(i));
+
     bx::result best;
+    std::string_view first_by;
+    double first_at = 0.0;
+
     const auto run = [&](optimizer_type optimizer, double time_limit) {
         if (bx::is_stop_requested())
             return;
@@ -276,33 +341,73 @@ optimize(const bx::context& ctx, const bx::problem& pb)
         auto ret = bx::itm::optimize(internal, pb);
         if (ret || ret.remaining_constraints < best.remaining_constraints)
             best = std::move(ret);
+        if (best) {
+            first_by = optimizer == optimizer_type::tuned ? "tuned" : "restart";
+            first_at = elapsed();
+        }
     };
 
-    // A first solution with restart, then with tuned parameters, which find
-    // one on parameter-sensitive problems. With a time limit: a quarter, then
-    // half of it; a candidate of the tuned optimizer must not tune again and
-    // keeps searching with restart instead. Without time limit: alternate
-    // both with doubling durations until a solution is found.
+    // Searches feasibility only, from the assignment of the best infeasible
+    // run: Wedelin can end with violated constraints on problems where a
+    // weighted flip search finds a solution in a fraction of a second.
+    std::vector<std::int8_t> x(n, 0);
+    const auto jump = [&](double until) {
+        if (bx::is_stop_requested() || best || n == 0)
+            return;
+
+        if (!best.solutions.empty()) {
+            std::fill(x.begin(), x.end(), 0);
+            merge(pb, best, index, x);
+        }
+
+        if (!full.jump(x, rng, [&]() { return elapsed() >= until; }) ||
+            !bx::is_valid_solution(pb, x))
+            return;
+
+        best.status = bx::result_status::success;
+        best.strings = pb.strings;
+        best.affected_vars = pb.affected_vars;
+        best.variable_name = pb.vars.names;
+        best.variables = static_cast<int>(n);
+        best.remaining_constraints = 0;
+        best.solutions.assign(1, bx::solution(x, bx::compute_solution(pb, x)));
+        first_by = "feasibility jump";
+        first_at = elapsed();
+    };
+
+    // A first solution with restart, then with feasibility jump, then with
+    // tuned parameters, which find one on parameter-sensitive problems. With
+    // a time limit: a quarter for restart, a tenth for feasibility jump,
+    // which succeeds within a fraction of a second or not at all, and half
+    // for tuned, so that lns keeps time to improve a late first solution. A
+    // candidate of the tuned optimizer must not tune again and keeps
+    // searching with restart instead, without feasibility jump which would
+    // take its time and hide the quality of its parameters. Without time
+    // limit: repeat the three with doubling durations until a solution is
+    // found.
     if (unbounded) {
         for (double t = 1.0; !best && !bx::is_stop_requested(); t *= 2.0) {
             run(optimizer_type::restart, t);
+            jump(elapsed() + t);
             if (!best)
                 run(optimizer_type::tuned, 2.0 * t);
         }
     } else {
         run(optimizer_type::restart, 0.25 * budget);
-        if (!best) {
-            if (ctx.tuning)
-                run(optimizer_type::restart, 0.75 * budget);
-            else
-                run(optimizer_type::tuned, 0.5 * budget);
+        // A time limit of zero means no limit for the optimizers.
+        if (ctx.tuning) {
+            if (const double left = budget - elapsed(); !best && left > 0.0)
+                run(optimizer_type::restart, left);
+        } else {
+            jump(elapsed() + 0.1 * budget);
+            if (const double left = budget - elapsed(); !best && left > 0.0)
+                run(optimizer_type::tuned, std::min(0.5 * budget, left));
         }
     }
 
     internal.parameters = ctx.parameters;
     internal.parameters.optimizer = optimizer_type::restart;
 
-    const auto n = pb.vars.values.size();
     if (!best || n == 0 || best.solutions.empty() ||
         best.solutions.back().variables.size() != n) {
         if (ctx.finish)
@@ -310,24 +415,19 @@ optimize(const bx::context& ctx, const bx::problem& pb)
         return best;
     }
 
-    std::vector<std::int8_t> x = best.solutions.back().variables;
-    full_problem_polisher polish(internal, pb);
-    polish(x, {});
+    bx::notice(ctx,
+               "  - lns optimizer: first solution at {:.3f}s by {}\n",
+               first_at,
+               first_by);
+
+    x = best.solutions.back().variables;
+    full.polish(x, {});
     double value = bx::compute_solution(pb, x);
 
     if (ctx.update)
         ctx.update(0, value, 0, elapsed(), 0);
 
-    std::unordered_map<std::string_view, int> index;
-    index.reserve(n);
-    for (std::size_t i = 0; i != n; ++i)
-        index.emplace(pb.vars.names[i], static_cast<int>(i));
-
     const constraint_graph graph(pb);
-    bx::xoshiro256pp rng(
-      ctx.parameters.seed > 0
-        ? static_cast<bx::xoshiro256pp::result_type>(ctx.parameters.seed)
-        : 1u);
 
     const double min_free = std::min<double>(20.0, static_cast<double>(n));
     const double max_free = std::max(min_free, 0.5 * static_cast<double>(n));
@@ -404,7 +504,7 @@ optimize(const bx::context& ctx, const bx::problem& pb)
                 changed.emplace_back(static_cast<int>(i));
 
         if (!changed.empty())
-            polish(candidate, changed);
+            full.polish(candidate, changed);
 
         const double candidate_value = bx::compute_solution(pb, candidate);
 

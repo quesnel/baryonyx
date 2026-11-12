@@ -399,8 +399,14 @@ the best solution.
   ignores the objective, until any thread finds one; it then runs Wedelin
   like the others. It finds solutions on problems where Wedelin alone ends
   with violated constraints. The final message gives the time and the origin
-  of the first solution. `lns` runs its sub-problems on 2 threads and does
-  not use it.
+  of the first solution. The first run of `lns` uses it the same way; its
+  sub-problems run on 2 threads without it.
+* When the first `restart` run of `lns` ends without solution, `lns` runs
+  feasibility jump on the full problem, from the assignment with the fewest
+  violated constraints, for a tenth of the time limit, whatever the number
+  of threads, then `tuned` for half of it. The `lns` runs that evaluate the
+  candidates of `tuned` skip this phase. The final message gives
+  the time and the phase of the first solution.
 * In solve mode, `thread` only matters for the buffered solver
   (`buffer-solver=1`).
 * The `seed` parameter makes a run reproducible for a given number of
