@@ -7,7 +7,7 @@ set_target_properties(app PROPERTIES
 
 target_compile_options(app
   PRIVATE
-  $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:GNU>>:
+  $<$<CXX_COMPILER_ID:AppleClang,Clang,GNU>:
       -pipe -march=native
       $<$<CONFIG:Debug>:-Og -Wall -Wextra>>
   $<$<CXX_COMPILER_ID:MSVC>:

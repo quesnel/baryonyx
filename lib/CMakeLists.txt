@@ -64,7 +64,7 @@ generate_export_header(libbaryonyx
 
 target_compile_options(libbaryonyx
   PRIVATE
-  $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:GNU>>:
+  $<$<CXX_COMPILER_ID:AppleClang,Clang,GNU>:
       -pipe -march=native
       $<$<CONFIG:Debug>:-Og -Wall -Wextra>>
   $<$<CXX_COMPILER_ID:MSVC>:
@@ -148,7 +148,7 @@ function(baryonyx_add_test test_name)
 
   target_compile_options(${test_name} BEFORE
     PRIVATE
-    $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:GNU>>:
+    $<$<CXX_COMPILER_ID:AppleClang,Clang,GNU>:
         -pipe -march=native
         $<$<CONFIG:Debug>:-Og -Wall -Wextra>>
     $<$<CXX_COMPILER_ID:MSVC>:
