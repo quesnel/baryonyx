@@ -101,6 +101,7 @@ int
 main()
 {
     using namespace boost::ut;
+    using namespace std::literals;
 
     "check_numeric_cast"_test = [] {
         int small_positive = 1;
@@ -139,13 +140,13 @@ main()
         baryonyx::itm::shared_subvector s;
         s.reserve(128);
 
-        expect(s.size() == 0);
+        expect(eq(s.size(), 0u));
 
         bool is_initialized = s.init(4);
         expect(is_initialized);
 
         auto id = s.emplace();
-        expect(s.size() == 4);
+        expect(eq(s.size(), 4u));
         expect(id == 0);
 
         for (baryonyx::itm::shared_subvector::size_type
@@ -156,7 +157,7 @@ main()
             s[i] = static_cast<std::int8_t>(i);
 
         auto id2 = s.emplace();
-        expect(s.size() == 8);
+        expect(eq(s.size(), 8u));
         expect(id2 == 4);
 
         for (baryonyx::itm::shared_subvector::size_type
@@ -169,46 +170,46 @@ main()
         for (baryonyx::itm::shared_subvector::size_type i = 0, e = s.size();
              i != e;
              ++i)
-            expect(s[i] == static_cast<int8_t>(i));
+            expect(eq(s[i], static_cast<int8_t>(i)));
 
         s.remove(id);
 
-        expect(s.size() == 8);
+        expect(eq(s.size(), 8u));
 
         auto id3 = s.emplace();
-        expect(s.size() == 8);
+        expect(eq(s.size(), 8u));
         expect(id3 == 0);
 
         is_initialized = s.init(5);
         expect(is_initialized);
-        expect(s.size() == 0);
+        expect(eq(s.size(), 0u));
 
         id = s.emplace();
         id2 = s.emplace();
         id3 = s.emplace();
 
-        expect(s.size() == 3u * 5u);
+        expect(eq(s.size(), 3u * 5u));
 
         for (unsigned int i = 0, e = s.size(); i != e; ++i)
             s[i] = static_cast<std::int8_t>(i);
 
         std::int8_t cmp = 0;
         for (auto [i, e] = s.element(id); i != e; ++i, ++cmp)
-            expect(cmp == s[i]);
+            expect(eq(cmp, s[i]));
         for (auto [i, e] = s.element(id2); i != e; ++i, ++cmp)
-            expect(cmp == s[i]);
+            expect(eq(cmp, s[i]));
         for (auto [i, e] = s.element(id3); i != e; ++i, ++cmp)
-            expect(cmp == s[i]);
+            expect(eq(cmp, s[i]));
 
         s.remove(id3);
         s.remove(id2);
         s.remove(id);
 
         // Elements of 5 bytes store the free list links at unaligned offsets.
-        expect(s.emplace() == id);
-        expect(s.emplace() == id2);
-        expect(s.emplace() == id3);
-        expect(s.size() == 3u * 5u);
+        expect(eq(s.emplace(), id));
+        expect(eq(s.emplace(), id2));
+        expect(eq(s.emplace(), id3));
+        expect(eq(s.size(), 3u * 5u));
     };
 
     "subvector_4096_16"_test = [] {
@@ -217,7 +218,7 @@ main()
         baryonyx::itm::shared_subvector s;
         s.reserve(size);
 
-        expect(s.size() == 0);
+        expect(eq(s.size(), 0u));
 
         bool is_initialized = s.init(element_size);
         expect(is_initialized);
@@ -227,7 +228,7 @@ main()
         for (unsigned int i = 0; i != element_total; ++i) {
             auto id = s.emplace();
 
-            expect(id < size);
+            expect(lt(id, size));
             for (auto [si, se] = s.element(id); si != se; ++si)
                 s[si] = 99;
         }
@@ -235,7 +236,7 @@ main()
         unsigned element_removed = 0;
         for (unsigned int i = 0; i != element_total / 2; ++i) {
             for (auto [si, se] = s.element(i * element_size); si != se; ++si) {
-                expect(s[si] == 99);
+                expect(eq(s[si], 99));
                 s[si] = 77;
             }
 
@@ -243,12 +244,12 @@ main()
             ++element_removed;
         }
 
-        expect(element_removed == element_total / 2);
+        expect(eq(element_removed, element_total / 2));
 
         for (unsigned int i = 0; i != element_removed; ++i) {
             auto id = s.emplace();
 
-            expect(id < size);
+            expect(lt(id, size));
             for (auto [si, se] = s.element(id); si != se; ++si)
                 s[si] = 0;
         }
@@ -263,7 +264,7 @@ main()
         baryonyx::itm::shared_subvector s;
         s.reserve(size);
 
-        expect(s.size() == 0);
+        expect(eq(s.size(), 0u));
 
         bool is_initialized = s.init(element_size);
         expect(is_initialized);
@@ -273,7 +274,7 @@ main()
         for (unsigned int i = 0; i != element_total; ++i) {
             auto id = s.emplace();
 
-            expect(id < size);
+            expect(lt(id, size));
             for (auto [si, se] = s.element(id); si != se; ++si)
                 s[si] = 99;
         }
@@ -281,7 +282,7 @@ main()
         unsigned element_removed = 0;
         for (unsigned int i = 0; i != element_total / 2; ++i) {
             for (auto [si, se] = s.element(i * element_size); si != se; ++si) {
-                expect(s[si] == 99);
+                expect(eq(s[si], 99));
                 s[si] = 77;
             }
 
@@ -289,12 +290,12 @@ main()
             ++element_removed;
         }
 
-        expect(element_removed == element_total / 2);
+        expect(eq(element_removed, element_total / 2));
 
         for (unsigned int i = 0; i != element_removed; ++i) {
             auto id = s.emplace();
 
-            expect(id < size);
+            expect(lt(id, size));
             for (auto [si, se] = s.element(id); si != se; ++si)
                 s[si] = 0;
         }
@@ -326,8 +327,8 @@ main()
             expect(result >= -1 && result <= static_cast<int>(R.size()));
 
             auto [r, f] = sum(R, nb, result);
-            expect(f == 25);
-            expect(r == 11.0);
+            expect(eq(f, 25));
+            expect(eq(r, 11.0));
         }
 
         {
@@ -343,8 +344,8 @@ main()
             expect(result >= -1 && result <= static_cast<int>(R.size()));
 
             auto [r, f] = sum(R, nb, result);
-            expect(f == 7);
-            expect(r == 42.0);
+            expect(eq(f, 7));
+            expect(eq(r, 42.0));
         }
 
         {
@@ -360,8 +361,8 @@ main()
             expect(result >= -1 && result <= static_cast<int>(R.size()));
 
             auto [r, f] = sum(R, nb, result);
-            expect(f == -2);
-            expect(r == 2.0); // Strange ?!?
+            expect(eq(f, -2));
+            expect(eq(r, 2.0)); // Strange ?!?
         }
 
         baryonyx::itm::branch_and_bound_solver<baryonyx::itm::minimize_tag>
@@ -374,7 +375,7 @@ main()
             };
 
             auto result = bb_min.solve(R, 4, 0, 4);
-            expect(result == -1);
+            expect(eq(result, -1));
         }
 
         {
@@ -419,7 +420,7 @@ main()
             std::vector<cst> C = { { 2 }, { 3 } };
 
             ex.build_constraints(0, C, 0, 1);
-            expect(ex.solve(0, R, 2) == -1);
+            expect(eq(ex.solve(0, R, 2), -1));
         }
 
         {
@@ -441,8 +442,8 @@ main()
             expect(result >= -1 && result <= static_cast<int>(R.size()));
 
             auto [r, f] = sum(R, nb, result);
-            expect(f == 25);
-            expect(r == 11.0);
+            expect(eq(f, 25));
+            expect(eq(r, 11.0));
         }
 
         {
@@ -465,8 +466,8 @@ main()
             expect(result >= -1 && result <= static_cast<int>(R.size()));
 
             auto [r, f] = sum(R, nb, result);
-            expect(f == 7);
-            expect(r == 42.0);
+            expect(eq(f, 7));
+            expect(eq(r, 42.0));
         }
 
         {
@@ -489,8 +490,8 @@ main()
             expect(result >= -1 && result <= static_cast<int>(R.size()));
 
             auto [r, f] = sum(R, nb, result);
-            expect(f == -2);
-            expect(r == 4.0);
+            expect(eq(f, -2));
+            expect(eq(r, 4.0));
         }
 
         {
@@ -514,8 +515,8 @@ main()
                 expect(result >= -1 && result <= static_cast<int>(R1.size()));
 
                 auto [r, f] = sum(R1, 4, result);
-                expect(f == -2);
-                expect(r == 4.0);
+                expect(eq(f, -2));
+                expect(eq(r, 4.0));
             }
 
             {
@@ -523,8 +524,8 @@ main()
                 expect(result >= -1 && result <= static_cast<int>(R2.size()));
 
                 auto [r, f] = sum(R2, 2, result);
-                expect(f == -1);
-                expect(r == 1.0);
+                expect(eq(f, -1));
+                expect(eq(r, 1.0));
             }
         }
     };
@@ -533,7 +534,7 @@ main()
         baryonyx::random_engine rng(42);
 
         const auto seeds = baryonyx::itm::generate_seed(rng, 256u);
-        expect(seeds.size() == 256u);
+        expect(eq(seeds.size(), 256u));
 
         auto sorted = seeds;
         std::ranges::sort(sorted);
@@ -555,32 +556,32 @@ main()
                                      { { { -1, 1 }, { 4, 2 } } } };
 
         baryonyx::sparse_matrix<int> m(csts, 2, 3);
-        expect(m.length() == 4);
+        expect(eq(m.length(), 4));
 
         auto [rb, re] = m.row(1);
-        expect(std::distance(rb, re) == 2);
+        expect(eq(std::distance(rb, re), 2));
         expect(rb->column == 1 && (rb + 1)->column == 2);
 
         auto [cb, ce] = m.column(2);
-        expect(std::distance(cb, ce) == 2);
+        expect(eq(std::distance(cb, ce), 2));
         expect(cb->row == 0 && (cb + 1)->row == 1);
         expect(cb->value == 1 && (cb + 1)->value == 3);
         expect(cb->factor == 3 && (cb + 1)->factor == 4);
 
         auto [c0b, c0e] = m.column(0);
-        expect(std::distance(c0b, c0e) == 1);
+        expect(eq(std::distance(c0b, c0e), 1));
 
         static_assert(sizeof(baryonyx::sparse_matrix<>::col_value) ==
                       2 * sizeof(int));
 
         const baryonyx::sparse_matrix<> unweighted(csts, 2, 3);
         auto [ub, ue] = unweighted.column(2);
-        expect(std::distance(ub, ue) == 2);
+        expect(eq(std::distance(ub, ue), 2));
         expect(ub->row == 0 && (ub + 1)->value == 3);
 
         const std::vector<cst> empty_rows(2);
         baryonyx::sparse_matrix<int> empty(empty_rows, 2, 3);
-        expect(empty.length() == 0);
+        expect(eq(empty.length(), 0));
         auto [eb, ee] = empty.column(1);
         expect(eb == ee);
     };
@@ -588,16 +589,16 @@ main()
     "check_xoshiro256pp"_test = [] {
         // Reference values from the authors' C code with splitmix64 seeding.
         baryonyx::xoshiro256pp rng(1);
-        expect(rng() == 0xcfc5d07f6f03c29bULL);
-        expect(rng() == 0xbf424132963fe08dULL);
-        expect(rng() == 0x19a37d5757aaf520ULL);
+        expect(eq(rng(), 0xcfc5d07f6f03c29bULL));
+        expect(eq(rng(), 0xbf424132963fe08dULL));
+        expect(eq(rng(), 0x19a37d5757aaf520ULL));
 
         baryonyx::xoshiro256pp same(1), other(2);
         rng.seed(1);
         for (int i = 0; i != 100; ++i)
-            expect(rng() == same());
+            expect(eq(rng(), same()));
         rng.seed(1);
-        expect(rng() != other());
+        expect(neq(rng(), other()));
     };
 
     "check_random_distributions"_test = [] {
@@ -605,9 +606,9 @@ main()
         // algorithms: these draws must not depend on the platform.
         {
             baryonyx::xoshiro256pp rng(1);
-            expect(baryonyx::uniform_below(rng, 1000) == 387u);
-            expect(baryonyx::uniform_below(rng, 1000) == 965u);
-            expect(baryonyx::uniform_below(rng, 1000) == 744u);
+            expect(eq(baryonyx::uniform_below(rng, 1000), 387u));
+            expect(eq(baryonyx::uniform_below(rng, 1000), 965u));
+            expect(eq(baryonyx::uniform_below(rng, 1000), 744u));
         }
 
         {
@@ -626,7 +627,7 @@ main()
             for (int i = 0; i != draws; ++i)
                 ++buckets[baryonyx::uniform_below(rng, 10)];
             for (const int count : buckets)
-                expect(std::abs(count - draws / 10) < draws / 100);
+                expect(lt(std::abs(count - draws / 10), draws / 100));
         }
 
         {
@@ -634,7 +635,7 @@ main()
             int heads = 0;
             for (int i = 0; i != draws; ++i)
                 heads += coin(rng) ? 1 : 0;
-            expect(std::abs(heads - draws * 3 / 10) < draws / 100);
+            expect(lt(std::abs(heads - draws * 3 / 10), draws / 100));
 
             baryonyx::bernoulli_distribution never(0.0), always(1.0);
             expect(!never(rng) && always(rng));
@@ -672,15 +673,15 @@ main()
             }
             const double mean = sum / draws;
             const double variance = sum_sq / draws - mean * mean;
-            expect(std::abs(mean - 1.0) < 0.02);
-            expect(std::abs(std::sqrt(variance) - 2.0) < 0.02);
+            expect(lt(std::abs(mean - 1.0), 0.02));
+            expect(lt(std::abs(std::sqrt(variance) - 2.0), 0.02));
         }
     };
 
     "check_parallel_for"_test = [] {
         for (const int threads : { 1, 2, 4 }) {
             baryonyx::parallel_for pool(threads);
-            expect(pool.thread_number() == threads);
+            expect(eq(pool.thread_number(), threads));
 
             std::vector<int> visits(1000, 0);
             auto body = [&visits](int i) { ++visits[i]; };
@@ -695,13 +696,13 @@ main()
             auto count = [&calls](int) { ++calls; };
             pool.run(0, count);
             pool.run(1, count);
-            expect(calls == 1);
+            expect(eq(calls, 1));
         }
     };
 
     "check_pnm_iterator"_test = [] {
         baryonyx::pnm_array pnm(1, 3);
-        expect((!!pnm) >> fatal);
+        expect(fatal(!!pnm));
 
         auto first = pnm.begin();
         auto it = first;
@@ -783,26 +784,26 @@ main()
     "check_trim_functions"_test = [] {
         {
             std::string str = "    xxxx    ";
-            expect(baryonyx::left_trim(str) == "xxxx    ");
-            expect(baryonyx::right_trim(str) == "    xxxx");
-            expect(baryonyx::trim(str) == "xxxx");
-            expect(str == "    xxxx    ");
+            expect(eq(baryonyx::left_trim(str), "xxxx    "sv));
+            expect(eq(baryonyx::right_trim(str), "    xxxx"sv));
+            expect(eq(baryonyx::trim(str), "xxxx"sv));
+            expect(eq(str, "    xxxx    "sv));
         }
 
         {
             std::string str = "xxxx    ";
-            expect(baryonyx::left_trim(str) == "xxxx    ");
-            expect(baryonyx::right_trim(str) == "xxxx");
-            expect(baryonyx::trim(str) == "xxxx");
-            expect(str == "xxxx    ");
+            expect(eq(baryonyx::left_trim(str), "xxxx    "sv));
+            expect(eq(baryonyx::right_trim(str), "xxxx"sv));
+            expect(eq(baryonyx::trim(str), "xxxx"sv));
+            expect(eq(str, "xxxx    "sv));
         }
 
         {
             std::string str = "    xxxx";
-            expect(baryonyx::left_trim(str) == "xxxx");
-            expect(baryonyx::right_trim(str) == "    xxxx");
-            expect(baryonyx::trim(str) == "xxxx");
-            expect(str == "    xxxx");
+            expect(eq(baryonyx::left_trim(str), "xxxx"sv));
+            expect(eq(baryonyx::right_trim(str), "    xxxx"sv));
+            expect(eq(baryonyx::trim(str), "xxxx"sv));
+            expect(eq(str, "    xxxx"sv));
         }
 
         {
@@ -810,7 +811,7 @@ main()
             expect(baryonyx::left_trim(str).empty());
             expect(baryonyx::right_trim(str).empty());
             expect(baryonyx::trim(str).empty());
-            expect(str == "    ");
+            expect(eq(str, "    "sv));
         }
 
         {
@@ -823,37 +824,37 @@ main()
 
         {
             std::string str = "abc";
-            expect(baryonyx::left_trim(str) == "abc");
-            expect(baryonyx::right_trim(str) == "abc");
-            expect(baryonyx::trim(str) == "abc");
-            expect(str == "abc");
+            expect(eq(baryonyx::left_trim(str), "abc"sv));
+            expect(eq(baryonyx::right_trim(str), "abc"sv));
+            expect(eq(baryonyx::trim(str), "abc"sv));
+            expect(eq(str, "abc"sv));
         }
     };
 
     "check_bit_array"_test = [] {
         baryonyx::bit_array a(100);
 
-        expect(a.size() == 100);
-        expect(a.block_size() ==
-               1 + (100 / baryonyx::bit_array::bit_per_block));
+        expect(eq(a.size(), 100));
+        expect(
+          eq(a.block_size(), 1 + (100 / baryonyx::bit_array::bit_per_block)));
 
         a.zeros();
         for (auto i = 0; i != a.size(); ++i)
-            expect(a.get(i) == 0);
+            expect(eq(a.get(i), 0));
 
         a.ones();
         for (auto i = 0; i != a.size(); ++i)
-            expect(a.get(i) == 1);
+            expect(eq(a.get(i), 1));
 
         for (auto i = 0; i != a.size(); ++i)
             a.unset(i);
         for (auto i = 0; i != a.size(); ++i)
-            expect(a.get(i) == 0);
+            expect(eq(a.get(i), 0));
 
         for (auto i = 0; i != a.size(); ++i)
             a.set(i);
         for (auto i = 0; i != a.size(); ++i)
-            expect(a.get(i) == 1);
+            expect(eq(a.get(i), 1));
 
         for (auto i = 0; i != a.size(); i += 2)
             a.unset(i);
@@ -868,12 +869,12 @@ main()
 
         for (auto i = 0; i != a.size(); ++i) {
             a.set(i, i % 3 == 0);
-            expect(a.get(i) == (i % 3 == 0 ? 1 : 0));
+            expect(eq(a.get(i), (i % 3 == 0 ? 1 : 0)));
         }
 
         constexpr auto bits = baryonyx::bit_array::bit_per_block;
-        expect(baryonyx::bit_array(bits * 2).block_size() == 2);
-        expect(baryonyx::bit_array(bits * 2 + 1).block_size() == 3);
+        expect(eq(baryonyx::bit_array(bits * 2).block_size(), 2));
+        expect(eq(baryonyx::bit_array(bits * 2 + 1).block_size(), 3));
 
         // Bits past size() stay zero, so equal contents compare and hash
         // equal whatever the way they were written.
@@ -882,8 +883,8 @@ main()
         for (auto i = 0; i != by_set.size(); ++i)
             by_set.set(i);
         expect(by_ones == by_set);
-        expect(baryonyx::bit_array_hash()(by_ones) ==
-               baryonyx::bit_array_hash()(by_set));
+        expect(eq(baryonyx::bit_array_hash()(by_ones),
+                  baryonyx::bit_array_hash()(by_set)));
 
         by_set.set_block(1, baryonyx::bit_array::k_ones);
         expect(by_ones == by_set);
@@ -913,8 +914,8 @@ main()
             x.set(5);
 
             expect(!satisfies(x, spp));
-            expect(baryonyx::itm::repair(x, spp, unit_costs{}, 6, rng, 10000) ==
-                   0);
+            expect(eq(
+              baryonyx::itm::repair(x, spp, unit_costs{}, 6, rng, 10000), 0));
             expect(satisfies(x, spp));
         }
 
@@ -932,8 +933,8 @@ main()
             x.set(2);
             x.set(3);
 
-            expect(baryonyx::itm::repair(x, z, unit_costs{}, 4, rng, 10000) ==
-                   0);
+            expect(
+              eq(baryonyx::itm::repair(x, z, unit_costs{}, 4, rng, 10000), 0));
             expect(satisfies(x, z));
         }
 
@@ -944,8 +945,8 @@ main()
 
         baryonyx::random_engine rng(7);
         baryonyx::bit_array x(2);
-        expect(baryonyx::itm::repair(x, impossible, unit_costs{}, 2, rng, 500) ==
-               1);
+        expect(eq(
+          baryonyx::itm::repair(x, impossible, unit_costs{}, 2, rng, 500), 1));
 
         // From scratch, with weights kept between the starting solutions.
         {
@@ -956,7 +957,7 @@ main()
 
             for (int attempt = 0; attempt != 5; ++attempt) {
                 baryonyx::bit_array x(6);
-                expect(search(x, rng, 10000, []() { return false; }) == 0);
+                expect(eq(search(x, rng, 10000, []() { return false; }), 0));
                 expect(satisfies(x, spp));
             }
         }
@@ -976,7 +977,7 @@ main()
         const baryonyx::solver_parameters user;
         const int variants = baryonyx::length(portfolio_variants);
 
-        expect(portfolio_variant_index(user, 0) == -1);
+        expect(eq(portfolio_variant_index(user, 0), -1));
 
         std::vector<int> seen;
         for (unsigned thread = 1; thread <= unsigned(variants); ++thread)
@@ -985,16 +986,16 @@ main()
         expect(std::adjacent_find(seen.begin(), seen.end()) == seen.end());
         expect(seen.front() == 0 && seen.back() == variants - 1);
 
-        expect(portfolio_variant_index(user, unsigned(variants) + 1) ==
-               portfolio_variant_index(user, 1));
+        expect(eq(portfolio_variant_index(user, unsigned(variants) + 1),
+                  portfolio_variant_index(user, 1)));
 
         // A variant equal to the user's parameters is skipped.
         auto loo = user;
         loo.cost_norm = baryonyx::solver_parameters::cost_norm_type::loo;
         for (unsigned thread = 1; thread != 20; ++thread) {
             const auto variant = portfolio_variant_index(loo, thread);
-            expect(variant >= 0);
-            expect(portfolio_variants[variant].name != "norm=loo");
+            expect(ge(variant, 0));
+            expect(neq(portfolio_variants[variant].name, "norm=loo"sv));
         }
     };
 
@@ -1013,7 +1014,7 @@ main()
             x.set(1);
 
             polisher polish(cover, 2);
-            expect(polish(x, vector_costs{ { 1, 2 } }) == 1);
+            expect(eq(polish(x, vector_costs{ { 1, 2 } }), 1));
             expect(x[0] == 1 && x[1] == 0);
             expect(satisfies(x, cover));
         }
@@ -1029,13 +1030,13 @@ main()
             x.set(3);
 
             polisher polish(partition, 5);
-            expect(polish(x, vector_costs{ { 3, 1, 2, 1, 4 } }) == 1);
+            expect(eq(polish(x, vector_costs{ { 3, 1, 2, 1, 4 } }), 1));
             expect(x[0] == 0 && x[1] == 1 && x[2] == 0);
             expect(x[3] == 1 && x[4] == 0);
             expect(satisfies(x, partition));
 
             // A local optimum stays unchanged.
-            expect(polish(x, vector_costs{ { 3, 1, 2, 1, 4 } }) == 0);
+            expect(eq(polish(x, vector_costs{ { 3, 1, 2, 1, 4 } }), 0));
             expect(x[1] == 1 && x[3] == 1);
         }
 
@@ -1056,10 +1057,10 @@ main()
             x.set(1);
 
             polisher polish(none, 3);
-            expect(polish(x, costs) == 2);
-            expect(x[0] + x[1] == 1);
-            expect(x[2] == 1);
-            expect(costs.results(x, 0) == -3);
+            expect(eq(polish(x, costs), 2));
+            expect(eq(x[0] + x[1], 1));
+            expect(eq(x[2], 1));
+            expect(eq(costs.results(x, 0), -3));
         }
 
         // Only the changed variables and their neighbours are checked.
@@ -1076,7 +1077,7 @@ main()
 
             polisher polish(rows, 4);
             const std::vector<int> changed{ 0 };
-            expect(polish(x, vector_costs{ { 1, 2, 1, 2 } }, changed) == 1);
+            expect(eq(polish(x, vector_costs{ { 1, 2, 1, 2 } }, changed), 1));
             expect(x[1] == 0 && x[3] == 1);
         }
     };

@@ -169,6 +169,7 @@ int
 main()
 {
     using namespace boost::ut;
+    using namespace std::literals;
 
     "missing solution file"_test = [] {
         auto ctx = baryonyx::make_context(0);
@@ -183,7 +184,7 @@ main()
         auto ctx = baryonyx::make_context(0);
         const auto pb =
           baryonyx::make_problem(ctx, EXAMPLES_DIR "/assignment_problem_1.lp");
-        expect(pb >> fatal);
+        expect(fatal(pb));
 
         const char* filename = "baryonyx-io-test.sol";
         const auto read = [&](const char* content) {
@@ -216,12 +217,12 @@ main()
         // Blank lines, spaces around names and values and Windows line ends
         // are accepted.
         const auto loose = read("\\ comment\n\n  a = 1 \r\n\tb=0\n");
-        expect((!!loose) >> fatal);
-        expect(loose.variable_name.size() == 2u);
-        expect(loose.variable_name[0] == "a");
-        expect(loose.variable_name[1] == "b");
-        expect(loose.solutions.back().variables[0] == 1);
-        expect(loose.solutions.back().variables[1] == 0);
+        expect(fatal(!!loose));
+        expect(eq(loose.variable_name.size(), 2u));
+        expect(eq(loose.variable_name[0], "a"sv));
+        expect(eq(loose.variable_name[1], "b"sv));
+        expect(eq(loose.solutions.back().variables[0], 1));
+        expect(eq(loose.solutions.back().variables[1], 0));
 
         // Values other than 0 or 1, missing names, duplicated variables and
         // files without assignment are rejected with their line.
@@ -234,15 +235,15 @@ main()
             return -1;
         };
 
-        expect(failure_line("a=1\nb=\n") == 2);
-        expect(failure_line("a=7\n") == 1);
-        expect(failure_line("a=-1\n") == 1);
-        expect(failure_line("a=1abc\n") == 1);
-        expect(failure_line("=1\n") == 1);
-        expect(failure_line("a\n") == 1);
-        expect(failure_line("\\ c\na=1\na=0\n") == 3);
-        expect(failure_line("") == 0);
-        expect(failure_line("\\ only a comment\n") == 1);
+        expect(eq(failure_line("a=1\nb=\n"), 2));
+        expect(eq(failure_line("a=7\n"), 1));
+        expect(eq(failure_line("a=-1\n"), 1));
+        expect(eq(failure_line("a=1abc\n"), 1));
+        expect(eq(failure_line("=1\n"), 1));
+        expect(eq(failure_line("a\n"), 1));
+        expect(eq(failure_line("\\ c\na=1\na=0\n"), 3));
+        expect(eq(failure_line(""), 0));
+        expect(eq(failure_line("\\ only a comment\n"), 1));
     };
 
     "constraints without term"_test = [] {
@@ -264,12 +265,12 @@ main()
         auto ctx = baryonyx::make_context(0);
         std::istringstream iss(example);
         auto pb = baryonyx::make_problem(*ctx, iss);
-        expect((!!pb) >> fatal);
+        expect(fatal(!!pb));
         expect(pb.equal_constraints.empty());
-        expect(pb.greater_constraints.size() == 1_ul);
-        expect(pb.less_constraints.size() == 1_ul);
-        expect(pb.greater_constraints[0].id == 0_i);
-        expect(pb.less_constraints[0].id == 1_i);
+        expect(eq(pb.greater_constraints.size(), 1_ul));
+        expect(eq(pb.less_constraints.size(), 1_ul));
+        expect(eq(pb.greater_constraints[0].id, 0_i));
+        expect(eq(pb.less_constraints[0].id, 1_i));
 
         for (const char* invalid :
              { "c: = 1\n", "c: >= 1\n", "c: x - x <= -1\n" }) {
@@ -293,14 +294,14 @@ main()
         auto pb = baryonyx::make_problem(*ctx, iss);
         expect(pb);
         expect(pb.type == baryonyx::objective_function_type::maximize);
-        expect(pb.objective.elements.size() == 3_ul);
-        expect(pb.objective.elements[0].factor == 1_i);
-        expect(pb.objective.elements[0].variable_index == 0_i);
-        expect(pb.objective.elements[1].factor == 2_i);
-        expect(pb.objective.elements[1].variable_index == 1_i);
-        expect(pb.objective.elements[2].factor == 3_i);
-        expect(pb.objective.elements[2].variable_index == 2_i);
-        expect(pb.objective.value == -100.0_d);
+        expect(eq(pb.objective.elements.size(), 3_ul));
+        expect(eq(pb.objective.elements[0].factor, 1_i));
+        expect(eq(pb.objective.elements[0].variable_index, 0_i));
+        expect(eq(pb.objective.elements[1].factor, 2_i));
+        expect(eq(pb.objective.elements[1].variable_index, 1_i));
+        expect(eq(pb.objective.elements[2].factor, 3_i));
+        expect(eq(pb.objective.elements[2].variable_index, 2_i));
+        expect(eq(pb.objective.value, -100.0_d));
     };
 
     "no-named objective"_test = [] {
@@ -314,12 +315,12 @@ main()
         auto pb = baryonyx::make_problem(*ctx, iss);
         expect(pb);
         expect(pb.type == baryonyx::objective_function_type::maximize);
-        expect(pb.objective.elements.size() == 0_ul);
-        expect(pb.vars.names.size() == 3_ul);
-        expect(pb.vars.values.size() == 3_ul);
-        expect(pb.less_constraints.size() == 0_ul);
-        expect(pb.greater_constraints.size() == 0_ul);
-        expect(pb.equal_constraints.size() == 1_ul);
+        expect(eq(pb.objective.elements.size(), 0_ul));
+        expect(eq(pb.vars.names.size(), 3_ul));
+        expect(eq(pb.vars.values.size(), 3_ul));
+        expect(eq(pb.less_constraints.size(), 0_ul));
+        expect(eq(pb.greater_constraints.size(), 0_ul));
+        expect(eq(pb.equal_constraints.size(), 1_ul));
     };
 
     "factor before a variable named e"_test = [] {
@@ -335,8 +336,8 @@ main()
         auto ctx = baryonyx::make_context(4);
         std::istringstream iss(example);
         auto pb = baryonyx::make_problem(*ctx, iss);
-        expect((!!pb) >> fatal);
-        expect(pb.vars.names.size() == 5_ul);
+        expect(fatal(!!pb));
+        expect(eq(pb.vars.names.size(), 5_ul));
 
         const auto factor_of = [&pb](std::string_view name) {
             for (const auto& elem : pb.objective.elements)
@@ -345,11 +346,11 @@ main()
             return 0.0;
         };
 
-        expect(factor_of("e") == 2.0_d);
-        expect(factor_of("E") == -2.5_d);
-        expect(factor_of("x") == 20.0_d);
-        expect(factor_of("y") == 15.0_d);
-        expect(factor_of("z") == -0.1_d);
+        expect(eq(factor_of("e"), 2.0_d));
+        expect(eq(factor_of("E"), -2.5_d));
+        expect(eq(factor_of("x"), 20.0_d));
+        expect(eq(factor_of("y"), 15.0_d));
+        expect(eq(factor_of("z"), -0.1_d));
     };
 
     "binary keeps bounds"_test = [] {
@@ -364,8 +365,8 @@ main()
             auto ctx = baryonyx::make_context(4);
             std::istringstream iss(example);
             auto pb = baryonyx::make_problem(*ctx, iss);
-            expect((!!pb) >> fatal);
-            expect((pb.vars.names.size() == 2_ul) >> fatal);
+            expect(fatal(!!pb));
+            expect(fatal(pb.vars.names.size() == 2_ul));
 
             for (std::size_t i = 0; i != pb.vars.names.size(); ++i) {
                 const auto& v = pb.vars.values[i];
@@ -396,57 +397,57 @@ main()
         auto pb = baryonyx::make_problem(*ctx, iss);
         expect(pb);
         expect(pb.type == baryonyx::objective_function_type::maximize);
-        expect(pb.objective.elements.size() == 3_ul);
-        expect(pb.objective.elements[0].factor == 1_i);
-        expect(pb.objective.elements[0].variable_index == 0_i);
-        expect(pb.objective.elements[1].factor == 2_i);
-        expect(pb.objective.elements[1].variable_index == 1_i);
-        expect(pb.objective.elements[2].factor == 3_i);
-        expect(pb.objective.elements[2].variable_index == 2_i);
-        expect(pb.objective.value == -100.0_d);
+        expect(eq(pb.objective.elements.size(), 3_ul));
+        expect(eq(pb.objective.elements[0].factor, 1_i));
+        expect(eq(pb.objective.elements[0].variable_index, 0_i));
+        expect(eq(pb.objective.elements[1].factor, 2_i));
+        expect(eq(pb.objective.elements[1].variable_index, 1_i));
+        expect(eq(pb.objective.elements[2].factor, 3_i));
+        expect(eq(pb.objective.elements[2].variable_index, 2_i));
+        expect(eq(pb.objective.value, -100.0_d));
 
-        expect(pb.vars.names.size() == 3_ul);
-        expect(pb.vars.values.size() == 3_ul);
-        expect(pb.less_constraints.size() == 3_ul);
+        expect(eq(pb.vars.names.size(), 3_ul));
+        expect(eq(pb.vars.values.size(), 3_ul));
+        expect(eq(pb.less_constraints.size(), 3_ul));
 
-        expect(pb.less_constraints[0].elements.size() == 3_ul);
-        expect(pb.less_constraints[0].elements[0].factor == -1);
-        expect(pb.less_constraints[0].elements[0].variable_index == 0_i);
-        expect(pb.less_constraints[0].elements[1].factor == 1_i);
-        expect(pb.less_constraints[0].elements[1].variable_index == 1_i);
-        expect(pb.less_constraints[0].elements[2].factor == 1_i);
-        expect(pb.less_constraints[0].elements[2].variable_index == 2_i);
-        expect(pb.less_constraints[0].value == 20);
+        expect(eq(pb.less_constraints[0].elements.size(), 3_ul));
+        expect(eq(pb.less_constraints[0].elements[0].factor, -1));
+        expect(eq(pb.less_constraints[0].elements[0].variable_index, 0_i));
+        expect(eq(pb.less_constraints[0].elements[1].factor, 1_i));
+        expect(eq(pb.less_constraints[0].elements[1].variable_index, 1_i));
+        expect(eq(pb.less_constraints[0].elements[2].factor, 1_i));
+        expect(eq(pb.less_constraints[0].elements[2].variable_index, 2_i));
+        expect(eq(pb.less_constraints[0].value, 20));
 
-        expect(pb.less_constraints[1].elements.size() == 3_ul);
-        expect(pb.less_constraints[1].elements[0].factor == 1_i);
-        expect(pb.less_constraints[1].elements[0].variable_index == 0_i);
-        expect(pb.less_constraints[1].elements[1].factor == -3_i);
-        expect(pb.less_constraints[1].elements[1].variable_index == 1_i);
-        expect(pb.less_constraints[1].elements[2].factor == 1_i);
-        expect(pb.less_constraints[1].elements[2].variable_index == 2_i);
-        expect(pb.less_constraints[1].value == 30);
+        expect(eq(pb.less_constraints[1].elements.size(), 3_ul));
+        expect(eq(pb.less_constraints[1].elements[0].factor, 1_i));
+        expect(eq(pb.less_constraints[1].elements[0].variable_index, 0_i));
+        expect(eq(pb.less_constraints[1].elements[1].factor, -3_i));
+        expect(eq(pb.less_constraints[1].elements[1].variable_index, 1_i));
+        expect(eq(pb.less_constraints[1].elements[2].factor, 1_i));
+        expect(eq(pb.less_constraints[1].elements[2].variable_index, 2_i));
+        expect(eq(pb.less_constraints[1].value, 30));
 
-        expect(pb.less_constraints[2].elements.size() == 3_ul);
-        expect(pb.less_constraints[1].elements[0].factor == 1_i);
-        expect(pb.less_constraints[2].elements[0].variable_index == 0_i);
-        expect(pb.less_constraints[2].elements[1].factor == -3_i);
-        expect(pb.less_constraints[2].elements[1].variable_index == 1_i);
-        expect(pb.less_constraints[2].elements[2].factor == 1_i);
-        expect(pb.less_constraints[2].elements[2].variable_index == 2_i);
-        expect(pb.less_constraints[2].value == -5);
+        expect(eq(pb.less_constraints[2].elements.size(), 3_ul));
+        expect(eq(pb.less_constraints[1].elements[0].factor, 1_i));
+        expect(eq(pb.less_constraints[2].elements[0].variable_index, 0_i));
+        expect(eq(pb.less_constraints[2].elements[1].factor, -3_i));
+        expect(eq(pb.less_constraints[2].elements[1].variable_index, 1_i));
+        expect(eq(pb.less_constraints[2].elements[2].factor, 1_i));
+        expect(eq(pb.less_constraints[2].elements[2].variable_index, 2_i));
+        expect(eq(pb.less_constraints[2].value, -5));
 
-        expect(pb.vars.names[0] == "x1");
-        expect(pb.vars.names[1] == "x2");
-        expect(pb.vars.names[2] == "x3");
+        expect(eq(pb.vars.names[0], "x1"sv));
+        expect(eq(pb.vars.names[1], "x2"sv));
+        expect(eq(pb.vars.names[2], "x3"sv));
 
-        expect(pb.vars.values[0].min == 0_i);
-        expect(pb.vars.values[1].min == 0_i);
-        expect(pb.vars.values[2].min == 0_i);
+        expect(eq(pb.vars.values[0].min, 0_i));
+        expect(eq(pb.vars.values[1].min, 0_i));
+        expect(eq(pb.vars.values[2].min, 0_i));
 
-        expect(pb.vars.values[0].max == 40_i);
-        expect(pb.vars.values[1].max == std::numeric_limits<int>::max());
-        expect(pb.vars.values[2].max == std::numeric_limits<int>::max());
+        expect(eq(pb.vars.values[0].max, 40_i));
+        expect(eq(pb.vars.values[1].max, std::numeric_limits<int>::max()));
+        expect(eq(pb.vars.values[2].max, std::numeric_limits<int>::max()));
     };
 
     "quadratic lp"_test = [] {
@@ -468,60 +469,60 @@ main()
 
         expect(pb);
         expect(pb.type == baryonyx::objective_function_type::maximize);
-        expect(pb.objective.elements.size() == 3);
-        expect(pb.objective.elements[0].factor == 1);
-        expect(pb.objective.elements[0].variable_index == 0);
-        expect(pb.objective.elements[1].factor == 2);
-        expect(pb.objective.elements[1].variable_index == 1);
-        expect(pb.objective.elements[2].factor == 3);
-        expect(pb.objective.elements[2].variable_index == 2);
+        expect(eq(pb.objective.elements.size(), 3u));
+        expect(eq(pb.objective.elements[0].factor, 1));
+        expect(eq(pb.objective.elements[0].variable_index, 0));
+        expect(eq(pb.objective.elements[1].factor, 2));
+        expect(eq(pb.objective.elements[1].variable_index, 1));
+        expect(eq(pb.objective.elements[2].factor, 3));
+        expect(eq(pb.objective.elements[2].variable_index, 2));
 
-        expect(pb.objective.qelements.size() == 0);
+        expect(eq(pb.objective.qelements.size(), 0u));
 
-        expect(pb.objective.value == -100);
+        expect(eq(pb.objective.value, -100));
 
-        expect(pb.vars.names.size() == 3);
-        expect(pb.vars.values.size() == 3);
-        expect(pb.less_constraints.size() == 3);
+        expect(eq(pb.vars.names.size(), 3u));
+        expect(eq(pb.vars.values.size(), 3u));
+        expect(eq(pb.less_constraints.size(), 3u));
 
-        expect(pb.less_constraints[0].elements.size() == 3);
-        expect(pb.less_constraints[0].elements[0].factor == -1);
-        expect(pb.less_constraints[0].elements[0].variable_index == 0);
-        expect(pb.less_constraints[0].elements[1].factor == 1);
-        expect(pb.less_constraints[0].elements[1].variable_index == 1);
-        expect(pb.less_constraints[0].elements[2].factor == 1);
-        expect(pb.less_constraints[0].elements[2].variable_index == 2);
-        expect(pb.less_constraints[0].value == 20);
+        expect(eq(pb.less_constraints[0].elements.size(), 3u));
+        expect(eq(pb.less_constraints[0].elements[0].factor, -1));
+        expect(eq(pb.less_constraints[0].elements[0].variable_index, 0));
+        expect(eq(pb.less_constraints[0].elements[1].factor, 1));
+        expect(eq(pb.less_constraints[0].elements[1].variable_index, 1));
+        expect(eq(pb.less_constraints[0].elements[2].factor, 1));
+        expect(eq(pb.less_constraints[0].elements[2].variable_index, 2));
+        expect(eq(pb.less_constraints[0].value, 20));
 
-        expect(pb.less_constraints[1].elements.size() == 3);
-        expect(pb.less_constraints[1].elements[0].factor == 1);
-        expect(pb.less_constraints[1].elements[0].variable_index == 0);
-        expect(pb.less_constraints[1].elements[1].factor == -3);
-        expect(pb.less_constraints[1].elements[1].variable_index == 1);
-        expect(pb.less_constraints[1].elements[2].factor == 1);
-        expect(pb.less_constraints[1].elements[2].variable_index == 2);
-        expect(pb.less_constraints[1].value == 30);
+        expect(eq(pb.less_constraints[1].elements.size(), 3u));
+        expect(eq(pb.less_constraints[1].elements[0].factor, 1));
+        expect(eq(pb.less_constraints[1].elements[0].variable_index, 0));
+        expect(eq(pb.less_constraints[1].elements[1].factor, -3));
+        expect(eq(pb.less_constraints[1].elements[1].variable_index, 1));
+        expect(eq(pb.less_constraints[1].elements[2].factor, 1));
+        expect(eq(pb.less_constraints[1].elements[2].variable_index, 2));
+        expect(eq(pb.less_constraints[1].value, 30));
 
-        expect(pb.less_constraints[2].elements.size() == 3);
-        expect(pb.less_constraints[1].elements[0].factor == 1);
-        expect(pb.less_constraints[2].elements[0].variable_index == 0);
-        expect(pb.less_constraints[2].elements[1].factor == -3);
-        expect(pb.less_constraints[2].elements[1].variable_index == 1);
-        expect(pb.less_constraints[2].elements[2].factor == 1);
-        expect(pb.less_constraints[2].elements[2].variable_index == 2);
-        expect(pb.less_constraints[2].value == -5);
+        expect(eq(pb.less_constraints[2].elements.size(), 3u));
+        expect(eq(pb.less_constraints[1].elements[0].factor, 1));
+        expect(eq(pb.less_constraints[2].elements[0].variable_index, 0));
+        expect(eq(pb.less_constraints[2].elements[1].factor, -3));
+        expect(eq(pb.less_constraints[2].elements[1].variable_index, 1));
+        expect(eq(pb.less_constraints[2].elements[2].factor, 1));
+        expect(eq(pb.less_constraints[2].elements[2].variable_index, 2));
+        expect(eq(pb.less_constraints[2].value, -5));
 
-        expect(pb.vars.names[0] == "x1");
-        expect(pb.vars.names[1] == "x2");
-        expect(pb.vars.names[2] == "x3");
+        expect(eq(pb.vars.names[0], "x1"sv));
+        expect(eq(pb.vars.names[1], "x2"sv));
+        expect(eq(pb.vars.names[2], "x3"sv));
 
-        expect(pb.vars.values[0].min == 0);
-        expect(pb.vars.values[1].min == 0);
-        expect(pb.vars.values[2].min == 0);
+        expect(eq(pb.vars.values[0].min, 0));
+        expect(eq(pb.vars.values[1].min, 0));
+        expect(eq(pb.vars.values[2].min, 0));
 
-        expect(pb.vars.values[0].max == 40);
-        expect(pb.vars.values[1].max == std::numeric_limits<int>::max());
-        expect(pb.vars.values[2].max == std::numeric_limits<int>::max());
+        expect(eq(pb.vars.values[0].max, 40));
+        expect(eq(pb.vars.values[1].max, std::numeric_limits<int>::max()));
+        expect(eq(pb.vars.values[2].max, std::numeric_limits<int>::max()));
     };
 
     "quadratic 2"_test = [] {
@@ -543,70 +544,70 @@ main()
 
         expect(pb);
         expect(pb.type == baryonyx::objective_function_type::maximize);
-        expect(pb.objective.elements.size() == 3);
-        expect(pb.objective.elements[0].factor == 1);
-        expect(pb.objective.elements[0].variable_index == 0);
-        expect(pb.objective.elements[1].factor == 2);
-        expect(pb.objective.elements[1].variable_index == 1);
-        expect(pb.objective.elements[2].factor == 3);
-        expect(pb.objective.elements[2].variable_index == 2);
+        expect(eq(pb.objective.elements.size(), 3u));
+        expect(eq(pb.objective.elements[0].factor, 1));
+        expect(eq(pb.objective.elements[0].variable_index, 0));
+        expect(eq(pb.objective.elements[1].factor, 2));
+        expect(eq(pb.objective.elements[1].variable_index, 1));
+        expect(eq(pb.objective.elements[2].factor, 3));
+        expect(eq(pb.objective.elements[2].variable_index, 2));
 
-        expect(pb.objective.qelements.size() == 3);
+        expect(eq(pb.objective.qelements.size(), 3u));
 
-        expect(pb.objective.qelements[0].factor == 1.0 / 2.0);
-        expect(pb.objective.qelements[0].variable_index_a == 0);
-        expect(pb.objective.qelements[0].variable_index_b == 0);
-        expect(pb.objective.qelements[1].factor == 17.0 / 2.0);
-        expect(pb.objective.qelements[1].variable_index_a == 0);
-        expect(pb.objective.qelements[1].variable_index_b == 1);
-        expect(pb.objective.qelements[2].factor == -5.0 / 2.0);
-        expect(pb.objective.qelements[2].variable_index_a == 1);
-        expect(pb.objective.qelements[2].variable_index_b == 1);
+        expect(eq(pb.objective.qelements[0].factor, 1.0 / 2.0));
+        expect(eq(pb.objective.qelements[0].variable_index_a, 0));
+        expect(eq(pb.objective.qelements[0].variable_index_b, 0));
+        expect(eq(pb.objective.qelements[1].factor, 17.0 / 2.0));
+        expect(eq(pb.objective.qelements[1].variable_index_a, 0));
+        expect(eq(pb.objective.qelements[1].variable_index_b, 1));
+        expect(eq(pb.objective.qelements[2].factor, -5.0 / 2.0));
+        expect(eq(pb.objective.qelements[2].variable_index_a, 1));
+        expect(eq(pb.objective.qelements[2].variable_index_b, 1));
 
-        expect(pb.objective.value == -100);
+        expect(eq(pb.objective.value, -100));
 
-        expect(pb.vars.names.size() == 3);
-        expect(pb.vars.values.size() == 3);
-        expect(pb.less_constraints.size() == 3);
+        expect(eq(pb.vars.names.size(), 3u));
+        expect(eq(pb.vars.values.size(), 3u));
+        expect(eq(pb.less_constraints.size(), 3u));
 
-        expect(pb.less_constraints[0].elements.size() == 3);
-        expect(pb.less_constraints[0].elements[0].factor == -1);
-        expect(pb.less_constraints[0].elements[0].variable_index == 0);
-        expect(pb.less_constraints[0].elements[1].factor == 1);
-        expect(pb.less_constraints[0].elements[1].variable_index == 1);
-        expect(pb.less_constraints[0].elements[2].factor == 1);
-        expect(pb.less_constraints[0].elements[2].variable_index == 2);
-        expect(pb.less_constraints[0].value == 20);
+        expect(eq(pb.less_constraints[0].elements.size(), 3u));
+        expect(eq(pb.less_constraints[0].elements[0].factor, -1));
+        expect(eq(pb.less_constraints[0].elements[0].variable_index, 0));
+        expect(eq(pb.less_constraints[0].elements[1].factor, 1));
+        expect(eq(pb.less_constraints[0].elements[1].variable_index, 1));
+        expect(eq(pb.less_constraints[0].elements[2].factor, 1));
+        expect(eq(pb.less_constraints[0].elements[2].variable_index, 2));
+        expect(eq(pb.less_constraints[0].value, 20));
 
-        expect(pb.less_constraints[1].elements.size() == 3);
-        expect(pb.less_constraints[1].elements[0].factor == 1);
-        expect(pb.less_constraints[1].elements[0].variable_index == 0);
-        expect(pb.less_constraints[1].elements[1].factor == -3);
-        expect(pb.less_constraints[1].elements[1].variable_index == 1);
-        expect(pb.less_constraints[1].elements[2].factor == 1);
-        expect(pb.less_constraints[1].elements[2].variable_index == 2);
-        expect(pb.less_constraints[1].value == 30);
+        expect(eq(pb.less_constraints[1].elements.size(), 3u));
+        expect(eq(pb.less_constraints[1].elements[0].factor, 1));
+        expect(eq(pb.less_constraints[1].elements[0].variable_index, 0));
+        expect(eq(pb.less_constraints[1].elements[1].factor, -3));
+        expect(eq(pb.less_constraints[1].elements[1].variable_index, 1));
+        expect(eq(pb.less_constraints[1].elements[2].factor, 1));
+        expect(eq(pb.less_constraints[1].elements[2].variable_index, 2));
+        expect(eq(pb.less_constraints[1].value, 30));
 
-        expect(pb.less_constraints[2].elements.size() == 3);
-        expect(pb.less_constraints[1].elements[0].factor == 1);
-        expect(pb.less_constraints[2].elements[0].variable_index == 0);
-        expect(pb.less_constraints[2].elements[1].factor == -3);
-        expect(pb.less_constraints[2].elements[1].variable_index == 1);
-        expect(pb.less_constraints[2].elements[2].factor == 1);
-        expect(pb.less_constraints[2].elements[2].variable_index == 2);
-        expect(pb.less_constraints[2].value == -5);
+        expect(eq(pb.less_constraints[2].elements.size(), 3u));
+        expect(eq(pb.less_constraints[1].elements[0].factor, 1));
+        expect(eq(pb.less_constraints[2].elements[0].variable_index, 0));
+        expect(eq(pb.less_constraints[2].elements[1].factor, -3));
+        expect(eq(pb.less_constraints[2].elements[1].variable_index, 1));
+        expect(eq(pb.less_constraints[2].elements[2].factor, 1));
+        expect(eq(pb.less_constraints[2].elements[2].variable_index, 2));
+        expect(eq(pb.less_constraints[2].value, -5));
 
-        expect(pb.vars.names[0] == "x1");
-        expect(pb.vars.names[1] == "x2");
-        expect(pb.vars.names[2] == "x3");
+        expect(eq(pb.vars.names[0], "x1"sv));
+        expect(eq(pb.vars.names[1], "x2"sv));
+        expect(eq(pb.vars.names[2], "x3"sv));
 
-        expect(pb.vars.values[0].min == 0);
-        expect(pb.vars.values[1].min == 0);
-        expect(pb.vars.values[2].min == 0);
+        expect(eq(pb.vars.values[0].min, 0));
+        expect(eq(pb.vars.values[1].min, 0));
+        expect(eq(pb.vars.values[2].min, 0));
 
-        expect(pb.vars.values[0].max == 40);
-        expect(pb.vars.values[1].max == std::numeric_limits<int>::max());
-        expect(pb.vars.values[2].max == std::numeric_limits<int>::max());
+        expect(eq(pb.vars.values[0].max, 40));
+        expect(eq(pb.vars.values[1].max, std::numeric_limits<int>::max()));
+        expect(eq(pb.vars.values[2].max, std::numeric_limits<int>::max()));
     };
 
     "quadratic 3"_test = [] {
@@ -628,64 +629,64 @@ main()
 
         expect(pb);
         expect(pb.type == baryonyx::objective_function_type::maximize);
-        expect(pb.objective.elements.size() == 3);
-        expect(pb.objective.elements[0].factor == 1);
-        expect(pb.objective.elements[0].variable_index == 0);
-        expect(pb.objective.elements[1].factor == 2);
-        expect(pb.objective.elements[1].variable_index == 1);
-        expect(pb.objective.elements[2].factor == 3);
-        expect(pb.objective.elements[2].variable_index == 2);
+        expect(eq(pb.objective.elements.size(), 3u));
+        expect(eq(pb.objective.elements[0].factor, 1));
+        expect(eq(pb.objective.elements[0].variable_index, 0));
+        expect(eq(pb.objective.elements[1].factor, 2));
+        expect(eq(pb.objective.elements[1].variable_index, 1));
+        expect(eq(pb.objective.elements[2].factor, 3));
+        expect(eq(pb.objective.elements[2].variable_index, 2));
 
-        expect(pb.objective.qelements.size() == 1);
+        expect(eq(pb.objective.qelements.size(), 1u));
 
-        expect(pb.objective.qelements[0].factor == 13.0 / 2.0);
-        expect(pb.objective.qelements[0].variable_index_a == 0);
-        expect(pb.objective.qelements[0].variable_index_b == 1);
+        expect(eq(pb.objective.qelements[0].factor, 13.0 / 2.0));
+        expect(eq(pb.objective.qelements[0].variable_index_a, 0));
+        expect(eq(pb.objective.qelements[0].variable_index_b, 1));
 
-        expect(pb.objective.value == -100);
+        expect(eq(pb.objective.value, -100));
 
-        expect(pb.vars.names.size() == 3);
-        expect(pb.vars.values.size() == 3);
-        expect(pb.less_constraints.size() == 3);
+        expect(eq(pb.vars.names.size(), 3u));
+        expect(eq(pb.vars.values.size(), 3u));
+        expect(eq(pb.less_constraints.size(), 3u));
 
-        expect(pb.less_constraints[0].elements.size() == 3);
-        expect(pb.less_constraints[0].elements[0].factor == -1);
-        expect(pb.less_constraints[0].elements[0].variable_index == 0);
-        expect(pb.less_constraints[0].elements[1].factor == 1);
-        expect(pb.less_constraints[0].elements[1].variable_index == 1);
-        expect(pb.less_constraints[0].elements[2].factor == 1);
-        expect(pb.less_constraints[0].elements[2].variable_index == 2);
-        expect(pb.less_constraints[0].value == 20);
+        expect(eq(pb.less_constraints[0].elements.size(), 3u));
+        expect(eq(pb.less_constraints[0].elements[0].factor, -1));
+        expect(eq(pb.less_constraints[0].elements[0].variable_index, 0));
+        expect(eq(pb.less_constraints[0].elements[1].factor, 1));
+        expect(eq(pb.less_constraints[0].elements[1].variable_index, 1));
+        expect(eq(pb.less_constraints[0].elements[2].factor, 1));
+        expect(eq(pb.less_constraints[0].elements[2].variable_index, 2));
+        expect(eq(pb.less_constraints[0].value, 20));
 
-        expect(pb.less_constraints[1].elements.size() == 3);
-        expect(pb.less_constraints[1].elements[0].factor == 1);
-        expect(pb.less_constraints[1].elements[0].variable_index == 0);
-        expect(pb.less_constraints[1].elements[1].factor == -3);
-        expect(pb.less_constraints[1].elements[1].variable_index == 1);
-        expect(pb.less_constraints[1].elements[2].factor == 1);
-        expect(pb.less_constraints[1].elements[2].variable_index == 2);
-        expect(pb.less_constraints[1].value == 30);
+        expect(eq(pb.less_constraints[1].elements.size(), 3u));
+        expect(eq(pb.less_constraints[1].elements[0].factor, 1));
+        expect(eq(pb.less_constraints[1].elements[0].variable_index, 0));
+        expect(eq(pb.less_constraints[1].elements[1].factor, -3));
+        expect(eq(pb.less_constraints[1].elements[1].variable_index, 1));
+        expect(eq(pb.less_constraints[1].elements[2].factor, 1));
+        expect(eq(pb.less_constraints[1].elements[2].variable_index, 2));
+        expect(eq(pb.less_constraints[1].value, 30));
 
-        expect(pb.less_constraints[2].elements.size() == 3);
-        expect(pb.less_constraints[1].elements[0].factor == 1);
-        expect(pb.less_constraints[2].elements[0].variable_index == 0);
-        expect(pb.less_constraints[2].elements[1].factor == -3);
-        expect(pb.less_constraints[2].elements[1].variable_index == 1);
-        expect(pb.less_constraints[2].elements[2].factor == 1);
-        expect(pb.less_constraints[2].elements[2].variable_index == 2);
-        expect(pb.less_constraints[2].value == -5);
+        expect(eq(pb.less_constraints[2].elements.size(), 3u));
+        expect(eq(pb.less_constraints[1].elements[0].factor, 1));
+        expect(eq(pb.less_constraints[2].elements[0].variable_index, 0));
+        expect(eq(pb.less_constraints[2].elements[1].factor, -3));
+        expect(eq(pb.less_constraints[2].elements[1].variable_index, 1));
+        expect(eq(pb.less_constraints[2].elements[2].factor, 1));
+        expect(eq(pb.less_constraints[2].elements[2].variable_index, 2));
+        expect(eq(pb.less_constraints[2].value, -5));
 
-        expect(pb.vars.names[0] == "x1");
-        expect(pb.vars.names[1] == "x2");
-        expect(pb.vars.names[2] == "x3");
+        expect(eq(pb.vars.names[0], "x1"sv));
+        expect(eq(pb.vars.names[1], "x2"sv));
+        expect(eq(pb.vars.names[2], "x3"sv));
 
-        expect(pb.vars.values[0].min == 0);
-        expect(pb.vars.values[1].min == 0);
-        expect(pb.vars.values[2].min == 0);
+        expect(eq(pb.vars.values[0].min, 0));
+        expect(eq(pb.vars.values[1].min, 0));
+        expect(eq(pb.vars.values[2].min, 0));
 
-        expect(pb.vars.values[0].max == 40);
-        expect(pb.vars.values[1].max == std::numeric_limits<int>::max());
-        expect(pb.vars.values[2].max == std::numeric_limits<int>::max());
+        expect(eq(pb.vars.values[0].max, 40));
+        expect(eq(pb.vars.values[1].max, std::numeric_limits<int>::max()));
+        expect(eq(pb.vars.values[2].max, std::numeric_limits<int>::max()));
     };
 
     "quadratic 4"_test = [] {
@@ -707,60 +708,60 @@ main()
 
         expect(pb);
         expect(pb.type == baryonyx::objective_function_type::maximize);
-        expect(pb.objective.elements.size() == 3);
-        expect(pb.objective.elements[0].factor == 1);
-        expect(pb.objective.elements[0].variable_index == 0);
-        expect(pb.objective.elements[1].factor == 2);
-        expect(pb.objective.elements[1].variable_index == 1);
-        expect(pb.objective.elements[2].factor == 3);
-        expect(pb.objective.elements[2].variable_index == 2);
+        expect(eq(pb.objective.elements.size(), 3u));
+        expect(eq(pb.objective.elements[0].factor, 1));
+        expect(eq(pb.objective.elements[0].variable_index, 0));
+        expect(eq(pb.objective.elements[1].factor, 2));
+        expect(eq(pb.objective.elements[1].variable_index, 1));
+        expect(eq(pb.objective.elements[2].factor, 3));
+        expect(eq(pb.objective.elements[2].variable_index, 2));
 
-        expect(pb.objective.qelements.size() == 0);
+        expect(eq(pb.objective.qelements.size(), 0u));
 
-        expect(pb.objective.value == -100);
+        expect(eq(pb.objective.value, -100));
 
-        expect(pb.vars.names.size() == 3);
-        expect(pb.vars.values.size() == 3);
-        expect(pb.less_constraints.size() == 3);
+        expect(eq(pb.vars.names.size(), 3u));
+        expect(eq(pb.vars.values.size(), 3u));
+        expect(eq(pb.less_constraints.size(), 3u));
 
-        expect(pb.less_constraints[0].elements.size() == 3);
-        expect(pb.less_constraints[0].elements[0].factor == -1);
-        expect(pb.less_constraints[0].elements[0].variable_index == 0);
-        expect(pb.less_constraints[0].elements[1].factor == 1);
-        expect(pb.less_constraints[0].elements[1].variable_index == 1);
-        expect(pb.less_constraints[0].elements[2].factor == 1);
-        expect(pb.less_constraints[0].elements[2].variable_index == 2);
-        expect(pb.less_constraints[0].value == 20);
+        expect(eq(pb.less_constraints[0].elements.size(), 3u));
+        expect(eq(pb.less_constraints[0].elements[0].factor, -1));
+        expect(eq(pb.less_constraints[0].elements[0].variable_index, 0));
+        expect(eq(pb.less_constraints[0].elements[1].factor, 1));
+        expect(eq(pb.less_constraints[0].elements[1].variable_index, 1));
+        expect(eq(pb.less_constraints[0].elements[2].factor, 1));
+        expect(eq(pb.less_constraints[0].elements[2].variable_index, 2));
+        expect(eq(pb.less_constraints[0].value, 20));
 
-        expect(pb.less_constraints[1].elements.size() == 3);
-        expect(pb.less_constraints[1].elements[0].factor == 1);
-        expect(pb.less_constraints[1].elements[0].variable_index == 0);
-        expect(pb.less_constraints[1].elements[1].factor == -3);
-        expect(pb.less_constraints[1].elements[1].variable_index == 1);
-        expect(pb.less_constraints[1].elements[2].factor == 1);
-        expect(pb.less_constraints[1].elements[2].variable_index == 2);
-        expect(pb.less_constraints[1].value == 30);
+        expect(eq(pb.less_constraints[1].elements.size(), 3u));
+        expect(eq(pb.less_constraints[1].elements[0].factor, 1));
+        expect(eq(pb.less_constraints[1].elements[0].variable_index, 0));
+        expect(eq(pb.less_constraints[1].elements[1].factor, -3));
+        expect(eq(pb.less_constraints[1].elements[1].variable_index, 1));
+        expect(eq(pb.less_constraints[1].elements[2].factor, 1));
+        expect(eq(pb.less_constraints[1].elements[2].variable_index, 2));
+        expect(eq(pb.less_constraints[1].value, 30));
 
-        expect(pb.less_constraints[2].elements.size() == 3);
-        expect(pb.less_constraints[1].elements[0].factor == 1);
-        expect(pb.less_constraints[2].elements[0].variable_index == 0);
-        expect(pb.less_constraints[2].elements[1].factor == -3);
-        expect(pb.less_constraints[2].elements[1].variable_index == 1);
-        expect(pb.less_constraints[2].elements[2].factor == 1);
-        expect(pb.less_constraints[2].elements[2].variable_index == 2);
-        expect(pb.less_constraints[2].value == -5);
+        expect(eq(pb.less_constraints[2].elements.size(), 3u));
+        expect(eq(pb.less_constraints[1].elements[0].factor, 1));
+        expect(eq(pb.less_constraints[2].elements[0].variable_index, 0));
+        expect(eq(pb.less_constraints[2].elements[1].factor, -3));
+        expect(eq(pb.less_constraints[2].elements[1].variable_index, 1));
+        expect(eq(pb.less_constraints[2].elements[2].factor, 1));
+        expect(eq(pb.less_constraints[2].elements[2].variable_index, 2));
+        expect(eq(pb.less_constraints[2].value, -5));
 
-        expect(pb.vars.names[0] == "x1");
-        expect(pb.vars.names[1] == "x2");
-        expect(pb.vars.names[2] == "x3");
+        expect(eq(pb.vars.names[0], "x1"sv));
+        expect(eq(pb.vars.names[1], "x2"sv));
+        expect(eq(pb.vars.names[2], "x3"sv));
 
-        expect(pb.vars.values[0].min == 0);
-        expect(pb.vars.values[1].min == 0);
-        expect(pb.vars.values[2].min == 0);
+        expect(eq(pb.vars.values[0].min, 0));
+        expect(eq(pb.vars.values[1].min, 0));
+        expect(eq(pb.vars.values[2].min, 0));
 
-        expect(pb.vars.values[0].max == 40);
-        expect(pb.vars.values[1].max == std::numeric_limits<int>::max());
-        expect(pb.vars.values[2].max == std::numeric_limits<int>::max());
+        expect(eq(pb.vars.values[0].max, 40));
+        expect(eq(pb.vars.values[1].max, std::numeric_limits<int>::max()));
+        expect(eq(pb.vars.values[2].max, std::numeric_limits<int>::max()));
     };
 
     "quadratic 5"_test = [] {
@@ -782,70 +783,70 @@ main()
 
         expect(pb);
         expect(pb.type == baryonyx::objective_function_type::maximize);
-        expect(pb.objective.elements.size() == 3);
-        expect(pb.objective.elements[0].factor == 1);
-        expect(pb.objective.elements[0].variable_index == 0);
-        expect(pb.objective.elements[1].factor == 2);
-        expect(pb.objective.elements[1].variable_index == 1);
-        expect(pb.objective.elements[2].factor == 3);
-        expect(pb.objective.elements[2].variable_index == 2);
+        expect(eq(pb.objective.elements.size(), 3u));
+        expect(eq(pb.objective.elements[0].factor, 1));
+        expect(eq(pb.objective.elements[0].variable_index, 0));
+        expect(eq(pb.objective.elements[1].factor, 2));
+        expect(eq(pb.objective.elements[1].variable_index, 1));
+        expect(eq(pb.objective.elements[2].factor, 3));
+        expect(eq(pb.objective.elements[2].variable_index, 2));
 
-        expect(pb.objective.qelements.size() == 3);
+        expect(eq(pb.objective.qelements.size(), 3u));
 
-        expect(pb.objective.qelements[0].factor == -1.0 / 2.0);
-        expect(pb.objective.qelements[0].variable_index_a == 0);
-        expect(pb.objective.qelements[0].variable_index_b == 0);
-        expect(pb.objective.qelements[1].factor == -17.0 / 2.0);
-        expect(pb.objective.qelements[1].variable_index_a == 0);
-        expect(pb.objective.qelements[1].variable_index_b == 1);
-        expect(pb.objective.qelements[2].factor == 5.0 / 2.0);
-        expect(pb.objective.qelements[2].variable_index_a == 1);
-        expect(pb.objective.qelements[2].variable_index_b == 1);
+        expect(eq(pb.objective.qelements[0].factor, -1.0 / 2.0));
+        expect(eq(pb.objective.qelements[0].variable_index_a, 0));
+        expect(eq(pb.objective.qelements[0].variable_index_b, 0));
+        expect(eq(pb.objective.qelements[1].factor, -17.0 / 2.0));
+        expect(eq(pb.objective.qelements[1].variable_index_a, 0));
+        expect(eq(pb.objective.qelements[1].variable_index_b, 1));
+        expect(eq(pb.objective.qelements[2].factor, 5.0 / 2.0));
+        expect(eq(pb.objective.qelements[2].variable_index_a, 1));
+        expect(eq(pb.objective.qelements[2].variable_index_b, 1));
 
-        expect(pb.objective.value == -100);
+        expect(eq(pb.objective.value, -100));
 
-        expect(pb.vars.names.size() == 3);
-        expect(pb.vars.values.size() == 3);
-        expect(pb.less_constraints.size() == 3);
+        expect(eq(pb.vars.names.size(), 3u));
+        expect(eq(pb.vars.values.size(), 3u));
+        expect(eq(pb.less_constraints.size(), 3u));
 
-        expect(pb.less_constraints[0].elements.size() == 3);
-        expect(pb.less_constraints[0].elements[0].factor == -1);
-        expect(pb.less_constraints[0].elements[0].variable_index == 0);
-        expect(pb.less_constraints[0].elements[1].factor == 1);
-        expect(pb.less_constraints[0].elements[1].variable_index == 1);
-        expect(pb.less_constraints[0].elements[2].factor == 1);
-        expect(pb.less_constraints[0].elements[2].variable_index == 2);
-        expect(pb.less_constraints[0].value == 20);
+        expect(eq(pb.less_constraints[0].elements.size(), 3u));
+        expect(eq(pb.less_constraints[0].elements[0].factor, -1));
+        expect(eq(pb.less_constraints[0].elements[0].variable_index, 0));
+        expect(eq(pb.less_constraints[0].elements[1].factor, 1));
+        expect(eq(pb.less_constraints[0].elements[1].variable_index, 1));
+        expect(eq(pb.less_constraints[0].elements[2].factor, 1));
+        expect(eq(pb.less_constraints[0].elements[2].variable_index, 2));
+        expect(eq(pb.less_constraints[0].value, 20));
 
-        expect(pb.less_constraints[1].elements.size() == 3);
-        expect(pb.less_constraints[1].elements[0].factor == 1);
-        expect(pb.less_constraints[1].elements[0].variable_index == 0);
-        expect(pb.less_constraints[1].elements[1].factor == -3);
-        expect(pb.less_constraints[1].elements[1].variable_index == 1);
-        expect(pb.less_constraints[1].elements[2].factor == 1);
-        expect(pb.less_constraints[1].elements[2].variable_index == 2);
-        expect(pb.less_constraints[1].value == 30);
+        expect(eq(pb.less_constraints[1].elements.size(), 3u));
+        expect(eq(pb.less_constraints[1].elements[0].factor, 1));
+        expect(eq(pb.less_constraints[1].elements[0].variable_index, 0));
+        expect(eq(pb.less_constraints[1].elements[1].factor, -3));
+        expect(eq(pb.less_constraints[1].elements[1].variable_index, 1));
+        expect(eq(pb.less_constraints[1].elements[2].factor, 1));
+        expect(eq(pb.less_constraints[1].elements[2].variable_index, 2));
+        expect(eq(pb.less_constraints[1].value, 30));
 
-        expect(pb.less_constraints[2].elements.size() == 3);
-        expect(pb.less_constraints[1].elements[0].factor == 1);
-        expect(pb.less_constraints[2].elements[0].variable_index == 0);
-        expect(pb.less_constraints[2].elements[1].factor == -3);
-        expect(pb.less_constraints[2].elements[1].variable_index == 1);
-        expect(pb.less_constraints[2].elements[2].factor == 1);
-        expect(pb.less_constraints[2].elements[2].variable_index == 2);
-        expect(pb.less_constraints[2].value == -5);
+        expect(eq(pb.less_constraints[2].elements.size(), 3u));
+        expect(eq(pb.less_constraints[1].elements[0].factor, 1));
+        expect(eq(pb.less_constraints[2].elements[0].variable_index, 0));
+        expect(eq(pb.less_constraints[2].elements[1].factor, -3));
+        expect(eq(pb.less_constraints[2].elements[1].variable_index, 1));
+        expect(eq(pb.less_constraints[2].elements[2].factor, 1));
+        expect(eq(pb.less_constraints[2].elements[2].variable_index, 2));
+        expect(eq(pb.less_constraints[2].value, -5));
 
-        expect(pb.vars.names[0] == "x1");
-        expect(pb.vars.names[1] == "x2");
-        expect(pb.vars.names[2] == "x3");
+        expect(eq(pb.vars.names[0], "x1"sv));
+        expect(eq(pb.vars.names[1], "x2"sv));
+        expect(eq(pb.vars.names[2], "x3"sv));
 
-        expect(pb.vars.values[0].min == 0);
-        expect(pb.vars.values[1].min == 0);
-        expect(pb.vars.values[2].min == 0);
+        expect(eq(pb.vars.values[0].min, 0));
+        expect(eq(pb.vars.values[1].min, 0));
+        expect(eq(pb.vars.values[2].min, 0));
 
-        expect(pb.vars.values[0].max == 40);
-        expect(pb.vars.values[1].max == std::numeric_limits<int>::max());
-        expect(pb.vars.values[2].max == std::numeric_limits<int>::max());
+        expect(eq(pb.vars.values[0].max, 40));
+        expect(eq(pb.vars.values[1].max, std::numeric_limits<int>::max()));
+        expect(eq(pb.vars.values[2].max, std::numeric_limits<int>::max()));
     };
 
     "quadratic 6"_test = [] {
@@ -867,64 +868,64 @@ main()
 
         expect(pb);
         expect(pb.type == baryonyx::objective_function_type::maximize);
-        expect(pb.objective.elements.size() == 3);
-        expect(pb.objective.elements[0].factor == 1);
-        expect(pb.objective.elements[0].variable_index == 0);
-        expect(pb.objective.elements[1].factor == 2);
-        expect(pb.objective.elements[1].variable_index == 1);
-        expect(pb.objective.elements[2].factor == 3);
-        expect(pb.objective.elements[2].variable_index == 2);
+        expect(eq(pb.objective.elements.size(), 3u));
+        expect(eq(pb.objective.elements[0].factor, 1));
+        expect(eq(pb.objective.elements[0].variable_index, 0));
+        expect(eq(pb.objective.elements[1].factor, 2));
+        expect(eq(pb.objective.elements[1].variable_index, 1));
+        expect(eq(pb.objective.elements[2].factor, 3));
+        expect(eq(pb.objective.elements[2].variable_index, 2));
 
-        expect(pb.objective.qelements.size() == 1);
+        expect(eq(pb.objective.qelements.size(), 1u));
 
-        expect(pb.objective.qelements[0].factor == -13.0 / 2.0);
-        expect(pb.objective.qelements[0].variable_index_a == 0);
-        expect(pb.objective.qelements[0].variable_index_b == 1);
+        expect(eq(pb.objective.qelements[0].factor, -13.0 / 2.0));
+        expect(eq(pb.objective.qelements[0].variable_index_a, 0));
+        expect(eq(pb.objective.qelements[0].variable_index_b, 1));
 
-        expect(pb.objective.value == -100);
+        expect(eq(pb.objective.value, -100));
 
-        expect(pb.vars.names.size() == 3);
-        expect(pb.vars.values.size() == 3);
-        expect(pb.less_constraints.size() == 3);
+        expect(eq(pb.vars.names.size(), 3u));
+        expect(eq(pb.vars.values.size(), 3u));
+        expect(eq(pb.less_constraints.size(), 3u));
 
-        expect(pb.less_constraints[0].elements.size() == 3);
-        expect(pb.less_constraints[0].elements[0].factor == -1);
-        expect(pb.less_constraints[0].elements[0].variable_index == 0);
-        expect(pb.less_constraints[0].elements[1].factor == 1);
-        expect(pb.less_constraints[0].elements[1].variable_index == 1);
-        expect(pb.less_constraints[0].elements[2].factor == 1);
-        expect(pb.less_constraints[0].elements[2].variable_index == 2);
-        expect(pb.less_constraints[0].value == 20);
+        expect(eq(pb.less_constraints[0].elements.size(), 3u));
+        expect(eq(pb.less_constraints[0].elements[0].factor, -1));
+        expect(eq(pb.less_constraints[0].elements[0].variable_index, 0));
+        expect(eq(pb.less_constraints[0].elements[1].factor, 1));
+        expect(eq(pb.less_constraints[0].elements[1].variable_index, 1));
+        expect(eq(pb.less_constraints[0].elements[2].factor, 1));
+        expect(eq(pb.less_constraints[0].elements[2].variable_index, 2));
+        expect(eq(pb.less_constraints[0].value, 20));
 
-        expect(pb.less_constraints[1].elements.size() == 3);
-        expect(pb.less_constraints[1].elements[0].factor == 1);
-        expect(pb.less_constraints[1].elements[0].variable_index == 0);
-        expect(pb.less_constraints[1].elements[1].factor == -3);
-        expect(pb.less_constraints[1].elements[1].variable_index == 1);
-        expect(pb.less_constraints[1].elements[2].factor == 1);
-        expect(pb.less_constraints[1].elements[2].variable_index == 2);
-        expect(pb.less_constraints[1].value == 30);
+        expect(eq(pb.less_constraints[1].elements.size(), 3u));
+        expect(eq(pb.less_constraints[1].elements[0].factor, 1));
+        expect(eq(pb.less_constraints[1].elements[0].variable_index, 0));
+        expect(eq(pb.less_constraints[1].elements[1].factor, -3));
+        expect(eq(pb.less_constraints[1].elements[1].variable_index, 1));
+        expect(eq(pb.less_constraints[1].elements[2].factor, 1));
+        expect(eq(pb.less_constraints[1].elements[2].variable_index, 2));
+        expect(eq(pb.less_constraints[1].value, 30));
 
-        expect(pb.less_constraints[2].elements.size() == 3);
-        expect(pb.less_constraints[1].elements[0].factor == 1);
-        expect(pb.less_constraints[2].elements[0].variable_index == 0);
-        expect(pb.less_constraints[2].elements[1].factor == -3);
-        expect(pb.less_constraints[2].elements[1].variable_index == 1);
-        expect(pb.less_constraints[2].elements[2].factor == 1);
-        expect(pb.less_constraints[2].elements[2].variable_index == 2);
-        expect(pb.less_constraints[2].value == -5);
+        expect(eq(pb.less_constraints[2].elements.size(), 3u));
+        expect(eq(pb.less_constraints[1].elements[0].factor, 1));
+        expect(eq(pb.less_constraints[2].elements[0].variable_index, 0));
+        expect(eq(pb.less_constraints[2].elements[1].factor, -3));
+        expect(eq(pb.less_constraints[2].elements[1].variable_index, 1));
+        expect(eq(pb.less_constraints[2].elements[2].factor, 1));
+        expect(eq(pb.less_constraints[2].elements[2].variable_index, 2));
+        expect(eq(pb.less_constraints[2].value, -5));
 
-        expect(pb.vars.names[0] == "x1");
-        expect(pb.vars.names[1] == "x2");
-        expect(pb.vars.names[2] == "x3");
+        expect(eq(pb.vars.names[0], "x1"sv));
+        expect(eq(pb.vars.names[1], "x2"sv));
+        expect(eq(pb.vars.names[2], "x3"sv));
 
-        expect(pb.vars.values[0].min == 0);
-        expect(pb.vars.values[1].min == 0);
-        expect(pb.vars.values[2].min == 0);
+        expect(eq(pb.vars.values[0].min, 0));
+        expect(eq(pb.vars.values[1].min, 0));
+        expect(eq(pb.vars.values[2].min, 0));
 
-        expect(pb.vars.values[0].max == 40);
-        expect(pb.vars.values[1].max == std::numeric_limits<int>::max());
-        expect(pb.vars.values[2].max == std::numeric_limits<int>::max());
+        expect(eq(pb.vars.values[0].max, 40));
+        expect(eq(pb.vars.values[1].max, std::numeric_limits<int>::max()));
+        expect(eq(pb.vars.values[2].max, std::numeric_limits<int>::max()));
     };
 
     const auto parse = [](std::string_view str) {
@@ -944,8 +945,8 @@ main()
         const auto pb = parse("minimize\n" + name + "\nst\n" + name +
                               " >= 1\nend\n");
         expect(pb);
-        expect((pb.vars.names.size() == 1_ul) >> fatal);
-        expect(pb.vars.names[0] == name);
+        expect(fatal(pb.vars.names.size() == 1_ul));
+        expect(eq(pb.vars.names[0], name));
     };
 
     "parser comments"_test = [&parse] {
@@ -957,8 +958,8 @@ main()
                               "end\n"
                               "\\ last comment");
         expect(pb);
-        expect(pb.objective.elements.size() == 2_ul);
-        expect(pb.greater_constraints.size() == 1_ul);
+        expect(eq(pb.objective.elements.size(), 2_ul));
+        expect(eq(pb.greater_constraints.size(), 1_ul));
     };
 
     "parser scientific notation"_test = [&parse] {
@@ -966,10 +967,10 @@ main()
                               "1e-1 x + 2.5E+1 y - 3e2\n"
                               "end\n");
         expect(pb);
-        expect((pb.objective.elements.size() == 2_ul) >> fatal);
-        expect(pb.objective.elements[0].factor == 0.1_d);
-        expect(pb.objective.elements[1].factor == 25.0_d);
-        expect(pb.objective.value == -300.0_d);
+        expect(fatal(pb.objective.elements.size() == 2_ul));
+        expect(eq(pb.objective.elements[0].factor, 0.1_d));
+        expect(eq(pb.objective.elements[1].factor, 25.0_d));
+        expect(eq(pb.objective.value, -300.0_d));
     };
 
     "parser names looking like numbers"_test = [&parse] {
@@ -977,12 +978,12 @@ main()
                               "information + nancy + 2 infinite\n"
                               "end\n");
         expect(pb);
-        expect((pb.objective.elements.size() == 3_ul) >> fatal);
-        expect(pb.vars.names[0] == "information");
-        expect(pb.vars.names[1] == "nancy");
-        expect(pb.vars.names[2] == "infinite");
-        expect(pb.objective.elements[2].factor == 2.0_d);
-        expect(pb.objective.value == 0.0_d);
+        expect(fatal(pb.objective.elements.size() == 3_ul));
+        expect(eq(pb.vars.names[0], "information"sv));
+        expect(eq(pb.vars.names[1], "nancy"sv));
+        expect(eq(pb.vars.names[2], "infinite"sv));
+        expect(eq(pb.objective.elements[2].factor, 2.0_d));
+        expect(eq(pb.objective.value, 0.0_d));
     };
 
     "parser spaced quadratic"_test = [&parse] {
@@ -991,18 +992,18 @@ main()
                               "- 6 delta * epsilon ] / 2\n"
                               "end\n");
         expect(pb);
-        expect((pb.objective.qelements.size() == 3_ul) >> fatal);
-        expect((pb.vars.names.size() == 5_ul) >> fatal);
-        expect(pb.vars.names[0] == "alpha");
-        expect(pb.vars.names[1] == "beta");
-        expect(pb.vars.names[2] == "gamma");
-        expect(pb.vars.names[3] == "delta");
-        expect(pb.vars.names[4] == "epsilon");
-        expect(pb.objective.qelements[0].factor == 1.0_d);
-        expect(pb.objective.qelements[1].factor == 2.0_d);
-        expect(pb.objective.qelements[1].variable_index_a == 2_i);
-        expect(pb.objective.qelements[1].variable_index_b == 2_i);
-        expect(pb.objective.qelements[2].factor == -3.0_d);
+        expect(fatal(pb.objective.qelements.size() == 3_ul));
+        expect(fatal(pb.vars.names.size() == 5_ul));
+        expect(eq(pb.vars.names[0], "alpha"sv));
+        expect(eq(pb.vars.names[1], "beta"sv));
+        expect(eq(pb.vars.names[2], "gamma"sv));
+        expect(eq(pb.vars.names[3], "delta"sv));
+        expect(eq(pb.vars.names[4], "epsilon"sv));
+        expect(eq(pb.objective.qelements[0].factor, 1.0_d));
+        expect(eq(pb.objective.qelements[1].factor, 2.0_d));
+        expect(eq(pb.objective.qelements[1].variable_index_a, 2_i));
+        expect(eq(pb.objective.qelements[1].variable_index_b, 2_i));
+        expect(eq(pb.objective.qelements[2].factor, -3.0_d));
     };
 
     "parser bad quadratic"_test = [&status] {
@@ -1018,7 +1019,7 @@ main()
         const auto pb = parse("max: 3 x\nend\n");
         expect(pb);
         expect(pb.type == baryonyx::objective_function_type::maximize);
-        expect(pb.objective.elements.size() == 1_ul);
+        expect(eq(pb.objective.elements.size(), 1_ul));
     };
 
     "parser subject to variants"_test = [&parse] {
@@ -1027,8 +1028,8 @@ main()
             const auto pb =
               parse(fmt::format("minimize\nx\n{}\nx >= 1\nend\n", st));
             expect(pb) << st;
-            expect(pb.vars.names.size() == 1_ul) << st;
-            expect(pb.greater_constraints.size() == 1_ul) << st;
+            expect(eq(pb.vars.names.size(), 1_ul)) << st;
+            expect(eq(pb.greater_constraints.size(), 1_ul)) << st;
         }
     };
 
@@ -1055,7 +1056,7 @@ main()
                               "0.5 <= h <= 7.5\n"
                               "end\n");
         expect(pb);
-        expect((pb.vars.values.size() == 8_ul) >> fatal);
+        expect(fatal(pb.vars.values.size() == 8_ul));
 
         const auto& v = pb.vars.values;
         constexpr int int_min = std::numeric_limits<int>::min();
@@ -1083,10 +1084,10 @@ main()
     "parser constant in constraint"_test = [&parse] {
         const auto pb = parse("minimize\nx + y\nst\nx + 2 + y - 1 <= 5\nend\n");
         expect(pb);
-        expect(pb.vars.names.size() == 2_ul);
-        expect((pb.less_constraints.size() == 1_ul) >> fatal);
-        expect(pb.less_constraints[0].elements.size() == 2_ul);
-        expect(pb.less_constraints[0].value == 4_i);
+        expect(eq(pb.vars.names.size(), 2_ul));
+        expect(fatal(pb.less_constraints.size() == 1_ul));
+        expect(eq(pb.less_constraints[0].elements.size(), 2_ul));
+        expect(eq(pb.less_constraints[0].value, 4_i));
     };
 
     "parser non integer constraint"_test = [&parse, &status] {
@@ -1100,13 +1101,13 @@ main()
         const auto pb =
           parse("minimize\nx\nst\nx >= 2.5\nx <= 2.5\n0.5 x + 0.5 x = 1\nend\n");
         expect(pb);
-        expect((pb.greater_constraints.size() == 1_ul) >> fatal);
-        expect(pb.greater_constraints[0].value == 3_i);
-        expect((pb.less_constraints.size() == 1_ul) >> fatal);
-        expect(pb.less_constraints[0].value == 2_i);
-        expect((pb.equal_constraints.size() == 1_ul) >> fatal);
-        expect((pb.equal_constraints[0].elements.size() == 1_ul) >> fatal);
-        expect(pb.equal_constraints[0].elements[0].factor == 1_i);
+        expect(fatal(pb.greater_constraints.size() == 1_ul));
+        expect(eq(pb.greater_constraints[0].value, 3_i));
+        expect(fatal(pb.less_constraints.size() == 1_ul));
+        expect(eq(pb.less_constraints[0].value, 2_i));
+        expect(fatal(pb.equal_constraints.size() == 1_ul));
+        expect(fatal(pb.equal_constraints[0].elements.size() == 1_ul));
+        expect(eq(pb.equal_constraints[0].elements[0].factor, 1_i));
     };
 
     "parser bad constraints"_test = [&status] {
@@ -1135,12 +1136,12 @@ main()
                               "y <= 4\n"
                               "end\n");
         expect(pb);
-        expect((pb.vars.values.size() == 4_ul) >> fatal);
+        expect(fatal(pb.vars.values.size() == 4_ul));
         expect(pb.vars.values[0].type == baryonyx::variable_type::binary);
         expect(pb.vars.values[1].type == baryonyx::variable_type::general);
-        expect(pb.vars.values[1].max == 4_i);
+        expect(eq(pb.vars.values[1].max, 4_i));
         expect(pb.vars.values[2].type == baryonyx::variable_type::real);
-        expect(pb.vars.names[3] == "w");
+        expect(eq(pb.vars.names[3], "w"sv));
         expect(pb.vars.values[3].type == baryonyx::variable_type::binary);
     };
 
@@ -1170,8 +1171,8 @@ main()
 
             expect(pb);
             expect(pb.status == baryonyx::file_format_error_tag::success);
-            expect(pb.vars.names.size() == 16);
-            expect(pb.vars.values.size() == 16);
+            expect(eq(pb.vars.names.size(), 16u));
+            expect(eq(pb.vars.values.size(), 16u));
 
             fmt::memory_buffer buffer;
             fmt::format_to(std::back_inserter(buffer), "{}", pb);
@@ -1179,7 +1180,7 @@ main()
             imemstream ss(std::string_view(buffer.data(), buffer.size()));
             auto pb2 = baryonyx::make_problem(*ctx, ss);
 
-            expect(pb == pb2);
+            expect(eq(pb, pb2));
         }
     };
 
@@ -1189,15 +1190,15 @@ main()
           ctx, EXAMPLES_DIR "/geom-30a-3-ext_1000_support.lp");
 
         expect(pb.type == baryonyx::objective_function_type::minimize);
-        expect(pb.vars.names.size() == 819);
-        expect(pb.vars.values.size() == 819);
+        expect(eq(pb.vars.names.size(), 819u));
+        expect(eq(pb.vars.values.size(), 819u));
 
         int nb = 0;
         for (auto& elem : pb.vars.values)
             if (elem.type == baryonyx::variable_type::binary)
                 ++nb;
 
-        expect(nb == 90);
+        expect(eq(nb, 90));
     };
 
     "general"_test = [] {
@@ -1205,27 +1206,27 @@ main()
         auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/general.lp");
 
         expect(pb.type == baryonyx::objective_function_type::minimize);
-        expect(pb.vars.names.size() == 3);
-        expect(pb.vars.values.size() == 3);
+        expect(eq(pb.vars.names.size(), 3u));
+        expect(eq(pb.vars.values.size(), 3u));
 
         int nb = 0;
         for (auto& elem : pb.vars.values)
             if (elem.type == baryonyx::variable_type::general)
                 ++nb;
 
-        expect(nb == 3);
+        expect(eq(nb, 3));
     };
 
     "sudoku"_test = [] {
         auto ctx = baryonyx::make_context(4);
         auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/sudoku.lp");
 
-        expect(pb.vars.names.size() == 81);
-        expect(pb.vars.values.size() == 81);
+        expect(eq(pb.vars.names.size(), 81u));
+        expect(eq(pb.vars.values.size(), 81u));
 
         for (auto& vv : pb.vars.values) {
-            expect(vv.min == 1);
-            expect(vv.max == 9);
+            expect(eq(vv.min, 1));
+            expect(eq(vv.max, 9));
             expect(vv.type == baryonyx::variable_type::general);
         }
     };
@@ -1235,12 +1236,12 @@ main()
         auto pb =
           baryonyx::make_problem(ctx, EXAMPLES_DIR "/8_queens_puzzle.lp");
 
-        expect(pb.vars.names.size() == 64);
-        expect(pb.vars.values.size() == 64);
+        expect(eq(pb.vars.names.size(), 64u));
+        expect(eq(pb.vars.values.size(), 64u));
 
         for (auto& vv : pb.vars.values) {
-            expect(vv.min == 0);
-            expect(vv.max == 1);
+            expect(eq(vv.min, 0));
+            expect(eq(vv.max, 1));
             expect(vv.type == baryonyx::variable_type::binary);
         }
     };
@@ -1250,36 +1251,36 @@ main()
         const auto pb =
           baryonyx::make_problem(ctx, EXAMPLES_DIR "/QPLIB_3852.lp");
 
-        expect((pb.status == file_format_error_tag::success) >> fatal);
+        expect(fatal(pb.status == file_format_error_tag::success));
         expect(pb.type == baryonyx::objective_function_type::maximize);
-        expect(pb.vars.names.size() == 231_ul);
-        expect(pb.objective.elements.size() == 231_ul);
-        expect(pb.objective.qelements.size() == 440_ul);
+        expect(eq(pb.vars.names.size(), 231_ul));
+        expect(eq(pb.objective.elements.size(), 231_ul));
+        expect(eq(pb.objective.qelements.size(), 440_ul));
         expect(pb.equal_constraints.empty());
         expect(pb.greater_constraints.empty());
         expect(pb.less_constraints.empty());
 
         for (const auto& value : pb.vars.values) {
             expect(value.type == baryonyx::variable_type::binary);
-            expect(value.min == 0_i);
-            expect(value.max == 1_i);
+            expect(eq(value.min, 0_i));
+            expect(eq(value.max, 1_i));
         }
 
         const auto written = write_problem(pb);
         std::istringstream iss(written);
         const auto pb2 = baryonyx::make_problem(*ctx, iss);
 
-        expect((pb2.status == file_format_error_tag::success) >> fatal);
+        expect(fatal(pb2.status == file_format_error_tag::success));
         expect(make_canonical(pb) == make_canonical(pb2));
 
         const auto rewritten = write_problem(pb2);
         std::istringstream iss2(rewritten);
         const auto pb3 = baryonyx::make_problem(*ctx, iss2);
 
-        expect((pb3.status == file_format_error_tag::success) >> fatal);
-        expect(pb2 == pb3);
+        expect(fatal(pb3.status == file_format_error_tag::success));
+        expect(eq(pb2, pb3));
         expect(make_canonical(pb2) == make_canonical(pb3));
-        expect(write_problem(pb3) == rewritten);
+        expect(eq(write_problem(pb3), rewritten));
     };
 
     "vm"_test = [] {

@@ -95,85 +95,85 @@ main()
                        result.affected_vars.names.size());
 
             // The preprocessor decides every variable of prepro.lp.
-            expect(result.affected_vars.names.size() == 23);
+            expect(eq(result.affected_vars.names.size(), 23u));
 
             int var;
 
             var = get_variable(result, "w");
-            expect(var >= 0);
-            expect(get_value(result, var) == false);
+            expect(ge(var, 0));
+            expect(eq(get_value(result, var), false));
 
             var = get_variable(result, "a");
-            expect(var >= 0);
-            expect(get_value(result, var) == false);
+            expect(ge(var, 0));
+            expect(eq(get_value(result, var), false));
 
             var = get_variable(result, "t");
-            expect(var >= 0);
-            expect(get_value(result, var) == false);
+            expect(ge(var, 0));
+            expect(eq(get_value(result, var), false));
 
             var = get_variable(result, "ZZ");
-            expect(var >= 0);
-            expect(get_value(result, var) == true);
+            expect(ge(var, 0));
+            expect(eq(get_value(result, var), true));
 
             var = get_variable(result, "c1");
-            expect(var >= 0);
-            expect(get_value(result, var) == false);
+            expect(ge(var, 0));
+            expect(eq(get_value(result, var), false));
 
             var = get_variable(result, "c2");
-            expect(var >= 0);
-            expect(get_value(result, var) == false);
+            expect(ge(var, 0));
+            expect(eq(get_value(result, var), false));
 
             var = get_variable(result, "c3");
-            expect(var >= 0);
-            expect(get_value(result, var) == false);
+            expect(ge(var, 0));
+            expect(eq(get_value(result, var), false));
 
             var = get_variable(result, "c4");
-            expect(var >= 0);
-            expect(get_value(result, var) == false);
+            expect(ge(var, 0));
+            expect(eq(get_value(result, var), false));
 
             var = get_variable(result, "c5");
-            expect(var >= 0);
-            expect(get_value(result, var) == false);
+            expect(ge(var, 0));
+            expect(eq(get_value(result, var), false));
 
             var = get_variable(result, "c6");
-            expect(var >= 0);
-            expect(get_value(result, var) == false);
+            expect(ge(var, 0));
+            expect(eq(get_value(result, var), false));
 
             var = get_variable(result, "d1");
-            expect(var >= 0);
-            expect(get_value(result, var) == true);
+            expect(ge(var, 0));
+            expect(eq(get_value(result, var), true));
 
             var = get_variable(result, "d2");
-            expect(var >= 0);
-            expect(get_value(result, var) == true);
+            expect(ge(var, 0));
+            expect(eq(get_value(result, var), true));
 
             var = get_variable(result, "d3");
-            expect(var >= 0);
+            expect(ge(var, 0));
 
             var = get_variable(result, "d4");
-            expect(var >= 0);
-            expect(get_value(result, var) == false);
+            expect(ge(var, 0));
+            expect(eq(get_value(result, var), false));
 
             var = get_variable(result, "d5");
-            expect(var >= 0);
-            expect(get_value(result, var) == false);
+            expect(ge(var, 0));
+            expect(eq(get_value(result, var), false));
 
             var = get_variable(result, "d6");
-            expect(var >= 0);
-            expect(get_value(result, var) == false);
+            expect(ge(var, 0));
+            expect(eq(get_value(result, var), false));
 
             var = get_variable(result, "b");
-            expect(var >= 0);
-            expect(get_value(result, var) == true);
+            expect(ge(var, 0));
+            expect(eq(get_value(result, var), true));
 
             expect(result.status == baryonyx::result_status::success);
             expect(!result.solutions.empty());
-            expect(result.solutions.size() >= 1);
-            expect(result.variable_name.size() == 0);
+            expect(ge(result.solutions.size(), 1u));
+            expect(eq(result.variable_name.size(), 0u));
 
-            expect(baryonyx::is_valid_solution(pb, result) == true);
+            expect(eq(baryonyx::is_valid_solution(pb, result), true));
 
-            expect(result.solutions.back().value > 6.0);
+            expect(gt(result.solutions.back().value, 6.0));
 
             fmt::print(ss, "{}", result);
             if (!ss.good())
@@ -206,16 +206,16 @@ main()
             auto result = baryonyx::solve(ctx, pb);
 
             expect(!!result);
-            expect(baryonyx::is_valid_solution(pb, result) == true);
-            expect(baryonyx::compute_solution(pb, result) ==
-                   result.solutions.back().value);
+            expect(eq(baryonyx::is_valid_solution(pb, result), true));
+            expect(eq(baryonyx::compute_solution(pb, result),
+                      result.solutions.back().value));
 
             expect(!result.solutions.empty());
             fmt::print("result.value {:F} == 6212977\n",
                        result.solutions.back().value);
 
             r = result.solutions.back().value;
-            expect(result.solutions.back().value < 1156908 + 14156111);
+            expect(lt(result.solutions.back().value, 1156908 + 14156111));
 
             fmt::print(ss, "{}", result);
             if (!ss.good())
@@ -234,7 +234,7 @@ main()
             result.status = baryonyx::result_status::success;
 
             expect(baryonyx::is_valid_solution(pb, result));
-            expect(baryonyx::compute_solution(pb, result) == r);
+            expect(eq(baryonyx::compute_solution(pb, result), r));
         }
     };
 
@@ -258,9 +258,9 @@ main()
         // Both constraints always hold: the problem has no constraint left
         // and every variable must still be in the result.
         auto result = baryonyx::solve(ctx, pb);
-        expect((!!result) >> fatal);
+        expect(fatal(!!result));
         expect(baryonyx::is_valid_solution(pb, result));
-        expect(result.solutions.back().value == -5.0);
+        expect(eq(result.solutions.back().value, -5.0));
     };
 
     "test_cost_normalization_sign"_test = [] {
@@ -282,7 +282,7 @@ main()
             auto ctx = baryonyx::make_context(0);
             std::istringstream iss(str_pb);
             auto pb = baryonyx::make_problem(*ctx, iss);
-            expect(pb >> fatal);
+            expect(fatal(pb));
 
             baryonyx::solver_parameters params;
             params.cost_norm = cost_norm;
@@ -291,8 +291,8 @@ main()
             baryonyx::context_set_solver_parameters(ctx, params);
 
             auto result = baryonyx::solve(ctx, pb);
-            expect((!!result) >> fatal);
-            expect(result.solutions.back().value == -3.0);
+            expect(fatal(!!result));
+            expect(eq(result.solutions.back().value, -3.0));
         }
     };
 
@@ -301,12 +301,12 @@ main()
         // optimum proven by HiGHS on a linearization.
         auto ctx = baryonyx::make_context(0);
         auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/QPLIB_3852.lp");
-        expect(pb >> fatal);
+        expect(fatal(pb));
 
         auto solved = baryonyx::solve(ctx, pb);
-        expect((!!solved) >> fatal);
+        expect(fatal(!!solved));
         expect(baryonyx::is_valid_solution(pb, solved));
-        expect(solved.solutions.back().value == 234.0);
+        expect(eq(solved.solutions.back().value, 234.0));
 
         baryonyx::solver_parameters params;
         params.time_limit = 0.5;
@@ -315,9 +315,9 @@ main()
         baryonyx::context_set_solver_parameters(ctx, params);
 
         auto optimized = baryonyx::optimize(ctx, pb);
-        expect((!!optimized) >> fatal);
+        expect(fatal(!!optimized));
         expect(baryonyx::is_valid_solution(pb, optimized));
-        expect(optimized.solutions.back().value == 234.0);
+        expect(eq(optimized.solutions.back().value, 234.0));
     };
 
     "test_unrealisable_constraint"_test = [] {
@@ -402,10 +402,10 @@ main()
         expect(result.status == baryonyx::result_status::success);
         expect(!result.solutions.empty());
 
-        expect(result.solutions.back().value < 0.0);
+        expect(lt(result.solutions.back().value, 0.0));
 
         if (result)
-            expect(baryonyx::is_valid_solution(pb, result) == true);
+            expect(eq(baryonyx::is_valid_solution(pb, result), true));
     };
 
     "test_assignment_problem"_test = [] {
@@ -462,7 +462,7 @@ main()
             auto result = baryonyx::solve(ctx, pb);
 
             expect(result.status == baryonyx::result_status::success);
-            expect(baryonyx::is_valid_solution(pb, result) == true);
+            expect(eq(baryonyx::is_valid_solution(pb, result), true));
         }
     };
 
@@ -491,7 +491,7 @@ main()
             auto result = baryonyx::solve(ctx, pb);
 
             expect(result.status == baryonyx::result_status::success);
-            expect(baryonyx::is_valid_solution(pb, result) == true);
+            expect(eq(baryonyx::is_valid_solution(pb, result), true));
         }
     };
 
@@ -508,7 +508,7 @@ main()
         auto result = baryonyx::solve(ctx, pb);
 
         expect(result.status == baryonyx::result_status::success);
-        expect(baryonyx::is_valid_solution(pb, result) == true);
+        expect(eq(baryonyx::is_valid_solution(pb, result), true));
     };
 
     "test_negative_coeff_buffer"_test = [] {
@@ -524,7 +524,7 @@ main()
         auto result = baryonyx::solve(ctx, pb);
 
         expect(result.status == baryonyx::result_status::success);
-        expect(baryonyx::is_valid_solution(pb, result) == true);
+        expect(eq(baryonyx::is_valid_solution(pb, result), true));
     };
 
     "test_negative_coeff2"_test = [] {
@@ -540,9 +540,9 @@ main()
         auto result = baryonyx::solve(ctx, pb);
 
         expect(result.status == baryonyx::result_status::success);
-        expect(result.affected_vars.names.size() +
-                 result.variable_name.size() ==
-               4);
+        expect(
+          eq(result.affected_vars.names.size() + result.variable_name.size(),
+             4u));
     };
 
     "test_negative_coeff2_with_buffer"_test = [] {
@@ -558,9 +558,9 @@ main()
         auto result = baryonyx::solve(ctx, pb);
 
         expect(result.status == baryonyx::result_status::success);
-        expect(result.affected_vars.names.size() +
-                 result.variable_name.size() ==
-               4);
+        expect(
+          eq(result.affected_vars.names.size() + result.variable_name.size(),
+             4u));
     };
 
     "test_negative_coeff3"_test = [] {
@@ -577,7 +577,7 @@ main()
         auto result = baryonyx::solve(ctx, pb);
 
         expect(result.status == baryonyx::result_status::success);
-        expect(baryonyx::is_valid_solution(pb, result) == true);
+        expect(eq(baryonyx::is_valid_solution(pb, result), true));
     };
 
     "test_negative_coeff3_with_buffer"_test = [] {
@@ -610,7 +610,7 @@ main()
         auto result = baryonyx::solve(ctx, pb);
 
         expect(result.status == baryonyx::result_status::success);
-        expect(baryonyx::is_valid_solution(pb, result) == true);
+        expect(eq(baryonyx::is_valid_solution(pb, result), true));
     };
 
     "test_negative_coeff4_with_buffer"_test = [] {
@@ -627,7 +627,7 @@ main()
         auto result = baryonyx::solve(ctx, pb);
 
         expect(result.status == baryonyx::result_status::success);
-        expect(baryonyx::is_valid_solution(pb, result) == true);
+        expect(eq(baryonyx::is_valid_solution(pb, result), true));
     };
 
     "test_negative_coeff5"_test = [] {
@@ -654,7 +654,7 @@ main()
         expect(result.status == baryonyx::result_status::success);
 
         if (result)
-            expect(baryonyx::is_valid_solution(pb, result) == true);
+            expect(eq(baryonyx::is_valid_solution(pb, result), true));
     };
 
     "test_negative_coeff5_with_buffer"_test = [] {
@@ -684,7 +684,7 @@ main()
         expect(result.status == baryonyx::result_status::success);
 
         if (result)
-            expect(baryonyx::is_valid_solution(pb, result) == true);
+            expect(eq(baryonyx::is_valid_solution(pb, result), true));
     };
 
     "test_8_queens_puzzle_fixed_cost"_test = [] {
@@ -726,7 +726,7 @@ main()
         }
 
         expect(result.status == baryonyx::result_status::success);
-        expect(baryonyx::is_valid_solution(pb, result) == true);
+        expect(eq(baryonyx::is_valid_solution(pb, result), true));
     };
 
     "test_8_queens_puzzle_fixed_cost_with_buffer"_test = [] {
@@ -769,7 +769,7 @@ main()
         }
 
         expect(result.status == baryonyx::result_status::success);
-        expect(baryonyx::is_valid_solution(pb, result) == true);
+        expect(eq(baryonyx::is_valid_solution(pb, result), true));
     };
 
     "test_8_queens_puzzle_random_cost"_test = [] {
@@ -799,7 +799,7 @@ main()
             auto result = baryonyx::solve(ctx, pb);
 
             expect(result.status == baryonyx::result_status::success);
-            expect(baryonyx::is_valid_solution(pb, result) == true);
+            expect(eq(baryonyx::is_valid_solution(pb, result), true));
         }
     };
 
@@ -831,7 +831,7 @@ main()
             auto result = baryonyx::solve(ctx, pb);
 
             expect(result.status == baryonyx::result_status::success);
-            expect(baryonyx::is_valid_solution(pb, result) == true);
+            expect(eq(baryonyx::is_valid_solution(pb, result), true));
         }
     };
 
@@ -850,7 +850,7 @@ main()
         auto result = baryonyx::solve(ctx, pb);
 
         if (result)
-            expect(baryonyx::is_valid_solution(pb, result) == true);
+            expect(eq(baryonyx::is_valid_solution(pb, result), true));
     };
 
     "test_qap_with_buffer"_test = [] {
@@ -869,7 +869,7 @@ main()
         auto result = baryonyx::solve(ctx, pb);
 
         if (result)
-            expect(baryonyx::is_valid_solution(pb, result) == true);
+            expect(eq(baryonyx::is_valid_solution(pb, result), true));
     };
 
     "test_flat30_7"_test = [] {
@@ -888,7 +888,7 @@ main()
         auto result = baryonyx::solve(ctx, pb);
 
         expect(result.status == baryonyx::result_status::success);
-        expect(baryonyx::is_valid_solution(pb, result) == true);
+        expect(eq(baryonyx::is_valid_solution(pb, result), true));
     };
 
     "test_pi_sign_change_with_more_variables_than_constraints"_test = [] {
@@ -908,7 +908,7 @@ main()
             auto result = baryonyx::solve(ctx, pb);
 
             expect(result.status == baryonyx::result_status::success);
-            expect(baryonyx::is_valid_solution(pb, result) == true);
+            expect(eq(baryonyx::is_valid_solution(pb, result), true));
         }
     };
 
@@ -930,7 +930,7 @@ main()
         auto result = baryonyx::solve(ctx, pb);
 
         expect(result.status == baryonyx::result_status::success);
-        expect(baryonyx::is_valid_solution(pb, result) == true);
+        expect(eq(baryonyx::is_valid_solution(pb, result), true));
     };
 
     "test_uf50_0448"_test = [] {
@@ -951,7 +951,7 @@ main()
         auto result = baryonyx::solve(ctx, pb);
 
         expect(result.status == baryonyx::result_status::success);
-        expect(baryonyx::is_valid_solution(pb, result) == true);
+        expect(eq(baryonyx::is_valid_solution(pb, result), true));
     };
 
     "test_uf50_0448_with_buffer"_test = [] {
@@ -974,7 +974,7 @@ main()
         auto result = baryonyx::solve(ctx, pb);
 
         expect(result.status == baryonyx::result_status::success);
-        expect(baryonyx::is_valid_solution(pb, result) == true);
+        expect(eq(baryonyx::is_valid_solution(pb, result), true));
     };
 
     "test_aim_50_1_6_yes1_2"_test = [] {
@@ -993,7 +993,7 @@ main()
         auto result = baryonyx::solve(ctx, pb);
 
         expect(result.status == baryonyx::result_status::success);
-        expect(baryonyx::is_valid_solution(pb, result) == true);
+        expect(eq(baryonyx::is_valid_solution(pb, result), true));
     };
 
     "test_aim_50_1_6_yes1_2_with_buffer"_test = [] {
@@ -1013,7 +1013,7 @@ main()
         auto result = baryonyx::solve(ctx, pb);
 
         expect(result.status == baryonyx::result_status::success);
-        expect(baryonyx::is_valid_solution(pb, result) == true);
+        expect(eq(baryonyx::is_valid_solution(pb, result), true));
     };
 
     "test_maximize_mirrors_minimize"_test = [] {
@@ -1057,8 +1057,8 @@ main()
             expect((result.status == baryonyx::result_status::success) >>
                    fatal);
             expect(baryonyx::is_valid_solution(copy, result));
-            expect(result.solutions.back().value == expected) << sense;
-            expect(baryonyx::compute_solution(copy, result) == expected);
+            expect(eq(result.solutions.back().value, expected)) << sense;
+            expect(eq(baryonyx::compute_solution(copy, result), expected));
         }
     };
 
@@ -1073,12 +1073,12 @@ main()
         baryonyx::context_set_solver_parameters(ctx, params);
 
         auto result = baryonyx::solve(ctx, pb);
-        expect((result.status == baryonyx::result_status::success) >> fatal);
+        expect(fatal(result.status == baryonyx::result_status::success));
 
         pb = baryonyx::make_problem(ctx,
                                     EXAMPLES_DIR "/z-mixed-coefficients.lp");
         expect(baryonyx::is_valid_solution(pb, result));
-        expect(baryonyx::compute_solution(pb, result) >= 560.0);
+        expect(ge(baryonyx::compute_solution(pb, result), 560.0));
     };
 
     "test_Z_coefficient_1"_test = [] {
@@ -1101,7 +1101,7 @@ main()
             expect(result.status == baryonyx::result_status::success);
 
             if (result)
-                expect(baryonyx::is_valid_solution(pb, result) == true);
+                expect(eq(baryonyx::is_valid_solution(pb, result), true));
         }
 
         {
@@ -1122,7 +1122,7 @@ main()
             expect(result.status == baryonyx::result_status::success);
 
             if (result)
-                expect(baryonyx::is_valid_solution(pb, result) == true);
+                expect(eq(baryonyx::is_valid_solution(pb, result), true));
         }
     };
 

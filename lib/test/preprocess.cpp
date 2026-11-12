@@ -149,6 +149,7 @@ int
 main()
 {
     using namespace boost::ut;
+    using namespace std::literals;
 
     "test_bqp_clean"_test = [] {
         auto ctx = baryonyx::make_context(4);
@@ -169,11 +170,11 @@ main()
 
             auto pb_pp = baryonyx::preprocess(*ctx, pb);
 
-            expect(pb_pp.vars.names.size() == 4u);
-            expect(pb_pp.affected_vars.names.size() == 0u);
-            expect(pb_pp.equal_constraints.size() == 0u);
-            expect(pb_pp.less_constraints.size() == 0u);
-            expect(pb_pp.greater_constraints.size() == 2u);
+            expect(eq(pb_pp.vars.names.size(), 4u));
+            expect(eq(pb_pp.affected_vars.names.size(), 0u));
+            expect(eq(pb_pp.equal_constraints.size(), 0u));
+            expect(eq(pb_pp.less_constraints.size(), 0u));
+            expect(eq(pb_pp.greater_constraints.size(), 2u));
 
             auto ida = get_variable(pb.vars.names, "a");
             auto idb = get_variable(pb.vars.names, "b");
@@ -185,19 +186,19 @@ main()
             expect(idc >= 0 && idc < baryonyx::length(pb.vars.names));
             expect(idd >= 0 && idd < baryonyx::length(pb.vars.names));
 
-            expect(pb_pp.objective.elements.size() == 2u);
-            expect(pb_pp.objective.elements[0].variable_index == ida);
-            expect(pb_pp.objective.elements[0].factor == -5);
-            expect(pb_pp.objective.elements[1].variable_index == idb);
-            expect(pb_pp.objective.elements[1].factor == 10);
+            expect(eq(pb_pp.objective.elements.size(), 2u));
+            expect(eq(pb_pp.objective.elements[0].variable_index, ida));
+            expect(eq(pb_pp.objective.elements[0].factor, -5));
+            expect(eq(pb_pp.objective.elements[1].variable_index, idb));
+            expect(eq(pb_pp.objective.elements[1].factor, 10));
 
-            expect(pb_pp.objective.qelements.size() == 2u);
-            expect(pb_pp.objective.qelements[0].variable_index_a == ida);
-            expect(pb_pp.objective.qelements[0].variable_index_b == idb);
-            expect(pb_pp.objective.qelements[0].factor == 1);
-            expect(pb_pp.objective.qelements[1].variable_index_a == idc);
-            expect(pb_pp.objective.qelements[1].variable_index_b == idd);
-            expect(pb_pp.objective.qelements[1].factor == 3);
+            expect(eq(pb_pp.objective.qelements.size(), 2u));
+            expect(eq(pb_pp.objective.qelements[0].variable_index_a, ida));
+            expect(eq(pb_pp.objective.qelements[0].variable_index_b, idb));
+            expect(eq(pb_pp.objective.qelements[0].factor, 1));
+            expect(eq(pb_pp.objective.qelements[1].variable_index_a, idc));
+            expect(eq(pb_pp.objective.qelements[1].variable_index_b, idd));
+            expect(eq(pb_pp.objective.qelements[1].factor, 3));
         }
 
         {
@@ -216,11 +217,11 @@ main()
 
             auto pb_pp = baryonyx::preprocess(*ctx, pb);
 
-            expect(pb_pp.vars.names.size() == 4u);
-            expect(pb_pp.affected_vars.names.size() == 0u);
-            expect(pb_pp.equal_constraints.size() == 0u);
-            expect(pb_pp.less_constraints.size() == 0u);
-            expect(pb_pp.greater_constraints.size() == 2u);
+            expect(eq(pb_pp.vars.names.size(), 4u));
+            expect(eq(pb_pp.affected_vars.names.size(), 0u));
+            expect(eq(pb_pp.equal_constraints.size(), 0u));
+            expect(eq(pb_pp.less_constraints.size(), 0u));
+            expect(eq(pb_pp.greater_constraints.size(), 2u));
 
             auto ida = get_variable(pb.vars.names, "a");
             auto idb = get_variable(pb.vars.names, "b");
@@ -232,19 +233,19 @@ main()
             expect(idc >= 0 && idc < baryonyx::length(pb.vars.names));
             expect(idd >= 0 && idd < baryonyx::length(pb.vars.names));
 
-            expect(pb_pp.objective.elements.size() == 2u);
-            expect(pb_pp.objective.elements[0].variable_index == ida);
-            expect(pb_pp.objective.elements[0].factor == -5);
-            expect(pb_pp.objective.elements[1].variable_index == idb);
-            expect(pb_pp.objective.elements[1].factor == 10);
+            expect(eq(pb_pp.objective.elements.size(), 2u));
+            expect(eq(pb_pp.objective.elements[0].variable_index, ida));
+            expect(eq(pb_pp.objective.elements[0].factor, -5));
+            expect(eq(pb_pp.objective.elements[1].variable_index, idb));
+            expect(eq(pb_pp.objective.elements[1].factor, 10));
 
-            expect(pb_pp.objective.qelements.size() == 2u);
-            expect(pb_pp.objective.qelements[0].variable_index_a == ida);
-            expect(pb_pp.objective.qelements[0].variable_index_b == idb);
-            expect(pb_pp.objective.qelements[0].factor == 1);
-            expect(pb_pp.objective.qelements[1].variable_index_a == idc);
-            expect(pb_pp.objective.qelements[1].variable_index_b == idd);
-            expect(pb_pp.objective.qelements[1].factor == 3);
+            expect(eq(pb_pp.objective.qelements.size(), 2u));
+            expect(eq(pb_pp.objective.qelements[0].variable_index_a, ida));
+            expect(eq(pb_pp.objective.qelements[0].variable_index_b, idb));
+            expect(eq(pb_pp.objective.qelements[0].factor, 1));
+            expect(eq(pb_pp.objective.qelements[1].variable_index_a, idc));
+            expect(eq(pb_pp.objective.qelements[1].variable_index_b, idd));
+            expect(eq(pb_pp.objective.qelements[1].factor, 3));
         }
 
         {
@@ -265,11 +266,11 @@ main()
 
             auto pb_pp = baryonyx::preprocess(*ctx, pb);
 
-            expect(pb_pp.vars.names.size() == 4u);
-            expect(pb_pp.affected_vars.names.size() == 0u);
-            expect(pb_pp.equal_constraints.size() == 0u);
-            expect(pb_pp.less_constraints.size() == 0u);
-            expect(pb_pp.greater_constraints.size() == 2u);
+            expect(eq(pb_pp.vars.names.size(), 4u));
+            expect(eq(pb_pp.affected_vars.names.size(), 0u));
+            expect(eq(pb_pp.equal_constraints.size(), 0u));
+            expect(eq(pb_pp.less_constraints.size(), 0u));
+            expect(eq(pb_pp.greater_constraints.size(), 2u));
 
             auto ida = get_variable(pb.vars.names, "a");
             auto idb = get_variable(pb.vars.names, "b");
@@ -281,19 +282,19 @@ main()
             expect(idc >= 0 && idc < baryonyx::length(pb.vars.names));
             expect(idd >= 0 && idd < baryonyx::length(pb.vars.names));
 
-            expect(pb_pp.objective.elements.size() == 2u);
-            expect(pb_pp.objective.elements[0].variable_index == ida);
-            expect(pb_pp.objective.elements[0].factor == 5);
-            expect(pb_pp.objective.elements[1].variable_index == idb);
-            expect(pb_pp.objective.elements[1].factor == 7);
+            expect(eq(pb_pp.objective.elements.size(), 2u));
+            expect(eq(pb_pp.objective.elements[0].variable_index, ida));
+            expect(eq(pb_pp.objective.elements[0].factor, 5));
+            expect(eq(pb_pp.objective.elements[1].variable_index, idb));
+            expect(eq(pb_pp.objective.elements[1].factor, 7));
 
-            expect(pb_pp.objective.qelements.size() == 2u);
-            expect(pb_pp.objective.qelements[0].variable_index_a == ida);
-            expect(pb_pp.objective.qelements[0].variable_index_b == idb);
-            expect(pb_pp.objective.qelements[0].factor == 2);
-            expect(pb_pp.objective.qelements[1].variable_index_a == idc);
-            expect(pb_pp.objective.qelements[1].variable_index_b == idd);
-            expect(pb_pp.objective.qelements[1].factor == 6);
+            expect(eq(pb_pp.objective.qelements.size(), 2u));
+            expect(eq(pb_pp.objective.qelements[0].variable_index_a, ida));
+            expect(eq(pb_pp.objective.qelements[0].variable_index_b, idb));
+            expect(eq(pb_pp.objective.qelements[0].factor, 2));
+            expect(eq(pb_pp.objective.qelements[1].variable_index_a, idc));
+            expect(eq(pb_pp.objective.qelements[1].variable_index_b, idd));
+            expect(eq(pb_pp.objective.qelements[1].factor, 6));
         }
     };
 
@@ -303,32 +304,32 @@ main()
         auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/bound.lp");
 
         expect(pb);
-        expect(pb.vars.names.size() == static_cast<size_t>(6));
+        expect(eq(pb.vars.names.size(), static_cast<size_t>(6)));
 
         // Without objective, dual fixing decides every variable: a and b go
         // down and c up, which makes ct00 always satisfied, then d, e and f
         // follow ct01 alone.
         auto pb_pp = baryonyx::preprocess(*ctx, pb);
-        expect(pb_pp.vars.names.size() == static_cast<size_t>(0));
-        expect(pb_pp.affected_vars.names.size() == static_cast<size_t>(6));
+        expect(eq(pb_pp.vars.names.size(), static_cast<size_t>(0)));
+        expect(eq(pb_pp.affected_vars.names.size(), static_cast<size_t>(6)));
         expect(pb_pp.less_constraints.empty());
         expect(brute_force(pb_pp) == brute_force(pb));
 
         // The bound f = 0 of the LP bounds section is applied as well.
         auto id = get_variable(pb.vars.names, "f");
-        expect((id >= 0 && id < baryonyx::length(pb.vars.names)) >> fatal);
+        expect(fatal(id >= 0 && id < baryonyx::length(pb.vars.names)));
 
         pb.vars.values[id].min = 0;
         pb.vars.values[id].max = 0;
 
         auto pb_pp2 = baryonyx::preprocess(*ctx, pb);
-        expect(pb_pp2.vars.names.size() == static_cast<size_t>(0));
+        expect(eq(pb_pp2.vars.names.size(), static_cast<size_t>(0)));
         expect(brute_force(pb_pp2) == brute_force(pb));
 
         const auto& names = pb_pp2.affected_vars.names;
         const auto f = std::ranges::find(names, std::string_view("f"));
-        expect((f != names.end()) >> fatal);
-        expect(pb_pp2.affected_vars.values[f - names.begin()] == 0);
+        expect(fatal(f != names.end()));
+        expect(eq(pb_pp2.affected_vars.values[f - names.begin()], 0));
     };
 
     "test_cleaning_affected_variables"_test = [] {
@@ -336,14 +337,14 @@ main()
         auto pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/prepro.lp");
 
         expect(pb);
-        expect(pb.vars.names.size() == static_cast<size_t>(23));
+        expect(eq(pb.vars.names.size(), static_cast<size_t>(23)));
 
         // Dual fixing sets d and e, which only appear in <= constraints
         // with positive factors and positive costs, to 0.
         auto pb_pp = baryonyx::preprocess(*ctx, pb);
 
-        expect(pb_pp.vars.names.size() == static_cast<size_t>(0));
-        expect(pb_pp.affected_vars.names.size() == static_cast<size_t>(23));
+        expect(eq(pb_pp.vars.names.size(), static_cast<size_t>(0)));
+        expect(eq(pb_pp.affected_vars.names.size(), static_cast<size_t>(23)));
     };
 
     // Both variables stay free after preprocessing: they want to be 1 but
@@ -363,8 +364,8 @@ main()
         expect(pb);
 
         auto pb_pp = baryonyx::preprocess(*ctx, pb);
-        expect((pb_pp.vars.names.size() == static_cast<size_t>(2)) >> fatal);
-        expect(pb_pp.affected_vars.names.size() == static_cast<size_t>(0));
+        expect(fatal(pb_pp.vars.names.size() == static_cast<size_t>(2)));
+        expect(eq(pb_pp.affected_vars.names.size(), static_cast<size_t>(0)));
 
         // Fixing either variable decides the other one: a variable set to 1
         // forces the other to 0 and a variable set to 0 frees the other,
@@ -372,11 +373,11 @@ main()
         for (int variable : { 0, 1 }) {
             for (bool value : { true, false }) {
                 auto pb_af = baryonyx::affect(*ctx, pb_pp, variable, value);
-                expect(pb_af.vars.names.size() == static_cast<size_t>(0));
-                expect(pb_af.affected_vars.names.size() ==
-                       static_cast<size_t>(2));
-                expect(pb_af.affected_vars.values[0] !=
-                       pb_af.affected_vars.values[1]);
+                expect(eq(pb_af.vars.names.size(), static_cast<size_t>(0)));
+                expect(eq(pb_af.affected_vars.names.size(),
+                          static_cast<size_t>(2)));
+                expect(neq(pb_af.affected_vars.values[0],
+                           pb_af.affected_vars.values[1]));
             }
         }
     };
@@ -388,7 +389,7 @@ main()
         expect(pb);
 
         const auto pb_pp = baryonyx::preprocess(*ctx, pb);
-        expect((pb_pp.vars.names.size() == static_cast<size_t>(2)) >> fatal);
+        expect(fatal(pb_pp.vars.names.size() == static_cast<size_t>(2)));
 
         // A single assignment gives the same problem as the scalar affect,
         // and assignments violating a constraint are rejected.
@@ -407,7 +408,7 @@ main()
         const std::pair<int, bool> full[] = { { 0, true }, { 1, false } };
         const auto pb_full = baryonyx::affect(*ctx, pb_pp, full);
         expect(pb_full.vars.names.empty());
-        expect(pb_full.affected_vars.names.size() == static_cast<size_t>(2));
+        expect(eq(pb_full.affected_vars.names.size(), static_cast<size_t>(2)));
     };
 
     "test_split"_test = [] {
@@ -417,15 +418,15 @@ main()
         expect(pb);
 
         auto pb_pp = baryonyx::preprocess(*ctx, pb);
-        expect((pb_pp.vars.names.size() == static_cast<size_t>(2)) >> fatal);
+        expect(fatal(pb_pp.vars.names.size() == static_cast<size_t>(2)));
 
         baryonyx::problem p0, p1;
         std::tie(p0, p1) = baryonyx::split(*ctx, pb_pp, 0);
 
         for (const auto& p : { p0, p1 }) {
-            expect(p.vars.names.size() == static_cast<size_t>(0));
-            expect(p.affected_vars.names.size() == static_cast<size_t>(2));
-            expect(p.affected_vars.values[0] != p.affected_vars.values[1]);
+            expect(eq(p.vars.names.size(), static_cast<size_t>(0)));
+            expect(eq(p.affected_vars.names.size(), static_cast<size_t>(2)));
+            expect(neq(p.affected_vars.values[0], p.affected_vars.values[1]));
         }
     };
 
@@ -504,20 +505,20 @@ main()
             return -1;
         };
 
-        expect(value_of("a") == 1);
-        expect(value_of("b") == 1);
-        expect(value_of("c") == 0);
-        expect(value_of("d") == 1);
+        expect(eq(value_of("a"), 1));
+        expect(eq(value_of("b"), 1));
+        expect(eq(value_of("c"), 0));
+        expect(eq(value_of("d"), 1));
 
         // d = 1 satisfies c3 and leaves e - f <= 0 in c4, then dual fixing
         // sets e to 0, its only lock being upward, and f follows.
-        expect(value_of("e") == 0);
-        expect(value_of("f") == 0);
-        expect(pb_pp.vars.names.size() == 0u);
-        expect(pb_pp.less_constraints.size() == 0u);
-        expect(pb_pp.greater_constraints.size() == 0u);
-        expect(pb_pp.equal_constraints.size() == 0u);
-        expect(pb_pp.objective.value == 3.0);
+        expect(eq(value_of("e"), 0));
+        expect(eq(value_of("f"), 0));
+        expect(eq(pb_pp.vars.names.size(), 0u));
+        expect(eq(pb_pp.less_constraints.size(), 0u));
+        expect(eq(pb_pp.greater_constraints.size(), 0u));
+        expect(eq(pb_pp.equal_constraints.size(), 0u));
+        expect(eq(pb_pp.objective.value, 3.0));
     };
 
     "test_activity_fixing"_test = [] {
@@ -539,12 +540,12 @@ main()
 
         expect(pb_pp.vars.names.empty());
         expect(pb_pp.less_constraints.empty());
-        expect(pb_pp.objective.value == -2.0);
+        expect(eq(pb_pp.objective.value, -2.0));
 
         const auto& names = pb_pp.affected_vars.names;
         const auto x = std::ranges::find(names, std::string_view("x"));
-        expect((x != names.end()) >> fatal);
-        expect(pb_pp.affected_vars.values[x - names.begin()] == 0);
+        expect(fatal(x != names.end()));
+        expect(eq(pb_pp.affected_vars.values[x - names.begin()], 0));
     };
 
     "test_quadratic_objective_cleaning"_test = [] {
@@ -565,14 +566,14 @@ main()
 
         // a and b only appear in a product: their best value depends on each
         // other, so they stay in the problem. c = 0 cancels the c * d product.
-        expect(pb_pp.vars.names.size() == 5u);
-        expect(pb_pp.affected_vars.names.size() == 1u);
-        expect(pb_pp.affected_vars.names[0] == "c");
+        expect(eq(pb_pp.vars.names.size(), 5u));
+        expect(eq(pb_pp.affected_vars.names.size(), 1u));
+        expect(eq(pb_pp.affected_vars.names[0], "c"sv));
 
-        expect(pb_pp.objective.qelements.size() == 1u);
-        expect(pb_pp.objective.qelements[0].factor == 1.0);
-        expect(pb_pp.objective.elements.size() == 2u);
-        expect(pb_pp.objective.value == 0.0);
+        expect(eq(pb_pp.objective.qelements.size(), 1u));
+        expect(eq(pb_pp.objective.qelements[0].factor, 1.0));
+        expect(eq(pb_pp.objective.elements.size(), 2u));
+        expect(eq(pb_pp.objective.value, 0.0));
     };
 
     "test_split_on_unrealisable_side"_test = [] {
@@ -593,10 +594,10 @@ main()
         auto pb = baryonyx::unpreprocess(*ctx, raw);
 
         auto x = get_variable(pb.vars.names, "x");
-        expect(x >= 0);
+        expect(ge(x, 0));
 
         auto pb_1 = baryonyx::affect(*ctx, pb, x, true);
-        expect(pb_1.vars.names.size() == 2u);
+        expect(eq(pb_1.vars.names.size(), 2u));
 
         expect(throws<baryonyx::solver_failure>(
           [&] { baryonyx::affect(*ctx, pb, x, false); }));

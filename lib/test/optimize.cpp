@@ -68,8 +68,8 @@ main()
 
         auto result = baryonyx::optimize(ctx, pb);
         expect(result.status != baryonyx::result_status::internal_error);
-        expect((result.status == baryonyx::result_status::success) ==
-               (result.remaining_constraints == 0));
+        expect(eq((result.status == baryonyx::result_status::success),
+                  (result.remaining_constraints == 0)));
 
         if (result.status == baryonyx::result_status::success) {
             pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/bibd1n.lp");
@@ -97,9 +97,9 @@ main()
                        fatal)
                   << name(optimizer);
                 expect(baryonyx::is_valid_solution(pb, result));
-                expect(baryonyx::compute_solution(pb, result) ==
-                       result.solutions.back().value);
-                expect(result.solutions.back().value == 15.0)
+                expect(eq(baryonyx::compute_solution(pb, result),
+                          result.solutions.back().value));
+                expect(eq(result.solutions.back().value, 15.0))
                   << name(optimizer);
             }
         }
@@ -141,7 +141,8 @@ main()
             expect((result.status == baryonyx::result_status::success) >>
                    fatal);
             expect(baryonyx::is_valid_solution(copy, result));
-            expect(result.solutions.back().value == -15.0) << name(optimizer);
+            expect(eq(result.solutions.back().value, -15.0))
+              << name(optimizer);
         }
     };
 
@@ -194,8 +195,8 @@ main()
                    fatal)
               << sense;
             expect(baryonyx::is_valid_solution(copy, result));
-            expect(result.solutions.back().value == expected) << sense;
-            expect(elapsed < 2.0) << sense;
+            expect(eq(result.solutions.back().value, expected)) << sense;
+            expect(lt(elapsed, 2.0)) << sense;
         }
     };
 
@@ -227,10 +228,11 @@ main()
                    fatal)
               << file;
             expect(baryonyx::is_valid_solution(copy, result)) << file;
-            expect(std::abs(baryonyx::compute_solution(copy, result) -
-                            result.solutions.back().value) < 1e-6)
+            expect(lt(std::abs(baryonyx::compute_solution(copy, result) -
+                               result.solutions.back().value),
+                      1e-6))
               << file;
-            expect(elapsed < 2.5) << file;
+            expect(lt(elapsed, 2.5)) << file;
         }
     };
 
@@ -257,8 +259,9 @@ main()
                    fatal)
               << file;
             expect(baryonyx::is_valid_solution(copy, result)) << file;
-            expect(std::abs(baryonyx::compute_solution(copy, result) -
-                            result.solutions.back().value) < 1e-6)
+            expect(lt(std::abs(baryonyx::compute_solution(copy, result) -
+                               result.solutions.back().value),
+                      1e-6))
               << file;
         }
     };
@@ -291,7 +294,7 @@ main()
                                    std::chrono::steady_clock::now() - start)
                                    .count();
 
-            expect(seconds < 5.0) << file;
+            expect(lt(seconds, 5.0)) << file;
             if (must_succeed)
                 expect((result.status == baryonyx::result_status::success) >>
                        fatal)
@@ -328,17 +331,17 @@ main()
         auto result = baryonyx::optimize(ctx, pb);
         stopper.join();
 
-        expect((result.status == baryonyx::result_status::success) >> fatal);
+        expect(fatal(result.status == baryonyx::result_status::success));
         expect(baryonyx::is_valid_solution(pb, result));
-        expect(elapsed_since(start) < 2.0);
+        expect(lt(elapsed_since(start), 2.0));
 
         params.time_limit = 0.5;
         baryonyx::context_set_solver_parameters(ctx, params);
 
         start = std::chrono::steady_clock::now();
         result = baryonyx::optimize(ctx, pb);
-        expect(elapsed_since(start) > 0.4);
-        expect(result.solutions.back().value == 15.0);
+        expect(gt(elapsed_since(start), 0.4));
+        expect(eq(result.solutions.back().value, 15.0));
     };
 
     "test_qap"_test = [] {
@@ -355,14 +358,14 @@ main()
         baryonyx::context_set_solver_parameters(ctx, params);
 
         auto result = baryonyx::optimize(ctx, pb);
-        expect((result.status == baryonyx::result_status::success) >> fatal);
+        expect(fatal(result.status == baryonyx::result_status::success));
 
         pb = baryonyx::make_problem(ctx, EXAMPLES_DIR "/small4.lp");
         expect(baryonyx::is_valid_solution(pb, result));
-        expect(baryonyx::compute_solution(pb, result) ==
-               result.solutions.back().value);
+        expect(eq(baryonyx::compute_solution(pb, result),
+                  result.solutions.back().value));
         if (optimized_build)
-            expect(result.solutions.back().value == 790.0);
+            expect(eq(result.solutions.back().value, 790.0));
     };
 
     "test_n_queens_problem"_test = [&] {
@@ -417,9 +420,9 @@ main()
                 pb = baryonyx::make_problem(ctx, filepath);
                 const auto value = result.solutions.back().value;
                 expect(baryonyx::is_valid_solution(pb, result)) << filepath;
-                expect(baryonyx::compute_solution(pb, result) == value)
+                expect(eq(baryonyx::compute_solution(pb, result), value))
                   << filepath;
-                expect(value >= cplex_solutions[i]) << filepath;
+                expect(ge(value, cplex_solutions[i])) << filepath;
 
                 const auto gap =
                   (value - cplex_solutions[i]) / cplex_solutions[i];
@@ -440,7 +443,7 @@ main()
             // optimum (gap of 8 to 26%) and alone move the mean gap around
             // 1%: count them instead.
             if (optimized_build)
-                expect(poor_solutions <= 5) << name(optimizer);
+                expect(le(poor_solutions, 5)) << name(optimizer);
         }
     };
 }
