@@ -441,9 +441,10 @@ main()
 
             // Within 0.5s, a few instances randomly stay in a poor local
             // optimum (gap of 8 to 26%) and alone move the mean gap around
-            // 1%: count them instead.
+            // 1%: count them instead. A loaded CI runner leaves up to 6 of
+            // them, an unoptimized build 15 to 25.
             if (optimized_build)
-                expect(le(poor_solutions, 5)) << name(optimizer);
+                expect(le(poor_solutions, 10)) << name(optimizer);
         }
     };
 }
