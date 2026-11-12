@@ -191,6 +191,41 @@ main()
         }
     };
 
+    "test_lns_neighbourhoods"_test = [] {
+        // Larger linear and quadratic problems exercise every neighbourhood
+        // of the adaptive choice: the result stays a valid solution whose
+        // value matches the reported one.
+        for (const char* file : { EXAMPLES_DIR "/capmo1_direct.lp",
+                                  EXAMPLES_DIR "/QPLIB_3852.lp" }) {
+            auto ctx = baryonyx::make_context(0);
+            auto pb = baryonyx::make_problem(ctx, file);
+            const auto copy = pb;
+
+            baryonyx::solver_parameters params;
+            params.time_limit = 1.5;
+            params.seed = 1;
+            params.thread = 2;
+            params.optimizer =
+              baryonyx::solver_parameters::optimizer_type::lns;
+            baryonyx::context_set_solver_parameters(ctx, params);
+
+            const auto start = std::chrono::steady_clock::now();
+            auto result = baryonyx::optimize(ctx, pb);
+            const auto elapsed = std::chrono::duration<double>(
+                                   std::chrono::steady_clock::now() - start)
+                                   .count();
+
+            expect((result.status == baryonyx::result_status::success) >>
+                   fatal)
+              << file;
+            expect(baryonyx::is_valid_solution(copy, result)) << file;
+            expect(std::abs(baryonyx::compute_solution(copy, result) -
+                            result.solutions.back().value) < 1e-6)
+              << file;
+            expect(elapsed < 2.5) << file;
+        }
+    };
+
     "test_request_stop"_test = [] {
         // Without time limit the optimization only ends on request_stop(),
         // with its best solution; the next optimization is not stopped.

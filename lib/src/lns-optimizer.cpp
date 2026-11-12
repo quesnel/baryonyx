@@ -91,15 +91,30 @@ public:
         queue.clear();
 
         int freed = 0;
+        int visited_count = 0;
         std::size_t head = 0;
 
         while (freed < wanted) {
             if (head == queue.size()) {
+                // Every constraint is visited but variables outside any
+                // constraint remain: complete with random variables.
+                if (visited_count == constraints()) {
+                    while (freed < wanted) {
+                        const auto v = bx::uniform_below(rng, is_free.size());
+                        if (!is_free[v]) {
+                            is_free[v] = 1;
+                            ++freed;
+                        }
+                    }
+                    return;
+                }
+
                 const auto start = static_cast<int>(bx::uniform_below(
                   rng, static_cast<std::uint64_t>(constraints())));
                 if (visited[static_cast<std::size_t>(start)])
                     continue;
                 visited[static_cast<std::size_t>(start)] = 1;
+                ++visited_count;
                 queue.emplace_back(start);
             }
 
@@ -115,6 +130,7 @@ public:
                     const auto n = static_cast<std::size_t>(next);
                     if (!visited[n]) {
                         visited[n] = 1;
+                        ++visited_count;
                         queue.emplace_back(next);
                     }
                 }
