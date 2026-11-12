@@ -947,6 +947,20 @@ main()
         expect(baryonyx::itm::repair(x, impossible, unit_costs{}, 2, rng, 500) ==
                1);
 
+        // From scratch, with weights kept between the starting solutions.
+        {
+            const unit_costs costs;
+            baryonyx::itm::weighted_flip_search<unit_costs> search(
+              spp, costs, 6);
+            baryonyx::random_engine rng(3);
+
+            for (int attempt = 0; attempt != 5; ++attempt) {
+                baryonyx::bit_array x(6);
+                expect(search(x, rng, 10000, []() { return false; }) == 0);
+                expect(satisfies(x, spp));
+            }
+        }
+
         expect(baryonyx::itm::is_repairable(1, 50));
         expect(baryonyx::itm::is_repairable(10, 50));
         expect(!baryonyx::itm::is_repairable(11, 50));

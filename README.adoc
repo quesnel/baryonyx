@@ -394,6 +394,13 @@ the best solution.
   skipped. The final message names the thread and the change that found the
   best solution. `tuned` evaluates exact configurations and disables the
   portfolio.
+* With `restart` and at least 4 threads, the last thread first searches a
+  feasible solution with feasibility jump, a weighted flip search that
+  ignores the objective, until any thread finds one; it then runs Wedelin
+  like the others. It finds solutions on problems where Wedelin alone ends
+  with violated constraints. The final message gives the time and the origin
+  of the first solution. `lns` runs its sub-problems on 2 threads and does
+  not use it.
 * In solve mode, `thread` only matters for the buffered solver
   (`buffer-solver=1`).
 * The `seed` parameter makes a run reproducible for a given number of

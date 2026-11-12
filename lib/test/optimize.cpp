@@ -226,6 +226,35 @@ main()
         }
     };
 
+    "test_restart_feasibility_jump"_test = [] {
+        // With 4 threads, the last one searches a first solution with a
+        // weighted flip search before running Wedelin.
+        for (const char* file : { EXAMPLES_DIR "/capmo1_direct.lp",
+                                  EXAMPLES_DIR "/QPLIB_3852.lp" }) {
+            auto ctx = baryonyx::make_context(0);
+            auto pb = baryonyx::make_problem(ctx, file);
+            const auto copy = pb;
+
+            baryonyx::solver_parameters params;
+            params.time_limit = 1.0;
+            params.seed = 1;
+            params.thread = 4;
+            params.optimizer =
+              baryonyx::solver_parameters::optimizer_type::restart;
+            baryonyx::context_set_solver_parameters(ctx, params);
+
+            auto result = baryonyx::optimize(ctx, pb);
+
+            expect((result.status == baryonyx::result_status::success) >>
+                   fatal)
+              << file;
+            expect(baryonyx::is_valid_solution(copy, result)) << file;
+            expect(std::abs(baryonyx::compute_solution(copy, result) -
+                            result.solutions.back().value) < 1e-6)
+              << file;
+        }
+    };
+
     "test_request_stop"_test = [] {
         // Without time limit the optimization only ends on request_stop(),
         // with its best solution; the next optimization is not stopped.

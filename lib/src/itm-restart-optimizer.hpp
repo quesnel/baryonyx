@@ -32,6 +32,7 @@
 #include <mutex>
 #include <string_view>
 #include <thread>
+#include <tuple>
 #include <vector>
 
 #include "itm-common.hpp"
@@ -120,9 +121,16 @@ public:
                              real value,
                              double duration,
                              long int loop,
-                             unsigned thread_id)
+                             unsigned thread_id,
+                             bool by_jump)
     {
         std::scoped_lock lock(m_mutex);
+
+        if (!m_best.is_solution()) {
+            m_first_duration = duration;
+            m_first_thread_id = thread_id;
+            m_first_by_jump = by_jump;
+        }
 
         if (m_best.is_other_better_solution(value)) {
             m_best.x = x;
@@ -131,13 +139,33 @@ public:
             m_best.duration = duration;
             m_best.loop = loop;
             m_thread_id = thread_id;
+            m_by_jump = by_jump;
         }
+    }
+
+    bool has_solution() const
+    {
+        std::scoped_lock lock(m_mutex);
+
+        return m_best.is_solution();
     }
 
     /** Only valid once every thread has stopped. */
     unsigned best_thread() const noexcept
     {
         return m_thread_id;
+    }
+
+    /** Only valid once every thread has stopped. */
+    bool best_by_jump() const noexcept
+    {
+        return m_by_jump;
+    }
+
+    /** Only valid once every thread has stopped. */
+    std::tuple<double, unsigned, bool> first_solution() const noexcept
+    {
+        return { m_first_duration, m_first_thread_id, m_first_by_jump };
     }
 
     void try_update_remaining(const bit_array& x,
@@ -190,6 +218,10 @@ private:
     mutable std::mutex m_mutex;
     raw_result<Mode> m_best;
     unsigned m_thread_id = 0;
+    bool m_by_jump = false;
+    double m_first_duration = 0;
+    unsigned m_first_thread_id = 0;
+    bool m_first_by_jump = false;
 };
 
 /**
@@ -214,6 +246,11 @@ struct restart_functor
     unsigned m_thread_number;
     int m_variant;
 
+    // Searches a first solution with a weighted flip search before running
+    // Wedelin: the search reaches feasibility on problems where Wedelin is
+    // slow, and stops as soon as any thread has a solution.
+    bool m_jump_first;
+
     // Read by the monitoring thread through std::atomic_ref.
     alignas(std::atomic_ref<long int>::required_alignment) long int
       m_call_number = 0;
@@ -221,7 +258,8 @@ struct restart_functor
     restart_functor(const context& ctx,
                     unsigned thread_id,
                     unsigned thread_number,
-                    random_engine::result_type seed)
+                    random_engine::result_type seed,
+                    bool jump_first)
       : m_ctx(ctx)
       , m_rng(seed)
       , m_thread_id(thread_id)
@@ -229,6 +267,7 @@ struct restart_functor
       , m_variant(ctx.tuning
                     ? -1
                     : portfolio_variant_index(ctx.parameters, thread_id))
+      , m_jump_first(jump_first)
     {
         if (m_variant >= 0)
             portfolio_variants[m_variant].apply(m_ctx.parameters);
@@ -293,7 +332,7 @@ struct restart_functor
         // x stays the state of the Wedelin solver: only a copy is polished.
         polisher polish(constraints, variables);
         bit_array polished;
-        const auto record_solution = [&](long int loop) {
+        const auto record_solution = [&](long int loop, bool by_jump = false) {
             polished = x;
             polish(polished, original_costs);
             best.try_update_solution(polished,
@@ -301,8 +340,27 @@ struct restart_functor
                                                             cost_constant),
                                      elapsed(),
                                      loop,
-                                     m_thread_id);
+                                     m_thread_id,
+                                     by_jump);
         };
+
+        if (m_jump_first) {
+            weighted_flip_search<Cost> search(
+              constraints, original_costs, variables);
+            const auto flip_limit =
+              repair_flip_limit(variables, length(constraints));
+            const auto stop = [&]() {
+                return stop_task.load() || best.has_solution();
+            };
+
+            for (unsigned attempt = 1; !stop(); ++attempt) {
+                initial_solution(
+                  x, best, norm_costs, constraints, attempt);
+
+                if (search(x, m_rng, flip_limit, stop) == 0)
+                    record_solution(attempt, true);
+            }
+        }
 
         const auto increase_kappa = [&](real& kappa, int remaining) {
             kappa += kappa_step * std::pow(static_cast<real>(remaining) /
@@ -481,6 +539,10 @@ restart_optimize_problem(const context& ctx, const problem& pb)
     const auto thread = get_thread_number(ctx);
     const auto seeds = generate_seed(rng, thread);
 
+    // The sub-problems of lns run on 2 threads and are easy for Wedelin;
+    // tuned evaluates exact configurations.
+    const bool use_jump = thread >= 4u && !ctx.tuning;
+
     shared_best_solution<Mode> best(variables);
     std::atomic_bool stop_task{ false };
 
@@ -490,7 +552,7 @@ restart_optimize_problem(const context& ctx, const problem& pb)
     for (unsigned i = 0u; i != thread; ++i)
         functors.emplace_back(
           std::make_unique<restart_functor<Solver, Mode, Cost>>(
-            ctx, i, thread, seeds[i]));
+            ctx, i, thread, seeds[i], use_jump && i + 1u == thread));
 
     const auto start = std::chrono::steady_clock::now();
 
@@ -544,12 +606,25 @@ restart_optimize_problem(const context& ctx, const problem& pb)
     const auto& first = best.best();
 
     if (first.is_solution()) {
-        const auto variant = functors[best.best_thread()]->m_variant;
+        const auto origin = [&](unsigned thread_id, bool by_jump) {
+            const auto variant = functors[thread_id]->m_variant;
+            return by_jump       ? std::string_view("feasibility jump")
+                   : variant < 0 ? std::string_view("user parameters")
+                                 : portfolio_variants[variant].name;
+        };
+        const auto [first_duration, first_thread, first_by_jump] =
+          best.first_solution();
+
+        notice(ctx,
+               "  - restart optimizer: first solution at {:.3f}s by thread "
+               "{} ({})\n",
+               first_duration,
+               first_thread,
+               origin(first_thread, first_by_jump));
         notice(ctx,
                "  - restart optimizer: best solution found by thread {} ({})\n",
                best.best_thread(),
-               variant < 0 ? std::string_view("user parameters")
-                           : portfolio_variants[variant].name);
+               origin(best.best_thread(), best.best_by_jump()));
     }
 
     r.status = first.is_solution() ? result_status::success
