@@ -12,3 +12,6 @@ rbaryonyx_*.tar.gz
 *sol
 *dump
 compile_commands.json
+__pycache__/
+*.egg-info/
+dist/

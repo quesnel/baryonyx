@@ -18,6 +18,16 @@ add_definitions(-DFMT_HEADER_ONLY)
 include_directories(${CMAKE_SOURCE_DIR}/external/fmt/include)
 include_directories(${CMAKE_SOURCE_DIR}/external/ut/include)
 
+option(WITH_PYTHON "Build the Python module (needs pybind11). [default: OFF]" OFF)
+
 enable_testing()
 add_subdirectory(lib)
-add_subdirectory(app)
+
+# pip install builds only the library and the Python module.
+if (NOT SKBUILD)
+  add_subdirectory(app)
+endif ()
+
+if (WITH_PYTHON OR SKBUILD)
+  add_subdirectory(python)
+endif ()

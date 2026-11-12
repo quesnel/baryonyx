@@ -674,6 +674,84 @@ solver. `inf` indicates that no solution was found.
 The `benchmarks` directory provides some files and a script to download
 classical problems.
 
+== Python
+
+The `baryonyx` Python module binds the library with pybind11. It needs
+Python ≥ 3.9 and the requirements above; `pip` builds the library and the
+module, no previous installation of baryonyx is needed:
+
+[source,bash]
+....
+cd baryonyx
+pip install .
+....
+
+=== API
+
+[source,python]
+----
+import baryonyx as bx
+
+r = bx.optimize("problem.lp", time_limit=10, thread=4, seed=1,
+                norm="loo", optimizer="lns")
+if r:
+    print(r.value, r.duration)
+    print(r.solution)       # {variable name: 0 or 1}
+else:
+    print(r.status, r.remaining_constraints)
+----
+
+* `solve(file_path, **parameters)` searches one solution,
+  `optimize(file_path, **parameters)` the best one within the time limit.
+* The keyword parameters have the names of the `-p` parameters of the
+  command line, with `_` instead of `-`, and their defaults: `limit`,
+  `time_limit`, `thread`, `seed`, `theta`, `delta`, `kappa_min`,
+  `kappa_step`, `alpha`, `constraint_order`, `norm`, `optimizer`. The
+  enumerations take the same strings (`"random-sorting"`, `"loo"`,
+  `"lns"`…), an unknown value raises `ValueError`. `preprocessing=False`
+  disables the preprocessor, `verbose` takes `True`, `False` or a level
+  between 0 and 7.
+* The `Result` gives `success` (also its truth value), `status`
+  (`"success"`, `"time-limit-reached"`, `"limit-reached"`…), `value`,
+  `duration`, `loop`, `variables`, `constraints`, `remaining_constraints`,
+  `minimize`, `values` (the values of the kept solutions) and `solution`,
+  the value of each variable of the problem, including those fixed by the
+  preprocessor.
+* `progress=f` calls `f(remaining_constraints, value, loop, duration)` at
+  each improvement; an exception raised by `f` stops the run and is
+  propagated.
+* With `time_limit` <= 0 (the default), `optimize` runs until Ctrl-C, which
+  raises `KeyboardInterrupt`, or `request_stop()` from another thread,
+  which makes it return its best result.
+* An unreadable file raises `FileNotFoundError`, an invalid model
+  `ValueError`, a model the solvers reject (integer variables, unrealisable
+  constraint) `RuntimeError`.
+
+=== Usage
+
+Screening of parameters, one process per run:
+
+[source,python]
+----
+from concurrent.futures import ProcessPoolExecutor
+from itertools import product
+
+import baryonyx as bx
+
+def run(theta, norm):
+    r = bx.optimize("verger_5_5.lp", time_limit=10, thread=1, seed=1,
+                    theta=theta, norm=norm)
+    return theta, norm, r.value if r else None
+
+grid = list(product([0.5, 0.7, 0.9], ["l2", "loo", "random"]))
+with ProcessPoolExecutor() as pool:
+    for theta, norm, value in pool.map(run, *zip(*grid)):
+        print(theta, norm, value)
+----
+
+To run the tests: `pip install pytest` then `pytest` from the root of the
+repository.
+
 == R
 
 To use rbaryonyx, you must compile and install the baryonyx library.

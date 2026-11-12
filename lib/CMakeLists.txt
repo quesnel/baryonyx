@@ -175,7 +175,7 @@ function(baryonyx_add_test test_name)
   add_test(${test_name} ${test_name})
 endfunction()
 
-if (NOT BUILD_SHARED_LIBS)
+if (NOT BUILD_SHARED_LIBS AND NOT SKBUILD)
   baryonyx_add_test(testio test/io.cpp)
   baryonyx_add_test(testlib test/lib.cpp)
   baryonyx_add_test(testpreprocess test/preprocess.cpp)

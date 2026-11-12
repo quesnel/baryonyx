@@ -1,0 +1,25 @@
+[build-system]
+requires = ["scikit-build-core>=0.10", "pybind11>=2.12"]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "baryonyx"
+version = "0.5.0"
+description = "0-1 integer linear programming with the Wedelin heuristic"
+readme = { file = "README.adoc", content-type = "text/plain" }
+license = { file = "LICENSE" }
+authors = [{ name = "Gauthier Quesnel" }]
+requires-python = ">=3.9"
+
+[project.optional-dependencies]
+test = ["pytest"]
+
+[tool.scikit-build]
+minimum-version = "0.10"
+cmake.build-type = "Release"
+wheel.packages = ["python/baryonyx"]
+install.components = ["python"]
+sdist.exclude = ["benchmarks", "build", "*.pdf"]
+
+[tool.pytest.ini_options]
+testpaths = ["python/tests"]
