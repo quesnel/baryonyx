@@ -1046,7 +1046,7 @@ main()
         params.seed = 1;
         baryonyx::context_set_solver_parameters(ctx, params);
 
-        for (const auto [sense, sign, expected] :
+        for (const auto& [sense, sign, expected] :
              { std::tuple{ "minimize", 1, 15.0 },
                std::tuple{ "maximize", -1, -15.0 } }) {
             std::istringstream iss(make_assignment(sense, sign));

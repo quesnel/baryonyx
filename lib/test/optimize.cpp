@@ -272,7 +272,7 @@ main()
             { EXAMPLES_DIR "/prevl1.lp", false }
         };
 
-        for (const auto [file, must_succeed] : cases) {
+        for (const auto& [file, must_succeed] : cases) {
             auto ctx = baryonyx::make_context(0);
             auto pb = baryonyx::make_problem(ctx, file);
             const auto copy = pb;

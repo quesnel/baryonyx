@@ -64,7 +64,7 @@ struct local_context
 
     const unsigned thread_id;
 
-    local_context(const context& ctx,
+    local_context(const context& /*ctx*/,
                   const unsigned thread_id_,
                   const random_engine::result_type seed)
       : rng(seed)

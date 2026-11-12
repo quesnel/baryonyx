@@ -174,7 +174,7 @@ public:
                 const int sign = x[j] ? -1 : 1;
                 long long delta = 0;
 
-                for (const auto [r, factor] : m_columns(j)) {
+                for (const auto& [r, factor] : m_columns(j)) {
                     const auto value = m_lhs[static_cast<std::size_t>(r)];
                     delta += m_weight[static_cast<std::size_t>(r)] *
                              (violation(r, value + sign * factor) -
@@ -245,7 +245,7 @@ private:
         const int sign = x[j] ? -1 : 1;
         x.invert(j);
 
-        for (const auto [k, factor] : m_columns(j)) {
+        for (const auto& [k, factor] : m_columns(j)) {
             m_lhs[static_cast<std::size_t>(k)] += sign * factor;
             update_violated(k);
         }

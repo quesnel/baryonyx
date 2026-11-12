@@ -155,7 +155,7 @@ private:
         const int sign = x[j] ? -1 : 1;
         x.invert(j);
 
-        for (const auto [k, factor] : m_columns(j))
+        for (const auto& [k, factor] : m_columns(j))
             m_lhs[static_cast<std::size_t>(k)] += sign * factor;
     }
 
@@ -169,7 +169,7 @@ private:
 
     bool is_feasible(const int j) const noexcept
     {
-        for (const auto [k, factor] : m_columns(j))
+        for (const auto& [k, factor] : m_columns(j))
             if (!is_satisfied(k))
                 return false;
 
@@ -190,7 +190,7 @@ private:
                      const real delta_j)
     {
         int violated = -1;
-        for (const auto [k, factor] : m_columns(j)) {
+        for (const auto& [k, factor] : m_columns(j)) {
             if (!is_satisfied(k)) {
                 violated = k;
                 break;
@@ -241,7 +241,7 @@ private:
     {
         push(j);
 
-        for (const auto [k, factor] : m_columns(j))
+        for (const auto& [k, factor] : m_columns(j))
             for (const auto& elem :
                  m_constraints[static_cast<std::size_t>(k)].elements)
                 push(elem.variable_index);
