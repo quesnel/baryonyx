@@ -30,6 +30,7 @@
 #include <cmath>
 #include <memory>
 #include <mutex>
+#include <string_view>
 #include <thread>
 #include <vector>
 
@@ -40,6 +41,71 @@
 #include "utils.hpp"
 
 namespace baryonyx::itm {
+
+/** A change of one parameter tried by a restart thread. */
+struct portfolio_variant
+{
+    std::string_view name;
+    void (*apply)(solver_parameters& p) noexcept;
+};
+
+/**
+ * The best parameters depend on the problem, as the parameter benchmark
+ * showed: thread 0 keeps the user's parameters and each other thread changes
+ * one of them, the most influential changes of the benchmark first.
+ * Combining changes did worse than each change alone.
+ */
+inline constexpr portfolio_variant portfolio_variants[] = {
+    { "norm=loo",
+      [](solver_parameters& p) noexcept {
+          p.cost_norm = solver_parameters::cost_norm_type::loo;
+      } },
+    { "constraint-order=random-sorting",
+      [](solver_parameters& p) noexcept {
+          p.order = solver_parameters::constraint_order::random_sorting;
+      } },
+    { "theta=0.8", [](solver_parameters& p) noexcept { p.theta = 0.8; } },
+    { "delta=0.1", [](solver_parameters& p) noexcept { p.delta = 0.1; } },
+    { "constraint-order=infeasibility-decr",
+      [](solver_parameters& p) noexcept {
+          p.order = solver_parameters::constraint_order::infeasibility_decr;
+      } },
+    { "norm=random",
+      [](solver_parameters& p) noexcept {
+          p.cost_norm = solver_parameters::cost_norm_type::random;
+      } },
+    { "kappa-min=0.1",
+      [](solver_parameters& p) noexcept { p.kappa_min = 0.1; } },
+};
+
+/**
+ * @return the index in @c portfolio_variants of the variant of
+ *     @c thread_id, -1 for the user's parameters. The variants that leave
+ *     the user's parameters unchanged are skipped.
+ */
+inline int
+portfolio_variant_index(const solver_parameters& user, const unsigned thread_id)
+{
+    if (thread_id == 0)
+        return -1;
+
+    const auto changes = [&user](const portfolio_variant& variant) {
+        auto p = user;
+        variant.apply(p);
+        return p.cost_norm != user.cost_norm || p.order != user.order ||
+               p.theta != user.theta || p.delta != user.delta ||
+               p.kappa_min != user.kappa_min;
+    };
+
+    std::vector<int> effective;
+    for (int i = 0, e = length(portfolio_variants); i != e; ++i)
+        if (changes(portfolio_variants[i]))
+            effective.emplace_back(i);
+
+    return effective.empty()
+             ? -1
+             : effective[(thread_id - 1u) % effective.size()];
+}
 
 /** Best solution shared by the restart threads. */
 template<typename Mode>
@@ -53,7 +119,8 @@ public:
     void try_update_solution(const bit_array& x,
                              real value,
                              double duration,
-                             long int loop)
+                             long int loop,
+                             unsigned thread_id)
     {
         std::scoped_lock lock(m_mutex);
 
@@ -63,7 +130,14 @@ public:
             m_best.remaining_constraints = 0;
             m_best.duration = duration;
             m_best.loop = loop;
+            m_thread_id = thread_id;
         }
+    }
+
+    /** Only valid once every thread has stopped. */
+    unsigned best_thread() const noexcept
+    {
+        return m_thread_id;
     }
 
     void try_update_remaining(const bit_array& x,
@@ -115,6 +189,7 @@ public:
 private:
     mutable std::mutex m_mutex;
     raw_result<Mode> m_best;
+    unsigned m_thread_id = 0;
 };
 
 /**
@@ -132,10 +207,12 @@ struct restart_functor
     static constexpr real kappa_step_min = 1e-6;
     static constexpr real kappa_step_max = 0.1;
 
-    const context& m_ctx;
+    // A copy: the parameters are those of the thread variant.
+    context m_ctx;
     random_engine m_rng;
     unsigned m_thread_id;
     unsigned m_thread_number;
+    int m_variant;
 
     // Read by the monitoring thread through std::atomic_ref.
     alignas(std::atomic_ref<long int>::required_alignment) long int
@@ -149,7 +226,13 @@ struct restart_functor
       , m_rng(seed)
       , m_thread_id(thread_id)
       , m_thread_number(thread_number)
-    {}
+      , m_variant(ctx.tuning
+                    ? -1
+                    : portfolio_variant_index(ctx.parameters, thread_id))
+    {
+        if (m_variant >= 0)
+            portfolio_variants[m_variant].apply(m_ctx.parameters);
+    }
 
     void operator()(const std::atomic_bool& stop_task,
                     shared_best_solution<Mode>& best,
@@ -217,7 +300,8 @@ struct restart_functor
                                      original_costs.results(polished,
                                                             cost_constant),
                                      elapsed(),
-                                     loop);
+                                     loop,
+                                     m_thread_id);
         };
 
         const auto increase_kappa = [&](real& kappa, int remaining) {
@@ -458,6 +542,15 @@ restart_optimize_problem(const context& ctx, const problem& pb)
         t.join();
 
     const auto& first = best.best();
+
+    if (first.is_solution()) {
+        const auto variant = functors[best.best_thread()]->m_variant;
+        notice(ctx,
+               "  - restart optimizer: best solution found by thread {} ({})\n",
+               best.best_thread(),
+               variant < 0 ? std::string_view("user parameters")
+                           : portfolio_variants[variant].name);
+    }
 
     r.status = first.is_solution() ? result_status::success
                                    : result_status::time_limit_reached;

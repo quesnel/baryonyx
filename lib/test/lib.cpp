@@ -26,6 +26,7 @@
 #include "itm-common.hpp"
 #include "itm-polish.hpp"
 #include "itm-repair.hpp"
+#include "itm-restart-optimizer.hpp"
 #include "memory.hpp"
 #include "pnm.hpp"
 #include "sparse-matrix.hpp"
@@ -952,6 +953,35 @@ main()
         expect(!baryonyx::itm::is_repairable(0, 50));
         expect(baryonyx::itm::is_repairable(100, 10000));
         expect(!baryonyx::itm::is_repairable(101, 10000));
+    };
+
+    "check_portfolio"_test = [] {
+        using baryonyx::itm::portfolio_variant_index;
+        using baryonyx::itm::portfolio_variants;
+
+        const baryonyx::solver_parameters user;
+        const int variants = baryonyx::length(portfolio_variants);
+
+        expect(portfolio_variant_index(user, 0) == -1);
+
+        std::vector<int> seen;
+        for (unsigned thread = 1; thread <= unsigned(variants); ++thread)
+            seen.emplace_back(portfolio_variant_index(user, thread));
+        std::sort(seen.begin(), seen.end());
+        expect(std::adjacent_find(seen.begin(), seen.end()) == seen.end());
+        expect(seen.front() == 0 && seen.back() == variants - 1);
+
+        expect(portfolio_variant_index(user, unsigned(variants) + 1) ==
+               portfolio_variant_index(user, 1));
+
+        // A variant equal to the user's parameters is skipped.
+        auto loo = user;
+        loo.cost_norm = baryonyx::solver_parameters::cost_norm_type::loo;
+        for (unsigned thread = 1; thread != 20; ++thread) {
+            const auto variant = portfolio_variant_index(loo, thread);
+            expect(variant >= 0);
+            expect(portfolio_variants[variant].name != "norm=loo");
+        }
     };
 
     "check_polish"_test = [] {

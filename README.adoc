@@ -385,6 +385,15 @@ the best solution.
 
 * In optimization mode, the `thread` parameter sets the number of solvers
   running in parallel; they share the best solution.
+* The threads of the `restart` optimizer, hence also of `lns`, form a
+  portfolio: the best parameters depend on the problem, so thread 0 keeps
+  the user's parameters and each other thread changes one of them, in this
+  order: `norm=loo`, `constraint-order=random-sorting`, `theta=0.8`,
+  `delta=0.1`, `constraint-order=infeasibility-decr`, `norm=random`,
+  `kappa-min=0.1`. A change that leaves the user's parameters unchanged is
+  skipped. The final message names the thread and the change that found the
+  best solution. `tuned` evaluates exact configurations and disables the
+  portfolio.
 * In solve mode, `thread` only matters for the buffered solver
   (`buffer-solver=1`).
 * The `seed` parameter makes a run reproducible for a given number of
