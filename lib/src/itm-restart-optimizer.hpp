@@ -34,6 +34,7 @@
 #include <vector>
 
 #include "itm-common.hpp"
+#include "itm-polish.hpp"
 #include "itm-repair.hpp"
 #include "result.hpp"
 #include "utils.hpp"
@@ -206,6 +207,19 @@ struct restart_functor
             return compute_duration(start, std::chrono::steady_clock::now());
         };
 
+        // x stays the state of the Wedelin solver: only a copy is polished.
+        polisher polish(constraints, variables);
+        bit_array polished;
+        const auto record_solution = [&](long int loop) {
+            polished = x;
+            polish(polished, original_costs);
+            best.try_update_solution(polished,
+                                     original_costs.results(polished,
+                                                            cost_constant),
+                                     elapsed(),
+                                     loop);
+        };
+
         const auto increase_kappa = [&](real& kappa, int remaining) {
             kappa += kappa_step * std::pow(static_cast<real>(remaining) /
                                              static_cast<real>(slv.m),
@@ -231,11 +245,7 @@ struct restart_functor
                   compute.run(slv, x, m_rng, kappa, delta, theta);
 
                 if (remaining == 0) {
-                    best.try_update_solution(
-                      x,
-                      original_costs.results(x, cost_constant),
-                      elapsed(),
-                      i);
+                    record_solution(i);
                     break;
                 }
 
@@ -258,11 +268,7 @@ struct restart_functor
                            repair_flip_limit(variables, slv.m)) == 0) {
                     x = repaired;
                     remaining = 0;
-                    best.try_update_solution(
-                      x,
-                      original_costs.results(x, cost_constant),
-                      elapsed(),
-                      p.limit);
+                    record_solution(p.limit);
                 }
             }
 
@@ -290,11 +296,7 @@ struct restart_functor
                                                  pushing_objective_amplifier);
 
                 if (remaining == 0)
-                    best.try_update_solution(
-                      x,
-                      original_costs.results(x, cost_constant),
-                      elapsed(),
-                      -push * p.pushing_iteration_limit - 1);
+                    record_solution(-push * p.pushing_iteration_limit - 1);
 
                 for (int iter = 0;
                      !stop_task.load() && iter < p.pushing_iteration_limit;
@@ -303,11 +305,7 @@ struct restart_functor
                       compute.run(slv, x, m_rng, kappa, delta, theta);
 
                     if (remaining == 0) {
-                        best.try_update_solution(
-                          x,
-                          original_costs.results(x, cost_constant),
-                          elapsed(),
-                          -push * p.pushing_iteration_limit - iter - 1);
+                        record_solution(-push * p.pushing_iteration_limit - iter - 1);
                         break;
                     }
 

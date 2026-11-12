@@ -25,6 +25,7 @@
 
 #include <algorithm>
 #include <limits>
+#include <span>
 #include <utility>
 #include <vector>
 
@@ -34,6 +35,47 @@
 #include "utils.hpp"
 
 namespace baryonyx::itm {
+
+/** The constraints of each variable, with its coefficients. */
+class constraint_columns
+{
+public:
+    constraint_columns(const std::vector<merged_constraint>& constraints,
+                       const int variables)
+      : m_start(static_cast<std::size_t>(variables) + 1u, 0)
+    {
+        for (const auto& cst : constraints)
+            for (const auto& elem : cst.elements)
+                ++m_start[static_cast<std::size_t>(elem.variable_index) + 1u];
+
+        for (std::size_t j = 1; j < m_start.size(); ++j)
+            m_start[j] += m_start[j - 1];
+
+        m_elements.resize(static_cast<std::size_t>(m_start.back()));
+        auto next = m_start;
+        for (int k = 0, e = length(constraints); k != e; ++k)
+            for (const auto& elem : constraints[k].elements)
+                m_elements[static_cast<std::size_t>(
+                  next[static_cast<std::size_t>(elem.variable_index)]++)] = {
+                    k, elem.factor
+                };
+    }
+
+    /** @return the (constraint, factor) pairs of @c variable. */
+    std::span<const std::pair<int, int>> operator()(
+      const int variable) const noexcept
+    {
+        const auto first = m_start[static_cast<std::size_t>(variable)];
+        const auto last = m_start[static_cast<std::size_t>(variable) + 1u];
+
+        return { m_elements.data() + first,
+                 static_cast<std::size_t>(last - first) };
+    }
+
+private:
+    std::vector<int> m_start;
+    std::vector<std::pair<int, int>> m_elements;
+};
 
 /** A run ending with so few violated constraints is worth a repair. */
 inline bool
@@ -80,28 +122,7 @@ repair(bit_array& x,
 
     const int m = length(constraints);
 
-    // Column view of the constraints: for each variable, its constraints and
-    // coefficients.
-    std::vector<int> column_start(static_cast<std::size_t>(variables) + 1u,
-                                  0);
-    for (const auto& cst : constraints)
-        for (const auto& elem : cst.elements)
-            ++column_start[static_cast<std::size_t>(elem.variable_index) + 1u];
-
-    for (std::size_t j = 1; j < column_start.size(); ++j)
-        column_start[j] += column_start[j - 1];
-
-    std::vector<std::pair<int, int>> column(
-      static_cast<std::size_t>(column_start.back()));
-    {
-        auto next = column_start;
-        for (int k = 0; k != m; ++k)
-            for (const auto& elem : constraints[k].elements)
-                column[static_cast<std::size_t>(
-                  next[static_cast<std::size_t>(elem.variable_index)]++)] = {
-                    k, elem.factor
-                };
-    }
+    const constraint_columns columns(constraints, variables);
 
     std::vector<long long> lhs(static_cast<std::size_t>(m), 0);
     for (int k = 0; k != m; ++k)
@@ -144,11 +165,7 @@ repair(bit_array& x,
         const int sign = x[j] ? -1 : 1;
         x.invert(j);
 
-        for (int c = column_start[static_cast<std::size_t>(j)],
-                 e = column_start[static_cast<std::size_t>(j) + 1u];
-             c != e;
-             ++c) {
-            const auto [k, factor] = column[static_cast<std::size_t>(c)];
+        for (const auto [k, factor] : columns(j)) {
             lhs[static_cast<std::size_t>(k)] += sign * factor;
             update_violated(k);
         }
@@ -175,11 +192,7 @@ repair(bit_array& x,
             const int sign = x[j] ? -1 : 1;
             long long delta = 0;
 
-            for (int c = column_start[static_cast<std::size_t>(j)],
-                     e = column_start[static_cast<std::size_t>(j) + 1u];
-                 c != e;
-                 ++c) {
-                const auto [r, factor] = column[static_cast<std::size_t>(c)];
+            for (const auto [r, factor] : columns(j)) {
                 const auto value = lhs[static_cast<std::size_t>(r)];
                 delta += weight[static_cast<std::size_t>(r)] *
                          (violation(r, value + sign * factor) -

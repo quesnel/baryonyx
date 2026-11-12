@@ -32,6 +32,7 @@
 #include <vector>
 
 #include "itm-common.hpp"
+#include "itm-polish.hpp"
 #include "itm-repair.hpp"
 #include "observer.hpp"
 #include "private.hpp"
@@ -217,8 +218,13 @@ struct solver_functor
             }
         }
 
-        if (m_best.remaining_constraints == 0)
+        if (m_best.remaining_constraints == 0) {
             r.status = result_status::success;
+
+            polisher polish(constraints, variables);
+            if (polish(m_best.x, original_costs) > 0)
+                m_best.value = original_costs.results(m_best.x, cost_constant);
+        }
 
         r.duration = m_best.duration;
         r.loop = m_best.loop;

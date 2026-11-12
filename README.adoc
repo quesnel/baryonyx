@@ -209,6 +209,16 @@ each local minimum. A repaired solution is improved by the pushes like any
 other solution. The repair runs in solve mode and in the `restart` and
 `genetic` optimizers, hence also in `lns` and `tuned`.
 
+Wedelin stops where the multipliers balance, not at a local optimum: on
+large problems some variables keep a costly value. Each feasible solution is
+therefore *polished* (`lib/src/itm-polish.hpp`): a descent flips a variable,
+or a variable and a partner of the constraint it would violate, while the
+objective decreases and every constraint stays satisfied. Only the variables
+touched by the last move are checked again. The `restart` and `genetic`
+optimizers polish a copy of each solution, the solver state is unchanged;
+`lns` polishes its initial solution and each candidate, from the variables
+the neighbourhood changed; solve mode polishes its final solution.
+
 `kappa_max`, the warm-up `w`, `init_policy_random`, the pushes and the repair
 settings are fixed, as `static inline constexpr` members of `solver_parameters`
 (`lib/include/baryonyx/core`). A sensitivity benchmark showed that the first

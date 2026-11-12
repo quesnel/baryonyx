@@ -24,6 +24,7 @@
 #include "branch-and-bound-solver.hpp"
 #include "exhaustive-solver.hpp"
 #include "itm-common.hpp"
+#include "itm-polish.hpp"
 #include "itm-repair.hpp"
 #include "memory.hpp"
 #include "pnm.hpp"
@@ -63,6 +64,17 @@ struct unit_costs
     baryonyx::real operator()(int, const baryonyx::bit_array&) const noexcept
     {
         return 1;
+    }
+};
+
+/** Linear costs of the polish tests. */
+struct vector_costs
+{
+    std::vector<baryonyx::real> costs;
+
+    baryonyx::real operator()(int j, const baryonyx::bit_array&) const noexcept
+    {
+        return costs[static_cast<std::size_t>(j)];
     }
 };
 
@@ -940,5 +952,88 @@ main()
         expect(!baryonyx::itm::is_repairable(0, 50));
         expect(baryonyx::itm::is_repairable(100, 10000));
         expect(!baryonyx::itm::is_repairable(101, 10000));
+    };
+
+    "check_polish"_test = [] {
+        using baryonyx::itm::merged_constraint;
+        using baryonyx::itm::polisher;
+        using fe = baryonyx::function_element;
+
+        // A single flip: x1 is useless to cover x0 + x1 >= 1.
+        {
+            const std::vector<merged_constraint> cover{
+                { { fe(1, 0), fe(1, 1) }, 1, 2, 0 },
+            };
+            baryonyx::bit_array x(2);
+            x.set(0);
+            x.set(1);
+
+            polisher polish(cover, 2);
+            expect(polish(x, vector_costs{ { 1, 2 } }) == 1);
+            expect(x[0] == 1 && x[1] == 0);
+            expect(satisfies(x, cover));
+        }
+
+        // Only an exchange improves a partition: x1 replaces x0.
+        {
+            const std::vector<merged_constraint> partition{
+                { { fe(1, 0), fe(1, 1), fe(1, 2) }, 1, 1, 0 },
+                { { fe(1, 3), fe(1, 4) }, 1, 1, 1 },
+            };
+            baryonyx::bit_array x(5);
+            x.set(0);
+            x.set(3);
+
+            polisher polish(partition, 5);
+            expect(polish(x, vector_costs{ { 3, 1, 2, 1, 4 } }) == 1);
+            expect(x[0] == 0 && x[1] == 1 && x[2] == 0);
+            expect(x[3] == 1 && x[4] == 0);
+            expect(satisfies(x, partition));
+
+            // A local optimum stays unchanged.
+            expect(polish(x, vector_costs{ { 3, 1, 2, 1, 4 } }) == 0);
+            expect(x[1] == 1 && x[3] == 1);
+        }
+
+        // Quadratic costs: x0 and x1 are cheap alone, expensive together,
+        // and the x2 * x2 term makes x2 worth taking.
+        {
+            baryonyx::objective_function obj;
+            obj.elements.emplace_back(-1.0, 0);
+            obj.elements.emplace_back(-1.0, 1);
+            obj.elements.emplace_back(1.0, 2);
+            obj.qelements.emplace_back(3.0, 0, 1);
+            obj.qelements.emplace_back(-3.0, 2, 2);
+
+            const baryonyx::itm::quadratic_cost_type costs(obj, 3);
+            const std::vector<merged_constraint> none;
+            baryonyx::bit_array x(3);
+            x.set(0);
+            x.set(1);
+
+            polisher polish(none, 3);
+            expect(polish(x, costs) == 2);
+            expect(x[0] + x[1] == 1);
+            expect(x[2] == 1);
+            expect(costs.results(x, 0) == -3);
+        }
+
+        // Only the changed variables and their neighbours are checked.
+        {
+            const std::vector<merged_constraint> rows{
+                { { fe(1, 0), fe(1, 1) }, 1, 2, 0 },
+                { { fe(1, 2), fe(1, 3) }, 1, 2, 1 },
+            };
+            baryonyx::bit_array x(4);
+            x.set(0);
+            x.set(1);
+            x.set(2);
+            x.set(3);
+
+            polisher polish(rows, 4);
+            const std::vector<int> changed{ 0 };
+            expect(polish(x, vector_costs{ { 1, 2, 1, 2 } }, changed) == 1);
+            expect(x[1] == 0 && x[3] == 1);
+        }
     };
 }

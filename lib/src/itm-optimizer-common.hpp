@@ -37,6 +37,7 @@
 #include <vector>
 
 #include "itm-common.hpp"
+#include "itm-polish.hpp"
 #include "itm-restart-optimizer.hpp"
 #include "private.hpp"
 #include "result.hpp"
@@ -562,6 +563,19 @@ struct optimize_functor
 
         compute_order compute(p.order, variables);
         bool is_a_solution = false;
+
+        // x stays the state of the Wedelin solver: only a copy is polished.
+        polisher polish(constraints, variables);
+        bit_array polished;
+        const auto record_solution = [&](long int loop) {
+            polished = x;
+            polish(polished, original_costs);
+            best_recorder.try_update(
+              m_local_ctx,
+              polished,
+              original_costs.results(polished, cost_constant),
+              loop);
+        };
         int previous_remaining = INT_MAX;
         int last_remaining = INT_MAX;
 
@@ -592,11 +606,7 @@ struct optimize_functor
                   compute.run(slv, x, m_local_ctx.rng, kappa, delta, theta);
 
                 if (remaining == 0) {
-                    best_recorder.try_update(
-                      m_local_ctx,
-                      x,
-                      original_costs.results(x, cost_constant),
-                      i);
+                    record_solution(i);
 
                     is_a_solution = true;
                     break;
@@ -624,11 +634,7 @@ struct optimize_functor
                            repair_flip_limit(variables, slv.m)) == 0) {
                     x = repaired;
                     remaining = 0;
-                    best_recorder.try_update(
-                      m_local_ctx,
-                      x,
-                      original_costs.results(x, cost_constant),
-                      p.limit);
+                    record_solution(p.limit);
                     is_a_solution = true;
                 }
             }
@@ -656,11 +662,7 @@ struct optimize_functor
                                        pushing_objective_amplifier);
 
                 if (remaining == 0) {
-                    best_recorder.try_update(
-                      m_local_ctx,
-                      x,
-                      original_costs.results(x, cost_constant),
-                      -push * p.pushing_iteration_limit - 1);
+                    record_solution(-push * p.pushing_iteration_limit - 1);
                     is_a_solution = true;
                 }
 
@@ -672,11 +674,7 @@ struct optimize_functor
                       slv, x, m_local_ctx.rng, kappa, delta, theta);
 
                     if (remaining == 0) {
-                        best_recorder.try_update(
-                          m_local_ctx,
-                          x,
-                          original_costs.results(x, cost_constant),
-                          -push * p.pushing_iteration_limit - iter - 1);
+                        record_solution(-push * p.pushing_iteration_limit - iter - 1);
                         is_a_solution = true;
                         break;
                     }

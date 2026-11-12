@@ -23,12 +23,15 @@
 #include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <optional>
+#include <span>
 #include <string_view>
 #include <unordered_map>
 #include <utility>
 #include <vector>
 
 #include "debug.hpp"
+#include "itm-polish.hpp"
 #include "itm.hpp"
 #include "private.hpp"
 #include "problem.hpp"
@@ -143,6 +146,61 @@ private:
     std::vector<std::vector<int>> m_variable_constraints;
 };
 
+/**
+ * Descent to a local optimum of the full problem: a variable that no recent
+ * neighbourhood freed keeps a costly value the sub-problems never see.
+ */
+class full_problem_polisher
+{
+public:
+    full_problem_polisher(const bx::context& ctx, const bx::problem& pb)
+      : m_objective(bx::itm::minimization_objective(pb))
+      , m_constraints(bx::itm::make_merged_constraints(ctx, pb))
+      , m_polish(m_constraints, bx::length(pb.vars.values))
+      , m_x(bx::length(pb.vars.values))
+    {
+        const auto n = bx::length(pb.vars.values);
+
+        if (m_objective.qelements.empty())
+            m_linear.emplace(m_objective, n);
+        else
+            m_quadratic.emplace(m_objective, n);
+    }
+
+    // The cost functions keep a reference to m_objective.
+    full_problem_polisher(const full_problem_polisher&) = delete;
+    full_problem_polisher& operator=(const full_problem_polisher&) = delete;
+
+    /**
+     * @param changed the variables changed since @c x was a local optimum,
+     *     an empty span checks every variable.
+     * @return true if @c x changed.
+     */
+    bool operator()(std::vector<std::int8_t>& x, std::span<const int> changed)
+    {
+        for (int j = 0, e = m_x.size(); j != e; ++j)
+            m_x.set(j, x[static_cast<std::size_t>(j)] != 0);
+
+        const auto moves = m_linear ? m_polish(m_x, *m_linear, changed)
+                                    : m_polish(m_x, *m_quadratic, changed);
+        if (moves == 0)
+            return false;
+
+        for (int j = 0, e = m_x.size(); j != e; ++j)
+            x[static_cast<std::size_t>(j)] = static_cast<std::int8_t>(m_x[j]);
+
+        return true;
+    }
+
+private:
+    bx::objective_function m_objective;
+    std::vector<bx::itm::merged_constraint> m_constraints;
+    bx::itm::polisher m_polish;
+    std::optional<bx::itm::default_cost_type> m_linear;
+    std::optional<bx::itm::quadratic_cost_type> m_quadratic;
+    bx::bit_array m_x;
+};
+
 /** Writes the values of a sub-problem result into the full assignment. */
 void
 merge(const bx::problem& sub_pb,
@@ -253,6 +311,8 @@ optimize(const bx::context& ctx, const bx::problem& pb)
     }
 
     std::vector<std::int8_t> x = best.solutions.back().variables;
+    full_problem_polisher polish(internal, pb);
+    polish(x, {});
     double value = bx::compute_solution(pb, x);
 
     if (ctx.update)
@@ -284,6 +344,7 @@ optimize(const bx::context& ctx, const bx::problem& pb)
     std::vector<int> queue;
     std::vector<std::pair<int, bool>> assignments;
     std::vector<std::int8_t> candidate;
+    std::vector<int> changed;
     long int iterations = 0, improvements = 0;
 
     const auto has_time = [&]() {
@@ -331,23 +392,37 @@ optimize(const bx::context& ctx, const bx::problem& pb)
 
         candidate = x;
         merge(sub, ret, index, candidate);
+
+        if (!bx::is_valid_solution(pb, candidate)) {
+            wanted = std::min(max_free, 1.2 * wanted);
+            continue;
+        }
+
+        changed.clear();
+        for (std::size_t i = 0; i != n; ++i)
+            if (candidate[i] != x[i])
+                changed.emplace_back(static_cast<int>(i));
+
+        if (!changed.empty())
+            polish(candidate, changed);
+
         const double candidate_value = bx::compute_solution(pb, candidate);
 
-        if (!is_better(value, candidate_value, pb.type) &&
-            bx::is_valid_solution(pb, candidate)) {
-            if (is_better(candidate_value, value, pb.type)) {
-                ++improvements;
-                if (ctx.update)
-                    ctx.update(0, candidate_value, iterations, elapsed(), 0);
-            } else {
-                wanted = std::min(max_free, 1.2 * wanted);
-            }
+        if (is_better(value, candidate_value, pb.type)) {
+            wanted = std::min(max_free, 1.2 * wanted);
+            continue;
+        }
 
-            x.swap(candidate);
-            value = candidate_value;
+        if (is_better(candidate_value, value, pb.type)) {
+            ++improvements;
+            if (ctx.update)
+                ctx.update(0, candidate_value, iterations, elapsed(), 0);
         } else {
             wanted = std::min(max_free, 1.2 * wanted);
         }
+
+        x.swap(candidate);
+        value = candidate_value;
     }
 
     bx::notice(ctx,
