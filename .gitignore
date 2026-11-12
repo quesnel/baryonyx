@@ -1,13 +1,4 @@
 build*
-rbaryonyx.Rcheck/
-rbaryonyx/R/
-rbaryonyx/man/
-rbaryonyx/src/RcppExports.cpp
-rbaryonyx/src/RcppExports.o
-rbaryonyx/src/rbaryonyx.o
-rbaryonyx/src/rbaryonyx.so
-rbaryonyx/src/symbols.rds
-rbaryonyx_*.tar.gz
 .dir-locals.el
 *sol
 *dump
