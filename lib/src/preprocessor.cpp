@@ -93,6 +93,45 @@ is_valid_variable_index(const std::vector<bx::constraint>& csts,
     return true;
 }
 
+/// The constraints of one kind in which each variable appears, once per
+/// element, stored in two flat arrays: a vector per variable would make one
+/// allocation per variable for each preprocessing.
+class variable_constraints
+{
+public:
+    variable_constraints(const std::vector<bx::constraint>& csts,
+                         const std::size_t variables)
+      : m_start(variables + 1u, 0)
+    {
+        for (const auto& cst : csts)
+            for (const auto& elem : cst.elements)
+                ++m_start[static_cast<std::size_t>(elem.variable_index) + 1u];
+
+        for (std::size_t j = 1; j < m_start.size(); ++j)
+            m_start[j] += m_start[j - 1];
+
+        m_constraints.resize(static_cast<std::size_t>(m_start.back()));
+        auto next = m_start;
+        for (int i = 0, e = bx::length(csts); i != e; ++i)
+            for (const auto& elem : csts[static_cast<std::size_t>(i)].elements)
+                m_constraints[static_cast<std::size_t>(
+                  next[static_cast<std::size_t>(elem.variable_index)]++)] = i;
+    }
+
+    std::span<const int> operator()(const int variable) const noexcept
+    {
+        const auto first = m_start[static_cast<std::size_t>(variable)];
+        const auto last = m_start[static_cast<std::size_t>(variable) + 1u];
+
+        return { m_constraints.data() + first,
+                 static_cast<std::size_t>(last - first) };
+    }
+
+private:
+    std::vector<int> m_start;
+    std::vector<int> m_constraints;
+};
+
 /// Propagates the 0-1 assignments implied by bounds and constraints. A
 /// constraint is tracked by the number of its elements whose variable has not
 /// been propagated yet; once at most one remains, the constraint is decided
@@ -108,7 +147,7 @@ private:
     const Problem& pb;
     std::array<const std::vector<bx::constraint>*, 3> constraints;
     std::array<std::vector<int>, 3> remaining;
-    std::vector<std::array<std::vector<int>, 3>> cache;
+    std::array<variable_constraints, 3> cache;
     std::vector<std::int8_t> values;
     std::vector<int> to_propagate;
     std::array<std::vector<int>, 3> touched;
@@ -290,7 +329,7 @@ private:
             for (auto kind : constraint_kinds) {
                 auto& counters = remaining[to_index(kind)];
 
-                for (int cst : cache[variable][to_index(kind)]) {
+                for (int cst : cache[to_index(kind)](variable)) {
                     if (counters[cst] <= 0)
                         continue;
 
@@ -380,7 +419,7 @@ private:
         int down = 0;
 
         for (auto kind : constraint_kinds) {
-            for (int cst : cache[variable][to_index(kind)]) {
+            for (int cst : cache[to_index(kind)](variable)) {
                 if (remaining[to_index(kind)][cst] <= 0)
                     continue;
 
@@ -456,15 +495,12 @@ public:
       , constraints{ &pb.equal_constraints,
                      &pb.greater_constraints,
                      &pb.less_constraints }
-      , cache(pb.vars.values.size())
+      , cache{
+          variable_constraints(pb.equal_constraints, pb.vars.values.size()),
+          variable_constraints(pb.greater_constraints, pb.vars.values.size()),
+          variable_constraints(pb.less_constraints, pb.vars.values.size())
+      }
     {
-        for (auto kind : constraint_kinds) {
-            const auto& csts = *constraints[to_index(kind)];
-
-            for (int i = 0, e = bx::length(csts); i != e; ++i)
-                for (const auto& elem : csts[i].elements)
-                    cache[elem.variable_index][to_index(kind)].emplace_back(i);
-        }
     }
 
     bx::problem operator()(int variable_index, bool variable_value)
