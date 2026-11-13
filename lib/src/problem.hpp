@@ -29,6 +29,7 @@
 #include <fmt/format.h>
 
 #include <algorithm>
+#include <memory>
 #include <span>
 #include <utility>
 
@@ -220,6 +221,33 @@ problem
 affect(const context& ctx,
        const problem& pb,
        std::span<const std::pair<int, bool>> assignments);
+
+/**
+ * Assigns variables of the same problem many times, as the neighbourhoods of
+ * lns: the constraints of each variable are indexed once, where each call to
+ * @c affect indexes them again.
+ */
+class affecter
+{
+public:
+    affecter(const context& ctx, const problem& pb);
+    ~affecter() noexcept;
+
+    affecter(const affecter&) = delete;
+    affecter& operator=(const affecter&) = delete;
+
+    /**
+     * The result of @c affect(ctx, pb, assignments).
+     *
+     * @throw @c baryonyx::solver_failure if the assignments make a constraint
+     *     unrealisable.
+     */
+    problem operator()(std::span<const std::pair<int, bool>> assignments);
+
+private:
+    struct impl;
+    std::unique_ptr<impl> m_impl;
+};
 
 /**
  * @brief Split the @c pb problem in two new problem.

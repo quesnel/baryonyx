@@ -27,6 +27,7 @@
 #include <array>
 #include <cstdint>
 #include <cstdio>
+#include <memory>
 #include <numeric>
 #include <span>
 #include <string_view>
@@ -795,14 +796,35 @@ affect(const context& ctx,
     return pp(variable_index, variable_value);
 }
 
+struct affecter::impl
+{
+    impl(const context& ctx, const problem& pb)
+      : pp(ctx, pb)
+    {
+    }
+
+    ::preprocessor<problem> pp;
+};
+
+affecter::affecter(const context& ctx, const problem& pb)
+  : m_impl(std::make_unique<impl>(ctx, pb))
+{
+}
+
+affecter::~affecter() noexcept = default;
+
+problem
+affecter::operator()(std::span<const std::pair<int, bool>> assignments)
+{
+    return m_impl->pp(assignments);
+}
+
 problem
 affect(const context& ctx,
        const problem& pb,
        std::span<const std::pair<int, bool>> assignments)
 {
-    ::preprocessor<problem> pp(ctx, pb);
-
-    return pp(assignments);
+    return affecter(ctx, pb)(assignments);
 }
 
 problem

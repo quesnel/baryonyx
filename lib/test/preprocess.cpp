@@ -411,6 +411,53 @@ main()
         expect(eq(pb_full.affected_vars.names.size(), static_cast<size_t>(2)));
     };
 
+    "test_affecter_reuse"_test = [] {
+        // An affecter reused for successive neighbourhoods, some of them
+        // unrealisable, gives the problems of a new affect for each one.
+        auto ctx = baryonyx::make_context(0);
+        std::mt19937 rng(5);
+        int realisable = 0;
+        int unrealisable = 0;
+
+        for (const char* file : { EXAMPLES_DIR "/capmo1_direct.lp",
+                                  EXAMPLES_DIR "/z-mixed-coefficients.lp",
+                                  EXAMPLES_DIR "/prepro.lp" }) {
+            const auto pb =
+              baryonyx::preprocess(*ctx, baryonyx::make_problem(ctx, file));
+            const auto n = static_cast<int>(pb.vars.values.size());
+            baryonyx::affecter affect(*ctx, pb);
+
+            for (int neighbourhood = 0; neighbourhood != 20; ++neighbourhood) {
+                std::bernoulli_distribution fixed(0.9);
+                std::bernoulli_distribution one(neighbourhood % 2 ? 0.0
+                                                                  : 0.05);
+                std::vector<std::pair<int, bool>> assignments;
+                for (int j = 0; j != n; ++j)
+                    if (fixed(rng))
+                        assignments.emplace_back(j, one(rng));
+
+                std::optional<baryonyx::problem> expected;
+                try {
+                    expected = baryonyx::affect(*ctx, pb, assignments);
+                } catch (const baryonyx::solver_failure&) {
+                }
+
+                if (expected) {
+                    ++realisable;
+                    expect(affect(assignments) == *expected) << file;
+                } else {
+                    ++unrealisable;
+                    expect(throws<baryonyx::solver_failure>(
+                      [&] { affect(assignments); }))
+                      << file;
+                }
+            }
+        }
+
+        expect(gt(realisable, 0));
+        expect(gt(unrealisable, 0));
+    };
+
     "test_split"_test = [] {
         auto ctx = baryonyx::make_context(4);
         std::istringstream iss(d_or_e);

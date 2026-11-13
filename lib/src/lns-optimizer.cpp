@@ -428,6 +428,7 @@ optimize(const bx::context& ctx, const bx::problem& pb)
         ctx.update(0, value, 0, elapsed(), 0);
 
     const constraint_graph graph(pb);
+    bx::affecter affect(internal, pb);
 
     const double min_free = std::min<double>(20.0, static_cast<double>(n));
     const double max_free = std::max(min_free, 0.5 * static_cast<double>(n));
@@ -476,7 +477,7 @@ optimize(const bx::context& ctx, const bx::problem& pb)
 
         bx::problem sub;
         try {
-            sub = bx::affect(internal, pb, assignments);
+            sub = affect(assignments);
         } catch (const bx::solver_failure&) {
             continue;
         }
