@@ -28,60 +28,133 @@
 #include "memory.hpp"
 #include "utils.hpp"
 
+#include <optional>
 #include <set>
-#include <unordered_map>
+#include <unordered_set>
 
 namespace baryonyx {
 namespace itm {
 
-struct merged_constraint_hash
+/**
+ * Positions of the rows already in the merged constraints, hashed and
+ * compared through the elements of these rows: a key copying the elements
+ * would allocate it again for each row of each solver run.
+ */
+class row_index
 {
-    inline size_t operator()(
-      const std::vector<baryonyx::function_element>& fct) const noexcept
+public:
+    explicit row_index(const std::vector<merged_constraint>& rows,
+                       const std::size_t capacity)
+      : m_rows(0, hash{ &rows }, equal{ &rows })
     {
-        std::size_t seed{ fct.size() };
-
-        for (auto& elem : fct)
-            seed ^=
-              elem.variable_index + 0x9e3779b9 + (seed << 6) + (seed >> 2);
-
-        return seed;
+        m_rows.reserve(capacity);
     }
+
+    /** @return the position of the row with these elements, if any. */
+    std::optional<std::size_t> find(
+      const std::vector<baryonyx::function_element>& elements) const
+    {
+        const auto it = m_rows.find(elements);
+
+        if (it == m_rows.end())
+            return std::nullopt;
+
+        return *it;
+    }
+
+    void insert(const std::size_t position)
+    {
+        m_rows.insert(position);
+    }
+
+private:
+    using elements_type = std::vector<baryonyx::function_element>;
+
+    struct hash
+    {
+        using is_transparent = void;
+
+        const std::vector<merged_constraint>* rows;
+
+        std::size_t operator()(const elements_type& fct) const noexcept
+        {
+            std::size_t seed{ fct.size() };
+
+            for (auto& elem : fct)
+                seed ^= static_cast<std::size_t>(elem.variable_index) +
+                        0x9e3779b9 + (seed << 6) + (seed >> 2);
+
+            return seed;
+        }
+
+        std::size_t operator()(const std::size_t position) const noexcept
+        {
+            return (*this)((*rows)[position].elements);
+        }
+    };
+
+    struct equal
+    {
+        using is_transparent = void;
+
+        const std::vector<merged_constraint>* rows;
+
+        const elements_type& get(const std::size_t position) const noexcept
+        {
+            return (*rows)[position].elements;
+        }
+
+        static const elements_type& get(const elements_type& elements) noexcept
+        {
+            return elements;
+        }
+
+        template<typename Lhs, typename Rhs>
+        bool operator()(const Lhs& lhs, const Rhs& rhs) const noexcept
+        {
+            return get(lhs) == get(rhs);
+        }
+    };
+
+    std::unordered_set<std::size_t, hash, equal> m_rows;
 };
 
 //
-// Fills the cache and uses it to search same function and merge equal, less
-// and greater equal constraints. To be use in any order, the fill operation
-// depends of the operator type passed in parameter.
+// Uses the index to search same function and merge equal, less and greater
+// equal constraints. To be use in any order, the fill operation depends of
+// the operator type passed in parameter.
 //
-template<typename cacheT, typename retT>
+template<typename retT>
 static void
 fill_merged_constraints(const baryonyx::context& ctx,
-                        cacheT& cache,
+                        row_index& cache,
                         baryonyx::operator_type op,
                         const baryonyx::problem& pb,
                         retT& ret)
 {
+    const auto add = [&](const baryonyx::constraint& elem, int min, int max) {
+        ret.emplace_back(elem.elements, min, max, elem.id);
+        cache.insert(ret.size() - 1u);
+    };
+
     switch (op) {
     case baryonyx::operator_type::equal:
         for (const auto& elem : pb.equal_constraints) {
-            auto it = cache.find(elem.elements);
-            if (it == cache.end()) {
-                cache.emplace(elem.elements, ret.size());
-                ret.emplace_back(elem.elements,
-                                 baryonyx::numeric_cast<int>(elem.value),
-                                 baryonyx::numeric_cast<int>(elem.value),
-                                 elem.id);
+            const auto found = cache.find(elem.elements);
+            if (!found) {
+                add(elem,
+                    baryonyx::numeric_cast<int>(elem.value),
+                    baryonyx::numeric_cast<int>(elem.value));
             } else {
-                if (ret[it->second].min <= elem.value &&
-                    elem.value <= ret[it->second].max) {
-                    ret[it->second].min = elem.value;
-                    ret[it->second].max = elem.value;
+                auto& row = ret[*found];
+                if (row.min <= elem.value && elem.value <= row.max) {
+                    row.min = elem.value;
+                    row.max = elem.value;
                 } else {
                     error(ctx,
                           "Constraint {}: is inconsistent with previous {}.\n",
                           elem.id,
-                          ret[it->second].id);
+                          row.id);
 
                     throw problem_definition_failure(
                       "equal",
@@ -92,33 +165,25 @@ fill_merged_constraints(const baryonyx::context& ctx,
         break;
     case baryonyx::operator_type::less:
         for (const auto& elem : pb.less_constraints) {
-            auto it = cache.find(elem.elements);
-            if (it == cache.end()) {
-                cache.emplace(elem.elements, ret.size());
-                ret.emplace_back(elem.elements,
-                                 std::numeric_limits<int>::min(),
-                                 baryonyx::numeric_cast<int>(elem.value),
-                                 elem.id);
+            const auto found = cache.find(elem.elements);
+            if (!found) {
+                add(elem,
+                    std::numeric_limits<int>::min(),
+                    baryonyx::numeric_cast<int>(elem.value));
             } else {
-                ret[it->second].max =
-                  std::min(ret[it->second].max,
-                           baryonyx::numeric_cast<int>(elem.value));
+                ret[*found].max = std::min(
+                  ret[*found].max, baryonyx::numeric_cast<int>(elem.value));
             }
         }
         break;
     case baryonyx::operator_type::greater:
         for (const auto& elem : pb.greater_constraints) {
-            auto it = cache.find(elem.elements);
-            if (it == cache.end()) {
-                cache.emplace(elem.elements, ret.size());
-                ret.emplace_back(elem.elements,
-                                 elem.value,
-                                 std::numeric_limits<int>::max(),
-                                 elem.id);
+            const auto found = cache.find(elem.elements);
+            if (!found) {
+                add(elem, elem.value, std::numeric_limits<int>::max());
             } else {
-                ret[it->second].min =
-                  std::max(ret[it->second].min,
-                           baryonyx::numeric_cast<int>(elem.value));
+                ret[*found].min = std::max(
+                  ret[*found].min, baryonyx::numeric_cast<int>(elem.value));
             }
         }
         break;
@@ -134,14 +199,13 @@ static std::vector<merged_constraint>
 make_unsorted_merged_constraints(const baryonyx::context& ctx,
                                  const baryonyx::problem& pb)
 {
-    std::unordered_map<std::vector<baryonyx::function_element>,
-                       std::size_t,
-                       merged_constraint_hash>
-      cache;
+    const auto rows = pb.equal_constraints.size() +
+                      pb.less_constraints.size() +
+                      pb.greater_constraints.size();
 
     std::vector<merged_constraint> ret;
-    ret.reserve(pb.equal_constraints.size() + pb.less_constraints.size() +
-                pb.greater_constraints.size());
+    ret.reserve(rows);
+    row_index cache(ret, rows);
 
     fill_merged_constraints(
       ctx, cache, baryonyx::operator_type::equal, pb, ret);
