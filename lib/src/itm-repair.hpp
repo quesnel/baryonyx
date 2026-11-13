@@ -25,6 +25,7 @@
 
 #include <algorithm>
 #include <limits>
+#include <optional>
 #include <span>
 #include <utility>
 #include <vector>
@@ -213,6 +214,17 @@ public:
         return length(m_violated);
     }
 
+    /**
+     * Restores the state of a new search: the weights learnt on one starting
+     * solution do not apply to the next repair.
+     */
+    void reset() noexcept
+    {
+        std::fill(m_weight.begin(), m_weight.end(), 1);
+        std::fill(m_tabu_until.begin(), m_tabu_until.end(), 0);
+        m_step = 0;
+    }
+
 private:
     long long violation(const int k, const long long value) const noexcept
     {
@@ -260,6 +272,46 @@ private:
     std::vector<long long> m_weight;
     std::vector<long int> m_tabu_until;
     long int m_step = 0;
+};
+
+/**
+ * The repairs of the successive runs of one optimizer thread: the column
+ * view of the constraints is built at the first repair, in O(elements), and
+ * then reused by each repair, which behaves as a new search.
+ */
+template<typename Cost>
+class repairer
+{
+public:
+    repairer(const std::vector<merged_constraint>& constraints,
+             const Cost& costs,
+             const int variables)
+      : m_constraints(constraints)
+      , m_costs(costs)
+      , m_variables(variables)
+    {
+    }
+
+    /** As @c repair. */
+    template<typename Stop>
+    int operator()(bit_array& x,
+                   random_engine& rng,
+                   const long int flip_limit,
+                   const Stop& stop)
+    {
+        if (m_search)
+            m_search->reset();
+        else
+            m_search.emplace(m_constraints, m_costs, m_variables);
+
+        return (*m_search)(x, rng, flip_limit, stop);
+    }
+
+private:
+    const std::vector<merged_constraint>& m_constraints;
+    const Cost& m_costs;
+    int m_variables;
+    std::optional<weighted_flip_search<Cost>> m_search;
 };
 
 /**

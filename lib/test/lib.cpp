@@ -981,6 +981,34 @@ main()
             }
         }
 
+        // A repairer reused between repairs, some of them stopped by a short
+        // flip limit after their weights grew, behaves as a new search for
+        // each one: same solution, same result, same random numbers drawn.
+        for (const auto* csts : { &spp, &z }) {
+            const auto n = csts == &spp ? 6 : 4;
+            const unit_costs costs;
+            baryonyx::itm::repairer<unit_costs> reused(*csts, costs, n);
+            baryonyx::random_engine rng_reused(11);
+            baryonyx::random_engine rng_new(11);
+            baryonyx::random_engine start(4);
+
+            for (int attempt = 0; attempt != 30; ++attempt) {
+                baryonyx::bit_array x(n);
+                for (int j = 0; j != n; ++j)
+                    if (baryonyx::uniform_below(start, 2) == 1)
+                        x.set(j);
+                auto y = x;
+                const long int flips = attempt % 3 == 0 ? 3 : 10000;
+
+                const auto remaining = reused(x, rng_reused, flips, never);
+                expect(eq(remaining,
+                          baryonyx::itm::repair(
+                            y, *csts, costs, n, rng_new, flips, never)));
+                expect(x == y);
+                expect(rng_reused() == rng_new());
+            }
+        }
+
         expect(baryonyx::itm::is_repairable(1, 50));
         expect(baryonyx::itm::is_repairable(10, 50));
         expect(!baryonyx::itm::is_repairable(11, 50));

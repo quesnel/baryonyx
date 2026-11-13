@@ -567,6 +567,8 @@ struct optimize_functor
         // x stays the state of the Wedelin solver: only a copy is polished.
         polisher polish(constraints, variables);
         bit_array polished;
+        repairer<Cost> repair(constraints, original_costs, variables);
+        bit_array repaired;
         const auto record_solution = [&](long int loop) {
             polished = x;
             polish(polished, original_costs);
@@ -624,12 +626,9 @@ struct optimize_functor
 
             if (remaining > 0 && remaining != INT_MAX &&
                 is_repairable(remaining, slv.m)) {
-                bit_array repaired(x);
+                repaired = x;
 
                 if (repair(repaired,
-                           constraints,
-                           original_costs,
-                           variables,
                            m_local_ctx.rng,
                            repair_flip_limit(variables, slv.m),
                            [&stop_task]() { return stop_task.load(); }) == 0) {
