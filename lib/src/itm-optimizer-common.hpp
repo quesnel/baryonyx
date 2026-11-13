@@ -631,7 +631,8 @@ struct optimize_functor
                            original_costs,
                            variables,
                            m_local_ctx.rng,
-                           repair_flip_limit(variables, slv.m)) == 0) {
+                           repair_flip_limit(variables, slv.m),
+                           [&stop_task]() { return stop_task.load(); }) == 0) {
                     x = repaired;
                     remaining = 0;
                     record_solution(p.limit);

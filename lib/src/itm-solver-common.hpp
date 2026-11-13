@@ -162,7 +162,8 @@ struct solver_functor
                        original_costs,
                        variables,
                        m_rng,
-                       repair_flip_limit(variables, slv.m)) == 0) {
+                       repair_flip_limit(variables, slv.m),
+                       [this]() { return is_timelimit_reached(); }) == 0) {
                 x = repaired;
                 store_if_better(
                   x, original_costs.results(x, cost_constant), loop);

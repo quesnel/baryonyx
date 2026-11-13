@@ -267,21 +267,24 @@ private:
  * oscillates on these last constraints: their multipliers and preferences
  * compensate each other, and a weighted flip search escapes this cycle.
  *
+ * @param stop checked every 1024 flips: on problems with long constraints,
+ *     the flips of a repair can last longer than the time left.
  * @return the number of constraints still violated, 0 if @c x is now a
  *     solution.
  */
-template<typename Cost>
+template<typename Cost, typename Stop>
 int
 repair(bit_array& x,
        const std::vector<merged_constraint>& constraints,
        const Cost& costs,
        const int variables,
        random_engine& rng,
-       const long int flip_limit)
+       const long int flip_limit,
+       const Stop& stop)
 {
     weighted_flip_search<Cost> search(constraints, costs, variables);
 
-    return search(x, rng, flip_limit, []() { return false; });
+    return search(x, rng, flip_limit, stop);
 }
 
 } // namespace baryonyx::itm

@@ -906,6 +906,8 @@ main()
             { { fe(1, 2), fe(1, 4), fe(1, 5) }, 1, 1, 3 },
         };
 
+        const auto never = []() { return false; };
+
         for (std::uint64_t seed = 1; seed != 20; ++seed) {
             baryonyx::random_engine rng(seed);
             baryonyx::bit_array x(6);
@@ -914,8 +916,9 @@ main()
             x.set(5);
 
             expect(!satisfies(x, spp));
-            expect(eq(
-              baryonyx::itm::repair(x, spp, unit_costs{}, 6, rng, 10000), 0));
+            expect(eq(baryonyx::itm::repair(
+                        x, spp, unit_costs{}, 6, rng, 10000, never),
+                      0));
             expect(satisfies(x, spp));
         }
 
@@ -933,8 +936,9 @@ main()
             x.set(2);
             x.set(3);
 
-            expect(
-              eq(baryonyx::itm::repair(x, z, unit_costs{}, 4, rng, 10000), 0));
+            expect(eq(
+              baryonyx::itm::repair(x, z, unit_costs{}, 4, rng, 10000, never),
+              0));
             expect(satisfies(x, z));
         }
 
@@ -945,8 +949,23 @@ main()
 
         baryonyx::random_engine rng(7);
         baryonyx::bit_array x(2);
+        expect(eq(baryonyx::itm::repair(
+                    x, impossible, unit_costs{}, 2, rng, 500, never),
+                  1));
+
+        // The stop condition ends the search before the flip limit: the
+        // optimizers pass their time limit.
+        long int stop_calls = 0;
         expect(eq(
-          baryonyx::itm::repair(x, impossible, unit_costs{}, 2, rng, 500), 1));
+          baryonyx::itm::repair(x,
+                                impossible,
+                                unit_costs{},
+                                2,
+                                rng,
+                                1'000'000'000L,
+                                [&stop_calls]() { return ++stop_calls == 3; }),
+          1));
+        expect(eq(stop_calls, 3L));
 
         // From scratch, with weights kept between the starting solutions.
         {
