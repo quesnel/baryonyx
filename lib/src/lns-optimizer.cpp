@@ -250,6 +250,249 @@ private:
     bx::bit_array m_x;
 };
 
+/**
+ * Key variables: set to 1, one of them saturates packing or partitioning rows
+ * and forces many others to 0, as the tree of a land unit fixes its crops.
+ * Changing a few of them together and solving every other variable again
+ * links solutions that the neighbourhoods of free variables cannot: their
+ * walk spreads through the large rows and seldom frees a key variable with
+ * all the variables that depend on it.
+ */
+class key_variables
+{
+public:
+    explicit key_variables(const bx::problem& pb)
+    {
+        const auto n = pb.vars.values.size();
+        std::vector<int> reach(n, 0);
+        std::vector<int> arities;
+
+        for_each_constraint(pb, [&](const bx::constraint& cst, sense) {
+            arities.emplace_back(bx::length(cst.elements));
+        });
+
+        if (arities.empty())
+            return;
+
+        std::ranges::nth_element(arities, arities.begin() + arities.size() / 2);
+        const int small_arity =
+          std::max(16, 4 * arities[arities.size() / 2]);
+
+        // Only small rows of nonnegative factors: a variable whose factor
+        // equals the right-hand side forces the others to 0. A large row
+        // saturated by one variable is a global limit, not a local
+        // dependency a region of key variables can move with.
+        for_each_constraint(pb, [&](const bx::constraint& cst, sense s) {
+            if (s == sense::greater ||
+                bx::length(cst.elements) > small_arity)
+                return;
+            if (std::ranges::any_of(cst.elements,
+                                    [](const auto& e) { return e.factor < 0; }))
+                return;
+
+            const int others = bx::length(cst.elements) - 1;
+            for (const auto& e : cst.elements)
+                if (e.factor == cst.value)
+                    reach[static_cast<std::size_t>(e.variable_index)] += others;
+        });
+
+        std::vector<int> sorted(reach);
+        std::ranges::nth_element(sorted, sorted.begin() + sorted.size() / 2);
+        const int threshold = std::max(8, 4 * sorted[sorted.size() / 2]);
+
+        m_position.assign(n, -1);
+        for (std::size_t i = 0; i != n; ++i) {
+            if (reach[i] >= threshold) {
+                m_position[i] = bx::length(m_keys);
+                m_keys.emplace_back(static_cast<int>(i));
+            }
+        }
+
+        if (bx::length(m_keys) < 4 ||
+            m_keys.size() > n / 4) {
+            m_keys.clear();
+            return;
+        }
+
+        m_neighbours.resize(m_keys.size());
+        m_key_constraints_of.resize(m_keys.size());
+
+        std::vector<int> in_row;
+        for_each_constraint(pb, [&](const bx::constraint& cst, sense s) {
+            in_row.clear();
+            for (const auto& e : cst.elements)
+                if (const int p = key(e.variable_index); p >= 0)
+                    in_row.emplace_back(p);
+
+            if (in_row.size() == cst.elements.size()) {
+                const int id = bx::length(m_key_constraints);
+                m_key_constraints.push_back({ &cst, s });
+                for (const int p : in_row)
+                    m_key_constraints_of[static_cast<std::size_t>(p)]
+                      .emplace_back(id);
+            }
+
+            if (bx::length(cst.elements) > small_arity)
+                return;
+
+            for (const int a : in_row)
+                for (const int b : in_row)
+                    if (a != b)
+                        m_neighbours[static_cast<std::size_t>(a)].emplace_back(
+                          b);
+        });
+
+        for (auto& nb : m_neighbours) {
+            std::ranges::sort(nb);
+            const auto [first, last] = std::ranges::unique(nb);
+            nb.erase(first, last);
+        }
+    }
+
+    bool empty() const noexcept { return m_keys.empty(); }
+
+    int size() const noexcept { return bx::length(m_keys); }
+
+    int variable(int position) const noexcept
+    {
+        return m_keys[static_cast<std::size_t>(position)];
+    }
+
+    void disable() noexcept { m_keys.clear(); }
+
+    /** Breadth-first walk of @c k key variables from a random one. */
+    void region(bx::xoshiro256pp& rng, int k, std::vector<int>& out) const
+    {
+        out.clear();
+        std::vector<char> seen(m_keys.size(), 0);
+        const auto start = static_cast<int>(
+          bx::uniform_below(rng, static_cast<std::uint64_t>(m_keys.size())));
+        out.emplace_back(start);
+        seen[static_cast<std::size_t>(start)] = 1;
+
+        for (std::size_t head = 0; head != out.size() && bx::length(out) < k;
+             ++head) {
+            auto nb = m_neighbours[static_cast<std::size_t>(out[head])];
+            for (std::size_t i = nb.size(); i > 1; --i)
+                std::swap(nb[i - 1], nb[bx::uniform_below(rng, i)]);
+
+            for (const int p : nb) {
+                if (bx::length(out) == k)
+                    break;
+                if (!seen[static_cast<std::size_t>(p)]) {
+                    seen[static_cast<std::size_t>(p)] = 1;
+                    out.emplace_back(p);
+                }
+            }
+        }
+    }
+
+    /**
+     * The assignments of the key variables of @c region, the other variables
+     * keeping their value in @c x, that satisfy the rows of key variables
+     * only. At most @c limit of them, chosen uniformly by reservoir sampling.
+     */
+    std::vector<std::uint32_t> assignments(const std::vector<std::int8_t>& x,
+                                           const std::vector<int>& region,
+                                           int limit,
+                                           bx::xoshiro256pp& rng) const
+    {
+        std::vector<std::int8_t> value(m_keys.size());
+        for (std::size_t p = 0; p != m_keys.size(); ++p)
+            value[p] = x[static_cast<std::size_t>(m_keys[p])];
+
+        std::vector<char> open(m_keys.size(), 0);
+        for (const int p : region)
+            open[static_cast<std::size_t>(p)] = 1;
+
+        std::vector<std::uint32_t> found;
+        long int seen = 0;
+
+        const auto satisfiable = [&](int p) {
+            for (const int id : m_key_constraints_of[static_cast<std::size_t>(p)]) {
+                const auto& [cst, s] =
+                  m_key_constraints[static_cast<std::size_t>(id)];
+                int low = 0, high = 0;
+                for (const auto& e : cst->elements) {
+                    const auto q = static_cast<std::size_t>(
+                      key(e.variable_index));
+                    if (open[q]) {
+                        low += std::min(0, e.factor);
+                        high += std::max(0, e.factor);
+                    } else {
+                        low += e.factor * value[q];
+                        high += e.factor * value[q];
+                    }
+                }
+                if ((s != sense::greater && low > cst->value) ||
+                    (s != sense::less && high < cst->value))
+                    return false;
+            }
+            return true;
+        };
+
+        const auto depth_first = [&](const auto& self,
+                                     std::size_t depth,
+                                     std::uint32_t bits) -> void {
+            if (depth == region.size()) {
+                ++seen;
+                if (bx::length(found) < limit)
+                    found.emplace_back(bits);
+                else if (const auto r = bx::uniform_below(
+                           rng, static_cast<std::uint64_t>(seen));
+                         r < static_cast<std::uint64_t>(limit))
+                    found[r] = bits;
+                return;
+            }
+
+            const auto p = static_cast<std::size_t>(region[depth]);
+            open[p] = 0;
+            for (std::int8_t v = 0; v != 2; ++v) {
+                value[p] = v;
+                if (satisfiable(static_cast<int>(p)))
+                    self(self,
+                         depth + 1,
+                         bits | (static_cast<std::uint32_t>(v) << depth));
+            }
+            open[p] = 1;
+        };
+
+        depth_first(depth_first, 0, 0u);
+        return found;
+    }
+
+private:
+    enum class sense { equal, greater, less };
+
+    template<typename Function>
+    static void for_each_constraint(const bx::problem& pb, Function&& f)
+    {
+        for (const auto& cst : pb.equal_constraints)
+            f(cst, sense::equal);
+        for (const auto& cst : pb.greater_constraints)
+            f(cst, sense::greater);
+        for (const auto& cst : pb.less_constraints)
+            f(cst, sense::less);
+    }
+
+    int key(int variable) const noexcept
+    {
+        return m_position[static_cast<std::size_t>(variable)];
+    }
+
+    struct key_constraint
+    {
+        const bx::constraint* cst;
+        sense s;
+    };
+
+    std::vector<int> m_keys;
+    std::vector<int> m_position;
+    std::vector<std::vector<int>> m_neighbours;
+    std::vector<key_constraint> m_key_constraints;
+    std::vector<std::vector<int>> m_key_constraints_of;
+};
+
 /** Writes the values of a sub-problem result into the full assignment. */
 void
 merge(const bx::problem& sub_pb,
@@ -453,7 +696,157 @@ optimize(const bx::context& ctx, const bx::problem& pb)
                elapsed() + internal.parameters.time_limit < budget;
     };
 
+    const auto key_assignments = [&](const key_variables& keys) {
+        assignments.clear();
+        for (int p = 0, e = keys.size(); p != e; ++p) {
+            const int v = keys.variable(p);
+            assignments.emplace_back(v, x[static_cast<std::size_t>(v)] != 0);
+        }
+    };
+
+    // The key variables are worth moving only if fixing them propagates to
+    // many other variables: otherwise each assignment of a region leaves
+    // almost the whole problem to solve again.
+    key_variables keys(pb);
+    if (!keys.empty()) {
+        key_assignments(keys);
+        try {
+            const auto rest = affect(assignments).vars.values.size();
+            const auto propagated = n - rest - keys.size();
+            if (propagated < 4 * static_cast<std::size_t>(keys.size()))
+                keys.disable();
+        } catch (const bx::solver_failure&) {
+            keys.disable();
+        }
+    }
+
+    // The best solution: a key move may accept a worse x whose key
+    // variables promise better once the other variables are improved.
+    std::vector<std::int8_t> incumbent = x;
+    double incumbent_value = value;
+    const auto keep_best = [&]() {
+        if (!is_better(value, incumbent_value, pb.type))
+            return;
+        incumbent = x;
+        incumbent_value = value;
+        if (ctx.update)
+            ctx.update(0, value, iterations, elapsed(), 0);
+    };
+
+    // Fixes the key variables to x, except the region set to bits, and
+    // solves the other variables again in candidate.
+    std::vector<int> region;
+    const auto solve_keys = [&](std::uint32_t bits) -> std::optional<double> {
+        key_assignments(keys);
+        for (std::size_t d = 0; d != region.size(); ++d)
+            assignments[static_cast<std::size_t>(region[d])].second =
+              ((bits >> d) & 1u) != 0;
+
+        bx::problem sub;
+        try {
+            sub = affect(assignments);
+        } catch (const bx::solver_failure&) {
+            return std::nullopt;
+        }
+
+        if (sub.vars.values.empty())
+            return std::nullopt;
+
+        const auto ret = bx::itm::optimize(internal, sub);
+        if (!ret || ret.solutions.empty())
+            return std::nullopt;
+
+        candidate = x;
+        merge(sub, ret, index, candidate);
+        if (!bx::is_valid_solution(pb, candidate))
+            return std::nullopt;
+
+        changed.clear();
+        for (std::size_t i = 0; i != n; ++i)
+            if (candidate[i] != x[i])
+                changed.emplace_back(static_cast<int>(i));
+        if (!changed.empty())
+            full.polish(candidate, changed);
+
+        return bx::compute_solution(pb, candidate);
+    };
+
+    // Enumerates the assignments of a region of key variables and solves
+    // the other variables again for each. The reference is the current
+    // assignment of the region solved the same way, not x itself: the other
+    // variables of x had many neighbourhoods to improve, a candidate only one
+    // short run, and a better assignment of the key variables would lose.
+    std::vector<std::int8_t> best_candidate;
+    const auto key_move = [&]() {
+        constexpr int region_size = 16;
+        constexpr int candidate_limit = 64;
+
+        keys.region(rng, std::min(region_size, keys.size()), region);
+        const auto candidates =
+          keys.assignments(x, region, candidate_limit, rng);
+
+        std::uint32_t current = 0;
+        for (std::size_t d = 0; d != region.size(); ++d)
+            if (x[static_cast<std::size_t>(keys.variable(region[d]))])
+                current |= 1u << d;
+
+        const auto reference = solve_keys(current);
+        if (!reference)
+            return false;
+
+        double best_value = *reference;
+        best_candidate.clear();
+
+        for (const auto bits : candidates) {
+            if (bx::is_stop_requested() || !has_time())
+                break;
+            if (bits == current)
+                continue;
+
+            if (const auto v = solve_keys(bits);
+                v && is_better(*v, best_value, pb.type)) {
+                best_value = *v;
+                best_candidate = candidate;
+            }
+        }
+
+        if (best_candidate.empty())
+            return false;
+
+        x.swap(best_candidate);
+        value = best_value;
+        keep_best();
+        return true;
+    };
+
+    // Share of the search time given to the moves of key variables: raised
+    // after an improvement and slowly reduced after a region without one,
+    // so that the problems where they never help lose little time. They only
+    // start once the neighbourhoods stall: while the lns still improves, the
+    // key layout is not yet the bottleneck and moving it only adds variance.
+    constexpr long int stall_limit = 100;
+    double key_share = 0.25;
+    double key_time = 0.0;
+    const double loop_start = elapsed();
+    long int key_moves = 0, key_improvements = 0;
+    long int last_improvement = 0;
+
     while (!bx::is_stop_requested() && has_time()) {
+        if (!keys.empty() && iterations - last_improvement >= stall_limit &&
+            key_time <= key_share * (elapsed() - loop_start)) {
+            const double move_start = elapsed();
+            ++key_moves;
+            if (key_move()) {
+                ++key_improvements;
+                last_improvement = iterations;
+                key_share = std::min(0.6, 1.5 * key_share);
+            } else {
+                key_share = std::max(0.02, 0.95 * key_share);
+            }
+            key_time += elapsed() - move_start;
+            continue;
+        }
+
         ++iterations;
         std::fill(is_free.begin(), is_free.end(), 0);
         const int k = static_cast<int>(wanted);
@@ -516,14 +909,13 @@ optimize(const bx::context& ctx, const bx::problem& pb)
 
         if (is_better(candidate_value, value, pb.type)) {
             ++improvements;
-            if (ctx.update)
-                ctx.update(0, candidate_value, iterations, elapsed(), 0);
-        } else {
+            last_improvement = iterations;
+        } else
             wanted = std::min(max_free, 1.2 * wanted);
-        }
 
         x.swap(candidate);
         value = candidate_value;
+        keep_best();
     }
 
     bx::notice(ctx,
@@ -533,7 +925,17 @@ optimize(const bx::context& ctx, const bx::problem& pb)
                improvements,
                wanted);
 
-    best.solutions.assign(1, bx::solution(std::move(x), value));
+    if (!keys.empty())
+        bx::notice(ctx,
+                   "  - lns optimizer: {} key variables, {} key moves, {} "
+                   "improvements, {:.0f}% of the time\n",
+                   keys.size(),
+                   key_moves,
+                   key_improvements,
+                   100.0 * key_time / std::max(1e-9, elapsed() - loop_start));
+
+    best.solutions.assign(1,
+                          bx::solution(std::move(incumbent), incumbent_value));
     best.remaining_constraints = 0;
     best.duration = elapsed();
     best.loop = iterations;
