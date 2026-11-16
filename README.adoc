@@ -1,6 +1,6 @@
 = Baryonyx
 Gauthier Quesnel <gauthier.quesnel@inrae.fr>
-v0.6.0, 2026-11-12
+v0.6.0, 2026-11-16
 :toc:
 :toclevels: 3
 :homepage: https://github.com/quesnel/baryonyx/
