@@ -15,6 +15,9 @@
 * lns optimizer: once the neighbourhoods stall, moves regions of key
   variables (variables that force many others to 0) and solves the rest
   again.
+* lns optimizer: the kind of neighbourhood (random, constraint walk, or the
+  variables Wedelin hesitates on, scattered or grown into a walk) is drawn in
+  proportion to its recent rate of improvement.
 
 ## baryonyx v0.6.0 - 2026-11-16
 

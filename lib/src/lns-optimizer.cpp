@@ -21,8 +21,11 @@
  */
 
 #include <algorithm>
+#include <array>
 #include <chrono>
 #include <cmath>
+#include <functional>
+#include <numeric>
 #include <optional>
 #include <span>
 #include <string_view>
@@ -90,6 +93,42 @@ public:
               std::vector<char>& visited,
               std::vector<int>& queue) const
     {
+        walk(rng, wanted, is_free, visited, queue, [&]() {
+            return static_cast<int>(bx::uniform_below(
+              rng, static_cast<std::uint64_t>(constraints())));
+        });
+    }
+
+    /**
+     * As walk, but each connected component starts from a constraint of a
+     * variable drawn by pick.
+     */
+    template<typename PickVariable>
+    void walk_from(bx::xoshiro256pp& rng,
+                   int wanted,
+                   std::vector<char>& is_free,
+                   std::vector<char>& visited,
+                   std::vector<int>& queue,
+                   PickVariable&& pick) const
+    {
+        walk(rng, wanted, is_free, visited, queue, [&]() {
+            for (;;) {
+                const auto& csts =
+                  m_variable_constraints[static_cast<std::size_t>(pick())];
+                if (!csts.empty())
+                    return csts[bx::uniform_below(rng, csts.size())];
+            }
+        });
+    }
+
+    template<typename PickConstraint>
+    void walk(bx::xoshiro256pp& rng,
+              int wanted,
+              std::vector<char>& is_free,
+              std::vector<char>& visited,
+              std::vector<int>& queue,
+              PickConstraint&& pick) const
+    {
         std::fill(visited.begin(), visited.end(), 0);
         queue.clear();
 
@@ -112,8 +151,7 @@ public:
                     return;
                 }
 
-                const auto start = static_cast<int>(bx::uniform_below(
-                  rng, static_cast<std::uint64_t>(constraints())));
+                const auto start = pick();
                 if (visited[static_cast<std::size_t>(start)])
                     continue;
                 visited[static_cast<std::size_t>(start)] = 1;
@@ -493,6 +531,110 @@ private:
     std::vector<std::vector<int>> m_key_constraints_of;
 };
 
+enum class neighbourhood : std::uint8_t
+{
+    random,
+    walk,
+    hesitant,
+    hesitant_walk
+};
+
+constexpr std::size_t neighbourhood_count = 4;
+
+constexpr std::array<std::string_view, neighbourhood_count>
+  neighbourhood_names = { "random", "walk", "hesitant", "hesitant walk" };
+
+/**
+ * Adaptive large neighbourhood search: draws the kind of neighbourhood in
+ * proportion to its recent rate of improvement. The kind that works differs
+ * between problems (the hesitant variables find a third of the improvements
+ * on some, none on others) and a fixed rotation wastes the iterations of
+ * the useless ones.
+ */
+class neighbourhood_selector
+{
+public:
+    explicit neighbourhood_selector(bool has_constraints) noexcept
+    {
+        m_enabled.fill(true);
+        if (!has_constraints) {
+            m_enabled[static_cast<std::size_t>(neighbourhood::walk)] = false;
+            m_enabled[static_cast<std::size_t>(
+              neighbourhood::hesitant_walk)] = false;
+        }
+
+        // Improvements are rare: the prior of 5% keeps a kind with one lucky
+        // success from taking every iteration.
+        m_successes.fill(0.5);
+        m_tries.fill(10.0);
+    }
+
+    neighbourhood draw(bx::xoshiro256pp& rng) const noexcept
+    {
+        std::array<double, neighbourhood_count> weight{};
+        double rate_sum = 0.0;
+        int enabled = 0;
+        for (std::size_t i = 0; i != neighbourhood_count; ++i) {
+            if (m_enabled[i]) {
+                weight[i] = m_successes[i] / m_tries[i];
+                rate_sum += weight[i];
+                ++enabled;
+            }
+        }
+
+        // A tenth of the draws ignore the rates: a kind can become useful
+        // later, once the others have exhausted their improvements.
+        double total = 0.0;
+        for (std::size_t i = 0; i != neighbourhood_count; ++i) {
+            if (m_enabled[i])
+                weight[i] = 0.1 / enabled + 0.9 * weight[i] / rate_sum;
+            total += weight[i];
+        }
+
+        bx::uniform_real_distribution<double> unit(0.0, total);
+        double u = unit(rng);
+        std::size_t last = 0;
+        for (std::size_t i = 0; i != neighbourhood_count; ++i) {
+            if (!m_enabled[i])
+                continue;
+            last = i;
+            if (u < weight[i])
+                return static_cast<neighbourhood>(i);
+            u -= weight[i];
+        }
+
+        return static_cast<neighbourhood>(last);
+    }
+
+    void update(neighbourhood kind, bool improved) noexcept
+    {
+        // Forgets the rates over about a hundred uses: the useful kind
+        // changes as the search goes deeper.
+        constexpr double decay = 0.99;
+
+        const auto i = static_cast<std::size_t>(kind);
+        m_successes[i] = decay * m_successes[i] + (improved ? 1.0 : 0.0);
+        m_tries[i] = decay * m_tries[i] + 1.0;
+        ++m_uses[i];
+        if (improved)
+            ++m_improvements[i];
+    }
+
+    long int uses(std::size_t i) const noexcept { return m_uses[i]; }
+
+    long int improvements(std::size_t i) const noexcept
+    {
+        return m_improvements[i];
+    }
+
+private:
+    std::array<double, neighbourhood_count> m_successes;
+    std::array<double, neighbourhood_count> m_tries;
+    std::array<long int, neighbourhood_count> m_uses{};
+    std::array<long int, neighbourhood_count> m_improvements{};
+    std::array<bool, neighbourhood_count> m_enabled;
+};
+
 /** Writes the values of a sub-problem result into the full assignment. */
 void
 merge(const bx::problem& sub_pb,
@@ -684,6 +826,74 @@ optimize(const bx::context& ctx, const bx::problem& pb)
     internal.parameters.thread = 2;
 
     std::vector<char> is_free(n);
+    // Hesitation of each variable in [0, 1], learned from the Wedelin margins
+    // of the sub-problems where it was free: 1 when it had the smallest
+    // margin of its sub-problem. A variable never freed keeps the middle.
+    std::vector<double> margins;
+    internal.margins = &margins;
+    std::vector<float> hesitation(n, 0.5f);
+    std::vector<int> order;
+    const auto learn_hesitation = [&](const bx::problem& sub) {
+        const auto m = margins.size();
+        if (m < 2 || m != sub.vars.names.size())
+            return;
+
+        order.resize(m);
+        std::iota(order.begin(), order.end(), 0);
+        std::sort(order.begin(), order.end(), [&](int a, int b) {
+            return margins[static_cast<std::size_t>(a)] <
+                   margins[static_cast<std::size_t>(b)];
+        });
+
+        for (std::size_t r = 0; r != m; ++r) {
+            const auto it =
+              index.find(sub.vars.names[static_cast<std::size_t>(order[r])]);
+            if (it == index.end())
+                continue;
+            const auto score = 1.0f - static_cast<float>(r) /
+                                        static_cast<float>(m - 1);
+            auto& h = hesitation[static_cast<std::size_t>(it->second)];
+            h = 0.5f * (h + score);
+        }
+    };
+
+    // The variables Wedelin hesitates on are drawn with probabilities rising
+    // with their hesitation: RINS frees the variables where the incumbent
+    // and the relaxation disagree. Scattered, they suit problems of loosely
+    // linked variables, grown into a walk, problems of tight constraints.
+    bx::uniform_real_distribution<float> unit(0.0f, 1.0f);
+    const auto hesitation_weight = [&](std::size_t v) {
+        const auto h = hesitation[v];
+        return 0.05f + h * h;
+    };
+    const auto pick_hesitant = [&]() {
+        for (;;) {
+            const auto v = bx::uniform_below(rng, n);
+            if (unit(rng) * 1.05f <= hesitation_weight(v))
+                return static_cast<int>(v);
+        }
+    };
+
+    // Weighted sampling without replacement (Efraimidis and Spirakis).
+    std::vector<std::pair<float, int>> keyed;
+    const auto free_hesitant = [&](int k) {
+        keyed.resize(n);
+        for (std::size_t i = 0; i != n; ++i) {
+            const auto u = std::max(1e-12f, unit(rng));
+            keyed[i] = { std::log(u) / hesitation_weight(i),
+                         static_cast<int>(i) };
+        }
+        const auto kk = std::min(static_cast<std::size_t>(k), n);
+        std::nth_element(keyed.begin(),
+                         keyed.begin() + static_cast<std::ptrdiff_t>(kk),
+                         keyed.end(),
+                         std::greater<>());
+        for (std::size_t i = 0; i != kk; ++i)
+            is_free[static_cast<std::size_t>(keyed[i].second)] = 1;
+    };
+
+    neighbourhood_selector selector(graph.constraints() != 0);
+
     std::vector<char> visited(static_cast<std::size_t>(graph.constraints()));
     std::vector<int> queue;
     std::vector<std::pair<int, bool>> assignments;
@@ -851,7 +1061,9 @@ optimize(const bx::context& ctx, const bx::problem& pb)
         std::fill(is_free.begin(), is_free.end(), 0);
         const int k = static_cast<int>(wanted);
 
-        if (iterations % 2 == 0 || graph.constraints() == 0) {
+        const auto kind = selector.draw(rng);
+        switch (kind) {
+        case neighbourhood::random:
             for (int freed = 0; freed < k;) {
                 const auto v = bx::uniform_below(rng, n);
                 if (!is_free[v]) {
@@ -859,8 +1071,16 @@ optimize(const bx::context& ctx, const bx::problem& pb)
                     ++freed;
                 }
             }
-        } else {
+            break;
+        case neighbourhood::walk:
             graph.walk(rng, k, is_free, visited, queue);
+            break;
+        case neighbourhood::hesitant:
+            free_hesitant(k);
+            break;
+        case neighbourhood::hesitant_walk:
+            graph.walk_from(rng, k, is_free, visited, queue, pick_hesitant);
+            break;
         }
 
         assignments.clear();
@@ -872,14 +1092,20 @@ optimize(const bx::context& ctx, const bx::problem& pb)
         try {
             sub = affect(assignments);
         } catch (const bx::solver_failure&) {
+            selector.update(kind, false);
             continue;
         }
 
-        if (sub.vars.values.empty())
+        if (sub.vars.values.empty()) {
+            selector.update(kind, false);
             continue;
+        }
 
         const auto ret = bx::itm::optimize(internal, sub);
+        if (ret)
+            learn_hesitation(sub);
         if (!ret || ret.solutions.empty()) {
+            selector.update(kind, false);
             wanted = std::max(min_free, 0.8 * wanted);
             continue;
         }
@@ -888,6 +1114,7 @@ optimize(const bx::context& ctx, const bx::problem& pb)
         merge(sub, ret, index, candidate);
 
         if (!bx::is_valid_solution(pb, candidate)) {
+            selector.update(kind, false);
             wanted = std::min(max_free, 1.2 * wanted);
             continue;
         }
@@ -902,12 +1129,15 @@ optimize(const bx::context& ctx, const bx::problem& pb)
 
         const double candidate_value = bx::compute_solution(pb, candidate);
 
+        const bool improved = is_better(candidate_value, value, pb.type);
+        selector.update(kind, improved);
+
         if (is_better(value, candidate_value, pb.type)) {
             wanted = std::min(max_free, 1.2 * wanted);
             continue;
         }
 
-        if (is_better(candidate_value, value, pb.type)) {
+        if (improved) {
             ++improvements;
             last_improvement = iterations;
         } else
@@ -924,6 +1154,14 @@ optimize(const bx::context& ctx, const bx::problem& pb)
                iterations,
                improvements,
                wanted);
+
+    for (std::size_t i = 0; i != neighbourhood_count; ++i)
+        if (selector.uses(i) > 0)
+            bx::notice(ctx,
+                       "    {}: {} neighbourhoods, {} improvements\n",
+                       neighbourhood_names[i],
+                       selector.uses(i),
+                       selector.improvements(i));
 
     if (!keys.empty())
         bx::notice(ctx,

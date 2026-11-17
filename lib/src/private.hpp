@@ -27,6 +27,7 @@
 
 #include <algorithm>
 #include <utility>
+#include <vector>
 
 #include <fmt/color.h>
 #include <fmt/format.h>
@@ -72,6 +73,10 @@ struct context
     // Set in the runs of the tuned optimizer, whose candidates must not start
     // a tuned optimization again.
     bool tuning = false;
+
+    // Set by lns to choose its neighbourhoods: the restart optimizer stores
+    // there the Wedelin margins of the variables of its best solution.
+    std::vector<double>* margins = nullptr;
 };
 
 namespace detail {

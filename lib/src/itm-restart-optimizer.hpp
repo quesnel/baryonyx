@@ -30,6 +30,7 @@
 #include <cmath>
 #include <memory>
 #include <mutex>
+#include <span>
 #include <string_view>
 #include <thread>
 #include <tuple>
@@ -108,6 +109,30 @@ portfolio_variant_index(const solver_parameters& user, const unsigned thread_id)
              : effective[(thread_id - 1u) % effective.size()];
 }
 
+/**
+ * The absolute reduced cost of each variable in the current state of the
+ * solver: the Wedelin decision of a variable with a small one is close to
+ * flip, the solver hesitates on its value.
+ */
+template<typename Solver, typename Xtype>
+void
+wedelin_margins(const Solver& slv,
+                const Xtype& x,
+                int variables,
+                std::vector<real>& out)
+{
+    out.resize(static_cast<std::size_t>(variables));
+
+    for (int j = 0; j != variables; ++j) {
+        real reduced = slv.c(j, x);
+        for (auto [ht, hend] = slv.ap.column(j); ht != hend; ++ht) {
+            const auto a = static_cast<real>(slv.factor(ht->value));
+            reduced -= a * (slv.pi[ht->row] + slv.P[ht->value]);
+        }
+        out[static_cast<std::size_t>(j)] = std::abs(reduced);
+    }
+}
+
 /** Best solution shared by the restart threads. */
 template<typename Mode>
 class shared_best_solution
@@ -122,7 +147,8 @@ public:
                              double duration,
                              long int loop,
                              unsigned thread_id,
-                             bool by_jump)
+                             bool by_jump,
+                             std::span<const real> margins = {})
     {
         std::scoped_lock lock(m_mutex);
 
@@ -140,7 +166,14 @@ public:
             m_best.loop = loop;
             m_thread_id = thread_id;
             m_by_jump = by_jump;
+            m_margins.assign(margins.begin(), margins.end());
         }
+    }
+
+    /** Only valid once every thread has stopped. */
+    std::span<const real> margins() const noexcept
+    {
+        return m_margins;
     }
 
     bool has_solution() const
@@ -217,6 +250,7 @@ public:
 private:
     mutable std::mutex m_mutex;
     raw_result<Mode> m_best;
+    std::vector<real> m_margins;
     unsigned m_thread_id = 0;
     bool m_by_jump = false;
     double m_first_duration = 0;
@@ -334,16 +368,23 @@ struct restart_functor
         bit_array polished;
         repairer<Cost> repair(constraints, original_costs, variables);
         bit_array repaired;
+        std::vector<real> margins;
         const auto record_solution = [&](long int loop, bool by_jump = false) {
             polished = x;
             polish(polished, original_costs);
+
+            margins.clear();
+            if (m_ctx.margins && !by_jump)
+                wedelin_margins(slv, x, variables, margins);
+
             best.try_update_solution(polished,
                                      original_costs.results(polished,
                                                             cost_constant),
                                      elapsed(),
                                      loop,
                                      m_thread_id,
-                                     by_jump);
+                                     by_jump,
+                                     margins);
         };
 
         if (m_jump_first) {
@@ -641,6 +682,11 @@ restart_optimize_problem(const context& ctx, const problem& pb)
     r.solutions.resize(1);
     convert(first, r.solutions[0], variables);
     restore_objective_sign(pb, r);
+
+    if (ctx.margins) {
+        const auto margins = best.margins();
+        ctx.margins->assign(margins.begin(), margins.end());
+    }
 
     if (ctx.finish)
         ctx.finish(r);
