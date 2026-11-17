@@ -214,6 +214,12 @@ public:
         return length(m_violated);
     }
 
+    /** The constraints violated by the current solution of a search. */
+    int violated() const noexcept
+    {
+        return length(m_violated);
+    }
+
     /**
      * Restores the state of a new search: the weights learnt on one starting
      * solution do not apply to the next repair.

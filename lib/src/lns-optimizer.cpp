@@ -25,6 +25,7 @@
 #include <chrono>
 #include <cmath>
 #include <functional>
+#include <limits>
 #include <numeric>
 #include <optional>
 #include <span>
@@ -232,8 +233,9 @@ public:
     }
 
     /**
-     * Weighted flip search from @c x until it is feasible or @c stop returns
-     * true. The constraint weights persist between calls.
+     * Weighted flip search from @c x until it is feasible or @c stop,
+     * called with the number of violated constraints, returns true. The
+     * constraint weights persist between calls.
      *
      * @return true if @c x is now a solution.
      */
@@ -252,12 +254,22 @@ public:
 
         const auto flip_limit = bx::itm::repair_flip_limit(
           m_x.size(), bx::length(m_constraints));
-        int remaining = 1;
-        while (remaining != 0 && !stop() && !bx::is_stop_requested())
-            remaining =
-              m_linear_search
-                ? (*m_linear_search)(m_x, rng, flip_limit, stop)
-                : (*m_quadratic_search)(m_x, rng, flip_limit, stop);
+        const auto search = [&](auto& flip_search) {
+            const auto stop_search = [&]() {
+                return stop(flip_search.violated());
+            };
+
+            // The violated constraints are known once a call has started.
+            int remaining = 0;
+            do {
+                remaining = flip_search(m_x, rng, flip_limit, stop_search);
+            } while (remaining != 0 && !stop_search() &&
+                     !bx::is_stop_requested());
+            return remaining;
+        };
+
+        const int remaining = m_linear_search ? search(*m_linear_search)
+                                              : search(*m_quadratic_search);
 
         store(x);
         return remaining == 0;
@@ -736,7 +748,7 @@ optimize(const bx::context& ctx, const bx::problem& pb)
     // run: Wedelin can end with violated constraints on problems where a
     // weighted flip search finds a solution in a fraction of a second.
     std::vector<std::int8_t> x(n, 0);
-    const auto jump = [&](double until) {
+    const auto jump = [&](double until, double limit) {
         if (bx::is_stop_requested() || best || n == 0)
             return;
 
@@ -745,7 +757,31 @@ optimize(const bx::context& ctx, const bx::problem& pb)
             merge(pb, best, index, x);
         }
 
-        if (!full.jump(x, rng, [&]() { return elapsed() >= until; }) ||
+        // On large problems the search needs seconds, more on a loaded
+        // machine: while it still reduces the violated constraints, it goes
+        // on past its share, up to limit. Close to feasibility it often
+        // stays several seconds on a few violated constraints before it
+        // breaks through, so it keeps going there too. Otherwise, a stalled
+        // search stops at until.
+        const double patience = unbounded ? 1.0 : std::max(1.0, 0.02 * budget);
+        const auto close = static_cast<int>(std::max<std::size_t>(
+          10,
+          (pb.equal_constraints.size() + pb.greater_constraints.size() +
+           pb.less_constraints.size()) /
+            1000));
+        int fewest = std::numeric_limits<int>::max();
+        double progress_at = elapsed();
+        const auto stop = [&](int violated) {
+            const double now = elapsed();
+            if (violated < fewest) {
+                fewest = violated;
+                progress_at = now;
+            }
+            return now >= limit || (now >= until && fewest > close &&
+                                    now - progress_at >= patience);
+        };
+
+        if (!full.jump(x, rng, stop) ||
             !bx::is_valid_solution(pb, x))
             return;
 
@@ -763,8 +799,8 @@ optimize(const bx::context& ctx, const bx::problem& pb)
     // A first solution with restart, then with feasibility jump, then with
     // tuned parameters, which find one on parameter-sensitive problems. With
     // a time limit: a quarter for restart, a tenth for feasibility jump,
-    // which succeeds within a fraction of a second or not at all, and half
-    // for tuned, so that lns keeps time to improve a late first solution. A
+    // which succeeds within a fraction of a second on most problems and
+    // keeps up to a quarter more while it progresses, and half for tuned, so that lns keeps time to improve a late first solution. A
     // candidate of the tuned optimizer must not tune again and keeps
     // searching with restart instead, without feasibility jump which would
     // take its time and hide the quality of its parameters. Without time
@@ -773,7 +809,7 @@ optimize(const bx::context& ctx, const bx::problem& pb)
     if (unbounded) {
         for (double t = 1.0; !best && !bx::is_stop_requested(); t *= 2.0) {
             run(optimizer_type::restart, t);
-            jump(elapsed() + t);
+            jump(elapsed() + t, elapsed() + 2.0 * t);
             if (!best)
                 run(optimizer_type::tuned, 2.0 * t);
         }
@@ -784,7 +820,7 @@ optimize(const bx::context& ctx, const bx::problem& pb)
             if (const double left = budget - elapsed(); !best && left > 0.0)
                 run(optimizer_type::restart, left);
         } else {
-            jump(elapsed() + 0.1 * budget);
+            jump(elapsed() + 0.1 * budget, elapsed() + 0.35 * budget);
             if (const double left = budget - elapsed(); !best && left > 0.0)
                 run(optimizer_type::tuned, std::min(0.5 * budget, left));
         }
