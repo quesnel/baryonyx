@@ -160,6 +160,10 @@ file_error_name(const bx::file_format_error_tag tag) noexcept
         return "bad name";
     case bx::file_format_error_tag::bad_value:
         return "bad value";
+    case bx::file_format_error_tag::unsupported_compression:
+        return "xz compressed file but baryonyx is built without liblzma";
+    case bx::file_format_error_tag::bad_compression:
+        return "corrupted or truncated xz file";
     case bx::file_format_error_tag::empty_context:
         return "empty context";
     }
@@ -529,6 +533,10 @@ PYBIND11_MODULE(_baryonyx, m)
                             std::string(solver_error_name(e.failure())).c_str());
         }
     });
+
+    m.def("has_xz_support",
+          &bx::has_xz_support,
+          "True if xz compressed lp files can be read (built with liblzma).");
 
     m.def("request_stop",
           &bx::request_stop,

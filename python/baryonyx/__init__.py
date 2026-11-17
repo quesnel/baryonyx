@@ -20,7 +20,7 @@ with ``_`` instead of ``-``; the enumerations take the same strings:
 ``(remaining_constraints, value, loop, duration)`` at each improvement.
 """
 
-from ._baryonyx import Result, optimize, request_stop, solve
+from ._baryonyx import Result, has_xz_support, optimize, request_stop, solve
 
-__all__ = ["Result", "optimize", "request_stop", "solve"]
+__all__ = ["Result", "has_xz_support", "optimize", "request_stop", "solve"]
 __version__ = "0.6.0"

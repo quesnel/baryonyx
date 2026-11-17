@@ -1,3 +1,15 @@
+## baryonyx (unreleased)
+
+### Major changes
+
+* lp files compressed with `xz` are read directly, by the program and the
+  Python module, when `liblzma` is found at build time (optional,
+  `-DWITH_XZ=OFF` to disable). `has_xz_support()` tells whether the build
+  supports them.
+* lns optimizer: once the neighbourhoods stall, moves regions of key
+  variables (variables that force many others to 0) and solves the rest
+  again.
+
 ## baryonyx v0.6.0 - 2026-11-16
 
 ### Major changes

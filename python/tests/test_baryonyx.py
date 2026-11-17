@@ -130,3 +130,10 @@ def test_request_stop():
     assert time.monotonic() - start < 10
     assert r
     check("capmo1_direct.lp", r)
+
+
+@pytest.mark.skipif(not bx.has_xz_support(), reason="built without liblzma")
+def test_xz():
+    r = bx.solve(path("8_queens_puzzle.lp.xz"), limit=10000, seed=1)
+    assert r
+    check("8_queens_puzzle.lp", r)

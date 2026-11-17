@@ -28,6 +28,7 @@
 #include "private.hpp"
 #include "problem.hpp"
 #include "utils.hpp"
+#include "xz-stream.hpp"
 
 #include <algorithm>
 #include <fstream>
@@ -75,10 +76,15 @@ make_problem(const baryonyx::context_ptr& ctx, const std::string& filename)
     if (ctx) {
         info(*ctx, "problem reads from file `{}'\n", filename);
 
-        std::ifstream ifs(filename);
+        std::ifstream ifs(filename, std::ios::binary);
         if (!ifs.is_open())
             return raw_problem(
               baryonyx::file_format_error_tag::file_not_found);
+
+        // Detected by content: a compressed file keeps the .lp extension
+        // when renamed and the parser would otherwise fail on binary data.
+        if (is_xz_stream(ifs))
+            return make_problem_from_xz(*ctx, ifs);
 
         return make_problem(*ctx, ifs);
     }

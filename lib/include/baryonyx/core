@@ -172,6 +172,8 @@ enum class file_format_error_tag
     too_many_constraints,
     bad_name,  ///< Missing or duplicated variable name in a solution file.
     bad_value, ///< Value other than 0 or 1 in a solution file.
+    unsupported_compression, ///< xz file without liblzma at build time.
+    bad_compression,         ///< Corrupted or truncated xz file.
     empty_context
 };
 
@@ -753,6 +755,11 @@ context_register(const context_ptr& ctx,
 BX_EXPORT
 raw_problem
 make_problem(const baryonyx::context_ptr& ctx, const std::string& filename);
+
+/** True if @c make_problem reads @e lp files compressed with xz. */
+BX_EXPORT
+bool
+has_xz_support() noexcept;
 
 /**
  * @brief Read a @c baryonyx::result from a file.

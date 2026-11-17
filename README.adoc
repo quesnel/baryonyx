@@ -49,12 +49,14 @@ Supported problems:
 * a $$C++20$$ compiler: `gcc`, `clang` or Visual Studio 2022 (MSVC)
 * the `fmt` and `boost.ut` libraries, provided as Git submodules in
   `external/`
+* optional: `liblzma` to read `lp` files compressed with `xz` (detected by
+  their content, e.g. `problem.lp.xz`); disable with `-DWITH_XZ=OFF`
 
 For recent Debian GNU/Linux and Ubuntu derivatives:
 
 [source,bash]
 ....
-apt-get install build-essential cmake
+apt-get install build-essential cmake liblzma-dev
 ....
 
 For Windows, install the https://www.cmake.org[CMake program] and Visual

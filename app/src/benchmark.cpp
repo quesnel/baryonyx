@@ -26,6 +26,7 @@
 #include "main.hpp"
 #include "utils.hpp"
 
+#include <filesystem>
 #include <fstream>
 #include <limits>
 #include <locale>
@@ -71,7 +72,7 @@ make_stats_file_name(std::string_view str)
 constexpr static bool
 have_lp_extension(std::string_view filename)
 {
-    return filename.ends_with(".lp");
+    return filename.ends_with(".lp") || filename.ends_with(".lp.xz");
 }
 
 static inline int
@@ -626,6 +627,9 @@ try_benchmark(const baryonyx::context_ptr& ctx,
         fmt::print("- optimizing {}\n", b.models[i].name());
 
         auto filename = b.models[i].filename();
+        if (!std::filesystem::exists(dirname + filename) &&
+            std::filesystem::exists(dirname + filename + ".xz"))
+            filename += ".xz";
 
         try {
             fmt::print("- optimizing: {} filename: {} in dirname: {}\n",

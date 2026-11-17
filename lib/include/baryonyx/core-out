@@ -81,6 +81,12 @@ struct fmt::formatter<baryonyx::file_format_error_tag>
         case baryonyx::file_format_error_tag::bad_value:
             name = "bad_value";
             break;
+        case baryonyx::file_format_error_tag::unsupported_compression:
+            name = "unsupported_compression";
+            break;
+        case baryonyx::file_format_error_tag::bad_compression:
+            name = "bad_compression";
+            break;
         case baryonyx::file_format_error_tag::empty_context:
             name = "empty_context";
             break;

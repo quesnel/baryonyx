@@ -29,6 +29,7 @@
 #include <cmath>
 #include <cstdio>
 #include <fstream>
+#include <iterator>
 #include <map>
 #include <numeric>
 #include <streambuf>
@@ -178,6 +179,37 @@ main()
 
         expect(!result);
         expect(result.status == baryonyx::result_status::uninitialized);
+    };
+
+    "xz compressed lp file"_test = [] {
+        auto ctx = baryonyx::make_context(0);
+        const auto xz =
+          baryonyx::make_problem(ctx, EXAMPLES_DIR "/assignment_problem_1.lp.xz");
+
+        if (!baryonyx::has_xz_support()) {
+            expect(xz.status ==
+                   baryonyx::file_format_error_tag::unsupported_compression);
+            return;
+        }
+
+        const auto lp =
+          baryonyx::make_problem(ctx, EXAMPLES_DIR "/assignment_problem_1.lp");
+        expect(fatal(lp));
+        expect(fatal(xz));
+        expect(lp == xz);
+
+        std::ifstream full(EXAMPLES_DIR "/assignment_problem_1.lp.xz",
+                           std::ios::binary);
+        const std::string bytes{ std::istreambuf_iterator<char>(full),
+                                 std::istreambuf_iterator<char>() };
+        const char* filename = "baryonyx-io-test-truncated.lp.xz";
+        std::ofstream(filename, std::ios::binary)
+          .write(bytes.data(),
+                 static_cast<std::streamsize>(bytes.size() / 2));
+        const auto truncated = baryonyx::make_problem(ctx, filename);
+        std::remove(filename);
+        expect(truncated.status ==
+               baryonyx::file_format_error_tag::bad_compression);
     };
 
     "solution files without solution or for another problem"_test = [] {

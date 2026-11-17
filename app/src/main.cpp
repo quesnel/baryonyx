@@ -354,6 +354,10 @@ help() noexcept
       "  - optimizer: lns (default) restart genetic tuned\n"
       "\nThe other settings (kappa-max, w, pushes, genetic optimizer) are "
       "fixed:\nthey have little influence on the results.\n");
+
+    fmt::print("\nxz compressed lp files: {}\n",
+               baryonyx::has_xz_support() ? "supported"
+                                          : "unsupported (built without liblzma)");
 }
 
 constexpr static bool

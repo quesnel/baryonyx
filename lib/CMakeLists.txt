@@ -51,7 +51,9 @@ set(private_baryonyx_source
  src/sparse-matrix.hpp
  src/tuned-optimizer.cpp
  src/lns-optimizer.cpp
- src/utils.hpp)
+ src/utils.hpp
+ src/xz-stream.cpp
+ src/xz-stream.hpp)
 
 add_library(libbaryonyx ${public_baryonyx_header} ${private_baryonyx_source})
 
@@ -79,6 +81,20 @@ target_include_directories(libbaryonyx PUBLIC
 target_link_libraries(libbaryonyx
   PRIVATE
   threads)
+
+option(WITH_XZ "Read xz compressed lp files if liblzma is found. [default: ON]" ON)
+set(BARYONYX_PC_LIBS_PRIVATE "")
+if (WITH_XZ)
+  find_package(LibLZMA)
+endif ()
+if (WITH_XZ AND LibLZMA_FOUND)
+  message(STATUS "baryonyx: xz compressed lp files enabled (liblzma ${LIBLZMA_VERSION})")
+  target_link_libraries(libbaryonyx PRIVATE LibLZMA::LibLZMA)
+  target_compile_definitions(libbaryonyx PRIVATE BARYONYX_HAVE_LZMA)
+  set(BARYONYX_PC_LIBS_PRIVATE "-llzma")
+else ()
+  message(STATUS "baryonyx: xz compressed lp files disabled")
+endif ()
 
 set_target_properties(libbaryonyx PROPERTIES
   OUTPUT_NAME "baryonyx-${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}"

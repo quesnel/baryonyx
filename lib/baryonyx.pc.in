@@ -9,4 +9,4 @@ Version: @PROJECT_VERSION_MAJOR@.@PROJECT_VERSION_MINOR@.@PROJECT_VERSION_PATCH@
 URL: http://www.vle-project.org
 Cflags: -I${includedir}/baryonyx-@PROJECT_VERSION_MAJOR@.@PROJECT_VERSION_MINOR@
 Libs: -L${libdir} -lbaryonyx-@PROJECT_VERSION_MAJOR@.@PROJECT_VERSION_MINOR@
-Libs.private:
+Libs.private: @BARYONYX_PC_LIBS_PRIVATE@
