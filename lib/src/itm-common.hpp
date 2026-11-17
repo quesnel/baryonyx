@@ -1276,36 +1276,33 @@ struct quadratic_cost_type
               static_cast<real>(obj.elements[i].factor);
         }
 
-        indices[0] = 0;
-        for (int var = 0; var != n; ++var) {
-            indices[var + 1] = indices[var];
+        // A counting sort of the terms by variable: scanning every term for
+        // each variable costs n * q, minutes on the verger problems once
+        // their linearized products become quadratic terms.
+        std::fill_n(indices.get(), n + 1, 0);
+        for (const auto& elem : obj.qelements) {
+            bx_ensures(0 <= elem.variable_index_a &&
+                       elem.variable_index_a < n);
+            bx_ensures(0 <= elem.variable_index_b &&
+                       elem.variable_index_b < n);
 
-            for (int i = 0, e = length(obj.qelements); i != e; ++i) {
-                bx_ensures(0 <= obj.qelements[i].variable_index_a &&
-                           obj.qelements[i].variable_index_a < n);
-                bx_ensures(0 <= obj.qelements[i].variable_index_b &&
-                           obj.qelements[i].variable_index_b < n);
-
-                if (var == obj.qelements[i].variable_index_a ||
-                    var == obj.qelements[i].variable_index_b)
-                    ++indices[var + 1];
-            }
+            ++indices[elem.variable_index_a + 1];
+            if (elem.variable_index_b != elem.variable_index_a)
+                ++indices[elem.variable_index_b + 1];
         }
 
-        for (int id = 0, var = 0; var != n; ++var) {
-            for (int i = 0, e = length(obj.qelements); i != e; ++i) {
-                const bool is_a = obj.qelements[i].variable_index_a == var;
-                const bool is_b = obj.qelements[i].variable_index_b == var;
+        for (int var = 0; var != n; ++var)
+            indices[var + 1] += indices[var];
 
-                if (is_a || is_b) {
-                    quadratic_elements[id].factor =
-                      static_cast<real>(obj.qelements[i].factor);
-                    quadratic_elements[id].id =
-                      is_a ? obj.qelements[i].variable_index_b
-                           : obj.qelements[i].variable_index_a;
-                    ++id;
-                }
-            }
+        std::vector<int> next(indices.get(), indices.get() + n);
+        for (const auto& elem : obj.qelements) {
+            const auto factor = static_cast<real>(elem.factor);
+            const int a = elem.variable_index_a;
+            const int b = elem.variable_index_b;
+
+            quadratic_elements[next[a]++] = { factor, b };
+            if (b != a)
+                quadratic_elements[next[b]++] = { factor, a };
         }
     }
 
