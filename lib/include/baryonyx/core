@@ -446,6 +446,9 @@ struct BX_EXPORT solver_parameters
     optimizer_type optimizer{ optimizer_type::lns };
     bool use_buffer_solver{ false }; ///< Experimental solver for -1 0 1
 
+    /** Replace the linearized products z = x.y by quadratic terms. */
+    bool linearized_products{ true };
+
     bool debug{ false };
 };
 

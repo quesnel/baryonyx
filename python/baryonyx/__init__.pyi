@@ -30,6 +30,7 @@ def solve(file_path: str, *, limit: int = 1000, time_limit: float = -1.0,
           kappa_step: float = 1e-3, alpha: float = 1.0,
           constraint_order: ConstraintOrder = "none", norm: Norm = "l2",
           optimizer: Optimizer = "lns", preprocessing: bool = True,
+          products: bool = True,
           verbose: bool | int = False,
           progress: Progress | None = None) -> Result: ...
 
@@ -39,6 +40,7 @@ def optimize(file_path: str, *, limit: int = 1000, time_limit: float = -1.0,
              kappa_step: float = 1e-3, alpha: float = 1.0,
              constraint_order: ConstraintOrder = "none", norm: Norm = "l2",
              optimizer: Optimizer = "lns", preprocessing: bool = True,
+             products: bool = True,
              verbose: bool | int = False,
              progress: Progress | None = None) -> Result: ...
 

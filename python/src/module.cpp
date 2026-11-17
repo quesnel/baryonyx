@@ -394,6 +394,7 @@ run_with(const mode mode,
          const std::string& norm,
          const std::string& optimizer,
          const bool preprocessing,
+         const bool products,
          const py::object& verbose,
          const std::optional<progress_cb>& progress)
 {
@@ -414,6 +415,7 @@ run_with(const mode mode,
     params.preprocessor =
       preprocessing ? bx::solver_parameters::preprocessor_options::all
                     : bx::solver_parameters::preprocessor_options::none;
+    params.linearized_products = products;
 
     return run(mode, file_path, params, verbose, progress);
 }
@@ -463,6 +465,7 @@ PYBIND11_MODULE(_baryonyx, m)
                  const std::string& norm,
                  const std::string& optimizer,
                  bool preprocessing,
+                 bool products,
                  const py::object& verbose,
                  const std::optional<progress_cb>& progress) {
               return run_with(mode,
@@ -480,6 +483,7 @@ PYBIND11_MODULE(_baryonyx, m)
                               norm,
                               optimizer,
                               preprocessing,
+                              products,
                               verbose,
                               progress);
           },
@@ -499,6 +503,7 @@ PYBIND11_MODULE(_baryonyx, m)
           py::arg("norm") = "l2",
           py::arg("optimizer") = "lns",
           py::arg("preprocessing") = true,
+          py::arg("products") = defaults.linearized_products,
           py::arg("verbose") = py::bool_(false),
           py::arg("progress") = py::none());
     };

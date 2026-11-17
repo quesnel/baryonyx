@@ -348,6 +348,8 @@ help() noexcept
       "  - constraint-order: none (default) reversing random-sorting "
       "infeasibility-decr infeasibility-incr lagrangian-decr "
       "lagrangian-incr pi-sign-change cycle [tuned]\n"
+      "  - products: 1 (default) or 0, replace the products z = x.y "
+      "written with linear constraints by quadratic terms\n"
       "  - buffer-solver: 0 (default) or 1, experimental parallel solver "
       "for -1 0 1 coefficients\n"
       " * Optimizer parameters\n"
@@ -457,6 +459,7 @@ enum class command_line_status
     alpha_error,
     norm_error,
     buffer_solver_error,
+    products_error,
     optimizer_error,
     thread_error,
     seed_error
@@ -479,6 +482,7 @@ constexpr const std::string_view command_line_status_string[] = {
     "alpha",
     "norm",
     "buffer_solver",
+    "products",
     "optimizer",
     "thread",
     "seed"
@@ -610,6 +614,12 @@ assign_parameter(baryonyx::solver_parameters& params,
             return command_line_status::buffer_solver_error;
         else
             params.use_buffer_solver = *v == 1;
+
+    } else if (is_equal(name, "products")) {
+        if (auto v = assign(value, 0, 1); !v)
+            return command_line_status::products_error;
+        else
+            params.linearized_products = *v == 1;
 
     } else if (is_equal(name, "optimizer")) {
         if (value == "genetic")

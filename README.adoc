@@ -176,9 +176,13 @@ baryonyx-0.6 --check file.sol file.lp
   parser accepts constraints without terms, written by CPLEX, and drops zero
   coefficients.
 . *Preprocessing* (`lib/src/preprocessor.cpp`): fixes the variables forced by
-  the constraints, removes the satisfied constraints and propagates. The
-  `--disable-preprocessing` option skips this step and `--debug` writes the
-  reduced problem in `preprocessed.lp`.
+  the constraints, removes the satisfied constraints and propagates. Before,
+  the products written with linear constraints (`z <= x`, `z <= y`,
+  `z >= x + y - 1`, `lib/src/products.cpp`) are removed and their cost moved
+  to a quadratic term `x * y` of the objective; the solution gives them back
+  the value `x * y` (`-p products=0` keeps them). The
+  `--disable-preprocessing` option skips this step and
+  `--debug` writes the reduced problem in `preprocessed.lp`.
 . *Selection of the solver class* (`lib/src/problem.hpp`) according to the
   constraint types and coefficients, see below.
 . *Solve or optimization* (`lib/src/itm.hpp`): the solver searches for a
@@ -492,6 +496,7 @@ influence: they are fixed constants of `solver_parameters`, see
 | `norm` | cost normalization | yes
 | `constraint-order` | order of the violated constraints | yes
 | `buffer-solver` | parallel buffered solver | no
+| `products` | linearized products as quadratic terms | no
 | `optimizer` | optimization algorithm | yes
 | `limit`, `time-limit`, `thread`, `seed`, `observer-type` | execution | no
 |===
@@ -605,6 +610,14 @@ effects do not add up.
 | 0
 | Use the experimental buffered solver for the `01` and `101` classes, with
   parallel computation of the constraints in solve mode.
+
+| `products`
+| 0 or 1
+| 1
+| Replace the products `z = x * y` written with linear constraints by
+  quadratic terms of the objective (see the preprocessing). Better on most
+  linearized models, but Wedelin may start from a worse solution: `0` keeps
+  the linear model.
 |===
 
 ==== Optimizer parameters
@@ -711,7 +724,8 @@ else:
   `kappa_step`, `alpha`, `constraint_order`, `norm`, `optimizer`. The
   enumerations take the same strings (`"random-sorting"`, `"loo"`,
   `"lns"`…), an unknown value raises `ValueError`. `preprocessing=False`
-  disables the preprocessor, `verbose` takes `True`, `False` or a level
+  disables the preprocessor, `products=False` keeps the linearized products,
+  `verbose` takes `True`, `False` or a level
   between 0 and 7.
 * The `Result` gives `success` (also its truth value), `status`
   (`"success"`, `"time-limit-reached"`, `"limit-reached"`…), `value`,

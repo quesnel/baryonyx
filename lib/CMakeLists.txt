@@ -43,6 +43,8 @@ set(private_baryonyx_source
  src/private.hpp
  src/problem.cpp
  src/problem.hpp
+ src/products.cpp
+ src/products.hpp
  src/random-distributions.hpp
  src/random-engine.hpp
  src/result.cpp

@@ -21,6 +21,7 @@
  */
 
 #include "problem.hpp"
+#include "products.hpp"
 
 #include <baryonyx/core-compare>
 #include <baryonyx/core-test>
@@ -143,6 +144,57 @@ main()
             expect(baryonyx::is_valid_solution(copy, result));
             expect(eq(result.solutions.back().value, -15.0))
               << name(optimizer);
+        }
+    };
+
+    "test_linearized_products"_test = [] {
+        // z1 (upper bounds only, a gain) and z2 (full linearization) are
+        // products; z3 is bounded like z1 but costs, so the optimum keeps it
+        // at 0 even when x1 = y1 = 1 and it must stay a variable.
+        const char* str_pb = "maximize\n"
+                             "5 z1 + 5 z2 - 3 z3 - 2 x1 - 2 x2 - 2 y1 - 2 y2\n"
+                             "subject to:\n"
+                             "z1 - x1 <= 0\n"
+                             "z1 - y1 <= 0\n"
+                             "- z2 + x2 >= 0\n"
+                             "z2 - y2 <= 0\n"
+                             "z2 - x2 - y2 >= -1\n"
+                             "z3 - x1 <= 0\n"
+                             "z3 - y1 <= 0\n"
+                             "x1 + x2 <= 1\n"
+                             "binary\n"
+                             "x1 x2 y1 y2 z1 z2 z3\n"
+                             "end\n";
+
+        auto ctx = baryonyx::make_context(0);
+        std::istringstream iss(str_pb);
+        const auto pb = baryonyx::make_problem(*ctx, iss);
+        expect(fatal(pb));
+
+        baryonyx::linearized_products products;
+        const auto reduced = products.reduce(*ctx, pb);
+        expect(fatal(reduced.has_value()));
+        expect(eq(products.size(), 2));
+        expect(eq(reduced->vars.names.size(), pb.vars.names.size() - 2u));
+        expect(eq(reduced->objective.qelements.size(), 2u));
+        expect(eq(reduced->less_constraints.size() +
+                    reduced->greater_constraints.size(),
+                  3u));
+
+        baryonyx::solver_parameters params;
+        params.time_limit = 0.5;
+        params.seed = 1;
+        params.thread = 2;
+
+        for (const bool reduce : { true, false }) {
+            params.linearized_products = reduce;
+            baryonyx::context_set_solver_parameters(ctx, params);
+
+            const auto result = baryonyx::optimize(ctx, pb);
+            expect(fatal(result.status == baryonyx::result_status::success));
+            expect(baryonyx::is_valid_solution(pb, result));
+            expect(eq(baryonyx::compute_solution(pb, result), 1.0));
+            expect(eq(result.solutions.back().value, 1.0));
         }
     };
 

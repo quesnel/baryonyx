@@ -6,6 +6,12 @@
   Python module, when `liblzma` is found at build time (optional,
   `-DWITH_XZ=OFF` to disable). `has_xz_support()` tells whether the build
   supports them.
+* preprocessing: the products of two variables written with linear
+  constraints (`z <= x`, `z <= y`, `z >= x + y - 1`) are replaced by a
+  quadratic term of the objective, and restored in the solution. On the
+  verger benchmarks, it removes 60 to 90 % of the constraints and finds the
+  best solutions about twice as fast; `-p products=0` (or `products=False`
+  in Python) keeps the linear model.
 * lns optimizer: once the neighbourhoods stall, moves regions of key
   variables (variables that force many others to 0) and solves the rest
   again.

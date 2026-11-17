@@ -73,6 +73,7 @@ context_set_solver_parameters(const context_ptr& ctx,
     ctx->parameters.preprocessor = params.preprocessor;
     ctx->parameters.observer = params.observer;
     ctx->parameters.use_buffer_solver = params.use_buffer_solver;
+    ctx->parameters.linearized_products = params.linearized_products;
     ctx->parameters.optimizer = params.optimizer;
     ctx->parameters.debug = params.debug;
 }

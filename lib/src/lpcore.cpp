@@ -27,6 +27,7 @@
 #include "itm.hpp"
 #include "private.hpp"
 #include "problem.hpp"
+#include "products.hpp"
 #include "utils.hpp"
 #include "xz-stream.hpp"
 
@@ -98,16 +99,38 @@ request_stop() noexcept
     stop_requested.store(true, std::memory_order_relaxed);
 }
 
+// The preprocessor also replaces the linearized products by quadratic terms
+// of the objective: the solvers then no longer keep thousands of auxiliary
+// variables consistent through rows of two or three elements. The first
+// solution of Wedelin changes with the objective and is worse on some
+// problems, hence the parameter.
+template<typename Function>
+static result
+run(const context& ctx, const raw_problem& rawpb, Function&& fn)
+{
+    if (ctx.parameters.preprocessor !=
+        solver_parameters::preprocessor_options::all)
+        return fn(unpreprocess(ctx, rawpb));
+
+    linearized_products products;
+    const auto reduced = ctx.parameters.linearized_products
+                           ? products.reduce(ctx, rawpb)
+                           : std::nullopt;
+    auto r = fn(preprocess(ctx, reduced ? *reduced : rawpb));
+    products.restore(r);
+
+    return r;
+}
+
 result
 solve(const baryonyx::context_ptr& ctx, const raw_problem& rawpb)
 {
     stop_requested.store(false, std::memory_order_relaxed);
 
     if (ctx)
-        return (ctx->parameters.preprocessor ==
-                solver_parameters::preprocessor_options::all)
-                 ? itm::solve(*ctx, preprocess(*ctx, rawpb))
-                 : itm::solve(*ctx, unpreprocess(*ctx, rawpb));
+        return run(*ctx, rawpb, [&ctx](const problem& pb) {
+            return itm::solve(*ctx, pb);
+        });
 
     return result{ baryonyx::result_status::empty_context };
 }
@@ -120,15 +143,13 @@ optimize(const baryonyx::context_ptr& ctx, const raw_problem& rawpb)
     if (ctx) {
         if ((ctx->parameters.mode & solver_parameters::mode_type::branch) ==
             solver_parameters::mode_type::branch)
-            return (ctx->parameters.preprocessor ==
-                    solver_parameters::preprocessor_options::all)
-                     ? itm::branch_optimize(*ctx, preprocess(*ctx, rawpb))
-                     : itm::branch_optimize(*ctx, unpreprocess(*ctx, rawpb));
+            return run(*ctx, rawpb, [&ctx](const problem& pb) {
+                return itm::branch_optimize(*ctx, pb);
+            });
 
-        return (ctx->parameters.preprocessor ==
-                solver_parameters::preprocessor_options::all)
-                 ? itm::optimize(*ctx, preprocess(*ctx, rawpb))
-                 : itm::optimize(*ctx, unpreprocess(*ctx, rawpb));
+        return run(*ctx, rawpb, [&ctx](const problem& pb) {
+            return itm::optimize(*ctx, pb);
+        });
     }
 
     return result{ baryonyx::result_status::empty_context };
