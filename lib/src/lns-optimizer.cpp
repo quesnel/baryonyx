@@ -346,9 +346,31 @@ public:
                     reach[static_cast<std::size_t>(e.variable_index)] += others;
         });
 
-        std::vector<int> sorted(reach);
-        std::ranges::nth_element(sorted, sorted.begin() + sorted.size() / 2);
-        const int threshold = std::max(8, 4 * sorted[sorted.size() / 2]);
+        // The reach has three groups: none, the dependent variables and the
+        // key variables. The keys start after the widest ratio between two
+        // consecutive reaches. Without a ratio of 2^1.5 at least, there is
+        // no such group: on the benchmarks, models with keys show 2^1.7 to
+        // 2^6.6 and models without them 2^1.2 at most.
+        std::vector<int> sorted;
+        for (const int r : reach)
+            if (r > 0)
+                sorted.emplace_back(r);
+        std::ranges::sort(sorted);
+        const auto [first, last] = std::ranges::unique(sorted);
+        sorted.erase(first, last);
+
+        int threshold = 0;
+        double widest = std::sqrt(8.0);
+        for (std::size_t i = 1; i < sorted.size(); ++i) {
+            const double ratio = static_cast<double>(sorted[i]) / sorted[i - 1];
+            if (ratio >= widest) {
+                widest = ratio;
+                threshold = sorted[i];
+            }
+        }
+
+        if (threshold == 0)
+            return;
 
         m_position.assign(n, -1);
         for (std::size_t i = 0; i != n; ++i) {
