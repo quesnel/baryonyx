@@ -12,9 +12,10 @@
   verger benchmarks, it removes 60 to 90 % of the constraints and finds the
   best solutions about twice as fast; `-p products=0` (or `products=False`
   in Python) keeps the linear model.
-* lns optimizer: once the neighbourhoods stall, moves regions of key
-  variables (variables that force many others to 0) and solves the rest
-  again.
+* lns optimizer: once the neighbourhoods stall, anneals the layout of the
+  key variables (variables that force many others to 0): a region of keys is
+  filled again at random, the rest is solved again and the step is accepted
+  with the Metropolis rule.
 * lns optimizer: the kind of neighbourhood (random, constraint walk, or the
   variables Wedelin hesitates on, scattered or grown into a walk) is drawn in
   proportion to its recent rate of improvement.

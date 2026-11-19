@@ -438,80 +438,65 @@ public:
     }
 
     /**
-     * The assignments of the key variables of @c region, the other variables
-     * keeping their value in @c x, that satisfy the rows of key variables
-     * only. At most @c limit of them, chosen uniformly by reservoir sampling.
+     * Assigns the keys of @c region in a random order, each one to 1 with
+     * probability @c density when the rows of key variables still allow it.
+     * @c layout holds a value per key. False when the rows cannot be
+     * satisfied.
      */
-    std::vector<std::uint32_t> assignments(const std::vector<std::int8_t>& x,
-                                           const std::vector<int>& region,
-                                           int limit,
-                                           bx::xoshiro256pp& rng) const
+    bool fill(std::vector<std::int8_t>& layout,
+              const std::vector<int>& region,
+              double density,
+              bx::xoshiro256pp& rng) const
     {
-        std::vector<std::int8_t> value(m_keys.size());
-        for (std::size_t p = 0; p != m_keys.size(); ++p)
-            value[p] = x[static_cast<std::size_t>(m_keys[p])];
-
         std::vector<char> open(m_keys.size(), 0);
-        for (const int p : region)
+        std::vector<int> order(region);
+        for (const int p : order)
             open[static_cast<std::size_t>(p)] = 1;
+        for (std::size_t i = order.size(); i > 1; --i)
+            std::swap(order[i - 1], order[bx::uniform_below(rng, i)]);
 
-        std::vector<std::uint32_t> found;
-        long int seen = 0;
-
-        const auto satisfiable = [&](int p) {
-            for (const int id : m_key_constraints_of[static_cast<std::size_t>(p)]) {
-                const auto& [cst, s] =
-                  m_key_constraints[static_cast<std::size_t>(id)];
-                int low = 0, high = 0;
-                for (const auto& e : cst->elements) {
-                    const auto q = static_cast<std::size_t>(
-                      key(e.variable_index));
-                    if (open[q]) {
-                        low += std::min(0, e.factor);
-                        high += std::max(0, e.factor);
-                    } else {
-                        low += e.factor * value[q];
-                        high += e.factor * value[q];
-                    }
-                }
-                if ((s != sense::greater && low > cst->value) ||
-                    (s != sense::less && high < cst->value))
+        bx::uniform_real_distribution<double> unit(0.0, 1.0);
+        for (const int p : order) {
+            const auto q = static_cast<std::size_t>(p);
+            open[q] = 0;
+            const std::int8_t wanted = unit(rng) < density ? 1 : 0;
+            layout[q] = wanted;
+            if (!satisfiable(p, layout, open)) {
+                layout[q] = static_cast<std::int8_t>(1 - wanted);
+                if (!satisfiable(p, layout, open))
                     return false;
             }
-            return true;
-        };
-
-        const auto depth_first = [&](const auto& self,
-                                     std::size_t depth,
-                                     std::uint32_t bits) -> void {
-            if (depth == region.size()) {
-                ++seen;
-                if (bx::length(found) < limit)
-                    found.emplace_back(bits);
-                else if (const auto r = bx::uniform_below(
-                           rng, static_cast<std::uint64_t>(seen));
-                         r < static_cast<std::uint64_t>(limit))
-                    found[r] = bits;
-                return;
-            }
-
-            const auto p = static_cast<std::size_t>(region[depth]);
-            open[p] = 0;
-            for (std::int8_t v = 0; v != 2; ++v) {
-                value[p] = v;
-                if (satisfiable(static_cast<int>(p)))
-                    self(self,
-                         depth + 1,
-                         bits | (static_cast<std::uint32_t>(v) << depth));
-            }
-            open[p] = 1;
-        };
-
-        depth_first(depth_first, 0, 0u);
-        return found;
+        }
+        return true;
     }
 
 private:
+    bool satisfiable(int p,
+                     const std::vector<std::int8_t>& value,
+                     const std::vector<char>& open) const
+    {
+        for (const int id : m_key_constraints_of[static_cast<std::size_t>(p)]) {
+            const auto& [cst, s] =
+              m_key_constraints[static_cast<std::size_t>(id)];
+            int low = 0, high = 0;
+            for (const auto& e : cst->elements) {
+                const auto q = static_cast<std::size_t>(
+                  key(e.variable_index));
+                if (open[q]) {
+                    low += std::min(0, e.factor);
+                    high += std::max(0, e.factor);
+                } else {
+                    low += e.factor * value[q];
+                    high += e.factor * value[q];
+                }
+            }
+            if ((s != sense::greater && low > cst->value) ||
+                (s != sense::less && high < cst->value))
+                return false;
+        }
+        return true;
+    }
+
     enum class sense { equal, greater, less };
 
     template<typename Function>
@@ -979,14 +964,15 @@ optimize(const bx::context& ctx, const bx::problem& pb)
             ctx.update(0, value, iterations, elapsed(), 0);
     };
 
-    // Fixes the key variables to x, except the region set to bits, and
-    // solves the other variables again in candidate.
+    // Fixes the key variables to layout and solves the other variables again
+    // in candidate.
     std::vector<int> region;
-    const auto solve_keys = [&](std::uint32_t bits) -> std::optional<double> {
-        key_assignments(keys);
-        for (std::size_t d = 0; d != region.size(); ++d)
-            assignments[static_cast<std::size_t>(region[d])].second =
-              ((bits >> d) & 1u) != 0;
+    const auto solve_layout =
+      [&](const std::vector<std::int8_t>& layout) -> std::optional<double> {
+        assignments.clear();
+        for (int p = 0, e = keys.size(); p != e; ++p)
+            assignments.emplace_back(keys.variable(p),
+                                     layout[static_cast<std::size_t>(p)] != 0);
 
         bx::problem sub;
         try {
@@ -1017,61 +1003,97 @@ optimize(const bx::context& ctx, const bx::problem& pb)
         return bx::compute_solution(pb, candidate);
     };
 
-    // Enumerates the assignments of a region of key variables and solves
-    // the other variables again for each. The reference is the current
-    // assignment of the region solved the same way, not x itself: the other
-    // variables of x had many neighbourhoods to improve, a candidate only one
-    // short run, and a better assignment of the key variables would lose.
-    std::vector<std::int8_t> best_candidate;
-    const auto key_move = [&]() {
-        constexpr int region_size = 16;
-        constexpr int candidate_limit = 64;
-
-        keys.region(rng, std::min(region_size, keys.size()), region);
-        const auto candidates =
-          keys.assignments(x, region, candidate_limit, rng);
-
-        std::uint32_t current = 0;
-        for (std::size_t d = 0; d != region.size(); ++d)
-            if (x[static_cast<std::size_t>(keys.variable(region[d]))])
-                current |= 1u << d;
-
-        const auto reference = solve_keys(current);
-        if (!reference)
-            return false;
-
-        double best_value = *reference;
-        best_candidate.clear();
-
-        for (const auto bits : candidates) {
-            if (bx::is_stop_requested() || !has_time())
-                break;
-            if (bits == current)
-                continue;
-
-            if (const auto v = solve_keys(bits);
-                v && is_better(*v, best_value, pb.type)) {
-                best_value = *v;
-                best_candidate = candidate;
-            }
-        }
-
-        if (best_candidate.empty())
-            return false;
-
-        x.swap(best_candidate);
-        value = best_value;
-        keep_best();
-        return true;
+    const auto layout_of = [&](const std::vector<std::int8_t>& solution,
+                               std::vector<std::int8_t>& out) {
+        out.resize(static_cast<std::size_t>(keys.size()));
+        for (int p = 0, e = keys.size(); p != e; ++p)
+            out[static_cast<std::size_t>(p)] =
+              solution[static_cast<std::size_t>(keys.variable(p))];
     };
 
-    // Share of the search time given to the moves of key variables: raised
-    // after an improvement and slowly reduced after a region without one,
-    // so that the problems where they never help lose little time. They only
-    // start once the neighbourhoods stall: while the lns still improves, the
-    // key layout is not yet the bottleneck and moving it only adds variance.
+    // Simulated annealing on the layout of the key variables. Each step
+    // empties a region of 4 to 16 keys and fills it again at random, the
+    // other variables are solved again for the new layout and the step is
+    // accepted with the Metropolis rule: the layouts found by the
+    // neighbourhoods are local optima for the moves of a few keys, and only a
+    // walk through worse layouts reaches the better basins. The temperature
+    // starts at a quarter of the mean loss of the worse steps and falls
+    // linearly to zero at the end of the budget: hotter walks too far from
+    // the good layouts, colder stays in the basin of the first one.
+    std::vector<std::int8_t> sa_layout, sa_next;
+    double sa_value = 0.0;
+    bool sa_synced = false;
+    double sa_worse = 0.0;
+    int sa_worse_count = 0;
+    long int sa_accepted = 0, sa_worse_accepted = 0;
+    constexpr double sa_factor = 0.25;
+    const auto sa_step = [&](double progress) {
+        if (sa_synced) {
+            layout_of(x, sa_next);
+            if (sa_next != sa_layout)
+                sa_synced = false;
+        }
+        if (!sa_synced) {
+            layout_of(x, sa_layout);
+            const auto v = solve_layout(sa_layout);
+            if (!v)
+                return false;
+            sa_value = *v;
+            sa_synced = true;
+            if (is_better(*v, value, pb.type)) {
+                x.swap(candidate);
+                value = *v;
+                keep_best();
+                return true;
+            }
+            return false;
+        }
+
+        const int size = std::min(
+          keys.size(), 4 + static_cast<int>(bx::uniform_below(rng, 13)));
+        keys.region(rng, size, region);
+        sa_next = sa_layout;
+        bx::uniform_real_distribution<double> unit(0.0, 1.0);
+        if (!keys.fill(sa_next, region, unit(rng), rng) ||
+            sa_next == sa_layout)
+            return false;
+
+        const auto v = solve_layout(sa_next);
+        if (!v)
+            return false;
+
+        const double delta = pb.type == bx::objective_function_type::minimize
+                               ? *v - sa_value
+                               : sa_value - *v;
+        bool accept = delta <= 0.0;
+        if (delta > 0.0) {
+            sa_worse += delta;
+            ++sa_worse_count;
+            const double t0 = sa_factor * sa_worse / sa_worse_count;
+            const double t = t0 * (1.0 - progress);
+            accept = sa_worse_count >= 10 && t > 0.0 &&
+                     unit(rng) < std::exp(-delta / t);
+            if (accept)
+                ++sa_worse_accepted;
+        }
+        if (!accept)
+            return false;
+
+        ++sa_accepted;
+        const bool improved = is_better(*v, incumbent_value, pb.type);
+        sa_layout.swap(sa_next);
+        sa_value = *v;
+        x.swap(candidate);
+        value = *v;
+        keep_best();
+        return improved;
+    };
+
+    // Half of the search time goes to the annealing once the neighbourhoods
+    // stall: while the lns still improves, the key layout is not yet the
+    // bottleneck and moving it only adds variance.
     constexpr long int stall_limit = 100;
-    double key_share = 0.25;
+    constexpr double key_share = 0.5;
     double key_time = 0.0;
     const double loop_start = elapsed();
     long int key_moves = 0, key_improvements = 0;
@@ -1082,12 +1104,15 @@ optimize(const bx::context& ctx, const bx::problem& pb)
             key_time <= key_share * (elapsed() - loop_start)) {
             const double move_start = elapsed();
             ++key_moves;
-            if (key_move()) {
+            const double progress =
+              unbounded ? 0.5
+                        : std::clamp((elapsed() - loop_start) /
+                                       std::max(1e-9, budget - loop_start),
+                                     0.0,
+                                     1.0);
+            if (sa_step(progress)) {
                 ++key_improvements;
                 last_improvement = iterations;
-                key_share = std::min(0.6, 1.5 * key_share);
-            } else {
-                key_share = std::max(0.02, 0.95 * key_share);
             }
             key_time += elapsed() - move_start;
             continue;
@@ -1201,10 +1226,13 @@ optimize(const bx::context& ctx, const bx::problem& pb)
 
     if (!keys.empty())
         bx::notice(ctx,
-                   "  - lns optimizer: {} key variables, {} key moves, {} "
-                   "improvements, {:.0f}% of the time\n",
+                   "  - lns optimizer: {} key variables, {} annealing steps, "
+                   "{} accepted ({} worse), {} improvements, {:.0f}% of the "
+                   "time\n",
                    keys.size(),
                    key_moves,
+                   sa_accepted,
+                   sa_worse_accepted,
                    key_improvements,
                    100.0 * key_time / std::max(1e-9, elapsed() - loop_start));
 
