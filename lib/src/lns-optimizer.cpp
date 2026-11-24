@@ -22,6 +22,7 @@
 
 #include <algorithm>
 #include <array>
+#include <bit>
 #include <chrono>
 #include <cmath>
 #include <functional>
@@ -594,36 +595,34 @@ constexpr std::array<std::string_view, neighbourhood_count>
   neighbourhood_names = { "random", "walk", "hesitant", "hesitant walk" };
 
 /**
- * Adaptive large neighbourhood search: draws the kind of neighbourhood in
- * proportion to its recent rate of improvement. The kind that works differs
- * between problems (the hesitant variables find a third of the improvements
- * on some, none on others) and a fixed rotation wastes the iterations of
- * the useless ones.
+ * Draws an arm in proportion to its recent rate of success. The adaptive
+ * large neighbourhood search draws the kind of neighbourhood with it: the
+ * kind that works differs between problems (the hesitant variables find a
+ * third of the improvements on some, none on others) and a fixed rotation
+ * wastes the iterations of the useless ones.
  */
-class neighbourhood_selector
+class rate_roulette
 {
 public:
-    explicit neighbourhood_selector(bool has_constraints) noexcept
-    {
-        m_enabled.fill(true);
-        if (!has_constraints) {
-            m_enabled[static_cast<std::size_t>(neighbourhood::walk)] = false;
-            m_enabled[static_cast<std::size_t>(
-              neighbourhood::hesitant_walk)] = false;
-        }
+    explicit rate_roulette(std::size_t arms)
+      // Successes are rare: the prior of 5% keeps an arm with one lucky
+      // success from taking every draw.
+      : m_successes(arms, 0.5)
+      , m_tries(arms, 10.0)
+      , m_uses(arms, 0)
+      , m_successes_count(arms, 0)
+      , m_enabled(arms, 1)
+    {}
 
-        // Improvements are rare: the prior of 5% keeps a kind with one lucky
-        // success from taking every iteration.
-        m_successes.fill(0.5);
-        m_tries.fill(10.0);
-    }
+    void disable(std::size_t i) noexcept { m_enabled[i] = 0; }
 
-    neighbourhood draw(bx::xoshiro256pp& rng) const noexcept
+    std::size_t draw(bx::xoshiro256pp& rng) const
     {
-        std::array<double, neighbourhood_count> weight{};
+        const auto arms = m_successes.size();
+        std::vector<double> weight(arms, 0.0);
         double rate_sum = 0.0;
         int enabled = 0;
-        for (std::size_t i = 0; i != neighbourhood_count; ++i) {
+        for (std::size_t i = 0; i != arms; ++i) {
             if (m_enabled[i]) {
                 weight[i] = m_successes[i] / m_tries[i];
                 rate_sum += weight[i];
@@ -631,10 +630,10 @@ public:
             }
         }
 
-        // A tenth of the draws ignore the rates: a kind can become useful
-        // later, once the others have exhausted their improvements.
+        // A tenth of the draws ignore the rates: an arm can become useful
+        // later, once the others have exhausted their successes.
         double total = 0.0;
-        for (std::size_t i = 0; i != neighbourhood_count; ++i) {
+        for (std::size_t i = 0; i != arms; ++i) {
             if (m_enabled[i])
                 weight[i] = 0.1 / enabled + 0.9 * weight[i] / rate_sum;
             total += weight[i];
@@ -643,45 +642,44 @@ public:
         bx::uniform_real_distribution<double> unit(0.0, total);
         double u = unit(rng);
         std::size_t last = 0;
-        for (std::size_t i = 0; i != neighbourhood_count; ++i) {
+        for (std::size_t i = 0; i != arms; ++i) {
             if (!m_enabled[i])
                 continue;
             last = i;
             if (u < weight[i])
-                return static_cast<neighbourhood>(i);
+                return i;
             u -= weight[i];
         }
 
-        return static_cast<neighbourhood>(last);
+        return last;
     }
 
-    void update(neighbourhood kind, bool improved) noexcept
+    void update(std::size_t i, bool success) noexcept
     {
-        // Forgets the rates over about a hundred uses: the useful kind
+        // Forgets the rates over about a hundred uses: the useful arm
         // changes as the search goes deeper.
         constexpr double decay = 0.99;
 
-        const auto i = static_cast<std::size_t>(kind);
-        m_successes[i] = decay * m_successes[i] + (improved ? 1.0 : 0.0);
+        m_successes[i] = decay * m_successes[i] + (success ? 1.0 : 0.0);
         m_tries[i] = decay * m_tries[i] + 1.0;
         ++m_uses[i];
-        if (improved)
-            ++m_improvements[i];
+        if (success)
+            ++m_successes_count[i];
     }
 
     long int uses(std::size_t i) const noexcept { return m_uses[i]; }
 
-    long int improvements(std::size_t i) const noexcept
+    long int successes(std::size_t i) const noexcept
     {
-        return m_improvements[i];
+        return m_successes_count[i];
     }
 
 private:
-    std::array<double, neighbourhood_count> m_successes;
-    std::array<double, neighbourhood_count> m_tries;
-    std::array<long int, neighbourhood_count> m_uses{};
-    std::array<long int, neighbourhood_count> m_improvements{};
-    std::array<bool, neighbourhood_count> m_enabled;
+    std::vector<double> m_successes;
+    std::vector<double> m_tries;
+    std::vector<long int> m_uses;
+    std::vector<long int> m_successes_count;
+    std::vector<char> m_enabled;
 };
 
 /** Writes the values of a sub-problem result into the full assignment. */
@@ -965,7 +963,12 @@ optimize(const bx::context& ctx, const bx::problem& pb)
             is_free[static_cast<std::size_t>(keyed[i].second)] = 1;
     };
 
-    neighbourhood_selector selector(graph.constraints() != 0);
+    rate_roulette selector(neighbourhood_count);
+    if (graph.constraints() == 0) {
+        selector.disable(static_cast<std::size_t>(neighbourhood::walk));
+        selector.disable(
+          static_cast<std::size_t>(neighbourhood::hesitant_walk));
+    }
 
     std::vector<char> visited(static_cast<std::size_t>(graph.constraints()));
     std::vector<int> queue;
@@ -1080,9 +1083,9 @@ optimize(const bx::context& ctx, const bx::problem& pb)
     };
 
     // Simulated annealing on the layout of the key variables. Each step
-    // empties a region of 4 to 16 keys and fills it again at random, the
-    // other variables are solved again for the new layout and the step is
-    // accepted with the Metropolis rule: the layouts found by the
+    // empties a region of keys and fills it again at random, the other
+    // variables are solved again for the new layout and the step is accepted
+    // with the Metropolis rule: the layouts found by the
     // neighbourhoods are local optima for the moves of a few keys, and only a
     // walk through worse layouts reaches the better basins. The temperature
     // starts at a quarter of the mean loss of the worse steps and falls
@@ -1096,6 +1099,19 @@ optimize(const bx::context& ctx, const bx::problem& pb)
     long int sa_accepted = 0, sa_worse_accepted = 0;
     constexpr double sa_factor = 0.25;
     long int global_solved = 0, global_failed = 0;
+
+    // Region sizes are drawn by classes [2^c, 2^(c+1)) up to half of the
+    // keys, in proportion to their rate of steps better than the current
+    // layout: the acceptance rate cannot set the size since the temperature
+    // follows the losses of the steps, and the useful size differs between
+    // problems (4 to 15 keys on IEA, fewer than 8 on verger full_spp, where
+    // the local solves of larger regions almost always fail).
+    const int region_classes = std::max(
+      1,
+      static_cast<int>(std::bit_width(
+        static_cast<unsigned>(std::max(2, keys.size() / 2)))) -
+        1);
+    rate_roulette sa_sizes(static_cast<std::size_t>(region_classes));
     const auto sa_move = [&](double progress, bool local) {
         if (sa_synced) {
             layout_of(x, sa_next);
@@ -1121,24 +1137,34 @@ optimize(const bx::context& ctx, const bx::problem& pb)
             }
         }
 
+        const auto size_class = sa_sizes.draw(rng);
+        const int low = 2 << size_class;
         const int size = std::min(
-          keys.size(), 4 + static_cast<int>(bx::uniform_below(rng, 13)));
+          keys.size(),
+          low + static_cast<int>(bx::uniform_below(
+                  rng, static_cast<std::uint64_t>(low))));
         keys.region(rng, size, region);
         sa_next = sa_layout;
         bx::uniform_real_distribution<double> unit(0.0, 1.0);
-        if (!keys.fill(sa_next, region, unit(rng), rng) ||
-            sa_next == sa_layout)
+        if (!keys.fill(sa_next, region, unit(rng), rng)) {
+            sa_sizes.update(size_class, false);
+            return false;
+        }
+        if (sa_next == sa_layout)
             return false;
 
         const auto v = solve_layout(sa_next, local);
         if (!local)
             ++(v ? global_solved : global_failed);
-        if (!v)
+        if (!v) {
+            sa_sizes.update(size_class, false);
             return false;
+        }
 
         const double delta = pb.type == bx::objective_function_type::minimize
                                ? *v - sa_value
                                : sa_value - *v;
+        sa_sizes.update(size_class, delta < 0.0);
         bool accept = delta <= 0.0;
         if (delta > 0.0) {
             sa_worse += delta;
@@ -1214,7 +1240,7 @@ optimize(const bx::context& ctx, const bx::problem& pb)
         std::fill(is_free.begin(), is_free.end(), 0);
         const int k = static_cast<int>(wanted);
 
-        const auto kind = selector.draw(rng);
+        const auto kind = static_cast<neighbourhood>(selector.draw(rng));
         switch (kind) {
         case neighbourhood::random:
             for (int freed = 0; freed < k;) {
@@ -1245,12 +1271,12 @@ optimize(const bx::context& ctx, const bx::problem& pb)
         try {
             sub = affect(assignments);
         } catch (const bx::solver_failure&) {
-            selector.update(kind, false);
+            selector.update(static_cast<std::size_t>(kind), false);
             continue;
         }
 
         if (sub.vars.values.empty()) {
-            selector.update(kind, false);
+            selector.update(static_cast<std::size_t>(kind), false);
             continue;
         }
 
@@ -1258,7 +1284,7 @@ optimize(const bx::context& ctx, const bx::problem& pb)
         if (ret)
             learn_hesitation(sub);
         if (!ret || ret.solutions.empty()) {
-            selector.update(kind, false);
+            selector.update(static_cast<std::size_t>(kind), false);
             wanted = std::max(min_free, 0.8 * wanted);
             continue;
         }
@@ -1267,7 +1293,7 @@ optimize(const bx::context& ctx, const bx::problem& pb)
         merge(sub, ret, index, candidate);
 
         if (!bx::is_valid_solution(pb, candidate)) {
-            selector.update(kind, false);
+            selector.update(static_cast<std::size_t>(kind), false);
             wanted = std::min(max_free, 1.2 * wanted);
             continue;
         }
@@ -1283,7 +1309,7 @@ optimize(const bx::context& ctx, const bx::problem& pb)
         const double candidate_value = bx::compute_solution(pb, candidate);
 
         const bool improved = is_better(candidate_value, value, pb.type);
-        selector.update(kind, improved);
+        selector.update(static_cast<std::size_t>(kind), improved);
 
         if (is_better(value, candidate_value, pb.type)) {
             wanted = std::min(max_free, 1.2 * wanted);
@@ -1314,7 +1340,7 @@ optimize(const bx::context& ctx, const bx::problem& pb)
                        "    {}: {} neighbourhoods, {} improvements\n",
                        neighbourhood_names[i],
                        selector.uses(i),
-                       selector.improvements(i));
+                       selector.successes(i));
 
     if (!keys.empty())
         bx::notice(ctx,
@@ -1329,6 +1355,15 @@ optimize(const bx::context& ctx, const bx::problem& pb)
                    100.0 * key_time / std::max(1e-9, elapsed() - loop_start),
                    100.0 * sa_mode_time[1] /
                      std::max(1e-9, sa_mode_time[0] + sa_mode_time[1]));
+
+    for (int c = 0; c != region_classes; ++c)
+        if (sa_sizes.uses(static_cast<std::size_t>(c)) > 0)
+            bx::notice(ctx,
+                       "    regions of {} to {} keys: {} steps, {} better\n",
+                       2 << c,
+                       (4 << c) - 1,
+                       sa_sizes.uses(static_cast<std::size_t>(c)),
+                       sa_sizes.successes(static_cast<std::size_t>(c)));
 
     best.solutions.assign(1,
                           bx::solution(std::move(incumbent), incumbent_value));
