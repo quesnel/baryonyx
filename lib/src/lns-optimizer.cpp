@@ -1088,14 +1088,15 @@ optimize(const bx::context& ctx, const bx::problem& pb)
     // with the Metropolis rule: the layouts found by the
     // neighbourhoods are local optima for the moves of a few keys, and only a
     // walk through worse layouts reaches the better basins. The temperature
-    // starts at a quarter of the mean loss of the worse steps and falls
-    // linearly to zero at the end of the budget: hotter walks too far from
-    // the good layouts, colder stays in the basin of the first one.
+    // starts at a quarter of the mean loss of the worse steps of the smallest
+    // regions and falls linearly to zero at the end of the budget: hotter
+    // walks too far from the good layouts, colder stays in the basin of the
+    // first one. The losses grow with the region, up to 15 times from 2 to
+    // 127 keys on IEA equilibrate, and the mean over all the sizes doubled
+    // the temperature there.
     std::vector<std::int8_t> sa_layout, sa_next;
     double sa_value = 0.0;
     bool sa_synced = false;
-    double sa_worse = 0.0;
-    int sa_worse_count = 0;
     long int sa_accepted = 0, sa_worse_accepted = 0;
     constexpr double sa_factor = 0.25;
     long int global_solved = 0, global_failed = 0;
@@ -1112,6 +1113,14 @@ optimize(const bx::context& ctx, const bx::problem& pb)
         static_cast<unsigned>(std::max(2, keys.size() / 2)))) -
         1);
     rate_roulette sa_sizes(static_cast<std::size_t>(region_classes));
+    std::vector<double> sa_worse(static_cast<std::size_t>(region_classes));
+    std::vector<int> sa_worse_count(static_cast<std::size_t>(region_classes));
+    const auto sa_temperature = [&]() {
+        for (std::size_t c = 0; c != sa_worse.size(); ++c)
+            if (sa_worse_count[c] >= 10)
+                return sa_factor * sa_worse[c] / sa_worse_count[c];
+        return 0.0;
+    };
     const auto sa_move = [&](double progress, bool local) {
         if (sa_synced) {
             layout_of(x, sa_next);
@@ -1167,12 +1176,10 @@ optimize(const bx::context& ctx, const bx::problem& pb)
         sa_sizes.update(size_class, delta < 0.0);
         bool accept = delta <= 0.0;
         if (delta > 0.0) {
-            sa_worse += delta;
-            ++sa_worse_count;
-            const double t0 = sa_factor * sa_worse / sa_worse_count;
-            const double t = t0 * (1.0 - progress);
-            accept = sa_worse_count >= 10 && t > 0.0 &&
-                     unit(rng) < std::exp(-delta / t);
+            sa_worse[size_class] += delta;
+            ++sa_worse_count[size_class];
+            const double t = sa_temperature() * (1.0 - progress);
+            accept = t > 0.0 && unit(rng) < std::exp(-delta / t);
             if (accept)
                 ++sa_worse_accepted;
         }
