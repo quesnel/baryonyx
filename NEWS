@@ -17,8 +17,8 @@
   filled again at random, the rest is solved again and the step is accepted
   with the Metropolis rule. On the largest models, where solving all the
   other variables again fails within the time of a sub-problem, the steps
-  solve only the surroundings of the region; the mode is drawn in proportion
-  to its accepted steps per second.
+  solve only the surroundings of the region, once less than a quarter of the
+  global solves succeed.
 * lns optimizer: the kind of neighbourhood (random, constraint walk, or the
   variables Wedelin hesitates on, scattered or grown into a walk) is drawn in
   proportion to its recent rate of improvement.

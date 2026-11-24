@@ -1095,6 +1095,7 @@ optimize(const bx::context& ctx, const bx::problem& pb)
     int sa_worse_count = 0;
     long int sa_accepted = 0, sa_worse_accepted = 0;
     constexpr double sa_factor = 0.25;
+    long int global_solved = 0, global_failed = 0;
     const auto sa_move = [&](double progress, bool local) {
         if (sa_synced) {
             layout_of(x, sa_next);
@@ -1130,6 +1131,8 @@ optimize(const bx::context& ctx, const bx::problem& pb)
             return false;
 
         const auto v = solve_layout(sa_next, local);
+        if (!local)
+            ++(v ? global_solved : global_failed);
         if (!v)
             return false;
 
@@ -1162,25 +1165,19 @@ optimize(const bx::context& ctx, const bx::problem& pb)
 
     // Solving everything again but the keys fails within the time limit of a
     // sub-problem on the largest models, while solving only the surroundings
-    // of the region misses the moves the global rows need on the smaller
-    // ones. Each step draws the mode in proportion to its accepted steps per
-    // second.
-    std::array<double, 2> sa_mode_accepted{ 0.0, 0.0 };
+    // of the region cannot move the global rows the smaller ones need. The
+    // steps stay global while at least a quarter of the global solves
+    // succeed: on the benchmarks, they succeed more than half of the time on
+    // the models where the global steps help and less than a tenth on the
+    // others.
     std::array<double, 2> sa_mode_time{ 0.0, 0.0 };
     const auto sa_step = [&](double progress) {
-        const double prior = internal.parameters.time_limit;
-        const double global =
-          (sa_mode_accepted[0] + 1.0) / (sa_mode_time[0] + prior);
-        const double local =
-          (sa_mode_accepted[1] + 1.0) / (sa_mode_time[1] + prior);
-        bx::uniform_real_distribution<double> draw(0.0, global + local);
-        const std::size_t mode = draw(rng) < global ? 0 : 1;
-
+        const std::size_t mode =
+          4 * (global_solved + 1) >= global_solved + global_failed + 1 ? 0
+                                                                        : 1;
         const double start = elapsed();
-        const auto accepted = sa_accepted;
         const bool improved = sa_move(progress, mode == 1);
         sa_mode_time[mode] += elapsed() - start;
-        sa_mode_accepted[mode] += static_cast<double>(sa_accepted - accepted);
         return improved;
     };
 
