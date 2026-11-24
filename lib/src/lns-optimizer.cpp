@@ -388,6 +388,7 @@ public:
 
         m_neighbours.resize(m_keys.size());
         m_key_constraints_of.resize(m_keys.size());
+        m_small_rows_of.resize(n);
 
         std::vector<int> in_row;
         for_each_constraint(pb, [&](const bx::constraint& cst, sense s) {
@@ -407,6 +408,10 @@ public:
             if (bx::length(cst.elements) > small_arity)
                 return;
 
+            for (const auto& e : cst.elements)
+                m_small_rows_of[static_cast<std::size_t>(e.variable_index)]
+                  .emplace_back(&cst);
+
             for (const int a : in_row)
                 for (const int b : in_row)
                     if (a != b)
@@ -422,6 +427,25 @@ public:
     }
 
     bool empty() const noexcept { return m_keys.empty(); }
+
+    /**
+     * Marks in @c is_free the variables within two small rows of the keys of
+     * @c region: their dependents and the variables tied to them.
+     */
+    void free_around(std::span<const int> region,
+                     std::vector<char>& is_free) const
+    {
+        for (const int p : region)
+            for (const auto* row : rows_of(variable(p)))
+                for (const auto& d : row->elements)
+                    if (key(d.variable_index) < 0)
+                        for (const auto* next : rows_of(d.variable_index))
+                            for (const auto& e : next->elements)
+                                is_free[static_cast<std::size_t>(
+                                  e.variable_index)] = 1;
+    }
+
+    int position_of(int variable) const noexcept { return key(variable); }
 
     int size() const noexcept { return bx::length(m_keys); }
 
@@ -532,6 +556,11 @@ private:
             f(cst, sense::less);
     }
 
+    std::span<const bx::constraint* const> rows_of(int variable) const noexcept
+    {
+        return m_small_rows_of[static_cast<std::size_t>(variable)];
+    }
+
     int key(int variable) const noexcept
     {
         return m_position[static_cast<std::size_t>(variable)];
@@ -548,6 +577,7 @@ private:
     std::vector<std::vector<int>> m_neighbours;
     std::vector<key_constraint> m_key_constraints;
     std::vector<std::vector<int>> m_key_constraints_of;
+    std::vector<std::vector<const bx::constraint*>> m_small_rows_of;
 };
 
 enum class neighbourhood : std::uint8_t
@@ -987,14 +1017,30 @@ optimize(const bx::context& ctx, const bx::problem& pb)
     };
 
     // Fixes the key variables to layout and solves the other variables again
-    // in candidate.
+    // in candidate: all of them, or with local, only those around the keys of
+    // the region, the others keeping their value in x.
     std::vector<int> region;
     const auto solve_layout =
-      [&](const std::vector<std::int8_t>& layout) -> std::optional<double> {
+      [&](const std::vector<std::int8_t>& layout,
+          bool local) -> std::optional<double> {
         assignments.clear();
-        for (int p = 0, e = keys.size(); p != e; ++p)
-            assignments.emplace_back(keys.variable(p),
-                                     layout[static_cast<std::size_t>(p)] != 0);
+        if (local) {
+            std::fill(is_free.begin(), is_free.end(), 0);
+            keys.free_around(region, is_free);
+            for (std::size_t i = 0; i != n; ++i) {
+                const int p = keys.position_of(static_cast<int>(i));
+                if (p >= 0)
+                    assignments.emplace_back(
+                      static_cast<int>(i),
+                      layout[static_cast<std::size_t>(p)] != 0);
+                else if (!is_free[i])
+                    assignments.emplace_back(static_cast<int>(i), x[i] != 0);
+            }
+        } else {
+            for (int p = 0, e = keys.size(); p != e; ++p)
+                assignments.emplace_back(
+                  keys.variable(p), layout[static_cast<std::size_t>(p)] != 0);
+        }
 
         bx::problem sub;
         try {
@@ -1049,7 +1095,7 @@ optimize(const bx::context& ctx, const bx::problem& pb)
     int sa_worse_count = 0;
     long int sa_accepted = 0, sa_worse_accepted = 0;
     constexpr double sa_factor = 0.25;
-    const auto sa_step = [&](double progress) {
+    const auto sa_move = [&](double progress, bool local) {
         if (sa_synced) {
             layout_of(x, sa_next);
             if (sa_next != sa_layout)
@@ -1057,18 +1103,21 @@ optimize(const bx::context& ctx, const bx::problem& pb)
         }
         if (!sa_synced) {
             layout_of(x, sa_layout);
-            const auto v = solve_layout(sa_layout);
-            if (!v)
-                return false;
-            sa_value = *v;
             sa_synced = true;
-            if (is_better(*v, value, pb.type)) {
-                x.swap(candidate);
-                value = *v;
-                keep_best();
-                return true;
+            sa_value = value;
+            if (!local) {
+                const auto v = solve_layout(sa_layout, false);
+                if (!v)
+                    return false;
+                sa_value = *v;
+                if (is_better(*v, value, pb.type)) {
+                    x.swap(candidate);
+                    value = *v;
+                    keep_best();
+                    return true;
+                }
+                return false;
             }
-            return false;
         }
 
         const int size = std::min(
@@ -1080,7 +1129,7 @@ optimize(const bx::context& ctx, const bx::problem& pb)
             sa_next == sa_layout)
             return false;
 
-        const auto v = solve_layout(sa_next);
+        const auto v = solve_layout(sa_next, local);
         if (!v)
             return false;
 
@@ -1108,6 +1157,30 @@ optimize(const bx::context& ctx, const bx::problem& pb)
         x.swap(candidate);
         value = *v;
         keep_best();
+        return improved;
+    };
+
+    // Solving everything again but the keys fails within the time limit of a
+    // sub-problem on the largest models, while solving only the surroundings
+    // of the region misses the moves the global rows need on the smaller
+    // ones. Each step draws the mode in proportion to its accepted steps per
+    // second.
+    std::array<double, 2> sa_mode_accepted{ 0.0, 0.0 };
+    std::array<double, 2> sa_mode_time{ 0.0, 0.0 };
+    const auto sa_step = [&](double progress) {
+        const double prior = internal.parameters.time_limit;
+        const double global =
+          (sa_mode_accepted[0] + 1.0) / (sa_mode_time[0] + prior);
+        const double local =
+          (sa_mode_accepted[1] + 1.0) / (sa_mode_time[1] + prior);
+        bx::uniform_real_distribution<double> draw(0.0, global + local);
+        const std::size_t mode = draw(rng) < global ? 0 : 1;
+
+        const double start = elapsed();
+        const auto accepted = sa_accepted;
+        const bool improved = sa_move(progress, mode == 1);
+        sa_mode_time[mode] += elapsed() - start;
+        sa_mode_accepted[mode] += static_cast<double>(sa_accepted - accepted);
         return improved;
     };
 
@@ -1250,13 +1323,15 @@ optimize(const bx::context& ctx, const bx::problem& pb)
         bx::notice(ctx,
                    "  - lns optimizer: {} key variables, {} annealing steps, "
                    "{} accepted ({} worse), {} improvements, {:.0f}% of the "
-                   "time\n",
+                   "time ({:.0f}% local)\n",
                    keys.size(),
                    key_moves,
                    sa_accepted,
                    sa_worse_accepted,
                    key_improvements,
-                   100.0 * key_time / std::max(1e-9, elapsed() - loop_start));
+                   100.0 * key_time / std::max(1e-9, elapsed() - loop_start),
+                   100.0 * sa_mode_time[1] /
+                     std::max(1e-9, sa_mode_time[0] + sa_mode_time[1]));
 
     best.solutions.assign(1,
                           bx::solution(std::move(incumbent), incumbent_value));
